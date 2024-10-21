@@ -1,0 +1,894 @@
+﻿@model NewFMS.Models.ArchiveFilesInf
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+
+@{
+    var X = Html.X();
+}
+
+<style>
+    .bookmark{
+        color:yellow;
+    }
+    .Notbookmark{
+        color:#ccccb3;
+    }
+    img.x-view-select {
+        background: #eff5fb url(images/selected.gif) no-repeat right bottom;
+        border: 1px solid #99bbe8 !important;
+        padding: 4px;
+    }
+    div.item-wrap {
+        float  : left;
+        border : 1px solid transparent;
+        margin : 5px 5px 5px 5px;
+        width  : 100px;
+        height : 110px;
+        text-align : center;
+    }
+    #items-ct { padding : 0px 10px 4px 10px; }
+    #items-ct h2 {
+        border-bottom : 2px solid #3A4B5B;                 
+    }
+    #items-ct h2 div {
+        padding     : 4px 4px 4px 17px;
+        font-family : tahoma,arial,san-serif;
+        font-size   : 12px;
+        color       : #3A4B5B;
+        border:1px solid dashed;
+    }
+    #items-ct .collapsed h2 div { background-position : 3px 3px; }
+    #items-ct dl { margin-left : 2px; }
+    #items-ct .collapsed dl { display : none; }
+</style>
+@(Html.X().Window()
+    .Width(1200)
+    .Height(600)
+    .Layout(LayoutType.Border)
+    .Title("بایگانی دیجیتال")
+    .ID("WinArchiveTree")
+    .Modal(true)
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => { l.Click.Handler = "CheckIsDoc();"; }),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => { l.Click.Handler = "App.WinArchiveTree.destroy();"; })
+    )
+    .Items(   
+        X.Panel()
+            .Border(false)
+            .Padding(5)
+            .Region(Region.North)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align=VBoxAlign.Center})
+            .Items(
+                X.ComboBox()
+                    .ItemID("CboFilter")
+                    .Editable(false)
+                    .TypeAhead(true)
+                    .QueryMode(DataLoadMode.Local)
+                    .TriggerAction(TriggerAction.All)
+                    .SelectedItems(new { value = "1" })
+                    .Listeners(l => l.Select.Handler = "changeCboFilter()")
+                    .Items(
+                        new ListItem("بوک مارک نشده ها", "1"),
+                        new ListItem("بوک مارک شده ها", "2"),
+                        new ListItem("همه موارد", "3")
+                    )               
+            ),
+        Html.X().TreePanel()
+            .ID("ArchiveTree")
+            .Region(Region.West)
+            .Width(400)
+            .Padding(5)
+            .Title("ساختار درختی")
+            .RootVisible(false)
+            .Listeners(l=>l.ItemClick.Handler="loadBookMarked()")
+            .View(
+                Html.X().TreeView()
+                    .Plugins(
+                        Html.X().TreeViewDragDrop().DDGroup("organizerDD")
+                    )
+            )
+            .Store(       
+                Html.X().TreeStore()
+                    .Proxy(
+                        X.AjaxProxy().Url(Url.Action("LoadArchiveTree"))
+                    )
+                    .Listeners(l =>l.BeforeLoad.Fn = "GetParamTreeArchiveAccounting")
+                    .Model(
+                        Html.X().Model()
+                            .Fields(
+                                new ModelField("fldTitle")
+                            )
+                    )                            
+                    .Root(
+                        Html.X().Node()
+                            .NodeID("0")
+                            .Expanded(true)
+                            .AllowDrop(false)
+                    )
+            ),
+        Html.X().Panel()
+            .Region(Region.Center)
+            .Title("نمایش فایل ها")
+            .Layout(LayoutType.Fit)
+            .TopBar(
+                X.Toolbar()
+                    .Items(
+                        X.FormPanel()
+                            .Layout(LayoutType.Fit)
+                            .Items(
+                                X.FileUploadField()
+                                    .Icon(Ext.Net.Icon.DiskUpload)
+                                    .ID("FileUploadArchive")
+                                    .ButtonOnly(true)
+                                    .ButtonText("انتخاب فایل")
+                                    .DirectEvents(l =>
+                                    {
+                                        l.Change.Action = "Upload";
+                                        l.Change.Delay = 1000;
+                                        l.Change.Before = "if(GotoServerArchive==false){return false;}";
+                                        l.Change.Success = "hideprogressArchive";
+                                    })
+                                    .Listeners(l =>
+                                    {
+                                        l.Change.Fn = "showFileArchive";
+                                        l.AfterRender.Handler = "App.FileUploadArchive.fileInputEl.set({multiple: true })";
+                                    })
+                            ),
+                        X.Button()
+                            .Icon(Icon.PictureDelete)
+                            .Text("حذف")
+                            .Listeners(l => l.Click.Handler = "RemoveSelectedPic()")
+                    )
+            )
+            .Padding(5)
+            .Items(
+                Html.X().DataView()
+                    .TrackOver(true)
+                    //.Cls("x-image-view")
+                    .AutoScroll(true)
+                    .ID("DataViewArchive")
+                    .ItemSelector("div.group-header")
+                    .MultiSelect(true)
+                    .SingleSelect(false)                    
+                    .Tpl(@<text>
+                        <div id="items-ct">
+                            <tpl for=".">
+                                <div class="group-header">
+                                    <h2><div>{fldTitle}</div></h2>
+                                    <dl>
+                                        <tpl for="Items">
+                                            <div id="{fldId}" class="item-wrap">
+                                                <img onclick="AddSelectedCls(this)" style="width:80px;height:80px; border: solid 1px;border-radius: 5px; padding: 5px;border-color: #99bce8;" src="{Url}" />
+                                                <div style="text-align:center;">
+                                                    <span onclick="changeColor(this)" style="display:inline; font-family: 'Font Awesome 5 Free'; font-size: 15px;" class="fa fa-star Notbookmark"></span>
+                                                    <input type="hidden" name="StarValue" value="{fldIsBookMark}" />
+                                                </div>
+                                            </div>
+                                            @*<span>{FileName}</span>*@
+                                        </tpl>                                        
+                                        <div style="clear:left"></div>
+                                    </dl>                                        
+                                </div>
+                            </tpl>
+                        </div>
+                        </text>)
+                        .Store(
+                            Html.X().Store()
+                                .Listeners(l=>l.Load.Fn="setBookmark")
+                                .Proxy(Html.X().AjaxProxy()
+                                    .Url(Url.Action("ReadArchiveFiles"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                                )
+                                .Parameters(ps => ps.Add(new StoreParameter("HeaderId", ViewBag.HeaderId, ParameterMode.Raw)))
+                                .Parameters(ps => ps.Add(new StoreParameter("Filter", "App.WinArchiveTree.queryById('CboFilter').getValue()", ParameterMode.Raw)))
+                                .Parameters(ps => ps.Add(new StoreParameter("ArchiveTreeId", "App.ArchiveTree.getSelectionModel().getLastSelected()!=undefined?App.ArchiveTree.getSelectionModel().getLastSelected().data.id:0", ParameterMode.Raw)))                                
+                                .Model(
+                                    Html.X().Model()
+                                        .Fields(
+                                            Html.X().ModelField().Name("fldTitle"),
+                                            Html.X().ModelField().Name("Items").Type(ModelFieldType.Object)
+                                        )
+                                )
+                        )
+
+                            //.Plugins(X.Grouping().EnableGroupingMenu(true).StartCollapsed(false).GroupHeaderTplString("عنوان آزمون: {name}"))
+                            @*.Plugins(
+                                Html.X().DataViewDragSelector(),
+                                Html.X().DataViewDraggable()
+                                    .DDConfig(
+                                        Html.X().DragZone().Group("organizerDD")
+                                    )
+                                    .GhostTpl(@<text>
+                                        <tpl for=".">
+                                            <img src="{url}" />
+                                            <tpl if="xindex % 4 == 0"><br /></tpl>
+                                        </tpl>
+                                        <div class="count">
+                                            {[values.length]} images selected
+                                            </div>
+                                    </text>)
+                                )*@
+    )
+                        )
+)
+<script type="text/javascript">
+
+    var GotoServerArchive = false;
+    var EndUploadArchive = false;
+    var CheckHuman = setInterval(CheckEndArchive, 500);
+    var DeletedFiles = "";
+
+    function loadBookMarked() {
+        if (App.WinArchiveTree.queryById('CboFilter').getValue() == 2) {
+            App.DataViewArchive.dataSource.load();
+        }
+    }
+
+    function changeCboFilter() {
+        var CboFilter=App.WinArchiveTree.queryById('CboFilter');
+        if (CboFilter.getValue() == 1) {
+            App.FileUploadArchive.enable();
+            App.DataViewArchive.dataSource.load();
+        }
+        else {
+            App.FileUploadArchive.disable();
+            var SelectedNode=App.ArchiveTree.getSelectionModel().getLastSelected();
+            if (CboFilter.getValue() == 2) {
+                if (SelectedNode != undefined && SelectedNode != null) {
+                    App.DataViewArchive.dataSource.load();
+                }
+                else {
+                    App.DataViewArchive.dataSource.loadData("");
+                }
+            }
+            else {
+                App.DataViewArchive.dataSource.load();
+            }
+        }
+
+    }
+
+    function AddSelectedCls(imgTag) {
+        if (imgTag.classList.contains("x-view-select")) {
+            $(imgTag).removeClass('x-view-select');
+        }
+        else {
+            $(imgTag).addClass('x-view-select');
+        }
+    }
+
+    var setBookmark = function (data) {
+        if (App.WinArchiveTree.queryById('CboFilter').getValue() == 1) {/*بوک مارک نشده*/
+            $("#items-ct h2").css("border", "none");
+        }
+        else {            
+            $("#items-ct h2").css("border-bottom", "2px solid");
+            App.DataViewArchive.dataSource.each(function (item) {
+                item.data.Items.forEach(function (pict) {
+                    var SpanTag = $("#" + pict.fldId + " span");
+                    if (pict.fldIsBookMark) {
+                        SpanTag.removeClass("Notbookmark");
+                        SpanTag.addClass("bookmark");
+                        $(SpanTag).next().val(true);
+                    }
+                });
+            });
+            if (App.WinArchiveTree.queryById('CboFilter').getValue() == 3 && App.DataViewArchive.dataSource.data.items.length>0) {
+                if($("Notbookmark").length>0){
+                    $("#items-ct h2 div")[0].innerHTML="بوک مارک نشده";
+                }
+            }
+        }
+    };
+
+    function changeColor(SpanTag) {
+        if (SpanTag.classList.contains("Notbookmark")) {
+            SpanTag.classList.remove("Notbookmark");
+            SpanTag.classList.add("bookmark");
+            $(SpanTag).next().val(true);
+        }
+        else {
+            SpanTag.classList.remove("bookmark");
+            SpanTag.classList.add("Notbookmark");
+            $(SpanTag).next().val(false);
+        }
+    }
+
+    function RemoveSelectedPic() {
+        var SelectedPic = $(".x-view-select");
+        if (SelectedPic.length > 0) {
+            SelectedPic.each(function (index, item) {
+                item.parentNode.remove();
+                var rec=App.DataViewArchive.dataSource.data.items[0].data.Items.find(l=>l.fldId==item.parentNode.id && l.Url==item.attributes.src.value);
+                App.DataViewArchive.dataSource.data.items[0].data.Items.splice(App.DataViewArchive.dataSource.data.items[0].data.Items.indexOf(rec),1);
+                if (item.parentNode.id != 0)
+                    DeletedFiles = DeletedFiles + item.parentNode.id + ",";
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "فایلی جهت حذف انتخاب نگردیده است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function CheckEndArchive() {
+        if (EndUploadArchive == true) {
+            GotoServerArchive = false;
+            Ext.MessageBox.hide();
+            clearInterval(CheckEndArchive);
+            EndUploadArchive = false;
+        }
+    }
+
+    var showFileArchive = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        if (v) {
+            showProgressBarArchive();
+            if (v.split('.').pop().toLowerCase() == "jpg" || v.split('.').pop().toLowerCase() == "png" || v.split('.').pop().toLowerCase() == "jpeg"
+                || v.split('.').pop().toLowerCase() == "tif" || v.split('.').pop().toLowerCase() == "tiff" || v.split('.').pop().toLowerCase() == "gif"
+                || v.split('.').pop().toLowerCase() == "bmp") {
+                /*if (document.getElementById(id).files[0].size <= 10485760) {*/
+                GotoServerArchive = true;
+                /*}
+                else {
+                    clearInterval(CheckEndArchive);
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "حجم فایل انتخاب شده غیرمجاز است.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }*/
+            }
+            else {
+                clearInterval(CheckEndArchive);
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "فایل انتخاب شده غیرمجاز است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+    };
+
+    var hideprogressArchive = function (Responsdtxt, ResponseObj) {
+        App.FileUploadArchive.fileInputEl.set({ multiple: true });
+        if (ResponseObj.IsValid == false) {
+            GotoServerArchive = false;
+            clearInterval(CheckEndArchive);
+            EndUploadArchive = false;
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: ResponseObj.Message + " نام فایل: " + ResponseObj.FileName,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else {
+            EndUploadArchive = true;
+            if(App.DataViewArchive.dataSource.data.items.length>0){
+                var newArray=App.DataViewArchive.dataSource.data.items[0].data.Items.concat(ResponseObj);
+                App.DataViewArchive.dataSource.data.items[0].data.Items = newArray;
+            }
+            else{
+                var newArray=new Array();
+                newArray.push({
+                    "fldTitle":"",
+                    "Items":ResponseObj
+                });
+                App.DataViewArchive.dataSource.loadData(newArray);
+            }
+
+            App.DataViewArchive.refreshView();
+            $("#items-ct h2").css("border", "none");
+        }
+    };
+
+    function showProgressBarArchive() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+
+    function CheckIsDoc(){
+        if('@ViewBag.HeaderId'==0){
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "جهت ثبت فایل می بایستی ابتدا سند ذخیره گردد. آیا مایل به ثبت اطلاعات سند می باشید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        var txtDocNum = App.DocRegister_Details.queryById('txtDocNum');
+                        var txtAtfNum = App.DocRegister_Details.queryById('txtAtfNum');
+                        var txtArchiveNum = App.DocRegister_Details.queryById('txtArchiveNum');
+                        var txtDocDate = App.DocRegister_Details.queryById('txtDocDate');
+                        var txtDescDoc = App.DocRegister_Details.queryById('txtDescDoc');
+                        var txtFareiNum = App.DocRegister_Details.queryById('txtFareiNum');
+                        var CboDocumentType = App.DocRegister_Details.queryById('CboDocumentType');
+                        var DocRegister_DetailsGrid = App.DocRegister_Details.queryById('DocRegister_DetailsGrid');
+                        var summaryRec = App.DocRegister_Details.queryById("DocRegister_DetailsGrid").getView().getFeature("summaryDocuments").summaryRecord;
+                        var DocumentRecord_DetailsArray = new Array();
+                        var er = false;
+
+                        if (txtDocNum.validate() == false) {
+                            er = true;
+                        }
+                        if (txtAtfNum.validate() == false) {
+                            er = true;
+                        }
+                        if (txtArchiveNum.validate() == false) {
+                            er = true;
+                        }
+                        if (txtDocDate.validate() == false) {
+                            er = true;
+                        }
+                        if (txtDescDoc.validate() == false) {
+                            er = true;
+                        }
+                        if (CboDocumentType.validate() == false) {
+                            er = true;
+                        }
+                        if (er == true)
+                            return;
+
+                        for (var i = 0; i < DocRegister_DetailsGrid.getStore().count() ; i++) {
+                            if (i != 0 && i != 1 && (DocRegister_DetailsGrid.editingPlugin.getEditor(DocRegister_DetailsGrid.store.getAt(i), DocRegister_DetailsGrid.columnManager.columns[2]).field.value == null ||
+                                DocRegister_DetailsGrid.editingPlugin.getEditor(DocRegister_DetailsGrid.store.getAt(i), DocRegister_DetailsGrid.columnManager.columns[2]).field.value == ""/*App.ColHeadLine.getComponent(i).getValue() == null || App.ColHeadLine.getComponent(i).getValue() == ""*/)
+                                && (App.ColDescription.getComponent(i).getValue() == null || App.ColDescription.getComponent(i).getValue() == "")
+                                && App.ColBed.getComponent(i).getValue() == 0 && App.ColBes.getComponent(i).getValue() == 0) {
+                                continue;
+                            }
+                            else {
+                                if (DocRegister_DetailsGrid.editingPlugin.getEditor(DocRegister_DetailsGrid.store.getAt(i), DocRegister_DetailsGrid.columnManager.columns[2]).field.value == null ||
+                                    DocRegister_DetailsGrid.editingPlugin.getEditor(DocRegister_DetailsGrid.store.getAt(i), DocRegister_DetailsGrid.columnManager.columns[2]).field.value == ""/*App.ColHeadLine.getComponent(i).getValue() == null || App.ColHeadLine.getComponent(i).getValue() == ""*/) {
+                                    Ext.MessageBox.show({
+                                        title: "خطا",
+                                        msg: "لطفا عنوان سرفصل را وارد کنید.",
+                                        icon: Ext.MessageBox.ERROR,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    return;
+                                }
+                                else if (App.ColDescription.getComponent(i).getValue() == null || App.ColDescription.getComponent(i).getValue() == "") {
+                                    Ext.MessageBox.show({
+                                        title: "خطا",
+                                        msg: "لطفا شرح مربوط به سرفصل را وارد کنید.",
+                                        icon: Ext.MessageBox.ERROR,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    return;
+                                }
+                                else if (App.ColBed.getComponent(i).enabled == true && App.ColBed.getComponent(i).getValue() == 0) {
+                                    Ext.MessageBox.show({
+                                        title: "خطا",
+                                        msg: "لطفا مقدار بدهکاری را وارد کنید..",
+                                        icon: Ext.MessageBox.ERROR,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    return;
+                                }
+                                else if (App.ColBes.getComponent(i).enabled == true && App.ColBes.getComponent(i).getValue() == 0) {
+                                    Ext.MessageBox.show({
+                                        title: "خطا",
+                                        msg: "لطفا مقدار بستانکاری را وارد کنید..",
+                                        icon: Ext.MessageBox.ERROR,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    return;
+                                }
+                                else {
+                                    DocumentRecord_DetailsArray.push({
+                                        fldId: 0,
+                                        fldCodingId:DocRegister_DetailsGrid.store.data.items[i].data.fldCodingId,/* App.ColHeadLine.getComponent(i).getValue(),*/
+                                        fldDescription: App.ColDescription.getComponent(i).getValue(),
+                                        fldBedehkar: App.ColBed.getComponent(i).getValue().split(",").join(""),
+                                        fldBestankar: App.ColBes.getComponent(i).getValue().split(",").join(""),
+                                        fldCenterCoId: App.ColCostCenter.getComponent(i).getValue(),
+                                        fldCaseTypeId: DocRegister_DetailsGrid.store.data.items[i].data.fldCaseTypeId,
+                                        fldCaseId: DocRegister_DetailsGrid.store.data.items[i].data.fldCaseId,
+                                        fldDocument_HedearId: 0,
+                                        fldSourceId: DocRegister_DetailsGrid.store.data.items[i].data.fldSourceId,
+                                        fldOrder: DocRegister_DetailsGrid.store.indexOf(DocRegister_DetailsGrid.store.data.items[i]) + 1
+                                    });
+                                }
+                            }
+                        }
+
+                        if (parseFloat(summaryRec.data.fldBedehkar) != parseFloat(summaryRec.data.fldBestankar)) {
+                            Ext.MessageBox.show({
+                                title: "هشدار",
+                                msg: "سند تراز نیست. آیا مایلید آن را به عنوان یادداشت ذخیره نمایید؟ در صورت انتخاب گزینه بله، اطلاعات فایل ثبت نمی گردد.",
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.YESNO,
+                                fn: function (btn) {
+                                    if (btn == 'yes') {
+                                        var data = {
+                                            fldId: 0,
+                                            fldDocumentNum: null,
+                                            fldFiscalYearId: '@ViewBag.FiscalYearId',
+                                            fldYear: '@ViewBag.Year',
+                                            fldArchiveNum: txtArchiveNum.getValue(),
+                                            fldDescriptionDocu: txtDescDoc.getValue(),
+                                            fldTarikhDocument: txtDocDate.getRawValue(),
+                                            fldType: 2,
+                                            fldTypeSanad: CboDocumentType.getValue(),
+                                            fldShomareFaree: txtFareiNum.getValue(),
+                                            fldEdit:1,
+                                            DocumentRecord_DetailsArray: DocumentRecord_DetailsArray
+                                        };
+                                        App.WinArchiveTree.body.mask("در حال ذخیره سازی...");
+                                        $.ajax({
+                                            type: "POST",
+                                            url: '/Accounting/DocRegistration/Save',
+                                            datatype: "json",
+                                            data: JSON.stringify(data),
+                                            contentType: 'application/json',
+                                            success: function (result) {
+                                                var ic = Ext.MessageBox.INFO;
+                                                if (result.Er == 1)
+                                                    ic = Ext.MessageBox.ERROR;
+                                                Ext.MessageBox.show({
+                                                    title: result.MsgTitle,
+                                                    msg: result.Msg,
+                                                    icon: ic,
+                                                    closable: false,
+                                                    buttons: Ext.MessageBox.OK,
+                                                    fn: function (btn) {
+                                                        if (btn == "ok") {
+                                                            App.WinArchiveTree.destroy();
+                                                            setTimeout(function(){App.DocRegister_Details.queryById('txtArchiveNum').focus();},500);
+                                                        }
+                                                    }
+                                                });
+                                                App.WinArchiveTree.body.mask().hide();
+                                                if (result.Er != 1) {
+                                                    App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.load();
+                                                    clearDocRegistration();
+                                                }
+                                            },
+                                            failure: function () {
+                                                App.WinArchiveTree.body.mask().hide();
+                                            }
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                        else {
+                            var Bookmarked = $('span.bookmark');
+                            var SelectedRow = App.ArchiveTree.getSelectionModel().getLastSelected();
+                            if (Bookmarked.length > 0 && (SelectedRow == undefined || SelectedRow == null)) {
+                                Ext.MessageBox.show({
+                                    title: "خطا",
+                                    msg: "لطفا در ساختار درختی قسمت مورد نظر را جهت بوک مارک کردن انتخاب نمایید.",
+                                    icon: Ext.MessageBox.ERROR,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                            }
+                            else{
+                                var data = {
+                                    fldId: 0,
+                                    fldDocumentNum: txtDocNum.getValue(),
+                                    fldFiscalYearId: '@ViewBag.FiscalYearId',
+                                    fldYear: '@ViewBag.Year',
+                                    fldArchiveNum: txtArchiveNum.getValue(),
+                                    fldDescriptionDocu: txtDescDoc.getValue(),
+                                    fldTarikhDocument: txtDocDate.getRawValue(),
+                                    fldType: 1,
+                                    fldTypeSanad: CboDocumentType.getValue(),
+                                    fldShomareFaree: txtFareiNum.getValue(),
+                                    fldEdit:1,
+                                    DocumentRecord_DetailsArray: DocumentRecord_DetailsArray
+                                };
+                                App.WinArchiveTree.body.mask("در حال ذخیره سازی...");
+                                $.ajax({
+                                    type: "POST",
+                                    url: '/Accounting/DocRegistration/Save',
+                                    datatype: "json",
+                                    data: JSON.stringify(data),
+                                    contentType: 'application/json',
+                                    success: function (result1) {
+                                        if (result1.Er != 1) {
+                                            App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.load();
+                                            clearDocRegistration();
+                                            /*SaveArchiveFiles*/
+                                            var ArchiveArray = new Array();
+                                            var allStar=0;
+                                            if (Bookmarked.length > 0) {
+                                                for (var i = 0; i < App.DataViewArchive.dataSource.data.items.length; i++) {
+                                                    var Pic = App.DataViewArchive.dataSource.data.items[i];
+                                                    for(var j=0;j<Pic.data.Items.length;j++){
+                                                        var PicItem=Pic.data.Items[j];
+                                                        var ArchiveId=PicItem.fldArchiveTreeId;
+                                                        if(ArchiveId==0){
+                                                            ArchiveId=SelectedRow.data.id;
+                                                        }
+                                                        ArchiveArray.push({
+                                                            "fldId": PicItem.fldId,
+                                                            "fldPasvand": PicItem.fldPasvand,
+                                                            "fldArchiveTreeId": ArchiveId,
+                                                            "fldIsBookMark": $("input[name='StarValue']")[allStar].value,
+                                                            "Url": PicItem.Url
+                                                        });
+                                                        allStar=allStar+1;
+                                                    }
+                                                }
+                                                var data = {
+                                                    HeaderId: result1.IdHeader,
+                                                    DeletedFiles: DeletedFiles,
+                                                    ArchiveArray: ArchiveArray
+                                                };
+                                                $.ajax({
+                                                    type: "POST",
+                                                    url: '/Accounting/DocRegistration/SaveFiles',
+                                                    datatype: "json",
+                                                    data: JSON.stringify(data),
+                                                    contentType: 'application/json',
+                                                    success: function (result) {
+                                                        var ic = Ext.MessageBox.INFO;
+                                                        var Msgg="سند با شماره "+result1.DocumentNumber+" با موفقیت ثبت شد.";
+                                                        if (result.Err == 1){
+                                                            ic = Ext.MessageBox.ERROR;
+                                                            Msgg=result.Msg;
+                                                        }
+                                                        Ext.MessageBox.show({
+                                                            title: result.MsgTitle,
+                                                            msg: Msgg,
+                                                            icon: ic,
+                                                            buttons: Ext.MessageBox.OK,
+                                                            fn:function(btn){
+                                                                if(btn=="ok"){
+                                                                    App.DocRegister_Details.queryById('txtArchiveNum').focus();
+                                                                }
+                                                            }
+                                                        });
+                                                        App.WinArchiveTree.body.mask().hide();
+                                                        if (result.Err != 1) {
+                                                            App.WinArchiveTree.destroy();
+                                                            App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.load();
+                                                            DeletedFiles = "";
+                                                        }
+                                                    },
+                                                    failure: function () {
+                                                        App.WinArchiveTree.body.mask().hide();
+                                                    }
+                                                });
+                                            }
+                                            else {
+                                                for (var i = 0; i < App.DataViewArchive.dataSource.data.items.length; i++) {
+                                                    var Pic = App.DataViewArchive.dataSource.data.items[i];
+                                                    for(var j=0;j<Pic.data.Items.length;j++){
+                                                        var PicItem=Pic.data.Items[j];
+                                                        ArchiveArray.push({
+                                                            "fldId": PicItem.fldId,
+                                                            "fldPasvand": PicItem.fldPasvand,
+                                                            "fldArchiveTreeId": 0,
+                                                            "fldIsBookMark": false,
+                                                            "Url": PicItem.Url
+                                                        });
+                                                    }
+                                                }
+                                                var data = {
+                                                    HeaderId: result1.IdHeader,
+                                                    DeletedFiles: DeletedFiles,
+                                                    ArchiveArray: ArchiveArray
+                                                };
+                                                $.ajax({
+                                                    type: "POST",
+                                                    url: '/Accounting/DocRegistration/SaveFiles',
+                                                    datatype: "json",
+                                                    data: JSON.stringify(data),
+                                                    contentType: 'application/json',
+                                                    success: function (result) {
+                                                        var ic = Ext.MessageBox.INFO;
+                                                        var Msgg="سند با شماره "+result1.DocumentNumber+" با موفقیت ثبت شد.";
+                                                        if (result.Err == 1){
+                                                            ic = Ext.MessageBox.ERROR;
+                                                            Msgg=result.Msg;
+                                                        }
+                                                        Ext.MessageBox.show({
+                                                            title: result.MsgTitle,
+                                                            msg:  Msgg,
+                                                            icon: ic,
+                                                            buttons: Ext.MessageBox.OK,
+                                                            fn:function(btn){
+                                                                if(btn=="ok"){
+                                                                    App.DocRegister_Details.queryById('txtArchiveNum').focus();
+                                                                }
+                                                            }
+                                                        });
+                                                        App.WinArchiveTree.body.mask().hide();
+                                                        if (result.Err != 1) {
+                                                            App.WinArchiveTree.destroy();
+                                                            App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.load();
+                                                            DeletedFiles = "";
+                                                        }
+                                                    },
+                                                    failure: function () {
+                                                        App.WinArchiveTree.body.mask().hide();
+                                                    }
+                                                });
+                                            }
+                                        }
+                                        else{
+                                            Ext.MessageBox.show({
+                                                title: result1.MsgTitle,
+                                                msg: result1.Msg,
+                                                icon: Ext.MessageBox.ERROR,
+                                                buttons: Ext.MessageBox.OK
+                                            });
+                                            App.WinArchiveTree.body.mask().hide();
+                                        }
+                                    },
+                                    failure: function () {
+                                        App.WinArchiveTree.body.mask().hide();
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        else{
+            SaveArchiveFiles();
+        }
+    }
+
+    function SaveArchiveFiles() {
+        var ArchiveArray = new Array();
+        var Bookmarked = $('span.bookmark');
+        var SelectedRow = App.ArchiveTree.getSelectionModel().getLastSelected();
+        if (Bookmarked.length > 0 && (SelectedRow == undefined || SelectedRow == null)) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا در ساختار درختی قسمت مورد نظر را جهت بوک مارک کردن انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else {
+            if (Bookmarked.length > 0) {
+                Ext.MessageBox.show({
+                    title: "هشدار",
+                    msg: "آیا جهت ذخیره و بوک مارک کردن فایلها مطمئن هستید؟",
+                    icon: Ext.MessageBox.WARNING,
+                    buttons: Ext.MessageBox.YESNO,
+                    fn: function (btn) {
+                        if (btn == 'yes') {
+                            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+                            var allStar=0;
+                            for (var i = 0; i < App.DataViewArchive.dataSource.data.items.length; i++) {
+                                var Pic = App.DataViewArchive.dataSource.data.items[i];
+                                for(var j=0;j<Pic.data.Items.length;j++){
+                                    var PicItem=Pic.data.Items[j];   
+                                    var ArchiveId=PicItem.fldArchiveTreeId;
+                                    if(ArchiveId==0){
+                                        ArchiveId=SelectedRow.data.id;
+                                    }
+                                    ArchiveArray.push({
+                                        "fldId": PicItem.fldId,
+                                        "fldPasvand": PicItem.fldPasvand,
+                                        "fldArchiveTreeId": ArchiveId,
+                                        "fldIsBookMark": $("input[name='StarValue']")[allStar].value,
+                                        "Url": PicItem.Url
+                                    });
+                                    allStar=allStar+1;
+                                }
+                            }
+                            var data = {
+                                HeaderId: '@ViewBag.HeaderId',
+                                DeletedFiles: DeletedFiles,
+                                ArchiveArray: ArchiveArray
+                            };
+                            $.ajax({
+                                type: "POST",
+                                url: '/Accounting/DocRegistration/SaveFiles',
+                                datatype: "json",
+                                data: JSON.stringify(data),
+                                contentType: 'application/json',
+                                success: function (result) {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (result.Err == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: result.MsgTitle,
+                                        msg: result.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    Ext.net.Mask.hide();
+                                    if (result.Err != 1) {
+                                        App.DataViewArchive.dataSource.load();
+                                        App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.load();
+                                        DeletedFiles = "";
+                                    }
+                                },
+                                failure: function () {
+                                    Ext.net.Mask.hide();
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+            else {
+                Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+                for (var i = 0; i < App.DataViewArchive.dataSource.data.items.length; i++) {
+                    var Pic = App.DataViewArchive.dataSource.data.items[i];
+                    for(var j=0;j<Pic.data.Items.length;j++){
+                        var PicItem=Pic.data.Items[j];
+                        ArchiveArray.push({
+                            "fldId": PicItem.fldId,
+                            "fldPasvand": PicItem.fldPasvand,
+                            "fldArchiveTreeId": 0,
+                            "fldIsBookMark": false,
+                            "Url": PicItem.Url
+                        });
+                    }
+                }
+                var data = {
+                    HeaderId: '@ViewBag.HeaderId',
+                    DeletedFiles: DeletedFiles,
+                    ArchiveArray: ArchiveArray
+                };
+                $.ajax({
+                    type: "POST",
+                    url: '/Accounting/DocRegistration/SaveFiles',
+                    datatype: "json",
+                    data: JSON.stringify(data),
+                    contentType: 'application/json',
+                    success: function (result) {
+                        var ic = Ext.MessageBox.INFO;
+                        if (result.Err == 1)
+                            ic = Ext.MessageBox.ERROR;
+                        Ext.MessageBox.show({
+                            title: result.MsgTitle,
+                            msg: result.Msg,
+                            icon: ic,
+                            buttons: Ext.MessageBox.OK
+                        });
+                        Ext.net.Mask.hide();
+                        if (result.Err != 1) {
+                            App.DataViewArchive.dataSource.load();
+                            App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.load();
+                            DeletedFiles = "";
+                        }
+                    },
+                    failure: function () {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+    }
+
+    var GetParamTreeArchiveAccounting = function (store, operation, eOpts) {
+        var nodeId = operation.node.getId();
+        operation.params.nod = nodeId;
+    };
+</script>

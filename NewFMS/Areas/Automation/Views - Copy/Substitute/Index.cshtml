@@ -1,0 +1,473 @@
+﻿@model IEnumerable<NewFMS.WCF_Automation.OBJ_Substitute>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+<style>
+     .custom-icon {
+        margin-right: 120px !important;
+    }
+
+</style>
+@(Html.X().Panel()
+                .ID("Substitute")
+            .Title("تفویض اختیار")
+                .Listeners(li => { li.AfterRender.Handler = "SubstituteSetSize();"; li.Render.Fn = "addKeyMapSubstitute"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                    X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveSubstitute")
+                    .Listeners(l => { l.Click.Handler = "SaveSubstitute();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadSubstitute();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteSubstitute();"; })
+        //, X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpAssignmentType();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.Substitute.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("تفویض اختیار")//.Width(1000)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldID"),
+                        X.Hidden().ItemID("ReceiverComisionId"),
+                         X.Hidden().ItemID("SenderComisionId"),
+                            X.Label("تفویض دهنده (Ins):"),
+                        X.TextField()
+                                    .ItemID("txtSenderComision")
+                                .AllowBlank(false)
+                                     .ReadOnly(true)
+                                .FieldStyle("padding-right:0px;")
+                                .Icon(Icon.UserAdd)
+                                .BlankText("لطفا تفویض دهنده را وارد کنید.")
+                                    .Listeners(l =>
+                                {
+                                    l.SpecialKey.Handler = "SelectSenderComision(e.getKey());";
+                                    l.IconClick.Handler = "Ext.net.DirectMethod.request({ url: '/Automation/SearchCommision/Index?State=2'});";
+                                    l.AfterRender.Handler = "App.Substitute.queryById('txtSenderComision').icon.dom.classList.add('custom-icon');";
+                                }),
+                        //X.ComboBox()
+                        //.LabelAlign(Ext.Net.LabelAlign.Top)
+                        //.ItemID("CboSenderComision")
+                        //.TypeAhead(true)
+                        //.Editable(false)
+                        //.QueryMode(DataLoadMode.Local)
+                        //.BlankText("لطفا تفویض دهنده را انتخاب کنید.")
+                        //.ForceSelection(true)
+                        //.TriggerAction(TriggerAction.All)
+                        //.DisplayField("fldName")
+                        //.ValueField("fldId")
+                        //.EmptyText("تفویض دهنده ...")
+                        //.Store(X.Store()
+                        //.Model(X.Model()
+                        //.IDProperty("fldId")
+                        //.Fields(
+                        //    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                        //            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                        //        )
+                        //            )
+                        //.Proxy(X.AjaxProxy()
+                        //        .Url(Url.Action("GetCommision"))
+                        //.Reader(X.JsonReader().Root("data"))
+                        //        )
+                        //        )
+                        //.AllowBlank(false)
+                        //.AutoFocus(true),
+                          X.Label("تفویض گیرنده (Ins):"),
+                            X.TextField()
+                                .ItemID("txtReceiverComision")
+                                .AllowBlank(false)
+                                     .ReadOnly(true)
+                                .FieldStyle("padding-right:0px;")
+                                .Icon(Icon.UserAdd)
+                                .BlankText("لطفا تفویض گیرنده را وارد کنید.")
+                                    .Listeners(l =>
+                                {
+                                    l.SpecialKey.Handler = "SelectCommision(e.getKey());";
+                                    l.IconClick.Handler = "Ext.net.DirectMethod.request({ url: '/Automation/SearchCommision/Index?State=1'});";
+                                    l.AfterRender.Handler = "App.Substitute.queryById('txtReceiverComision').icon.dom.classList.add('custom-icon');";
+                                })
+                       ,X.Label("از تاریخ:"),
+                            X.PDateField()
+                                .ItemID("txtStartDate")
+                                .AllowBlank(false)
+                                .Editable(false).Listeners(l => l.Focus.Handler = "ChangeAzTarikh()")
+                                .BlankText("لطفا تاریخ شروع را وارد کنید."),
+                            X.Label("تا تاریخ:"),
+                                X.PDateField()
+                                    .ItemID("txtEndDate").Listeners(l => l.Focus.Handler = "ChangeTaTarikh()")
+                                    .Editable(false)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا تاریخ پایان را وارد کنید."),
+                              X.FieldSet().Border(false).ColSpan(2).MarginSpec("0 0 0 45px")
+                                      .LayoutConfig(new TableLayoutConfig { Columns = 4 }).Defaults(new { Margin = 2 })
+                              .Items(
+                                  X.Label("از ساعت:"),
+                                  X.TextField().Width(40)
+                                        .ItemID("txtStartTime_M").Listeners(l => l.Blur.Handler = "CheckSaat(1)")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا از ساعت را وارد کنید."), X.Label(":"),
+                                    X.TextField().Width(40)
+                                        .ItemID("txtStartTime_S").Listeners(l => l.Blur.Handler = "CheckSaat(1)")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا از ساعت را وارد کنید.")
+                              ) ,
+                                  X.FieldSet().Border(false).ColSpan(2).MarginSpec("0 0 0 43px")
+                                      .LayoutConfig(new TableLayoutConfig { Columns = 4 }).Defaults(new { Margin = 2 })
+                              .Items(
+                                X.Label("تا ساعت:"),
+                                X.TextField().Width(40)
+                                            .ItemID("txtEndTime_M").Listeners(l => l.Blur.Handler = "CheckSaat(2)")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا تا ساعت را وارد کنید."), X.Label(":"),
+                                X.TextField().Width(40)
+                                        .ItemID("txtEndTime_S").Listeners(l => l.Blur.Handler = "CheckSaat(2)")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا تا ساعت را وارد کنید.")
+                              )
+                                  , X.FieldSet().Border(false).ColSpan(2).MarginSpec("0 0 0 50px")
+                                              .LayoutConfig(new TableLayoutConfig { Columns = 4 }).Defaults(new { Margin = 2 })
+                                      .Items(
+                                      X.Checkbox().ItemID("ShowNamePost")
+                                      , X.Label("نمایش پست تفویض گیرنده در امضا")
+                                      )
+                              ,X.FieldSet().Border(false).ColSpan(2).MarginSpec("0 0 0 71px")
+                                      .LayoutConfig(new TableLayoutConfig { Columns = 4 }).Defaults(new { Margin = 2 })
+                              .Items(
+                              X.Checkbox().ItemID("IsSigner")
+                              ,X.Label("اعطای مجوز امضا")
+                              
+                              )
+                               
+                )
+            )
+        ),
+        X.GridPanel()
+                    .ItemID("SubstituteGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                            .Listeners(l => l.DataChanged.Handler = "App.Substitute.queryById('SubstituteGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.Substitute.queryById('SubstituteGrid');grid.setHeight(App.AutomationWin.getHeight() - 260); ";
+
+                     })
+                  .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldID).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldSenderComisionName).Text("تفویض دهنده").Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldReciverComisionName).Text("تفویض گیرنده").Flex(3),
+                        
+                        Html.X().Column().DataIndex(Model, m => m.fldStartDate).Text("از تاریخ").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldEndDate).Text("تا تاریخ").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldStartTime_S).Text("از ساعت").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldEndTime_S).Text("تا ساعت").Flex(2)
+                       )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+           )
+      )
+)
+<script type="text/javascript">
+    function CheckSaat(value) {
+        var txtStartTime_S = App.Substitute.queryById('txtStartTime_S');
+        var txtStartTime_M = App.Substitute.queryById('txtStartTime_M');
+        var txtEndTime_S = App.Substitute.queryById('txtEndTime_S');
+        var txtEndTime_M = App.Substitute.queryById('txtEndTime_M');
+        if (value == 1) {
+            if (txtStartTime_S.getValue() > 23) {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "ساعت وارد شده معتبر نمی باشد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                txtStartTime_S.setValue("");
+            }
+            if (txtStartTime_M.getValue() > 59) {
+                txtStartTime_M.setValue("");
+            }
+
+        }
+        if (value == 2) {
+            if (txtEndTime_S.getValue() > 23) {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "ساعت وارد شده معتبر نمی باشد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                txtEndTime_S.setValue("");
+            }
+            if (txtEndTime_M.getValue() > 59) {
+                txtEndTime_M.setValue("");
+            }
+        }
+    }
+    function SelectCommision(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/Automation/SearchCommision/Index',
+                params: {
+                    State: 1
+                }
+            });
+        }
+    }
+    function SelectSenderComision() {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/Automation/SearchCommision/Index',
+                params: {
+                    State: 2
+                }
+            });
+        }
+    }
+    function ChangeAzTarikh() {
+        var txtStartDate = App.Substitute.queryById('txtStartDate');
+        var txtEndDate = App.Substitute.queryById('txtEndDate');
+        txtStartDate.setMaxValue(txtEndDate.getValue());
+        txtStartDate.maxText = "از تاریخ باید قبل از تا تاریخ " + txtEndDate.rawValue + "باشد";
+    }
+    function ChangeTaTarikh() {
+        var txtStartDate = App.Substitute.queryById('txtStartDate');
+        var txtEndDate = App.Substitute.queryById('txtEndDate');
+        txtEndDate.setMinValue(txtStartDate.getValue());
+        txtEndDate.minText = "تا تاریخ باید بعد از تاریخ " + txtStartDate.rawValue + "باشد";
+    }
+    function HelpSubstitute() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/Substitute/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SubstituteSetSize() {
+        App.Substitute.setWidth(App.AutomationWin.getWidth());
+        var grid = App.Substitute.queryById('SubstituteGrid');
+        grid.setHeight(App.AutomationWin.getHeight() - 335);
+    }
+    function LoadSubstitute() {
+        var SelectedRow = App.Substitute.queryById('SubstituteGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/Substitute/Details',
+                params: {
+                    Id: SelectedRow.data.fldID
+                },
+                success: function (data) {
+                    App.Substitute.queryById('ReceiverComisionId').setValue(data.fldReceiverComisionID);
+                    App.Substitute.queryById('SenderComisionId').setValue(data.fldSenderComisionID);
+                    App.Substitute.queryById('txtSenderComision').setValue(data.fldSenderComisionName);
+                    App.Substitute.queryById('txtReceiverComision').setValue(data.fldReciverComisionName);
+                    App.Substitute.queryById('txtStartDate').setValue(data.fldStartDate);
+                    App.Substitute.queryById('txtEndDate').setValue(data.fldEndDate);
+                    App.Substitute.queryById('txtStartTime_M').setValue(data.AzMin);
+                    App.Substitute.queryById('txtStartTime_S').setValue(data.AzSaat);
+                    App.Substitute.queryById('txtEndTime_M').setValue(data.TaMin);
+                    App.Substitute.queryById('txtEndTime_S').setValue(data.TaSaat);
+                    App.Substitute.queryById('ShowNamePost').setValue(data.fldShowReceiverName);
+                    App.Substitute.queryById('IsSigner').setValue(data.fldIsSigner);
+                    var fldID = App.Substitute.queryById('fldID');
+                    fldID.setValue(data.fldID);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveSubstitute() {            
+        var ReceiverComisionId = App.Substitute.queryById('ReceiverComisionId');
+        var txtSenderComision = App.Substitute.queryById('txtSenderComision');
+        var SenderComisionId = App.Substitute.queryById('SenderComisionId');
+        var txtReceiverComision = App.Substitute.queryById('txtReceiverComision');
+        var txtStartDate = App.Substitute.queryById('txtStartDate');
+        var txtEndDate = App.Substitute.queryById('txtEndDate');
+        var txtStartTime_M = App.Substitute.queryById('txtStartTime_M');
+        var txtStartTime_S = App.Substitute.queryById('txtStartTime_S');
+        var txtEndTime_M = App.Substitute.queryById('txtEndTime_M');
+        var txtEndTime_S = App.Substitute.queryById('txtEndTime_S');
+        var ShowNamePost = App.Substitute.queryById('ShowNamePost');
+        var IsSigner = App.Substitute.queryById('IsSigner');
+        var fldID = App.Substitute.queryById('fldID');
+        var er = false;
+
+        if (txtSenderComision.validate() == false) {
+            er = true;
+        }
+        if (txtReceiverComision.validate() == false) {
+            er = true;
+        }
+        if (txtStartDate.validate() == false) {
+            er = true;
+        }
+        if (txtEndDate.validate() == false) {
+            er = true;
+        }
+        if (txtStartTime_M.validate() == false) {
+            er = true;
+        }
+        if (txtStartTime_S.validate() == false) {
+            er = true;
+        }
+        if (txtEndTime_M.validate() == false) {
+            er = true;
+        }
+        if (txtEndTime_S.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+        var AzSaat = txtStartTime_S.getValue() + ":" + txtStartTime_M.getValue();
+        var TaSaat = txtEndTime_S.getValue() + ":" + txtEndTime_M.getValue();
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/Substitute/Save',
+            params: {
+                fldID: fldID.getValue(),
+                fldSenderComisionID: SenderComisionId.getValue(),
+                fldReceiverComisionID: ReceiverComisionId.getValue(),
+                fldStartDate: txtStartDate.rawValue,
+                fldEndDate: txtEndDate.rawValue,
+                AzSaat: AzSaat,
+                TaSaat: TaSaat,
+                fldShowReceiverName: ShowNamePost.getValue(),
+                fldIsSigner: IsSigner.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.Substitute.queryById('SubstituteGrid').store.load();
+                if (data.Err != 1)
+                    ClearSubstitute();
+            }
+
+        });
+    }
+    function DeleteSubstitute() {
+        var SelectedRow = App.Substitute.queryById('SubstituteGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Automation/Substitute/Delete',
+                            params: {
+                                id: SelectedRow.data.fldID
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.Substitute.queryById('SubstituteGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearSubstitute() {
+        App.Substitute.queryById('fldID').setValue(0);
+        App.Substitute.queryById('ReceiverComisionId').setValue(0);
+        App.Substitute.queryById('txtSenderComision').setValue("");
+        App.Substitute.queryById('SenderComisionId').setValue(0);
+        App.Substitute.queryById('txtReceiverComision').setValue("");
+        App.Substitute.queryById('txtStartDate').setValue("");
+        App.Substitute.queryById('txtEndDate').setValue("");
+        App.Substitute.queryById('txtStartTime_M').setValue("");
+        App.Substitute.queryById('txtStartTime_S').setValue("");
+        App.Substitute.queryById('txtEndTime_M').setValue("");
+        App.Substitute.queryById('txtEndTime_S').setValue("");
+    }
+    var addKeyMapSubstitute = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.Substitute.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtType") {
+                        nextfld = App.Substitute.queryById('btnSaveSubstitute');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

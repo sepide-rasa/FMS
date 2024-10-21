@@ -1,0 +1,396 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window()
+    .Modal(true)
+    .Listeners(li => { li.Render.Fn = "addKeyMapCemetery"; li.AfterRender.Handler = "SetSizeNewCemetery();"; })
+    .Title("تعریف وادی السلام")
+    .ID("NewCemetery")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .ButtonAlign(Ext.Net.Alignment.Center)
+    .Layout(LayoutType.Fit)
+    .Resizable(false)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveCemetery();"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .ToolTip("کلید میانبر Esc")
+            .OnClientClick("App.NewCemetery.destroy();")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            .Items(
+                X.FieldSet()
+                    .Title("مشخصات وادی السلام")
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 6 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Hidden().ItemID("fldId"),
+                        X.Label("استان:"),
+                        X.ComboBox()
+                            .ItemID("CboState")
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .Listeners(li => li.Change.Handler = "loadCboCity();")
+                            .AllowBlank(false)
+                            .AutoFocus(true)
+                            .BlankText("لطفا استان را انتخاب کنید.")
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("استان ...")
+                            .Store(
+                                X.Store()
+                                    .Listeners(l => l.Load.Handler = "SetDefaultCboState();")
+                                    .Model(
+                                        X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                            )
+                                    )
+                                    .Proxy(
+                                        X.AjaxProxy()
+                                            .Url(Url.Action("GetState"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                    )
+                            ),
+                        X.Label("شهرستان:"),
+                        X.ComboBox()
+                            .ItemID("CboCity")
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .BlankText("لطفا شهرستان مورد نظر را انتخاب کنید.")
+                            .AllowBlank(false)
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("شهرستان ...")
+                            .Listeners(l => l.Change.Handler = "ChangeLocation()")
+                            .Store(
+                                X.Store()
+                                    .AutoLoad(false)
+                                    .Listeners(l => l.Load.Handler = "SetDefaultCboCity()")
+                                    .Model(
+                                        X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                            )
+                                    )
+                                    .Proxy(
+                                        X.AjaxProxy()
+                                            .Url(Url.Action("GetCity"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                    )
+                                    .Parameters(ps => ps.Add(new StoreParameter("StateId", "App.NewCemetery.queryById('CboState').getValue()", ParameterMode.Raw)))
+                            ),
+                        X.Label("عنوان:"),
+                        X.TextField()
+                            .Width(150)
+                            .ItemID("txtTitle")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                            .AllowBlank(false)
+                            .MaskRe("[1-9 ,),(,ا-ی-آ-ئ-ء]")
+                            .BlankText("لطفا عنوان را وارد کنید."),
+                        X.Label("آدرس:"),
+                        X.TextField()
+                            .ColSpan(5)
+                            .Width(545)
+                            .MaxLength(200)
+                            .EnforceMaxLength(true)
+                            .AllowBlank(false)
+                            .ItemID("txtAddress"),
+                        X.Label("توضیحات:"),
+                        X.TextField()
+                            .ColSpan(5)
+                            .Width(545)
+                            .ItemID("txtDesc")  
+                    ),
+                X.Panel()
+                    .Layout(LayoutType.Fit)
+                    .ColSpan(6)
+                    .Items(
+                        X.Container()
+                            .Content(@<div id="map"></div>)
+                    )
+                )
+        )
+)
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+
+<script type="text/javascript">
+    function CreateStripe() {
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/Cemetery/CreateSprite',
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SetSizeNewCemetery() {        
+        App.NewCemetery.setSize(App.MotevafiatWin.getWidth() - 100, App.MotevafiatWin.getHeight() - 200);        
+    }
+
+    $('#map').height(App.MotevafiatWin.getHeight() - 200);
+    $('#map').width(App.MotevafiatWin.getWidth() - 130);
+    var marker2 = null;
+    var Mokhtasat = null;
+
+    var myMap = new L.Map('map', {
+        key: 'web.JRCau460QpXQ2QeTe7V5iL6YND0WnaAHomU0VH8m',
+        center: [35.699739, 51.338097],
+        zoom: 14
+    });
+
+    navigator.geolocation.watchPosition(render);
+
+    function render(pos) {
+        if (marker2 == null) {
+            var lat = pos.coords.latitude;
+            var lon = pos.coords.longitude;
+            marker = new L.Marker([lat, lon]);
+            marker2 = marker;
+            myMap.addLayer(marker);
+        }
+    };
+    
+    function onMapClick(e) {
+        if (marker2 != null)
+            myMap.removeLayer(marker2);
+        marker = new L.Marker(e.latlng);
+        marker2 = marker;
+        myMap.addLayer(marker);
+        Mokhtasat = e.latlng;
+        marker.bindPopup("<b></b><br />" + e.latlng.toString()).openPopup();
+
+    };
+    myMap.on('click', onMapClick);
+
+    function SetDefaultCboState() {
+        if ('@ViewBag.Id' == '0') {
+            App.NewCemetery.queryById("CboState").setValue('@ViewBag.StateId');
+            App.NewCemetery.queryById('txtAddress').validate();
+            App.NewCemetery.queryById('txtTitle').validate();
+        }
+        else {
+            LoadCemetery();
+        }
+    }
+
+    function loadCboCity() {
+        if (App.NewCemetery.queryById("CboState").getDisplayValue()!="") {
+            App.NewCemetery.queryById("CboCity").store.load();
+        }
+    }
+
+    function SetDefaultCboCity() {
+        if ('@ViewBag.Id' == "0") {
+            if (App.NewCemetery.queryById("CboCity").store.count() > 0) {
+                if (App.NewCemetery.queryById("CboState").getValue()=='@ViewBag.StateId') {
+                    App.NewCemetery.queryById("CboCity").setValue('@ViewBag.CityId');
+                }
+                else {
+                    App.NewCemetery.queryById("CboCity").select(App.NewCemetery.queryById("CboCity").store.getAt(0));
+                }
+            }
+        }
+    }
+    
+    var IsEdit = false;
+    function LoadCemetery(){
+        if('@ViewBag.Id' != "0") {
+            App.NewCemetery.body.mask("در حال بارگذاری...");
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/Cemetery/Details',
+                params: {
+                    Id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    IsEdit = true;
+                    var CboState = App.NewCemetery.queryById('CboState');
+                    CboState.setValue(data.fldStateId);                    
+
+                    var txtTitle = App.NewCemetery.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                   
+                    var txtAddress = App.NewCemetery.queryById('txtAddress');
+                    txtAddress.setValue(data.fldAddress);                   
+
+                    var Id = App.NewCemetery.queryById('fldId');
+                    Id.setValue(data.fldId);
+
+                    var txtDesc = App.NewCemetery.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+
+                    var CboCity = App.NewCemetery.queryById('CboCity');
+                    CboCity.setValue(data.fldCityId);
+
+                    Mokhtasat = L.latLng(data.fldLatitude, data.fldLongitude);
+                    marker = new L.Marker(Mokhtasat);
+                    marker2 = marker;
+                    myMap.addLayer(marker);
+                    marker.bindPopup("<b></b><br />" + Mokhtasat.toString()).openPopup();
+                    myMap.setView(Mokhtasat, 15);
+
+                    App.NewCemetery.body.mask().hide();
+                }
+            });
+        }        
+    }
+    
+    function ChangeLocation() {
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/Cemetery/GetLatLng',
+            params: {
+                CityId: App.NewCemetery.queryById('CboCity').getValue()
+            },
+            success: function (data) {
+                if (data.fldLatitude != null && data.fldLongitude != null && IsEdit==false) {
+                    myMap.setView(new L.LatLng(data.fldLatitude, data.fldLongitude), 14);
+                    if (Mokhtasat != null) {
+                        myMap.removeLayer(marker);
+                        Mokhtasat = null;
+                    }
+                }
+                else {
+                    if(IsEdit==true)
+                        IsEdit = false;
+                    else
+                        Ext.MessageBox.show({
+                        Name: "خطا",
+                        msg: "موقعیت شهر انتخاب شده ثبت نگردیده است.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+        });
+    }
+
+    var SearchMatchCombo = function (record) {
+        return record.query = new RegExp(record.query.replace("(", "[(]").replace(")", "[)]"), 'i');
+    };
+
+    function SaveCemetery() {
+        var txtTitle = App.NewCemetery.queryById('txtTitle');
+        var CboState = App.NewCemetery.queryById('CboState');
+        var CboCity = App.NewCemetery.queryById('CboCity');
+        var txtAddress = App.NewCemetery.queryById('txtAddress');
+        var txtDesc = App.NewCemetery.queryById('txtDesc');
+        var Id = App.NewCemetery.queryById('fldId');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (txtAddress.validate() == false) {
+            er = true;
+        }
+        if (CboState.validate() == false) {
+            er = true;
+        }
+        if (CboCity.validate() == false) {
+            er = true;
+        }
+
+        if (Mokhtasat == null) {
+            Ext.MessageBox.show({
+                Name: "خطا",
+                msg: "لطفا مکان وادی السلام را روی نقشه مشخص کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        App.NewCemetery.body.mask("در حال ذخیره سازی");
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/Cemetery/Save',
+            params: {
+                fldId: Id.getValue(),
+                fldName: txtTitle.getValue(),
+                fldStateId: CboState.getValue(),
+                fldCityId: CboCity.getValue(),
+                fldAddress: txtAddress.getValue(),
+                fldDesc:txtDesc.getValue(),
+                fldLatitude: Mokhtasat.lat,
+                fldLongitude: Mokhtasat.lng
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                });
+                App.Cemetery.queryById('GridCemetery').store.load();
+                App.NewCemetery.body.mask().hide();
+                if (data.Er == 0)
+                    ClearCemetry();
+            }
+        });
+    }
+
+    function ClearCemetry() {
+        App.NewCemetery.queryById('txtTitle').setValue("");
+        App.NewCemetery.queryById('txtAddress').setValue("");
+        App.NewCemetery.queryById('txtDesc').setValue("");
+        App.NewCemetery.queryById('fldId').setValue(0);
+        myMap.removeLayer(marker);
+        Mokhtasat = null;
+    }
+
+    var addKeyMapCemetery = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NewCemetery.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }
+            }]
+        });
+    }
+</script>

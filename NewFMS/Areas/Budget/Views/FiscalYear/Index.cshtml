@@ -1,0 +1,292 @@
+﻿@model IEnumerable<NewFMS.WCF_Budget.OBJ_FiscalYearBudje>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+    .ID("FiscalYearBudget")
+    .Title("تعریف سال مالی")
+    .Listeners(li => { li.AfterRender.Handler = "FiscalYearBudgetSetSize();"; li.Render.Fn = "addKeyMapFiscalYearBudget"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(
+                X.Label()),
+                X.Panel()
+                    .Border(false)
+                    .Buttons(
+                        X.Button()
+                            .Text("ذخیره")
+                            .Icon(Ext.Net.Icon.Disk)
+                            .ItemID("btnSaveFiscalYearBudget")
+                            .Listeners(l => { l.Click.Handler = "SaveFiscalYearBudget();"; }),
+                        X.Button()
+                            .Text("ویرایش")
+                            .Icon(Ext.Net.Icon.Pencil)
+                            .Listeners(l => { l.Click.Handler = "LoadFiscalYearBudget();"; }),
+                        X.Button()
+                            .Text("حذف")
+                            .Icon(Ext.Net.Icon.Delete)
+                            .Listeners(l => { l.Click.Handler = "DeleteFiscalYearBudget();"; }),
+                        //X.Button()
+                        //    .Text("راهنما")
+                        //    .Icon(Ext.Net.Icon.Help)
+                        //    .Listeners(l => { l.Click.Handler = "HelpFiscalYearBudget();"; }),
+                        X.Button()
+                        .Text("خروج")
+                        .Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.FiscalYearBudget.destroy()")
+                    )
+                    .ButtonAlign(Ext.Net.Alignment.Center)
+                    .Items(
+                        X.Panel()
+                            .Border(false)
+                            .Layout(LayoutType.VBox)
+                            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                            .Items(
+                                X.FieldSet()
+                                    .Border(false)
+                                    .Items(
+                                        X.FieldSet()
+                                            .Border(true)
+                                            .Title("سال مالی")
+                                            .Height(50)
+                                            .Defaults(new { Margin = 2 })
+                                            .Layout(LayoutType.Table)
+                                            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                                            .Items(
+                                                X.Hidden().ItemID("fldId"),
+                                                X.Label("ســـال:"),
+                                                X.ComboBox()
+                                                    .ItemID("CboYear")
+                                                    .AutoFocus(true)
+                                                    .DisplayField("fldYear")
+                                                    .ValueField("fldYear")
+                                                    .TypeAhead(true)
+                                                    .Editable(true)
+                                                    .AllowBlank(false)
+                                                    .BlankText("لطفا سال را انتخاب کنید.")
+                                                    .QueryMode(DataLoadMode.Local)
+                                                    .ForceSelection(true)
+                                                    .TriggerAction(TriggerAction.All)
+                                                    .Store(X.Store()
+                                                        .Listeners(l => l.Load.Handler = "setDefaultYearFiscal()")
+                                                        .Model(X.Model()
+                                                            .IDProperty("fldYear")
+                                                            .Fields(
+                                                                new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" }
+                                                            )
+                                                        )
+                                                        .Proxy(X.AjaxProxy()
+                                                            .Url(Url.Action("GetSal"))
+                                                            .Reader(X.JsonReader().Root("data"))
+                                                        )
+                                                    ),
+                                                X.Label("توضیحات:"),
+                                                X.TextField()
+                                                    .ItemID("txtDesc")
+                                                    .Width(345)
+                                            )
+                                    )
+                            )
+                    ),
+                X.GridPanel()
+                    .ItemID("FiscalYearBudgetGrid")
+                    .BottomBar(X.PagingToolbar())
+                    .Store(
+                        X.StoreForModel()
+                            .Listeners(l => l.DataChanged.Handler = "App.FiscalYearBudget.queryById('FiscalYearBudgetGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .Listeners(l => l.AfterRender.Handler = "var grid = App.FiscalYearBudget.queryById('FiscalYearBudgetGrid');grid.setHeight(App.BudjeWin.getHeight() - 305); ")
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldYear).Text("سال").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+            )
+)
+
+<script type="text/javascript">
+    function setDefaultYearFiscal() {
+        App.FiscalYearBudget.queryById('CboYear').setValue(App.FiscalYearBudget.queryById('CboYear').store.getAt(1));
+    }
+
+    function HelpFiscalYearBudget() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Budget/FiscalYear/Help',
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function FiscalYearBudgetSetSize() {
+        App.FiscalYearBudget.setWidth(App.BudjeWin.getWidth());
+        var grid = App.FiscalYearBudget.queryById('FiscalYearBudgetGrid');
+        grid.setHeight(App.BudjeWin.getHeight() - 275);
+    }
+
+    function LoadFiscalYearBudget() {
+        var SelectedRow = App.FiscalYearBudget.queryById('FiscalYearBudgetGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Budget/FiscalYear/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var CboYear = App.FiscalYearBudget.queryById('CboYear');
+                    CboYear.setValue(data.fldYear);
+                    var txtDesc = App.FiscalYearBudget.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.FiscalYearBudget.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveFiscalYearBudget() {
+        var CboYear = App.FiscalYearBudget.queryById('CboYear');
+        var txtDesc = App.FiscalYearBudget.queryById('txtDesc');
+        var fldId = App.FiscalYearBudget.queryById('fldId');
+        var er = false;
+
+        if (CboYear.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Budget/FiscalYear/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldYear: CboYear.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.FiscalYearBudget.queryById('FiscalYearBudgetGrid').store.load();
+                if (data.Er != 1)
+                    ClearFiscalYearBudget();
+            }
+        });
+    }
+
+    function DeleteFiscalYearBudget() {
+        var SelectedRow = App.FiscalYearBudget.queryById('FiscalYearBudgetGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Budget/FiscalYear/Delete',
+                            params: {
+                                Id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.FiscalYearBudget.queryById('FiscalYearBudgetGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearFiscalYearBudget() {
+        App.FiscalYearBudget.queryById('fldId').setValue(0);
+        App.FiscalYearBudget.queryById('CboYear').setValue("");
+        App.FiscalYearBudget.queryById('txtDesc').setValue("");
+    }
+
+    var addKeyMapFiscalYearBudget = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.FiscalYearBudget.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        SaveFiscalYearBudget();
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }
+            }]
+        });
+    }
+</script>

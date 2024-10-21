@@ -1,0 +1,732 @@
+﻿@model IEnumerable<NewFMS.Areas.Contracts.Models.spr_tblContractsSelect>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+<script src="~/Scripts/jsQR.js"></script>
+<script>
+    var IsvalidIco = function (value, record) {
+        if (value == 1) {
+            var template = "<img src='/content/icons/Contract/mini/مینی قرارداد معتبر.png' title='معتبر' style='width:17px;height:17px;' />";
+            return template;
+        }
+        else {
+            var template = "<img src='/content/icons/Contract/mini/مینی قرارداد نامعتبر.png' title='منقضی' style='width:17px;height:17px;' />";
+            return template;
+        }
+    };
+    var ZamenIsvalidIco = function (value, record) {
+        if (value == 1) {
+            var template = "<img src='/content/icons/Contract/mini/مینی ضامنین-1.png' title='ضامن منقضی' style='width:17px;height:17px;' />";
+            return template;
+        }
+        else if (value == 0) {
+            var template = "<img src='/content/icons/Contract/mini/مینی ضامنین-0.png' title='بدون ضامن' style='width:17px;height:17px;' />";
+            return template;
+        }
+        else {
+            var template = "<img src='/content/icons/Contract/mini/مینی ضامنین -2.png' title='ضامن معتبر' style='width:17px;height:17px;' />";
+            return template;
+        }
+    };
+</script>
+@(Html.X().Panel()
+                .ID("RegContract")
+            .Title("ثبت قراردادها")
+                    .Listeners(li => { li.AfterRender.Handler = "RegContractSetSize();"; li.Render.Fn = "addKeyMapRegContract"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveContract")
+            .Listeners(l => { l.Click.Handler = "SaveRegContract();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadRegContract();"; })
+                        , X.Button().Text("تمدید").IconCls("btnTamdid")
+                    .Listeners(l => { l.Click.Handler = "TamdidContract();"; })
+                            , X.Button().Text("تضامین").IconCls("btnTazmin")
+                        .Listeners(l => { l.Click.Handler = "TazaminContract();"; })
+                                , X.Button().Text("امضا کنندگان").IconCls("btnEmza")
+                        .Listeners(l => { l.Click.Handler = "EmzaContract();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+            .Listeners(l => { l.Click.Handler = "DeleteRegContract();"; })
+        //, X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpInsuranceType();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.RegContract.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+            X.FieldSet().Border(false)
+            .Items(
+                X.FieldSet().Border(true).Title("اطلاعات قرارداد")
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 8 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.Hidden().ItemID("fldShakhsId"),
+                       
+                    X.Label("عنوان قرارداد:"),
+                    X.TextField()
+                    .ItemID("txtName").Width(389).ColSpan(3).AutoFocus(true)
+                   // .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان قرارداد را وارد کنید."),
+                         X.Label("نوع قرارداد:"),
+                                X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboTypeGharardad")
+                                .TypeAhead(true)
+                                .Editable(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .BlankText("لطفا نوع قرارداد را انتخاب کنید.")
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldName")
+                                .ValueField("fldId")
+                                .EmptyText(" ...")
+                                .Store(X.Store()
+                                .Model(X.Model()
+                                .IDProperty("fldId")
+                                .Fields(
+                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                        )
+                                                  )
+                                    .Listeners(l => { l.Load.Handler = "setdefaultValueTypeGharardad()"; })
+                                .Proxy(X.AjaxProxy()
+                                .Url(Url.Action("GetTypeGharardad"))
+                                .Reader(X.JsonReader().Root("data"))
+                                        )
+                                        )
+        // .Listeners(l => { l.Change.Handler = "ChangeZemanat()"; })
+                                .AllowBlank(false),
+
+                            X.Label("نوع تأمین مصالح:"),
+                                X.ComboBox()
+                                .ItemID("CboTypeMaterial")
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا نوع تأمین مصالح را انتخاب نمایید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .AllowBlank(false)
+                                .Items(
+                                    new ListItem("کارفرما", "1"),
+                                    new ListItem("پیمانکار", "2")
+                                    )
+                                    .SelectedItems(new { Value = "1" }),
+                                        
+                    
+                             X.Label("تاریخ ابلاغ:")
+                                  , X.PDateField()
+                                    .ItemID("txtTarikhEblagh")
+                                    .MaskRe("/[0-9,/]/")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا تاریخ ابلاغ را وارد کنید.")
+                       ,
+
+                                             X.Label("شماره ابلاغ:"),
+                            X.TextField()
+                            .ItemID("txtNumberEblagh")
+                                .MaxLength(100)
+                                .EnforceMaxLength(true)
+                                .MaskRe("[0-9]")
+                                .AllowBlank(false)
+                                .BlankText("لطفا شماره ابلاغ را وارد کنید."),
+                                
+                    X.Label("نقش سازمان:"),
+                    X.ComboBox()
+                    .ItemID("CboRol")
+                    .Editable(false)
+                    .TypeAhead(true)
+                    .BlankText("لطفا نقش سازمان را انتخاب نمایید.")
+                    .QueryMode(DataLoadMode.Local)
+                    .TriggerAction(TriggerAction.All)
+                    .AllowBlank(false)
+                    .Items(
+                        new ListItem("کارفرما", "0"),
+                        new ListItem("پیمانکار", "1")
+                        )
+                    .Listeners(l => { l.Change.Handler = "ChangeTypeRegContract()"; l.Render.Handler = "App.RegContract.queryById('CboRol').setValue('0')"; })
+                   ,
+                   
+                        X.Label("نام پیمانکار:").ItemID("lblShakhs"),
+                        X.TextField().Width(145)
+                        .ReadOnly(true)
+                        .Icon(Ext.Net.Icon.UserAdd)
+                        .ItemID("txtShakhs")
+                        .AllowBlank(false)
+                        .BlankText("لطفا نام طرف دوم قرارداد را وارد کنید.")
+                             .DirectEvents(li =>
+                        {
+                            li.SpecialKey.Url = "/Daramad/SearchAshkhas/Index?State=15";
+                            li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                            li.IconClick.Url = "/Daramad/SearchAshkhas/Index?State=15";
+                        }),
+                                X.Label("عنوان پروژه").ItemID("lblProject"),
+                                    X.ComboBox()
+                                    .ItemID("CboProject")
+                                    .TypeAhead(true)
+                                    .Editable(true)
+                                    .ColSpan(3)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا پروژه مورد نظر را انتخاب کنید.")
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                    .Store(X.Store().AutoLoad(false)
+                                    .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                            )
+                                                      )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetProject"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                            )
+                            .Parameters(ps => ps.Add(new StoreParameter("StartDate", "App.RegContract.queryById('txtTarikhStart').getRawValue()", ParameterMode.Raw)))
+                                            ),
+                        
+                            X.Label("تاریخ قرارداد:").ItemID("lblTarikh")
+                          ,X.PDateField()
+                            .ItemID("txtTarikh")
+                            .MaskRe("/[0-9,/]/")
+                            .AllowBlank(false)
+                            .BlankText("لطفا تاریخ قرارداد را وارد کنید.")
+                            ,
+                             X.Label("شماره قرارداد:"),
+                            X.TextField()
+                            .ItemID("txtNumberGh")
+                                .MaxLength(100)
+                                .EnforceMaxLength(true)
+                                .MaskRe("[0-9]")
+                                .AllowBlank(false)
+                                .BlankText("لطفا شماره قرارداد را وارد کنید."),
+                        X.Label("مبلغ قرارداد(ریال):"),
+                        X.TextField()
+                        .ItemID("txtMablagh")
+                        .Listeners(l => { l.Change.Handler = "App.RegContract.queryById('txtMablagh').setValue(accounting.formatNumber(App.RegContract.queryById('txtMablagh').getValue()));"; })
+                        .MaxLength(100)
+                        .EnforceMaxLength(true)
+                        .MaskRe("[0-9]")
+                        .AllowBlank(false)
+                        .BlankText("لطفا مبلغ قرارداد را وارد کنید."),
+
+                             X.Label("مانده پرداخت نشده(ریال):"),
+                            X.TextField()
+                                .ItemID("txtMandePardakhtNashode")
+                                    .Listeners(l => { l.Change.Handler = "App.RegContract.queryById('txtMandePardakhtNashode').setValue(accounting.formatNumber(App.RegContract.queryById('txtMandePardakhtNashode').getValue()));"; })
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                            .MaskRe("[0-9]")
+                            .AllowBlank(false)
+                            .BlankText("لطفا مبلغ مانده پرداخت نشده را وارد کنید."),
+                      
+                          
+                        X.Label("تاریخ شروع قرارداد:").ItemID("lblTarikhStart")
+                          ,X.PDateField()
+                            .ItemID("txtTarikhStart")
+                            .MaskRe("/[0-9,/]/")
+                            .AllowBlank(false)
+                            .BlankText("لطفا تاریخ شروع قرارداد را وارد کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Listeners(l => l.Change.Handler = "setAzTarikh()"),
+                         X.Label("تاریخ پایان قرارداد:").ItemID("lblTarikhEnd")
+                          ,X.PDateField()
+                            .ItemID("txtTarikhEnd")
+                            .MaskRe("/[0-9,/]/")
+                            .AllowBlank(false)
+                            .Listeners(l => l.Change.Handler = "setTaTarikh()")
+                            .BlankText("لطفا تاریخ پایان قرارداد را وارد کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                        ,X.Label("توضیحات:"),
+                        X.TextField()
+                            .ItemID("txtDesc").Width(430).ColSpan(3)
+                            .AllowBlank(true)
+                )
+                
+            )
+            )
+        ),
+        X.GridPanel()
+                .ItemID("RegContractGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.RegContract.queryById('RegContractGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.RegContract.queryById('RegContractGrid');grid.setHeight(App.ContractWin.getHeight() - 345); ";
+
+                     })
+                  .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                 Html.X().Column().DataIndex(Model, m => m.fldValidDate).Filterable(false).Width(30).Renderer("IsvalidIco").Align(Ext.Net.Alignment.Center),
+                                  Html.X().Column().DataIndex(Model, m => m.fldZamen).Filterable(false).Width(30).Renderer("ZamenIsvalidIco").Align(Ext.Net.Alignment.Center),
+                            Html.X().Column().DataIndex(Model, m => m.fldSubject).Text("عنوان قرارداد").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldShomare).Text("شماره قرارداد").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldMablagh).Text("مبلغ قرارداد").Flex(2).Renderer("return value.toLocaleString()"),
+                        Html.X().Column().DataIndex(Model, m => m.fldNameTarfDovom).Text("طرف قرارداد").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldStartDate).Text("تاریخ شروع قرارداد").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldEndDate).Text("تاریخ پایان قرارداد").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldTarikhTamdid).Text("تمدید قرارداد").Flex(2)
+                        //, Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+                       )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+           )
+      )
+)
+<script type="text/javascript">
+   
+
+    function setAzTarikh() {
+       
+        var txtTarikhStart = App.RegContract.queryById('txtTarikhStart');
+        var txtTarikhEnd = App.RegContract.queryById('txtTarikhEnd');
+        txtTarikhEnd.setMinValue(txtTarikhStart.getValue());
+        txtTarikhEnd.minText = "تاریخ شروع قرارداد نباید از تاریخ پایان بزرگتر باشد.";
+        txtTarikhEnd.validate();
+        if (txtTarikhStart.validate()) {
+            App.RegContract.queryById('CboProject').store.load();
+        }
+        else {
+            App.RegContract.queryById('CboProject').clearValue();
+            App.RegContract.queryById('CboProject').store.loadData("");
+        }
+    }
+    function setTaTarikh() {
+        var txtTarikhStart = App.RegContract.queryById('txtTarikhStart');
+        var txtTarikhEnd = App.RegContract.queryById('txtTarikhEnd');
+        txtTarikhStart.setMaxValue(txtTarikhEnd.getValue());
+        txtTarikhStart.maxText = "تاریخ شروع قرارداد نباید از تاریخ پایان بزرگتر باشد.";
+        txtTarikhStart.validate();
+    }
+ 
+    function setdefaultValueTypeGharardad() {
+        var CboTypeGharardad = App.RegContract.queryById('CboTypeGharardad');
+        CboTypeGharardad.select(CboTypeGharardad.store.getAt(0));
+    }
+
+    function ChangeTypeRegContract() {
+        var CboRol = App.RegContract.queryById('CboRol').getValue();
+        var lblShakhs = App.RegContract.queryById('lblShakhs');
+        var CboProject = App.RegContract.queryById('CboProject');
+        var lblProject = App.RegContract.queryById('lblProject');
+        var txtName = App.RegContract.queryById('txtName');
+
+        if (CboRol == "0") {
+            lblShakhs.setText("نام پیمانکار:");
+            CboProject.show();
+            lblProject.show();
+            setTimeout(function () { CboProject.setWidth(429); }, 300);
+            txtName.setWidth(429);
+        }
+        else {
+            lblShakhs.setText("نام کارفرما:");
+            CboProject.hide();
+            lblProject.hide();
+            txtName.setWidth(389);
+        }
+    }
+
+   
+    
+
+    function HelpRegContract() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/RegContract/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function RegContractSetSize() {
+        App.RegContract.setWidth(App.ContractWin.getWidth());
+        var grid = App.RegContract.queryById('RegContractGrid');
+        grid.setHeight(App.ContractWin.getHeight() - 345);
+        App.RegContract.queryById('txtName').validate();
+        App.RegContract.queryById('txtShakhs').validate();
+        App.RegContract.queryById('txtMablagh').validate();
+        App.RegContract.queryById('txtTarikh').validate();
+        App.RegContract.queryById('txtTarikhEblagh').validate();
+        App.RegContract.queryById('txtTarikhStart').validate();
+        App.RegContract.queryById('txtTarikhEnd').validate();
+        App.RegContract.queryById('txtMandePardakhtNashode').validate();
+        App.RegContract.queryById('CboTypeGharardad').validate();
+        App.RegContract.queryById('txtNumberEblagh').validate();
+        App.RegContract.queryById('txtNumberGh').validate();
+
+    }
+    function LoadRegContract() {
+        var SelectedRow = App.RegContract.queryById('RegContractGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/RegContract/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var CboRol = App.RegContract.queryById('CboRol');
+                    CboRol.setValue(data.fldNaghshOrgan);
+                    var txtTarikhStart = App.RegContract.queryById('txtTarikhStart');
+                    txtTarikhStart.setValue(data.fldStartDate);
+                    if (data.fldNaghshOrgan=="0") {
+                        App.RegContract.queryById('CboProject').store.load();
+                    }
+                    var txtTarikhEnd = App.RegContract.queryById('txtTarikhEnd');
+                    txtTarikhEnd.setValue(data.fldEndDate);
+
+                    var txtName = App.RegContract.queryById('txtName');
+                    txtName.setValue(data.fldSubject);
+                    var txtShakhs = App.RegContract.queryById('txtShakhs');
+                    txtShakhs.setValue(data.fldNameTarfDovom);
+                    var txtMablagh = App.RegContract.queryById('txtMablagh');
+                    txtMablagh.setValue(data.fldMablagh);
+                    var txtMandePardakhtNashode = App.RegContract.queryById('txtMandePardakhtNashode');
+                    txtMandePardakhtNashode.setValue(data.fldMandePardakhtNashode);
+                    var CboTypeGharardad = App.RegContract.queryById('CboTypeGharardad');
+                    CboTypeGharardad.setValue(data.fldContractTypeId);
+                    var txtNumberGh = App.RegContract.queryById('txtNumberGh');
+                    txtNumberGh.setValue(data.fldShomare);
+                    var txtNumberEblagh = App.RegContract.queryById('txtNumberEblagh');
+                    txtNumberEblagh.setValue(data.fldShomareEblagh);
+                    var txtTarikh = App.RegContract.queryById('txtTarikh');
+                    txtTarikh.setValue(data.fldTarikh);
+                    var txtTarikhEblagh = App.RegContract.queryById('txtTarikhEblagh');
+                    txtTarikhEblagh.setValue(data.fldTarikhEblagh);
+                    
+                   
+                    var fldId = App.RegContract.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    var fldShakhsId = App.RegContract.queryById('fldShakhsId');
+                    fldShakhsId.setValue(data.fldAshkhasId);
+                    var CboTypeMaterial = App.RegContract.queryById('CboTypeMaterial');
+                    CboTypeMaterial.setValue(data.fldSuplyMaterialsType);
+                    var CboProject = App.RegContract.queryById('CboProject');
+                    CboProject.setValue(data.fldBudjeCodingId_Detail);
+                    var txtDesc = App.RegContract.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveRegContract() {
+        var CboRol = App.RegContract.queryById('CboRol');
+        var txtName = App.RegContract.queryById('txtName');
+        var txtShakhs = App.RegContract.queryById('txtShakhs');
+        var txtMablagh = App.RegContract.queryById('txtMablagh');
+        var CboTypeGharardad = App.RegContract.queryById('CboTypeGharardad');
+        var txtNumberGh = App.RegContract.queryById('txtNumberGh');
+        var txtNumberEblagh = App.RegContract.queryById('txtNumberEblagh');
+        var txtTarikh = App.RegContract.queryById('txtTarikh');
+        var txtTarikhEblagh = App.RegContract.queryById('txtTarikhEblagh');
+        var txtTarikhStart = App.RegContract.queryById('txtTarikhStart');
+        var txtTarikhEnd = App.RegContract.queryById('txtTarikhEnd');
+        var fldId = App.RegContract.queryById('fldId');
+        var fldShakhsId = App.RegContract.queryById('fldShakhsId');
+        var CboTypeMaterial = App.RegContract.queryById('CboTypeMaterial');
+        var txtMandePardakhtNashode = App.RegContract.queryById('txtMandePardakhtNashode');
+        var txtDesc = App.RegContract.queryById('txtDesc');              
+        var CboProject = App.RegContract.queryById('CboProject');
+
+        var mm = parseInt(txtMablagh.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''));
+            var er = false;
+
+            if (CboRol.validate() == false) {
+                er = true;
+            }
+            if (CboTypeGharardad.validate() == false) {
+                er = true;
+            }
+            if (txtNumberGh.validate() == false) {
+                er = true;
+            }
+            if (txtNumberEblagh.validate() == false) {
+                er = true;
+            }
+            if (txtTarikh.validate() == false) {
+                er = true;
+            }
+            if (txtTarikhEblagh.validate() == false) {
+                er = true;
+            }
+            if (txtMandePardakhtNashode.validate() == false) {
+                er = true;
+            }
+            if (txtShakhs.validate() == false) {
+                er = true;
+            }
+            if (txtName.validate() == false) {
+                er = true;
+            }
+            if (CboTypeMaterial.validate() == false) {
+                er = true;
+            }
+            if (txtMablagh.validate() == false) {
+                er = true;
+            }
+            if (txtTarikhStart.validate() == false) {
+                er = true;
+            }
+            if (txtTarikhEnd.validate() == false) {
+                er = true;
+            }
+            if (CboRol.getValue()=="0" && CboProject.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+        
+            var rol = false;
+            var ProjectId = null;
+            if (CboRol.getValue() == "1") {
+                rol = true;
+            }
+            else {
+                ProjectId = CboProject.getValue();
+            }
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/RegContract/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldNaghshOrgan: rol,
+                    fldContractTypeId: CboTypeGharardad.getValue(),
+                    fldSubject: txtName.getValue(),
+                    fldAshkhasId: fldShakhsId.getValue(),
+                    fldSuplyMaterialsType: CboTypeMaterial.getValue(),
+                    fldMablagh: mm,
+                    fldShomare: txtNumberGh.getValue(),
+                    fldShomareEblagh: txtNumberEblagh.getValue(),
+                    fldTarikh: txtTarikh.rawValue,
+                    fldTarikhEblagh: txtTarikhEblagh.rawValue,
+                    fldEndDate: txtTarikhEnd.rawValue,
+                    fldStartDate: txtTarikhStart.rawValue,
+                    fldMandePardakhtNashode: parseInt(txtMandePardakhtNashode.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', '')),
+                    fldDesc: txtDesc.getValue(),
+                    fldBudjeCodingId_Detail: ProjectId
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.RegContract.queryById('RegContractGrid').store.load();
+                    if (data.Err != 1)
+                        ClearRegContract();
+                }
+
+            });
+    }
+    function DeleteRegContract() {
+        var SelectedRow = App.RegContract.queryById('RegContractGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/RegContract/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.RegContract.queryById('RegContractGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearRegContract() {
+
+        App.RegContract.queryById('CboRol').setValue("");
+        App.RegContract.queryById('txtName').setValue("");
+        App.RegContract.queryById('txtShakhs').setValue("");
+        App.RegContract.queryById('txtMablagh').setValue("");
+        App.RegContract.queryById('CboTypeGharardad').setValue("");
+        App.RegContract.queryById('txtNumberGh').setValue("");
+        App.RegContract.queryById('txtNumberEblagh').setValue("");
+        App.RegContract.queryById('txtTarikh').setValue("");
+        App.RegContract.queryById('txtTarikhEblagh').setValue("");
+        App.RegContract.queryById('txtTarikhStart').setValue("");
+        App.RegContract.queryById('txtTarikhEnd').setValue("");
+        App.RegContract.queryById('fldId').setValue(0);
+        App.RegContract.queryById('fldShakhsId').setValue(0);
+        App.RegContract.queryById('CboTypeMaterial').setValue("");
+        App.RegContract.queryById('txtMandePardakhtNashode').setValue("");
+        App.RegContract.queryById('txtDesc').setValue("");
+    }
+    function TamdidContract() {
+        var SelectedRow = App.RegContract.queryById('RegContractGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Contracts/RegContract/TamdidWin',
+                params: {
+                    ContractId: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function TazaminContract() {
+        var SelectedRow = App.RegContract.queryById('RegContractGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Contracts/RegContract/TazaminWin',
+                params: {
+                    ContractId: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function EmzaContract() {
+        var SelectedRow = App.RegContract.queryById('RegContractGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Contracts/RegContract/EmzaWin',
+                params: {
+                    ContractId: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    var addKeyMapRegContract = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.RegContract.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    /*if (keyfield.itemId == "txtMablagh") {
+                        nextfld = App.RegContract.queryById('CboMoshakhaseType');
+                    }
+                    else*/
+                        if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.RegContract.queryById('btnSaveContract');
+                        }
+                        else if (keyfield.itemId == "txtShakhs" && App.RegContract.queryById('CboRol').getValue() == "1") {  
+                            nextfld = App.RegContract.queryById('txtTarikh');
+                        }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

@@ -1,0 +1,237 @@
+﻿@model IEnumerable<NewFMS.WCF_Personeli.OBJ_DetailPayeSanavati>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("PayeSanavati")
+            .Title("ثبت پایه سنواتی")
+            .Listeners(li => li.AfterRender.Handler = "PayeSanavatiSetSize();")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                .Listeners(l => { l.Click.Handler = "SavePayeSanavati();"; }),
+                    X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpPayeSanavati();"; }),
+
+             X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.PayeSanavati.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+                X.Panel().Border(false)
+                              .Layout(LayoutType.VBox)
+                                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                        X.FieldSet().Title("پایه سنواتی")
+                                    .Height(50)
+                                .Border(true)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 5 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                        X.Label("سال:"),
+                    X.TextField()
+                        .ItemID("txtYear")
+                      //  .FieldLabel(":سال")
+                            .RTL(false).LabelCls("text-align: right;").LabelSeparator("")
+                        .Plugins(X.InputMask()
+                            .Mask("1CCC")
+                            .MaskSymbols(ls =>
+                            {
+                                ls.Add(new MaskSymbol { Name = "C", Regex = "[0-9]", Placeholder = "_".ToCharArray()[0] });
+                            })
+                        )
+                       // .MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AllowBlank(false)
+                        .AutoFocus(true)
+                        .Width(150)
+                        .BlankText("لطفا سال را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Listeners(li => li.Change.Handler = "if(parseInt(App.PayeSanavati.queryById('txtYear').getValue()).toString().length==4)ReloadGrid();")
+                            , X.Label("تعداد گروه:"),
+                        X.TextField()
+                        .Width(150)
+                            .ItemID("txtTedad")
+                                     .MaskRe("/[0-9]/")
+                       // .FieldLabel("تعداد گروه")
+                       // .MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AllowBlank(false)
+                        .BlankText("لطفا تعداد گروه را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        , X.Button().Text("درج").Icon(Ext.Net.Icon.Add).ItemID("btnDarj")
+                         .Listeners(li => li.Click.Handler = "ok();")
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("PayeSanavatiGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.PayeSanavati.queryById('PayeSanavatiGrid').selModel.refresh();")
+                       
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                   // .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.PayeSanavati.queryById('PayeSanavatiGrid');grid.setHeight(App.PersoneliWin.getHeight() - 260); ";
+
+                     })
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldGroh).Text("گروه").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldMablagh).Text("مبلغ").Flex(15).Editor(Html.X().TextField())
+                        ).Plugins(
+                            Html.X().CellEditing().ClicksToEdit(1)
+                            )
+    )
+)
+<script type="text/javascript">
+
+    /*App.PersoneliWin.addListener('resize', function () {
+        App.PayeSanavati.setWidth(App.PersoneliWin.getWidth());
+    });
+    App.PersoneliWin.addListener('resize', function () {
+        var grid = App.PayeSanavati.queryById('PayeSanavatiGrid');
+        grid.setHeight(App.PersoneliWin.getHeight() - 240);
+    });*/
+    function PayeSanavatiSetSize() {
+        App.PayeSanavati.setWidth(App.PersoneliWin.getWidth());
+        var grid = App.PayeSanavati.queryById('PayeSanavatiGrid');
+        grid.setHeight(App.PersoneliWin.getHeight() - 260);
+    }
+    function ok() {
+
+        var txtYear = App.PayeSanavati.queryById('txtYear');
+        var txtTedad = App.PayeSanavati.queryById('txtTedad');
+        var er = false;
+        if (txtYear.validate() == false) {
+            er = true;
+        }
+        if (txtTedad.validate() == false) {
+            er = true;
+        }
+        if (er)
+            return;
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/PayeSanavati/Reload?Group=' + txtTedad.getValue() + "&Sal=" + txtYear.getValue(),
+
+            success: function (result) {
+                App.PayeSanavati.queryById('PayeSanavatiGrid').getStore().loadData(result);
+                Ext.net.Mask.hide();
+            }
+
+        });
+    }
+    function ReloadGrid() {
+        var txtYear = App.PayeSanavati.queryById('txtYear').getValue();
+
+        if (txtYear != "") {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PayeSanavati/ReloadGrid?Sal=' + txtYear,
+
+                success: function (result) {
+                    App.PayeSanavati.queryById('PayeSanavatiGrid').getStore().loadData(result);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+    
+    function HelpPayeSanavati() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/PayeSanavati/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SavePayeSanavati() {
+        var Year = App.PayeSanavati.queryById('txtYear');
+        var Id = App.PayeSanavati.queryById('fldId');
+
+        var HoghVal = new Array();
+        var Mablagh;
+        var Groh;
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        var SelectedRow = App.PayeSanavati.queryById('PayeSanavatiGrid');
+        for (var i = 0; i < SelectedRow.selModel.store.count() ; i++) {
+            row = SelectedRow.selModel.store.data.items[i];
+            var MMablagh = row.data.fldMablagh;
+            var MGroh = row.data.fldGroh;
+
+            HoghVal.push({
+                'fldMablagh': MMablagh,
+                'fldGroh': MGroh,
+                'fldPayeSanavatiId': Id.getValue()
+            });
+        }
+        if (HoghVal.length == 0) {
+            Ext.net.Mask.hide();
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "ابتدا دکمه درج را بزنید.",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else {
+            var data = {
+                HoghVal: HoghVal,
+                fldYear: Year.getValue(),
+                fldId: Id.getValue()
+            };
+            $.ajax({
+                type: "POST",
+                url: '/Personeli/PayeSanavati/Save',
+                datatype: "json",
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                success: function (result) {
+                    var data = result;/*JSON.parse(result);*/
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    Ext.net.Mask.hide();
+                },
+                failure: function (data) {
+                    alert(data.data);
+                }
+            });
+        }
+    }
+    function EnterNext() {
+        var keyfield = App.PayeSanavati.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtTedad") {
+            nextfld = App.PayeSanavati.queryById('btnDarj');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+    }
+</script>

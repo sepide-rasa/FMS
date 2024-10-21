@@ -1,0 +1,136 @@
+﻿@model IEnumerable<NewFMS.WCF_Automation.OBJ_Commision>
+@using Ext.Net.MVC;
+@{
+    var X = Html.X();
+}
+
+
+@(Html.X().Window()
+    .Width(600)
+    .Height(500)
+    .Title("کارمندان")
+    .ID("SearchCommisionCheckBox")
+    .Closable(true)
+    .Modal(true)
+    .Layout(Ext.Net.LayoutType.Fit)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .AutoScroll(true)
+            .Layout(Ext.Net.LayoutType.Fit)
+            .Items(
+                X.GridPanel()
+                    .AutoScroll(true)
+                    .Border(false)
+                    .TopBar(
+                        Html.X().Toolbar()
+                            .Items(
+                                X.Button()
+                                    .Text("انتخاب")
+                                    .Icon(Ext.Net.Icon.ArrowRedo)
+                                    .Listeners(li => li.Click.Handler = "NextSearchCommisionCheckBox();")
+                                )
+                        )
+                    .ItemID("GridSearchCommisionCheckBox")
+                    .Store(
+                        X.StoreForModel()
+
+                    .Listeners(l => l.Load.Handler = "LoadSavedData();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                        .ExtraParams(x => x.Add(new { CommId = @ViewBag.CommId }))
+                        )
+                        .PageSize(20000)
+                        .RemoteFilter(true)
+                        .RemotePaging(true)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+        //.Plugins(X.FilterHeader().Remote(false))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                             Html.X().Column().DataIndex(Model, m => m.fldID).Text("کد").Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام و نام خانوادگی").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldFatherName).Text("نام پدر").Flex(1),
+                                //Html.X().Column().DataIndex(Model, m => m.fldEndDate).Text("تاریخ پایان حکم").Flex(1),
+                                Html.X().Column().DataIndex(Model, m => m.fldO_postEjraee_Title).Text("پست سازمانی").Flex(2)
+                    )
+                    .Listeners(a => a.CellDblClick.Handler = "NextSearchCommisionCheckBox();")
+                    .SelectionModel(
+                        Html.X().CheckboxSelectionModel().CheckOnly(true)
+                            .Mode(Ext.Net.SelectionMode.Multi)
+                    )
+
+            )
+        )
+)
+
+<script type="text/javascript">
+
+    function LoadSavedData() {
+        var CommisionSelected = "";
+        if ('@ViewBag.State' == "1")
+            CommisionSelected = App.ErjaWin.queryById('CommisionSelected').getValue();
+
+        if (CommisionSelected != "") {
+            var u = CommisionSelected.split(";");
+            for (var j = 0; j < u.length-1; j++) {
+                var index = App.SearchCommisionCheckBox.queryById('GridSearchCommisionCheckBox').getStore().findExact("fldID", parseInt(u[j]));
+                App.SearchCommisionCheckBox.queryById('GridSearchCommisionCheckBox').getSelectionModel().select(index, true);
+            }
+        }
+    }
+    function NextSearchCommisionCheckBox() {
+        var SelectedRow = App.SearchCommisionCheckBox.queryById('GridSearchCommisionCheckBox').getSelectionModel().getSelection();
+
+        if (SelectedRow != null) {
+            if ('@ViewBag.State' == "1") {
+                var grid = App.ErjaWin.queryById('GridEeja');
+                var ss = App.ErjaWin.queryById('CommisionSelected').getValue();
+
+               
+                App.ErjaWin.queryById('CommisionSelected').setValue("");
+                /*App.PcPosIP.queryById('fldIdSearchCommisionCheckBoxs').setValue("");*/
+                for (var i = 0; i < SelectedRow.length; i++) {
+                    var HaveId = 0;
+                    for (var j = 0; j < grid.selModel.store.count() ; j++) {
+                        row = grid.selModel.store.data.items[j];
+                        if (row.data.fldReceiverComisionID == SelectedRow[i].data.fldID)
+                            HaveId = 1;
+                    }
+
+                    if (HaveId == 0) {
+                        App.ErjaWin.queryById('CommisionSelected').setValue(App.ErjaWin.queryById('CommisionSelected').getValue() + SelectedRow[i].data.fldID + ";");
+
+                        grid.store.insert(0, { fldID: 0, fldReceiverComisionID: SelectedRow[i].data.fldID, fldName_Family: SelectedRow[i].data.fldName + "(" + SelectedRow[i].data.fldO_postEjraee_Title + ")", fldAssignmentTypeID: "" });
+                        grid.getView().focusRow(0);
+                        grid.editingPlugin.startEdit(grid.store.getAt(0), grid.columns[0]);
+                    }
+                }
+
+                var DelId = 1;
+                for (var j = 0; j < grid.selModel.store.count() ; j++) {
+                    row = grid.selModel.store.data.items[j];
+                    for (var i = 0; i < SelectedRow.length; i++) {
+                        if (row.data.fldReceiverComisionID == SelectedRow[i].data.fldID)
+                            DelId = 0;
+                    }
+                    if (DelId == 1)
+                        grid.store.removeAt(j);
+                }
+            }
+            App.SearchCommisionCheckBox.destroy();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا کارمند/کارمندان مورد نظر را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

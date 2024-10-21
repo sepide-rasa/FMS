@@ -1,0 +1,381 @@
+﻿@model IEnumerable<NewFMS.Areas.Contracts.Models.spr_tblTazaminSelect>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<script src="~/Scripts/jsQR.js"></script>
+<script>
+    var IsvalidIco = function (value, record) {
+        if (value == 1) {
+            var template = "<img src='/content/icons/Contract/mini/مینی ضامنین -2.png' title='ضامن معتبر' style='width:17px;height:17px;' />";
+            return template;
+        }
+        else {
+            var template = "<img src='/content/icons/Contract/mini/مینی ضامنین-1.png' title='ضامن منقضی' style='width:17px;height:17px;' />";
+            return template;
+        }
+
+    };
+</script>
+@(Html.X().Window().Modal(true)
+    .Width(630)//.Height(220)
+                .Title("تضامین قرارداد")
+            .ID("SabtTazmin")
+                .Listeners(li => { li.AfterRender.Fn = "addKeyMapSabtTazmin"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+
+    .Items(
+                X.Panel()
+                                    .Defaults(new { Margin = 5 })
+                 .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                .Border(false)
+                    .Buttons(
+                    X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveTazmin")
+                    .Listeners(l => { l.Click.Handler = "SaveTazmin();"; })
+                , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                        .Listeners(l => { l.Click.Handler = "LoadTazmin();"; })
+                , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                            .Listeners(l => { l.Click.Handler = "DeleteTazmin();"; })
+              //  , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpTazmin();"; })
+
+                , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.SabtTazmin.destroy()")
+            )
+                .ButtonAlign(Ext.Net.Alignment.Center)
+                .Items(
+        //X.Panel()
+        //    .Border(true)
+        //        .Layout(Ext.Net.LayoutType.VBox)
+        //    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+        //    .Items(
+                            X.FieldSet()
+                                .Border(true)
+                                .Title("اطلاعات ضمانت")
+                                .Width(600)
+                                .Defaults(new { Margin = 2 })
+                                .Layout(LayoutType.Table)
+                                .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                                    .Items(
+                        X.Hidden().ItemID("fldId"),
+
+                         X.Label("نوع تضمین:"),
+                            X.ComboBox()
+                                      .Width(120)
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ItemID("CboTypeTazmin")
+                        .TypeAhead(true)
+                        .Editable(false)
+                        .QueryMode(DataLoadMode.Local)
+                        .BlankText("لطفا نوع تضمین را انتخاب کنید.")
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                        .DisplayField("fldName")
+                        .ValueField("fldId")
+                        .EmptyText(" ...")
+                        .Store(X.Store()
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                )
+                                            )
+                            .Listeners(l => { l.Load.Handler = "setdefaultValueTypeTazmin()"; })
+                        .Proxy(X.AjaxProxy()
+                                .Url(Url.Action("GetTypeTazmin"))
+                        .Reader(X.JsonReader().Root("data"))
+                                )
+                                )
+        // .Listeners(l => { l.Change.Handler = "ChangeZemanat()"; })
+                        .AllowBlank(false)
+                        ,
+                         X.Label("نوع تمدید:"),
+                                    X.ComboBox()
+                                          .Width(120)
+                                .ItemID("CboTypeTamdid")
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا نوع تمدید را انتخاب نمایید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .AllowBlank(false)
+                                .Items(
+                                    new ListItem("اصلی", "0"),
+                                    new ListItem("تمدید", "1")
+                                    )
+                                    .SelectedItems(new { Value = "0" })
+                                    .ColSpan(3)
+                                     ,
+                             X.Label("کد سپام/چک:"),
+                                X.TextField()
+                                          .Width(120)
+                                .ItemID("txtSepamNum")
+                                .MaxLength(100)
+                                .EnforceMaxLength(true)
+                                .MaskRe("[0-9]")
+                                .AllowBlank(false)
+                                .BlankText("لطفا کد سپام/چک را وارد کنید.")
+                            , X.Label("تاریخ:")
+                                      , X.PDateField()
+                                          .Width(120)
+                                    .ItemID("txtTarikh")
+                                    .MaskRe("/[0-9,/]/")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا تاریخ پایان قرارداد را وارد کنید.")
+                            , X.Label("مبلغ(ریال):"),
+                                    X.TextField()
+                                          .Width(120)
+                                .ItemID("txtMablagh")
+                                .Listeners(l => { l.Change.Handler = "App.SabtTazmin.queryById('txtMablagh').setValue(accounting.formatNumber(App.SabtTazmin.queryById('txtMablagh').getValue()));"; })
+                                .MaxLength(100)
+                                .EnforceMaxLength(true)
+                                .MaskRe("[0-9]")
+                                .AllowBlank(false)
+                                .BlankText("لطفا مبلغ افزایش را وارد کنید.")
+                        )
+        //)
+        ),
+                  X.GridPanel().AutoScroll(true)
+                                    .ItemID("TazminGrid").Flex(2)
+                        .BottomBar(X.PagingToolbar())
+                        .Height(200)
+        //.ColumnWidth(0.6)
+        //.Layout(Ext.Net.LayoutType.Column)
+                        .Store(
+                            X.StoreForModel()
+                                         .Listeners(l => l.DataChanged.Handler = "App.SabtTazmin.queryById('TazminGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadTazamin"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                                                    .ExtraParams(p => p.Add(new { ContractId = @ViewBag.ContractId }))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+
+                        )
+                        .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+
+                        .Plugins(X.FilterHeader().Remote(true))
+                        .ColumnModel(
+                                 Html.X().RowNumbererColumn(),
+                                    Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldIsvalid).Filterable(false).Width(30).Renderer("IsvalidIco").Align(Ext.Net.Alignment.Center),
+                                            Html.X().Column().DataIndex(Model, m => m.fldNameWarranty).Text("نوع تضمین").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.fldTypeTamdidName).Text("نوع تمدید").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.fldSepamNum).Text("کد سپام/چک").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.fldTarikh).Text("تاریخ تضمین").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.fldMablagh).Text("مبلغ تضمین").Flex(3)
+                            )
+        //.Layout(Ext.Net.LayoutType.VBox)
+        //.LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+)
+
+
+<script type="text/javascript">
+    function TazminSetSize() {
+        App.SabtTazmin.setWidth(App.ContractWin.getWidth());
+        var grid = App.SabtTazmin.queryById('TazminGrid');
+        grid.setHeight(App.ContractWin.getHeight() - 365);
+    }
+    function setdefaultValueTypeTazmin() {
+        var CboTypeTazmin = App.SabtTazmin.queryById('CboTypeTazmin');
+        CboTypeTazmin.select(CboTypeTazmin.store.getAt(0));
+    }
+    function LoadTazmin() {
+        var SelectedRow = App.SabtTazmin.queryById('TazminGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Contracts/RegContract/DetailsTazamin',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var CboTypeTazmin = App.SabtTazmin.queryById('CboTypeTazmin');
+                    CboTypeTazmin.setValue(data.fldWarrantyTypeId);
+                    var CboTypeTamdid = App.SabtTazmin.queryById('CboTypeTamdid');
+                    CboTypeTamdid.setValue(data.fldTypeTamdid);
+                    var txtTarikh = App.SabtTazmin.queryById('txtTarikh');
+                    txtTarikh.setValue(data.fldTarikh);
+                    var txtSepamNum = App.SabtTazmin.queryById('txtSepamNum');
+                    txtSepamNum.setValue(data.fldSepamNum);
+                    var txtMablagh = App.SabtTazmin.queryById('txtMablagh');
+                    txtMablagh.setValue(data.fldMablagh);
+
+                    var fldId = App.SabtTazmin.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveTazmin() {
+        var CboTypeTazmin = App.SabtTazmin.queryById('CboTypeTazmin');
+        var CboTypeTamdid = App.SabtTazmin.queryById('CboTypeTamdid');
+        var txtTarikh = App.SabtTazmin.queryById('txtTarikh');
+        var txtSepamNum = App.SabtTazmin.queryById('txtSepamNum');
+        var txtMablagh = App.SabtTazmin.queryById('txtMablagh');
+        var fldId = App.SabtTazmin.queryById('fldId');
+        var er = false;
+
+        if (CboTypeTazmin.validate() == false) {
+            er = true;
+        }
+        if (CboTypeTamdid.validate() == false) {
+            er = true;
+        }
+        if (txtTarikh.validate() == false) {
+            er = true;
+        }
+        if (txtSepamNum.validate() == false) {
+            er = true;
+        }
+        if (txtMablagh.validate() == false) {
+            er = true;
+        }
+
+
+        if (er == true)
+            return;
+
+        var tamdid=false;
+        if(CboTypeTamdid.getValue()=="1")
+            tamdid=true;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Contracts/RegContract/SaveTazamin',
+            params: {
+                fldId: fldId.getValue(),
+                fldContractId: '@ViewBag.ContractId',
+                fldWarrantyTypeId: CboTypeTazmin.getValue(),
+                fldTypeTamdid:tamdid,
+                fldSepamNum: txtSepamNum.getValue(),
+                fldTarikh: txtTarikh.rawValue,
+                fldMablagh: parseInt(txtMablagh.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''))
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.SabtTazmin.queryById('TazminGrid').store.load();
+                App.RegContract.queryById('RegContractGrid').store.load();
+                if (data.Er != 1)
+                    ClearTazmin();
+            }
+
+        });
+    }
+    function DeleteTazmin() {
+        var SelectedRow = App.SabtTazmin.queryById('TazminGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Contracts/RegContract/DeleteTazamin',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtTazmin.queryById('TazminGrid').store.load();
+                                App.RegContract.queryById('RegContractGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearTazmin() {
+        App.SabtTazmin.queryById('fldId').setValue(0);
+        App.SabtTazmin.queryById('CboTypeTamdid').setValue("0");
+        App.SabtTazmin.queryById('CboTypeTazmin').setValue("");
+        App.SabtTazmin.queryById('txtTarikh').setValue("");
+        App.SabtTazmin.queryById('txtMablagh').setValue("");
+        App.SabtTazmin.queryById('txtSepamNum').setValue("");
+    }
+
+    function HelpTazmin() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Contracts/RegContract/HelpTazamin',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+
+    var addKeyMapSabtTazmin = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtTazmin.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtMablagh") {
+                        nextfld = App.SabtTazmin.queryById('btnSaveTazmin');
+                    }
+                    else /*if (keyfield.itemId != "txtFormooleCheck")*/ {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

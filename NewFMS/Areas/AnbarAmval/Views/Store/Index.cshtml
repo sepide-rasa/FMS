@@ -1,0 +1,182 @@
+﻿@model NewFMS.WCF_AnbarAmval.OBJ_Anbar
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using Ext.Net.Utilities;
+
+@{
+    var X = Html.X();
+}
+
+@(X.Panel()
+    .Title("انبارها")
+    .Border(false)
+    .ID("Store")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(li => li.AfterRender.Handler = "setHeightStore();")
+    .Items(
+        X.Panel()
+            .Border(false)
+            .AutoScroll(true)
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Stretch })
+            .Items(
+                X.GridPanel()
+                    .AutoScroll(true)
+                    .ItemID("GridStore")
+                    .BottomBar(X.PagingToolbar())
+                    .TopBar(
+                        Html.X().Toolbar()
+                            .Items(
+                                X.Button()
+                                    .Text("جدید")
+                                    .Icon(Ext.Net.Icon.Add)
+                                    .Listeners(li => li.Click.Handler = "NewStore();"),
+                                X.Button()
+                                    .Text("ویرایش")
+                                    .Icon(Ext.Net.Icon.Pencil)
+                                    .Listeners(li => li.Click.Handler = "EditStore();"),
+                                X.Button()
+                                    .Text("حذف")
+                                    .Icon(Ext.Net.Icon.Delete)
+                                    .Listeners(li => li.Click.Handler = "DeleteStore();"),
+                               X.Button()
+                                    .Text("راهنما")
+                                    .Icon(Ext.Net.Icon.Help)
+                                    .Listeners(l => { l.Click.Handler = "HelpStore();"; })
+                        )
+                    )
+                    .Store(
+                        X.StoreForModel()
+                            .Listeners(l => l.DataChanged.Handler = "App.Store.queryById('GridStore').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام انبار").Flex(4).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldPhone).Text("تلفن").Flex(4).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldAddress).Text("آدرس").Flex(6).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(6).Wrap(true)
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+                )
+            )
+)
+
+<script type="text/javascript">
+
+    function setHeightStore() {
+        App.Store.setSize(App.AnbarAmvalWin.getWidth() - 10, App.AnbarAmvalWin.getHeight() - 170);
+        App.Store.queryById('GridStore').setHeight(App.AnbarAmvalWin.getHeight() - 173);
+    }
+
+    function EditStore() {
+        var SelectedRow = App.Store.queryById('GridStore').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/AnbarAmval/Store/New',
+                params: {
+                    id: SelectedRow.data.fldId,
+                    containerId: "FirstTabAnbarAmval"
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function NewStore() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/AnbarAmval/Store/New',
+            params: {
+                id: 0,
+                containerId: "FirstTabAnbarAmval"
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function HelpStore() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/AnbarAmval/Store/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function DeleteStore() {
+        var SelectedRow = App.Store.queryById('GridStore').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/AnbarAmval/Store/Delete',
+                            params: {
+                                Id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1) {
+                                    ic = Ext.MessageBox.ERROR;
+                                }
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.Store.queryById('GridStore').store.load();
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

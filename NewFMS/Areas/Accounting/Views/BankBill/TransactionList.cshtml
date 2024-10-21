@@ -1,0 +1,76 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_BankBillDetails>
+@using Ext.Net.MVC;
+@{
+    var X = Html.X();
+}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X().Window()
+    .Modal(true)
+    .Width(900)
+    .Height(500)
+    .Title("لیست تراکنش ها")
+    .ID("TransactionList")
+    .Layout(Ext.Net.LayoutType.Fit)
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .AutoScroll(true)
+            .Layout(Ext.Net.LayoutType.Fit)
+            .Items(
+                X.GridPanel()
+                    .AutoScroll(true)
+                    .ItemID("GridTransactionList")
+                    .BottomBar(X.PagingToolbar())
+                    .Store(
+                        X.StoreForModel()
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("ReadTransactions"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                .ExtraParams(x => x.Add(new { HeaderId = @ViewBag.HeaderId }))
+                        )
+                        .PageSize(30)
+                        .RemoteFilter(false)
+                        .RemotePaging(false)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(false))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Hidden(true).Text("کد").Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldTarikh).Text("تاریخ").Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldTime).Text("زمان").Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldCodePeygiri).Text("کد پیگیری").Flex(4),                         
+                        Html.X().Column().DataIndex(Model, m => m.fldBedehkar).Text("بدهکار").Flex(4).Renderer("return value.toLocaleString()"),
+                        Html.X().Column().DataIndex(Model, m => m.fldBestankar).Text("بستانکار").Wrap(true).Flex(4).Renderer("return value.toLocaleString()"),
+                        Html.X().Column().DataIndex(Model, m => m.fldMandeh).Text("مانده").Flex(5).Renderer("return value.toLocaleString()")
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+            )
+        )
+)
+
+<script type="text/javascript">
+</script>

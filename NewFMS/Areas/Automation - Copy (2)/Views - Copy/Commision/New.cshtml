@@ -1,0 +1,301 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_OrganizationalPostsEjraee>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+<style>
+    .custom-icon {
+        margin-right: 124px !important;
+    }
+</style>
+
+@(Html.X().Window()
+    .Closable(true)
+    .CloseAction(CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Modal(true)
+    .Width(550)
+    .Resizable(false)
+        .ID("NewCommision")
+        .Listeners(l => l.AfterRender.Handler = "LoadCommision()")
+    .Title("ثبت احکام کاری")
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        Html.X().Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+                .Listeners(l => l.Click.Handler = "SaveCommision()"),
+        Html.X().Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+                .Listeners(l => l.Click.Handler = "App.NewCommision.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+                .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.PaddingSpec("0 0 0 5px")
+            .Items(
+                Html.X().FieldSet()
+                    .Border(true)
+                    .Defaults(new { Margin = 2 })
+                    .Title("احکام کاری")
+                        .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Stretch })
+                    
+                    .Items(
+                        X.Hidden()
+                            .ItemID("fldId"),
+                           X.FieldSet().Border(false)
+                                   .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 1 })
+                       .Items(
+                               X.TreePanel().MarginSpec("0 0 0 30px")
+                                    .ID("TreeGroup")
+                                    .Height(130)
+                                    .Width(400)
+                                    .AutoScroll(true)
+                                    .Border(true)
+                                    .ColSpan(4)
+                                    .RootVisible(false)
+                                    .SingleExpand(true)
+                                    .UseArrows(true)
+                                    .Store(
+                                        X.TreeStore()
+                                            .Model(
+                                                Html.X().Model()
+                                                    .Fields(
+                                                       X.ModelField().Name(Model, m => m.fldTitle)
+                                                        )
+                                                    )
+                                            .Proxy(
+                                                Html.X().AjaxProxy()
+                                                    .Url(Url.Action("NodeLoadGroup"))
+                                                )
+                                            .Listeners(l => l.BeforeLoad.Fn = "GetParam")
+                                        )
+                                    .ColumnModel(
+                                        X.RowNumbererColumn(),
+                                        X.TreeColumn().Text("پست سازمانی").DataIndex("fldTitle").Flex(6)
+                                         )
+                                    .Listeners(a =>
+                                    {
+                                        a.ItemClick.Handler = "GetGroupId(record);";
+                                    })
+                                    .Root(Html.X().Node().NodeID("0").Text("پست سازمانی").Expanded(true))
+                                    
+                       )
+                            , X.Label().ItemID("lblNameOrgan").MarginSpec("0 0 0 24px")
+                            ,X.FieldSet().Border(false)
+                            .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                            .Items(
+                                X.Label("نام و نام خانوادگی:"),
+                            X.TextField()
+                                .ItemID("txtNameFamily")
+                                .AllowBlank(false)
+                                .ReadOnly(true),
+                            X.Label("تاریخ شروع حکم:"),
+                            X.PDateField()
+                                .ItemID("txtStartDate")
+                                .AllowBlank(false)
+                                .Editable(false).Listeners(l => l.Focus.Handler = "ChangeAzTarikh()")
+                                .BlankText("لطفا تاریخ شروع را وارد کنید."),
+                            X.Label("تاریخ پایان حکم:"),
+                                X.PDateField()
+                                    .ItemID("txtEndDate").Listeners(l => l.Focus.Handler = "ChangeTaTarikh()")
+                                    .Editable(false)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا تاریخ پایان را وارد کنید."),
+                                X.Label("شماره حکم:"),
+                                X.TextField()
+                                    .ItemID("txtShomareHokm")
+                                    .AllowBlank(false)
+                                    .MaskRe("[0-9]"),
+                                        X.Label("حق امضا:"),
+                            X.ComboBox()
+                                    .ItemID("CboSign")
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا حق امضا را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .AllowBlank(false)
+                                .EmptyText("حق امضا...")
+                                .Items(
+                                    new ListItem("دارد", "1"),
+                                    new ListItem("ندارد", "0")
+                                    )
+                                .SelectedItems(new { Value = "1" }),
+                            X.Label("توضیحات:"),
+                            X.TextField()//.ColSpan(3).Width(377)
+                                .ItemID("txtDesc")
+                            )
+                        
+                    )
+            )
+    )
+)
+
+<script type="text/javascript">
+    var Organ_EjraeeId; 
+    var GetParam = function (store, operation, eOpts) {
+        var nodeId = operation.node.getId();
+        operation.params.nod = nodeId;
+    };
+
+    function ChangeAzTarikh() {
+        var txtStartDate = App.NewCommision.queryById('txtStartDate');
+        var txtEndDate = App.NewCommision.queryById('txtEndDate');
+        txtStartDate.setMaxValue(txtEndDate.getValue());
+        txtStartDate.maxText = "از تاریخ باید قبل از تا تاریخ " + txtEndDate.rawValue + "باشد";
+    }
+    function ChangeTaTarikh() {
+        var txtStartDate = App.NewCommision.queryById('txtStartDate');
+        var txtEndDate = App.NewCommision.queryById('txtEndDate');
+        txtEndDate.setMinValue(txtStartDate.getValue());
+        txtEndDate.minText = "تا تاریخ باید بعد از تاریخ " + txtStartDate.rawValue + "باشد";
+    }
+    function GetGroupId(record) {
+        Organ_EjraeeId = record.getId();
+        App.NewCommision.queryById('lblNameOrgan').setText("پست سازمانی: " + record.data.fldTitle);
+    };
+
+    function LoadCommision() {
+        App.NewCommision.queryById('txtNameFamily').setValue('@ViewBag.Name');
+        if ('@ViewBag.Id' != "0") {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/Commision/Detail',
+                params: {
+                    Id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    
+                    var CboSign = App.NewCommision.queryById('CboSign');
+                    CboSign.setValue(data.sign);
+
+                    var txtStartDate = App.NewCommision.queryById('txtStartDate');
+                    txtStartDate.setValue(data.fldStartDate);
+
+                    Organ_EjraeeId = data.fldOrganizPostEjraeeID;
+                    App.NewCommision.queryById('lblNameOrgan').setText("پست سازمانی: " + data.fldO_postEjraee_Title);
+
+                    var txtEndDate = App.NewCommision.queryById('txtEndDate');
+                    txtEndDate.setValue(data.fldEndDate);
+
+                    var txtShomareHokm = App.NewCommision.queryById('txtShomareHokm');
+                    txtShomareHokm.setValue(data.fldOrganicNumber);
+
+                    var txtDesc = App.NewCommision.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+
+                    var fldId = App.NewCommision.queryById('fldId');
+                    fldId.setValue(data.fldID);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+
+
+    }
+
+    function SaveCommision() {
+
+        var txtStartDate = App.NewCommision.queryById('txtStartDate');
+        var txtEndDate = App.NewCommision.queryById('txtEndDate');
+        var txtShomareHokm = App.NewCommision.queryById('txtShomareHokm');
+        var txtDesc = App.NewCommision.queryById('txtDesc');
+        var fldId = App.NewCommision.queryById('fldId');
+        var CboSign = App.NewCommision.queryById('CboSign');
+
+        var er = false;
+
+        if (txtStartDate.validate() == false) {
+            er = true;
+        }
+        if (txtEndDate.validate() == false) {
+            er = true;
+        }
+        if (CboSign.validate() == false) {
+            er = true;
+        }
+        if (txtShomareHokm.validate() == false) {
+            er = true;
+        }
+        var sign = false;
+        if (CboSign.getValue() == "1")
+            sign = true;
+        if (er == true)
+            return;
+
+        if (Organ_EjraeeId == 0) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا پست سازمانی را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+
+
+        var data = {
+            fldId: fldId.getValue(),
+            fldStartDate: txtStartDate.rawValue,
+            fldEndDate: txtEndDate.rawValue,
+            fldOrganicNumber: txtShomareHokm.getValue(),
+            fldDesc: txtDesc.getValue(),
+            fldOrganizPostEjraeeID: Organ_EjraeeId,
+            fldAshkhasID: '@ViewBag.AshkhasID',
+            fldSign: sign
+        };
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Automation/Commision/Save',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                var result = data;/* JSON.parse(data);*/
+                if (result.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.Commision.queryById('GridHeader').store.load();
+                App.Commision.queryById('GridDetail').store.load();
+                Ext.net.Mask.hide();
+                if (data.Er != 1)
+                    ClearCommision();
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+        });
+    }
+    function ClearCommision() {
+        App.NewCommision.queryById('fldId').setValue(0);
+        App.NewCommision.queryById('txtStartDate').setValue("");
+        App.NewCommision.queryById('txtEndDate').setValue("");
+        App.NewCommision.queryById('txtShomareHokm').setValue("");
+        App.NewCommision.queryById('txtDesc').setValue("");
+    }
+
+    function EnterNext() {
+        var keyfield = App.NewCommision.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        nextfld = keyfield.nextSibling().nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+    }
+</script>

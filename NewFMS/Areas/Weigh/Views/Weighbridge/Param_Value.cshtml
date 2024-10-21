@@ -1,0 +1,352 @@
+﻿@model IEnumerable<NewFMS.WCF_Weigh.OBJ_BaskoolParametr_Value>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+    var perr = false;
+    if (NewFMS.Models.Permission.haveAccess(1156, Session["Username"].ToString(), Session["Password"].ToString(), Convert.ToInt32(Session["OrganId"])))/*دسترسی پارامترهای باسکول*/
+    {
+        perr = true;
+    }
+}
+<style>
+    .x-mcombo-item-unchecked {
+        background-position: right;
+        padding-right: 20px;
+    }
+
+    .x-mcombo-item-checked {
+        background-position: right;
+        padding-right: 20px;
+    }
+</style>
+
+@(Html.X()
+    .Window()
+    .Modal(true)
+    .Listeners(li =>
+    {
+        li.Resize.Handler = "ResizeGrid()";
+        li.Render.Fn = "addKeyMapFactorsAffectingValues";
+    })
+    .Width(635)
+    .Title("تنظیمات پارامترها")
+    .ID("Param_Value")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .ButtonAlign(Ext.Net.Alignment.Center)
+    .Layout(LayoutType.Fit)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveFactorsAffectingValues();"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .ToolTip("کلید میانبر Esc")
+            .OnClientClick("App.Param_Value.hide();"))
+    .Items(
+         X.AntiForgeryField()
+            .Hidden(true),
+        X.Panel()
+            .Border(false)
+            .ItemID("pnlInfo")
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                
+                X.GridPanel()
+                    .AutoScroll(true)
+                    .Title("<div>لیست پارامترهای باسکول&nbsp;&nbsp<input id=btnnewparamBaskol style='font-family:tahoma;font-size:11px;display: none;' type='button' value='جدید' onclick='javascript:GotoNewParametrBaskol()'></div>")
+        //.Title("لیست عوامل مؤثر")
+                    .ItemID("GridParamBaskol")
+                    .MarginSpec("0 0 5px 0")
+                    .Frame(true)
+                    .Width(630)
+                   // .Height(420)
+                                .Listeners(l => l.AfterRender.Handler = "App.Param_Value.queryById('GridParamBaskol').setHeight(App.TasisatWin.getHeight() - 290)")
+                    .Store(
+                        X.StoreForModel()
+                            .AutoLoad(false)
+                                        .Listeners(l => l.Load.Handler = "LoadGridBaskoolParametr_Value();")
+                                    .Proxy(Html.X().AjaxProxy()
+                                .ActionMethods(l => l.Read = Ext.Net.HttpMethod.POST)
+                                    .Url(Url.Action("ReadBaskoolParametr_Value"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+        //.ExtraParams(x => x.Add(new { HeaderId = @ViewBag.HeaderId }))
+                                )
+                            .RemoteFilter(false)
+                            .RemotePaging(false)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(Html.X().CellEditing().ClicksToEdit(1)
+                     .Listeners(l =>
+                            {
+                                l.Edit.Fn = "nextcellRowFactorsAffecting";
+                                l.BeforeEdit.Fn = "LockOn";
+                            }
+                    ))
+                    .Plugins(X.FilterHeader().Remote(false))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldid).Text("کد").Hidden(true).Flex(1),
+                            Html.X().Column().DataIndex(Model, m => m.fldParam_ValueId).Text("کد ولیو").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldFaName).Text("عنوان").Flex(5).Wrap(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldEnName).Text("نام انگلیسی در فرمول").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.fldValue).Text("مقدار").Flex(5).Editor(
+                            Html.X().TextField()
+                                .ItemID("txtValue").MaxLength(200).EnforceMaxLength(true).EnableKeyEvents(true)
+                                .Listeners(l => l.SpecialKey.Handler = "checkhintkeyFactorsAffecting(e.getKey())")
+
+                        )
+                        ,
+                                        Html.X().ImageCommandColumn()
+                        .Listeners(l => l.Command.Fn = "ActionsInDelete")
+                        .Flex(1).Commands(
+                             Html.X().ImageCommand().CommandName("DelParam_Value").Icon(Ext.Net.Icon.Delete).ToolTip(tt => tt.Text = "حذف")
+                        )
+                    )
+                    .SelectionModel(
+                        Html.X().CheckboxSelectionModel().PruneRemoved(false)
+                        .ShowHeaderCheckbox(false)
+                            .Mode(SelectionMode.Multi).CheckOnly(true))
+                )
+        )
+)
+<script type="text/javascript">
+    var HintEnterFactorsAffecting = 0;
+
+    var LockOn = function (editor, e) {
+        App.Param_Value.queryById("GridParamBaskol").getSelectionModel().setLocked(true);
+    };
+
+
+    var SearchMatchCombo = function (record) {
+        return record.query = new RegExp(record.query.replace("(", "[(]").replace(")", "[)]"), 'i');
+    };
+
+    function checkhintkeyFactorsAffecting(e) {
+        if (e == 13) {
+            HintEnterFactorsAffecting = 1;
+        }
+    };
+    function ActionsInDelete(grid, command, record, row) {
+        if (command == 'DelParam_Value') {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Weigh/Weighbridge/DeleteParam_Value',
+                            params: {
+                                Id: record.data.fldParam_ValueId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                LoadGridBaskoolParametr_Value();
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+    }
+    var nextcellRowFactorsAffecting = function (a, b) {
+        if (b.field == "fldValue") {
+            if (HintEnterFactorsAffecting == 1) {
+                HintEnterFactorsAffecting = 0;
+                if (b.rowIdx == App.Param_Value.queryById("GridParamBaskol").store.count() - 1) {
+                    if (b.record.data.fldValue != "") {
+                        App.Param_Value.queryById("GridParamBaskol").getSelectionModel().setLocked(false);
+                        App.Param_Value.queryById("GridParamBaskol").getSelectionModel().select(b.rowIdx, true);
+                        SaveFactorsAffectingValues();
+                    }
+                    else {
+                        App.Param_Value.queryById("GridParamBaskol").getSelectionModel().setLocked(false);
+                        App.Param_Value.queryById("GridParamBaskol").getSelectionModel().deselect(b.rowIdx, true);
+                        SaveFactorsAffectingValues();
+                    }
+                }
+                else {
+                    if (b.record.data.fldValue != "") {
+                        App.Param_Value.queryById("GridParamBaskol").getSelectionModel().setLocked(false);
+                        App.Param_Value.queryById("GridParamBaskol").getSelectionModel().select(b.rowIdx, true);
+                    }
+                    else {
+                        App.Param_Value.queryById("GridParamBaskol").getSelectionModel().setLocked(false);
+                        App.Param_Value.queryById("GridParamBaskol").getSelectionModel().deselect(b.rowIdx, true);
+                    }
+                    App.Param_Value.queryById("GridParamBaskol").editingPlugin.startEdit(b.rowIdx + 1, 4);
+                }
+            }
+            else {
+                if (b.record.data.fldValue != "") {
+                    App.Param_Value.queryById("GridParamBaskol").getSelectionModel().setLocked(false);
+                    App.Param_Value.queryById("GridParamBaskol").getSelectionModel().select(b.rowIdx, true);
+                }
+                else {
+                    App.Param_Value.queryById("GridParamBaskol").getSelectionModel().setLocked(false);
+                    App.Param_Value.queryById("GridParamBaskol").getSelectionModel().deselect(b.rowIdx, true);
+                }
+            }
+        }
+    };
+
+    function GotoNewParametrBaskol(grid, command, record, rowIndex) {
+        App.Param_Value.body.mask("در حال بارگذاری...");
+        Ext.net.DirectMethod.request({
+            url: '/Weigh/Weighbridge/NewParametrBaskol',
+            params: {
+                id: 0
+            },
+            success: function (data) {
+                App.Param_Value.body.mask().hide();
+            }
+        });
+    };
+
+
+    function ResizeGrid() {
+        /*App.Param_Value.queryById('pnlInfo').setSize(App.Param_Value.getWidth() - 12, App.Param_Value.getHeight() - 61);
+        App.Param_Value.queryById('GridParamBaskol').setSize(App.Param_Value.getWidth() - 40, App.Param_Value.getHeight() - 148);*/
+        App.Param_Value.queryById('GridParamBaskol').getStore().getProxy().setExtraParam("BaskoolId", '@ViewBag.BaskoolId');
+        App.Param_Value.queryById('GridParamBaskol').store.load();
+    }
+
+    
+
+  
+    function LoadGridBaskoolParametr_Value() {
+        App.Param_Value.body.mask("در حال بارگذاری...");
+        Ext.net.DirectMethod.request({
+            url: '/Weigh/Weighbridge/LoadDataBaskoolParametr_Value',
+            params: {
+                BaskoolId: '@ViewBag.BaskoolId',
+            },
+            success: function (result) {
+                App.Param_Value.queryById('GridParamBaskol').store.loadData(result.Data);
+                if (result.checkId != null) {
+                    for (var j = 0; j < result.checkId.length; j++) {
+                        var index2 = App.Param_Value.queryById('GridParamBaskol').getStore().findExact("fldParam_ValueId", result.checkId[j]);
+                        App.Param_Value.queryById('GridParamBaskol').getSelectionModel().select(index2, true);
+                    }
+                   
+                }
+                App.Param_Value.body.mask().hide();
+            }
+        });
+    }
+
+    function SaveFactorsAffectingValues() {
+        var Grid = App.Param_Value.queryById('GridParamBaskol');
+        var GridRow = Grid.getSelectionModel().getSelection();
+
+        var DetailsArray = new Array();
+        var er = false;
+
+        if (er == true)
+            return;
+
+        if (GridRow.length == 0) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا حداقل یک  پارامتر را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+            for (var i = 0; i < GridRow.length ; i++) {
+                if (GridRow[i].data.fldValue == "") {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا مقادیر را وارد کنید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    return;
+                }
+                else {
+                    DetailsArray.push({
+                        "fldId": GridRow[i].data.fldParam_ValueId,
+                        "fldParametrBaskoolId": GridRow[i].data.fldid,
+                        "fldValue": GridRow[i].data.fldValue,
+                        "fldBaskoolId": '@ViewBag.BaskoolId'
+                    });
+                }
+            }
+
+        var data = {
+            DetailsArray1: JSON.stringify(DetailsArray),
+        };
+        App.Param_Value.body.mask("در حال ذخیره سازی");
+        $.ajax({
+            type: "POST",
+            url: '/Weigh/Weighbridge/SaveParametr_Value',
+            datatype: "json",
+            data: data,
+            /*contentType: 'application/json',*/
+            success: function (result) {
+                var ic = Ext.MessageBox.INFO;
+                if (result.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.Param_Value.body.mask().hide();
+                LoadGridBaskoolParametr_Value();
+            },
+            failure: function () {
+            }
+        });
+    }
+
+    function ClearFactorsAffectingValues() {
+        App.Param_Value.queryById('GridParamBaskol').getStore().getProxy().setExtraParam("HeaderId", 0);
+        App.Param_Value.queryById('GridParamBaskol').store.load();
+    }
+
+    var addKeyMapFactorsAffectingValues = function (cmp) {
+        if ('@perr' == 'True') {
+            $('#btnnewparamBaskol').show();
+        }
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.Param_Value.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    App.Param_Value.queryById("GridParamBaskol").editingPlugin.startEdit(0, 4);
+                        return;
+                    
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

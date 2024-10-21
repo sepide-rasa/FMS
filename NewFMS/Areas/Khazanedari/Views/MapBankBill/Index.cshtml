@@ -1,0 +1,597 @@
+﻿@model NewFMS.Models.MapBankBill
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+
+@{
+    var X = Html.X();
+}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X().Panel()
+    .ID("MapBankBill")
+    .Title("مدیریت تراکنش های بانکی")
+    .Closable(true)
+    .Listeners(li => { li.AfterRender.Handler = "MapBankBillSetSize();"; li.Render.Fn = "addKeyMapMapBankBill"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Height(500)
+            .Items(
+                X.FieldSet()
+                    .Border(false)
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 7 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Hidden().ItemID("AccountNumId"),
+                        X.Hidden().ItemID("AccountNum"),                        
+                        X.Label("بانک:"),
+                        X.ComboBox()
+                            .AutoFocus(true)
+                            .ItemID("CboBank")
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا بانک مورد نظر را انتخاب کنید.")
+                            .Listeners(l => l.Change.Handler = "if(App.MapBankBill.queryById('CboBank').getValue()!=null){App.MapBankBill.queryById('CboAccountNum').clearValue();App.MapBankBill.queryById('CboAccountNum').store.load();}")
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("بانک...")
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetBank"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            ),
+                        X.Label("شماره حساب:"),
+                        X.ComboBox()
+                            .ItemID("CboAccountNum")
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا شماره حساب را انتخاب کنید.")
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("شماره حساب...")
+                            .Store(X.Store()
+                                .AutoLoad(false)
+                                .Listeners(l => l.Load.Handler = "setDefaultCboAccountNumMap()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetAccountNum"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                                .Parameters(ps => ps.Add(new StoreParameter("BankId", "App.MapBankBill.queryById('CboBank').getValue()", ParameterMode.Raw)))
+                                .Parameters(ps => ps.Add(new StoreParameter("FiscalYearId", ViewBag.FiscalYearId, ParameterMode.Raw)))
+                            ),
+                        X.Label("نوع تراکنش:"),
+                        X.ComboBox()
+                            .ItemID("CboTransactionType")
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع تراکنش انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .EmptyText("نوع تراکنش ...")
+                            .SelectedItems(new  { Value="1"})
+                            .Items(
+                                new ListItem("واریز", "1"),
+                                new ListItem("پرداخت", "2")
+                            ),
+                        X.Button()
+                            .Text("جستجو")
+                            .Icon(Ext.Net.Icon.Magnifier)
+                            .Listeners(l => { l.Click.Handler = "ReadGridsForMap()"; })
+                    ),
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 3 })
+                    .Items(
+                        X.GridPanel()
+                            .ItemID("BankGrid")
+                            .Title("تراکنش های بانک")
+                            .BottomBar(X.PagingToolbar())
+                            .TitleAlign(TitleAlign.Right)
+                            .Padding(5)
+                            .Frame(true)
+                            .Store(
+                                X.StoreFor(Model.BankBill)
+                                    .Listeners(l => l.Load.Handler = "Ext.net.Mask.hide();")
+                                    .AutoLoad(false)
+                                    .Proxy(Html.X().AjaxProxy()
+                                        .Url(Url.Action("ReadBankBillNotMapped"))
+                                        .Reader(Html.X().JsonReader().Root("data"))
+                                    )
+                                    .PageSize(100)
+                                    .RemoteFilter(false)
+                                    .RemotePaging(false)
+                                    .Parameters(ps => ps.Add(new StoreParameter("FiscalYearId", ViewBag.FiscalYearId, ParameterMode.Raw)))
+                                    .Parameters(ps => ps.Add(new StoreParameter("TransactionType", "App.MapBankBill.queryById('CboTransactionType').getValue()", ParameterMode.Raw)))                                    
+                                    .Parameters(ps => ps.Add(new StoreParameter("ShomareHesabId", "App.MapBankBill.queryById('CboAccountNum').getValue()", ParameterMode.Raw)))
+                            )
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+                            .Plugins(X.FilterHeader().Remote(false))
+                            .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model.BankBill, m => m.fldCodePeygiri).Text("کد پیگیری").Flex(3),
+                                Html.X().Column().DataIndex(Model.BankBill, m => m.fldTarikh).Text("تاریخ").Flex(3),
+                                Html.X().Column().DataIndex(Model.BankBill, m => m.fldBedehkar).Text("بدهکار").Flex(5).Renderer("return value.toLocaleString()"),
+                                Html.X().Column().DataIndex(Model.BankBill, m => m.fldBestankar).Text("بستانکار").Flex(5).Renderer("return value.toLocaleString()"),
+                                Html.X().Column().DataIndex(Model.BankBill, m => m.fldMandeh).Text("مانده").Flex(7).Renderer("return value.toLocaleString()")
+                            )
+                            .SelectionModel(
+                                Html.X().CheckboxSelectionModel()
+                                    .Mode(Ext.Net.SelectionMode.Single)
+                                    .ShowHeaderCheckbox(false)
+                            ),
+                        X.Panel().Border(false).Width(5),
+                        X.GridPanel()
+                            .Title("اسناد حسابداری")
+                            .TitleAlign(TitleAlign.Right)
+                            .ItemID("AccountingGrid")
+                            .BottomBar(X.PagingToolbar())
+                            .Padding(5)
+                            .Frame(true)
+                            .Store(
+                                X.StoreFor(Model.DocDetails)
+                                    .AutoLoad(false)
+                                    .Proxy(Html.X().AjaxProxy()
+                                        .Url(Url.Action("ReadDocDetailsNotMapped"))//توی این سلکت مانده اگر بدهکار باشد در ستون بدهکار و اگر بستانکار باشد در ستون بستانکار
+                                        .Reader(Html.X().JsonReader().Root("data"))
+                                    )
+                                    .PageSize(100)
+                                    .RemoteFilter(false)
+                                    .RemotePaging(false)
+                                    .Parameters(ps => ps.Add(new StoreParameter("FiscalYearId", ViewBag.FiscalYearId, ParameterMode.Raw)))
+                                    .Parameters(ps => ps.Add(new StoreParameter("TransactionType", "App.MapBankBill.queryById('CboTransactionType').getValue()", ParameterMode.Raw))) 
+                                    .Parameters(ps => ps.Add(new StoreParameter("ShomareHesabId", "App.MapBankBill.queryById('CboAccountNum').getValue()", ParameterMode.Raw)))
+                            )
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+                            .Plugins(X.FilterHeader().Remote(false))
+                            .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model.DocDetails, m => m.fldNameCoding).Text("عنوان حساب").Flex(3).Wrap(true),
+                                Html.X().Column().DataIndex(Model.DocDetails, m => m.fldName).Text("پرونده").Flex(3).Wrap(true),
+                                Html.X().Column().DataIndex(Model.DocDetails, m => m.fldSerialFish).ID("ColNumber").Text("سریال فیش").Flex(2),
+                                Html.X().Column().DataIndex(Model.DocDetails, m => m.fldBedehkar).Text("بدهکار").Flex(3).Renderer("return value.toLocaleString()"),
+                                Html.X().Column().DataIndex(Model.DocDetails, m => m.fldBestankar).Text("بستانکار").Flex(3).Renderer("return value.toLocaleString()")//,
+                                //Html.X().Column().DataIndex(Model.DocDetails, m => m.fldMande).Text("مانده").Flex(3).Renderer("return value.toLocaleString()")                                
+                            )
+                            .SelectionModel(
+                                Html.X().CheckboxSelectionModel()
+                                    .Mode(Ext.Net.SelectionMode.Multi)
+                                    .ShowHeaderCheckbox(false)
+                                    .CheckOnly(true)
+                            )
+                    ),
+                X.Panel()
+                    .Border(false)
+                    .Padding(10)
+                    .Items(
+                        X.Button()
+                        .Text("تأیید")
+                        .Icon(Ext.Net.Icon.Tick)
+                        .Listeners(l => { l.Click.Handler = "ConfirmMap()"; })
+                    )
+            )
+        )
+)
+
+<script type="text/javascript">
+    function ReadGridsForMap() {
+        if (App.MapBankBill.queryById('CboAccountNum').validate()) {
+            Ext.net.Mask.show({ msg: 'در حال بارگزاری...' });
+            App.MapBankBill.queryById('BankGrid').store.load();
+            App.MapBankBill.queryById('AccountingGrid').store.load();
+            App.MapBankBill.queryById('AccountNumId').setValue(App.MapBankBill.queryById('CboAccountNum').getValue());
+            App.MapBankBill.queryById('AccountNum').setValue(App.MapBankBill.queryById('CboAccountNum').getDisplayValue());
+            if (App.MapBankBill.queryById('CboTransactionType').getValue() == 1) {
+                App.ColNumber.setText("سریال فیش");
+            }
+            else {
+                App.ColNumber.setText("شماره چک");
+            }
+        }
+    }
+
+    function setDefaultCboAccountNumMap() {
+        if (App.MapBankBill.queryById('CboAccountNum').store.count() > 0) {
+            App.MapBankBill.queryById('CboAccountNum').select(App.MapBankBill.queryById('CboAccountNum').store.getAt(0));
+        }
+    }
+
+    function MapBankBillSetSize() {
+        App.MapBankBill.setWidth(App.KhazanedariWin.getWidth());
+        App.MapBankBill.queryById('AccountingGrid').setSize((App.KhazanedariWin.getWidth() - 25) / 2, App.KhazanedariWin.getHeight() - 249);
+        App.MapBankBill.queryById('BankGrid').setSize((App.KhazanedariWin.getWidth() - 25) / 2, App.KhazanedariWin.getHeight() - 249);
+    }
+
+    function SaveVosouli(CheckArray, DocDate) {
+        for (var i = 0; i < CheckArray.length; i++) {
+            var DocumentRecord_DetailsArray = new Array();
+            DocumentRecord_DetailsArray.push({
+                fldId: 0,
+                fldCodingId: '@ViewBag.fldCodingTarafEntezami_Vosoul',
+                fldDescription: "بابت دریافت چک از " + CheckArray[i].fldNameShakhs + "(اعلام عوارض شماره " + CheckArray[i].fldElamAvarezId + ")",
+                fldBedehkar: CheckArray[i].fldMablagh,
+                fldBestankar: 0,
+                fldCenterCoId: 0,
+                fldCaseTypeId: 3,
+                fldCaseId: 0,
+                fldDocument_HedearId: 0,
+                fldSourceId: CheckArray[i].fldId,
+                fldOrder: 0
+            });
+            DocumentRecord_DetailsArray.push({
+                fldId: 0,
+                fldCodingId: '@ViewBag.fldCodingEntezami_Vosoul',
+                fldDescription: "بابت دریافت چک از " + CheckArray[i].fldNameShakhs + "(اعلام عوارض شماره " + CheckArray[i].fldElamAvarezId + ")",
+                fldBedehkar: 0,
+                fldBestankar: CheckArray[i].fldMablagh,
+                fldCenterCoId: 0,
+                fldCaseTypeId: 3,
+                fldCaseId: 0,
+                fldDocument_HedearId: 0,
+                fldSourceId: CheckArray[i].fldId,
+                fldOrder: 1
+            });
+            var data =
+            {
+                fldId: 0,
+                fldDocumentNum: 0,
+                fldFiscalYearId: '@ViewBag.FiscalYearId',
+                fldYear: '@ViewBag.Year',
+                fldArchiveNum: null,
+                fldDescriptionDocu: "بابت تعدیل حساب انتظامی در جریان وصول",
+                fldTarikhDocument: DocDate,
+                fldType: 1,
+                fldTypeSanad: 2,
+                fldShomareFaree: null,
+                fldEdit: 2,
+                DocumentRecord_DetailsArray: DocumentRecord_DetailsArray
+            };
+            Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+            $.ajax({
+                type: "POST",
+                url: '/Khazanedari/RegisterDocs/Save',
+                datatype: "json",
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                success: function (result) {
+                    if (result.Er == 1) {
+                        Ext.net.Mask.hide();
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: result.Msg,
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                        return;
+                    }
+                    else if (i == CheckArray.length) {
+                        Ext.net.Mask.hide();
+                        Ext.MessageBox.show({
+                            title: "عملیات موفق",
+                            msg: "عملیات با موفقیت انجام شد.",
+                            icon: Ext.MessageBox.INFO,
+                            buttons: Ext.MessageBox.OK
+                        });
+                        ReadGridsForMap();
+                    }
+                },
+                failure: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+
+    function ConfirmMapforCheck() {
+        var BankSelected = App.MapBankBill.queryById('BankGrid').getSelectionModel().getLastSelected();
+        var ArticleSelected = App.MapBankBill.queryById('AccountingGrid').getSelectionModel().getSelection();
+        var DocumentRecord_DetailsArray = new Array();
+        var CheckArray = new Array();
+
+        if (BankSelected != null && ArticleSelected.length > 0) {
+            var DocDetailsMablagh = 0;
+            var BankMablagh =  BankSelected.data.fldBedehkar == 0 ? BankSelected.data.fldBestankar : BankSelected.data.fldBedehkar;
+            for (var i = 0;i<ArticleSelected.length;i++){
+                var Mablagh = ArticleSelected[i].data.fldBedehkar == 0 ? ArticleSelected[i].data.fldBestankar : ArticleSelected[i].data.fldBedehkar;
+                DocDetailsMablagh = DocDetailsMablagh + Mablagh;
+                CheckArray.push({
+                    fldId: ArticleSelected[i].data.fldSerialFish,
+                    fldMablagh: Mablagh,
+                    fldNameShakhs: ArticleSelected[i].data.fldNameShakhs,
+                    fldElamAvarezId: ArticleSelected[i].data.fldElamAvarezId
+                });
+                DocumentRecord_DetailsArray.push({
+                    fldId: 0,
+                    fldCodingId: '@ViewBag.fldCodingCheck',
+                    fldDescription: "بابت دریافت چک از " + ArticleSelected[i].data.fldNameShakhs + "(اعلام عوارض شماره " + ArticleSelected[i].data.fldElamAvarezId + ")",
+                    fldBedehkar: 0,
+                    fldBestankar: Mablagh,
+                    fldCenterCoId: 0,
+                    fldCaseTypeId: 3,
+                    fldCaseId: 0,
+                    fldDocument_HedearId: 0,
+                    fldSourceId: ArticleSelected[i].data.fldSerialFish,
+                    fldOrder: i + 1
+                });
+            }
+            if (DocDetailsMablagh == BankMablagh) {
+                DocumentRecord_DetailsArray.push({
+                    fldId: 0,
+                    fldCodingId: '@ViewBag.fldCodingBank',
+                    fldDescription: "واریز چک به حساب شماره " + App.MapBankBill.queryById('AccountNum').getValue(),
+                    fldBedehkar: BankMablagh,
+                    fldBestankar: 0,
+                    fldCenterCoId: 0,
+                    fldCaseTypeId: 5,
+                    fldCaseId: 0,
+                    fldDocument_HedearId: 0,
+                    fldSourceId: App.MapBankBill.queryById('AccountNumId').getValue(),
+                    fldOrder: DocumentRecord_DetailsArray.length + 1
+                });
+
+                var data = {
+                    fldId: 0,
+                    fldDocumentNum: 0,
+                    fldFiscalYearId: '@ViewBag.FiscalYearId',
+                    fldYear: '@ViewBag.Year',
+                    fldArchiveNum: null,
+                    fldDescriptionDocu: "بابت دریافتی از محل وصول چک و واریز آن به حساب درآمدی " + App.MapBankBill.queryById('AccountNum').getValue(),
+                    fldTarikhDocument: BankSelected.data.fldTarikh,
+                    fldType: 1,
+                    fldTypeSanad: 2,
+                    fldShomareFaree: null,
+                    fldEdit: 2,
+                    DocumentRecord_DetailsArray: DocumentRecord_DetailsArray,
+                    BankBillId: BankSelected.data.fldId,
+                    Type: 3
+                };
+
+                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                $.ajax({
+                    type: "POST",
+                    url: '/Khazanedari/RegisterDocs/Save',
+                    datatype: "json",
+                    data: JSON.stringify(data),
+                    contentType: 'application/json',
+                    success: function (result) {
+                        if (result.Er == 1) {
+                            Ext.net.Mask.hide();
+                            Ext.MessageBox.show({
+                                title: result.MsgTitle,
+                                msg: result.Msg,
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                        else {
+                            return SaveVosouli(CheckArray, BankSelected.data.fldTarikh);
+                        }
+                    },
+                    failure: function () {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "مبالغ رکوردهای انتخاب شده باید تراز باشند.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا رکوردهای مورد نظر خود جهت همسان سازی را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ConfirmMap() {
+        var BankSelected = App.MapBankBill.queryById('BankGrid').getSelectionModel().getLastSelected();
+        var ArticleSelected = App.MapBankBill.queryById('AccountingGrid').getSelectionModel().getSelection();
+        var TransactionType = App.MapBankBill.queryById('CboTransactionType').getValue();
+        var DocumentRecord_DetailsArray = new Array();
+        if (TransactionType == 2) {
+            return ConfirmMapforCheck();
+        }
+
+        if (BankSelected != null && ArticleSelected.length > 0) {
+            var DocDetailsMablagh = 0;
+            var BankMablagh = BankSelected.data.fldBedehkar == 0 ? BankSelected.data.fldBestankar : BankSelected.data.fldBedehkar;
+            for (var i = 0; i < ArticleSelected.length; i++) {
+                var Mablagh = ArticleSelected[i].data.fldBedehkar == 0 ? ArticleSelected[i].data.fldBestankar : ArticleSelected[i].data.fldBedehkar;
+                DocDetailsMablagh = DocDetailsMablagh + Mablagh;
+                DocumentRecord_DetailsArray.push({
+                    fldId: 0,
+                    fldCodingId: '@ViewBag.fldCodingHesab',
+                    fldDescription: "بابت پرداخت فیش درآمدی شماره " + ArticleSelected[i].data.fldSerialFish + " توسط " + ArticleSelected[i].data.fldNameShakhs,
+                    fldBedehkar: 0,
+                    fldBestankar: Mablagh,
+                    fldCenterCoId: 0,
+                    fldCaseTypeId: 6,
+                    fldCaseId: 0,
+                    fldDocument_HedearId: 0,
+                    fldSourceId: ArticleSelected[i].data.fldSerialFish,
+                    fldOrder: i + 1
+                });
+            }
+            if (DocDetailsMablagh == BankMablagh) {
+                DocumentRecord_DetailsArray.push({
+                    fldId: 0,
+                    fldCodingId: '@ViewBag.fldCodingBank',
+                    fldDescription: "واریز فیش به حساب شماره " + App.MapBankBill.queryById('AccountNum').getValue(),
+                    fldBedehkar: BankMablagh,
+                    fldBestankar: 0,
+                    fldCenterCoId: 0,
+                    fldCaseTypeId: 5,
+                    fldCaseId: 0,
+                    fldDocument_HedearId: 0,
+                    fldSourceId: App.MapBankBill.queryById('AccountNumId').getValue(),
+                    fldOrder: DocumentRecord_DetailsArray.length + 1
+                });
+
+                var data = {
+                    fldId: 0,
+                    fldDocumentNum: 0,
+                    fldFiscalYearId: '@ViewBag.FiscalYearId',
+                    fldYear: '@ViewBag.Year',
+                    fldArchiveNum: null,
+                    fldDescriptionDocu: "واریز فیش به حساب شماره " + App.MapBankBill.queryById('AccountNum').getValue(),
+                    fldTarikhDocument: BankSelected.data.fldTarikh,
+                    fldType: 1,
+                    fldTypeSanad: 2,
+                    fldShomareFaree: null,
+                    fldEdit: 2,
+                    DocumentRecord_DetailsArray: DocumentRecord_DetailsArray,
+                    BankBillId: BankSelected.data.fldId,
+                    Type: 6
+                };
+
+                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                $.ajax({
+                    type: "POST",
+                    url: '/Khazanedari/RegisterDocs/Save',
+                    datatype: "json",
+                    data: JSON.stringify(data),
+                    contentType: 'application/json',
+                    success: function (result) {
+                        var ic = Ext.MessageBox.INFO;
+                        if (result.Er == 1)
+                            ic = Ext.MessageBox.ERROR;
+                        Ext.MessageBox.show({
+                            title: result.MsgTitle,
+                            msg: result.Msg,
+                            icon: ic,
+                            buttons: Ext.MessageBox.OK
+                        });
+                        if (result.Er != 1) {
+                            ReadGridsForMap();
+                        }
+                        Ext.net.Mask.hide();
+                    },
+                    failure: function () {
+                        Ext.net.Mask.hide();
+                    }
+                });
+                @*Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Khazanedari/MapBankBill/Save',
+                    params: {
+                        BankBillId: BankSelected.data.fldId,
+                        DocDetailsIds: DocDetailsIds,
+                        FiscalYearId: '@ViewBag.FiscalYearId'
+                    },
+                    success: function (data) {
+                        var ic = Ext.MessageBox.INFO;
+                        if (data.Er == 1) {
+                            ic = Ext.MessageBox.ERROR;
+                        }
+                        Ext.MessageBox.show({
+                            title: data.MsgTitle,
+                            msg: data.Msg,
+                            icon: ic,
+                            buttons: Ext.MessageBox.OK
+                        });
+                        if (data.Er != 1) {
+                            ReadGridsForMap();
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });*@
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "مبالغ رکوردهای انتخاب شده باید تراز باشند.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا رکوردهای مورد نظر خود جهت همسان سازی را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    var addKeyMapMapBankBill = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.MapBankBill.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "CboAccountNum") {
+                        ReadGridsForMap();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>
+
+

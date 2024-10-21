@@ -1,0 +1,144 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Panel()
+    .Closable(true)
+    .AutoScroll(true)
+    .Border(false)
+    .Title("گزارش")
+    .CloseAction(CloseAction.Destroy)
+    .Listeners(li => { li.AfterRender.Handler = "setSizePnlRptBujePishnahadi()"; /*li.Render.Fn = "addKeyMapRptBujePishnahadi";*/ })
+    .Layout(LayoutType.Fit)
+        .ID("RptBujePishnahadi" + (string)ViewBag.state)
+    .Items(
+        X.Panel()
+            .AutoScroll(true)
+            .Border(false)
+        //.Layout(LayoutType.VBox)
+        //.LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.Panel()
+                    .AutoScroll(true)
+                    .Border(false)
+                    .ButtonAlign(Alignment.Center)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Buttons(
+                        Html.X().Button()
+                            .Text("چاپ")
+                            .Icon(Ext.Net.Icon.Printer)
+                            .Listeners(l => l.Click.Handler = "PrintRptBujePishnahadi()"),
+                        Html.X().Button()
+                            .Text("خروج")
+                            .Icon(Ext.Net.Icon.DoorOut)
+
+                                                .Listeners(l => l.Click.Handler = "var tabId = App.FirstTabBudje.activeTab.id;Ext.getCmp(tabId).destroy();")
+                    )
+                    .Items(
+                         X.Panel()
+                                    .Border(false)
+                                        .Layout(LayoutType.Table)
+                                        .LayoutConfig(new TableLayoutConfig { Columns = 3 })
+                                    .Defaults(new { Margin = 2 })
+                                        .Items(
+                                        X.Label("نحوه نمایش:"),
+                                         X.ComboBox()
+        // X.MultiCombo()
+                                                    .ItemID("Cbodigits")
+                                                .TypeAhead(true)
+                                                .AllowBlank(false)
+                                                .BlankText("لطفا نحوه نمایش انتخاب کنید.")
+                                                .QueryMode(DataLoadMode.Local)
+                                                .TriggerAction(TriggerAction.All)
+                                                    .EmptyText(" ...")
+                                                    .Listeners(l => l.AfterRender.Handler = "setCbodigits()")
+                                                .Items(
+                                                    new ListItem("همه ارقام", "1"),
+                                                        new ListItem("هزار ریال", "1000"),
+                                                        new ListItem("میلیون ریال", "1000000")
+                                                        ),
+                        X.FieldSet()
+                            .Border(false)
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                            .Defaults(new { Margin = 2 })
+                            .Items(
+                              X.Checkbox().ItemID("CheckZero").RTL(false),
+                                X.Label("نمایش مقادیر صفر")
+                            )
+                            )
+                    ),
+                Html.X().Panel()
+                    .Border(true)
+                    .Listeners(L => L.AfterRender.Handler = "setSizePnlRptBujePishnahadi2()")
+                    .AutoScroll(true)
+                    .ItemID("RptPanel2")
+            )
+    )
+)
+
+<script type="text/javascript">
+    function setCbodigits() {
+        Ext.getCmp("RptBujePishnahadi" + '@ViewBag.state').queryById('Cbodigits').setValue("1");
+    }
+    function setSizePnlRptBujePishnahadi2() {
+        Ext.getCmp("RptBujePishnahadi" + '@ViewBag.state').queryById('RptPanel2').setSize(App.BudjeWin.getWidth() - 20, App.BudjeWin.getHeight() - 240);
+    }
+
+    function setSizePnlRptBujePishnahadi() {
+        Ext.getCmp("RptBujePishnahadi" + '@ViewBag.state').setSize(App.BudjeWin.getWidth() - 20, App.BudjeWin.getHeight() - 170);
+        if ('@ViewBag.State' == 1)
+            Ext.getCmp("RptBujePishnahadi" + '@ViewBag.state').setTitle("گزارش بودجه پیشنهادی");
+        else if ('@ViewBag.State' == 2)
+            Ext.getCmp("RptBujePishnahadi" + '@ViewBag.state').setTitle("گزارش بودجه متمم");
+    }
+
+    function PrintRptBujePishnahadi() {
+        var tabId = App.FirstTabBudje.activeTab.id;
+
+        var CheckZero = Ext.getCmp(tabId).queryById('CheckZero');
+        var Cbodigits = Ext.getCmp(tabId).queryById('Cbodigits');
+
+        var height = App.BudjeWin.getHeight() - 245;
+
+        if (tabId.substring(17) == 1) {
+            Ext.getCmp(tabId).queryById('RptPanel2').update("<center><object class='se-pre-con' style='width:100%;height:" + height +
+                "px;border: 1px solid #ccc;' type='application/pdf' data='/Budget/RptBujePishnahadi/PdfBujePishnahadi?PrintZero=" + CheckZero.getValue() + "&Year=" + '@ViewBag.Year' + "&digits=" + Cbodigits.getValue() + "'></object></center>");
+        }
+        if (tabId.substring(17) == 2) {
+            Ext.getCmp(tabId).queryById('RptPanel2').update("<center><object class='se-pre-con' style='width:100%;height:" + height +
+                "px;border: 1px solid #ccc;' type='application/pdf' data='/Budget/RptBujePishnahadi/PdfBujeMotamam?PrintZero=" + CheckZero.getValue() + "&Year=" + '@ViewBag.Year' + "&digits=" + Cbodigits.getValue() + "'></object></center>");
+        }
+    }
+
+    @*var addKeyMapRptBujePishnahadi = function (cmp) {
+
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = Ext.getCmp("RptBujePishnahadi" + '@ViewBag.state').queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+
+                    if (keyfield.itemId == "Cbodigits") {
+                        PrintRptBujePishnahadi();
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                        nextfld.focus();
+
+                    }
+                }
+            }]
+        });
+    };*@
+</script>

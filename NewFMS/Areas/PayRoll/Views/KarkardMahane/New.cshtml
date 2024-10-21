@@ -1,0 +1,1130 @@
+﻿@model IEnumerable<NewFMS.WCF_Common_Pay.OBJ_Items_Estekhdam>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net.Utilities
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+
+
+
+@(X.Window().Title("کارکرد ماهانه جدید").Modal(true).Border(false)//.Listeners(li => li.AfterRender.Handler = "LoadHokm();")
+            .ID("NewKarkardMahane").Listeners(li => { li.Render.Fn = "addKeyMapNewKarkardMahane"; })
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+          .Width(700)
+        // .Height(580)
+    .Items(
+            X.FormPanel()
+                .ButtonAlign(Ext.Net.Alignment.Center)
+        .Border(false)
+        //.KeyMap(Html.X().KeyMap()
+        //.Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+        //.Binding(b =>
+        //{
+        //    b.Add(Html.X().KeyBinding()
+        //    .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+        //    .Handler("SaveKarkardMahane(); ")
+        //    );
+
+        //}))
+        .DefaultButton("btn")
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+        .Layout(Ext.Net.LayoutType.VBox)
+        .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+        .Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveKarkard")
+            //.ToolTip("کلید میانبر F8")
+            .Listeners(l =>
+            {
+                l.Click.Handler = "checkSaveKarkardMahane();";
+
+            })
+        //.ItemID("btnSave"),
+        //X.Button().Text("محاسبه مجدد").Icon(Ext.Net.Icon.ArrowRefresh)
+        //.Listeners(l =>
+        //{
+        //    l.Click.Handler = "Calc();";
+
+            //})
+            .ItemID("btnRefresh"),
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)//.ToolTip("کلید میانبر Esc")
+                .OnClientClick("App.NewKarkardMahane.destroy()")
+        )
+        .Items(
+                X.FieldSet().ItemID("Panel").Title("اطلاعات کارکرد ماهانه")
+            .Layout(Ext.Net.LayoutType.Table)
+            .Border(true)
+            .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+            .Defaults(new { Margin = 2 })
+            .Items(
+                   X.Hidden().ItemID("fldId")
+                    , X.Hidden().ItemID("fldGhati")
+                    , X.Label().Text("نام و نام خانوادگی:")
+                    , X.TextField()
+                        .ItemID("txtName")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(true)
+                        , X.Label().Text("کد ملی:")
+                        , X.TextField()
+                        .ItemID("txtNationalCode")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(true)
+                        , X.Label().Text("شماره پرسنلی:")
+                        , X.TextField()
+                        .ItemID("txtShomarePersoneli")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(true)
+                        , X.Label().Text("سال:")
+                        , X.ComboBox()
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .ItemID("CboYear")
+                            .DisplayField("fldYear")
+                            .ValueField("fldYear")
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .AllowBlank(false)
+                            .BlankText("لطفا سال را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .Store(X.Store().Listeners(l => l.Load.Handler = "LoadKarkardMahane()")
+                            .Model(X.Model()
+                            .IDProperty("fldYear")
+                                        .Fields(
+                                            new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" }
+                                        )
+                                    )
+                                        .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetSalVorod"))
+                                                        .Reader(X.JsonReader().Root("data"))
+
+                                                )
+                        )
+                        .Listeners(l => l.Select.Handler = "setYearCalss()")
+                        , X.Label().Text("ماه:")
+                        , X.ComboBox()
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ItemID("CboMonth")
+                        .Editable(false)
+                        .TypeAhead(true)
+                        .BlankText("لطفا ماه را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .Items(
+                            new ListItem("فروردین", "1"),
+                            new ListItem("اردیبهشت", "2"),
+                            new ListItem("خرداد", "3"),
+                            new ListItem("تیر", "4"),
+                            new ListItem("مرداد", "5"),
+                            new ListItem("شهریور", "6"),
+                            new ListItem("مهر", "7"),
+                            new ListItem("آبان", "8"),
+                            new ListItem("آذر", "9"),
+                            new ListItem("دی", "10"),
+                            new ListItem("بهمن", "11"),
+                            new ListItem("اسفند", "12")
+                            )
+                            .SelectedItems(new { Value = "1" })
+                        .Listeners(l => l.Select.Handler = "setMonthCalss()")
+                        , X.Label().Text("نوبت پرداخت:")
+                        , X.ComboBox()
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ItemID("CboNobatePardakht")
+                        .Editable(false)
+                        .TypeAhead(true)
+                            .BlankText("لطفا نوبت پرداخت را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .Items(
+                            new ListItem("یک", "1"),
+                            new ListItem("دو", "2"),
+                            new ListItem("سه", "3"),
+                            new ListItem("چهار", "4"),
+                            new ListItem("پنج", "5")
+                            )
+                            .SelectedItems(new { Value = "1" })
+                        , X.Label().Text("کارکرد(روز):")
+                        , X.TextField()
+                        .ItemID("txtKarKard")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(false)
+                        .AutoFocus(true)
+                        .BlankText("لطفا کارکرد را وارد کنید.")
+                        .Listeners(l => l.Change.Handler = "changeText()")
+                         .EnforceMaxLength(true)
+                        .MaxLength(3)
+                        , X.Label().Text("غیبت(روز):")
+                       , X.TextField()
+                        .ItemID("txtGheybat")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(false)
+                        .BlankText("لطفا غیبت را وارد کنید.")
+                        .Listeners(l => l.Change.Handler = "changeText()")
+                         .EnforceMaxLength(true)
+                        .MaxLength(3)
+                        , X.Label().Text("نوبت کاری(روز):")
+                       , X.TextField()
+                        .ItemID("txtNobatKari")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(false)
+                        .BlankText("لطفا نوبت کاری را وارد کنید.")
+                        .Listeners(l => l.Change.Handler = "changeText()")
+                         .EnforceMaxLength(true)
+                        .MaxLength(3)
+                        , X.Label().Text("اضافه کاری(ساعت):")
+                       , X.TextField()
+                        .ItemID("txtEzafeKari")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(false)
+                        .BlankText("لطفا اضافه کاری را وارد کنید.")
+                        .Listeners(l => l.Change.Handler = "changeText()")
+                         .EnforceMaxLength(true)
+                        .MaxLength(3)
+                        , X.Label().Text("تعطیل کاری(روز):")
+                       , X.TextField()
+                        .ItemID("txtTatilKari")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(false)
+                        .BlankText("لطفا تعطیل کاری را وارد کنید.")
+                        .Listeners(l => l.Change.Handler = "changeText()")
+                         .EnforceMaxLength(true)
+                        .MaxLength(3)
+                        , X.Label().Text("مساعده(ریال):")
+                        , X.TextField()
+                        .ItemID("txtMosaede")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(false)
+                        .BlankText("لطفا مساعده را وارد کنید.")
+                        .Listeners(l => l.Change.Handler = "CheckInt(App.NewKarkardMahane.queryById('txtMosaede'));changeText();App.NewKarkardMahane.queryById('txtMosaede').setValue(accounting.formatNumber(App.NewKarkardMahane.queryById('txtMosaede').getValue()));")
+                        , X.Label().Text("ماموریت با بیتوته(روز):").ItemID("lblBaBeytute")
+                        , X.TextField()
+                        .ItemID("txtBaBeytute")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(false)
+                        .BlankText("لطفا ماموریت با بیتوته را وارد کنید.")
+                        .Listeners(l => l.Change.Handler = "changeText()")
+                        .EnforceMaxLength(true)
+                        .MaxLength(3)
+                        , X.Label().Text("ماموریت با بیتوته 10 درصد(روز):").ItemID("lblBa10")
+                        , X.TextField()
+                        .AllowBlank(false)
+                        .ItemID("txtBa10")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Listeners(l => l.Change.Handler = "changeText()")
+                        .EnforceMaxLength(true)
+                        .MaxLength(3)
+                        , X.Label().Text("ماموریت با بیتوته 20 درصد(روز):").ItemID("lblBa20")
+                        , X.TextField()
+                        .AllowBlank(false)
+                        .ItemID("txtBa20")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Listeners(l => l.Change.Handler = "changeText()")
+                        .EnforceMaxLength(true)
+                        .MaxLength(3)
+                        , X.Label().Text("ماموریت با بیتوته 30 درصد(روز):").ItemID("lblBa30")
+                        , X.TextField()
+                        .AllowBlank(false)
+                        .ItemID("txtBa30")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Listeners(l => l.Change.Handler = "changeText()")
+                        .EnforceMaxLength(true)
+                        .MaxLength(3)
+                        , X.Label().Text("ماموریت بدون بیتوته(روز):").ItemID("lblBeduneBeytute")
+                        , X.TextField()
+                        .ItemID("txtBeduneBeytute")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(false)
+                        .BlankText("لطفا ماموریت بدون بیتوته را وارد کنید.")
+                        .Listeners(l => l.Change.Handler = "changeText()")
+                        .EnforceMaxLength(true)
+                        .MaxLength(3)
+                        , X.Label().Text("ماموریت بدون بیتوته 10 درصد(روز):").ItemID("lblBe10")
+                        , X.TextField()
+                        .ItemID("txtBe10")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(false)
+                        .Listeners(l => l.Change.Handler = "changeText()")
+                       .EnforceMaxLength(true)
+                        .MaxLength(3)
+                        , X.Label().Text("ماموریت بدون بیتوته 20 درصد(روز):").ItemID("lblBe20")
+                        , X.TextField()
+                        .ItemID("txtBe20")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(false)
+                        .Listeners(l => l.Change.Handler = "changeText()")
+                        .EnforceMaxLength(true)
+                        .MaxLength(3)
+                        , X.Label().Text("ماموریت بدون بیتوته 30 درصد(روز):").ItemID("lblBe30")
+                        , X.TextField()
+                        .ItemID("txtBe30")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(false)
+                        .EnforceMaxLength(true)
+                        .MaxLength(3)
+                        .Listeners(l => l.Change.Handler = "changeText()")
+                        , X.Label().Text("حق شیفت(ساعت):").ItemID("lblShift")
+                        , X.TextField()
+                        .ItemID("txtShift")
+                        .Text("0")
+                        .MaskRe("/[0-9-.]/")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(false)
+                        .EnforceMaxLength(true)
+                        .MaxLength(3)
+                        , X.Label().Text("توضیحات:")
+                        , X.TextField()
+                        .ItemID("txtDesc")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ColSpan(4)
+                        ),
+                                    
+                            X.FieldSet().Border(true).Title("اطلاعات مربوط به معوقه")
+                         .Layout(Ext.Net.LayoutType.HBox)
+        .LayoutConfig(new Ext.Net.HBoxLayoutConfig { Align = HBoxAlign.Middle })
+                 .ColSpan(4).Defaults(new { Margin = 2 })
+        .Items(
+        
+                        X.FieldSet()
+                            .Layout(LayoutType.Table)
+                            .ColSpan(1)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+    //.PaddingSpec("0 0 0 60px")
+                            .Border(false)
+                            .Defaults(new { Margin = 2 })
+                            .Items(
+                                X.Checkbox()
+                                    .ItemID("chkMoavaghe")
+                                    .PaddingSpec("0 0 0 4px"),
+                                X.Label("محاسبه معوقه")),
+                        X.FieldSet()
+            .Border(false)
+                           // .Title("تاریخ شروع محاسبه معوقه")
+                            .ColSpan(3)
+                            .PaddingSpec("0 0 0 0")
+                            .Layout(LayoutType.HBox)
+                            .Items(
+                                    X.Label("تاریخ شروع:"),
+                                X.TextField()
+                                    .ItemID("txtMonth")
+                                    .Listeners(l => l.Change.Handler = "if( App.NewKarkardMahane.queryById('txtMonth').getValue()>12){App.NewKarkardMahane.queryById('txtMonth').setValue('');}")
+                                    //.Text("0")
+                                    .MaskRe("/[0-9]/")
+                                    .Width(30)
+                                    .MaxLength(2)
+                                    .MinLength(2)
+                                    .EnforceMaxLength(true)
+                                    .AllowBlank(false)
+                                    .PaddingSpec("0 0 0 6px")
+                                    .BlankText("لطفا ماه را وارد کنید."),
+                                X.Label().Text("/").MarginSpec("0 5px 0 0"),
+                                //X.Label("سال:"),
+                                X.TextField()
+                                    .ItemID("txtYear")
+                                    .MaxLength(4)
+                                    .MinLength(4)
+                                    .EnforceMaxLength(true)
+                                    //.Text("0")
+                                    .MaskRe("/[0-9]/")
+                                    .Width(50)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا سال را وارد کنید.")
+                            ),
+                        X.FieldSet()
+                                    .Border(false)
+                            //.Title("تاریخ پایان محاسبه معوقه")
+                            .ColSpan(3)
+                            .PaddingSpec("0 0 0 0")
+                            .Layout(LayoutType.HBox)
+                            .Items(
+                                    X.Label("تاریخ پایان:"),
+                                X.TextField()
+                                    .ItemID("txtToMonth")
+                                    .Listeners(l => l.Change.Handler = "if(App.NewKarkardMahane.queryById('txtMonth').getValue()>12){App.NewKarkardMahane.queryById('txtMonth').setValue('');}")
+                                    //.Text("0")
+                                    .MaskRe("/[0-9]/")
+                                    .Width(30)
+                                    .MaxLength(2)
+                                    .MinLength(2)
+                                    .EnforceMaxLength(true)
+                                    .AllowBlank(false)
+                                    .PaddingSpec("0 0 0 6px")
+                                    .BlankText("لطفا ماه را وارد کنید."),
+                                X.Label().Text("/").MarginSpec("0 5px 0 0"),
+                                //X.Label("سال:"),
+                                X.TextField()
+                                    .ItemID("txtToYear")
+                                    .MaxLength(4)
+                                    .MinLength(4)
+                                    .EnforceMaxLength(true)
+                                    //.Text("0")
+                                    .MaskRe("/[0-9]/")
+                                    .Width(50)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا سال را وارد کنید.")
+                            )
+                            )
+                            
+
+
+            //)
+        )
+    )
+)
+
+<script type="text/javascript">
+    var IsKargar = 0;
+
+    function setYearCalss() {
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Pardakhtha/SetYearClass',
+            params: {
+                Year: App.NewKarkardMahane.queryById("CboYear").getValue()
+            }
+        });
+    }
+
+    function setMonthCalss() {
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Pardakhtha/SetMonthClass',
+            params: {
+                Month: App.NewKarkardMahane.queryById("CboMonth").getValue()
+            }
+        });
+    }
+    function changeText() {
+        var txtKarKard = App.NewKarkardMahane.queryById('txtKarKard');
+        var txtGheybat = App.NewKarkardMahane.queryById('txtGheybat');
+        var txtNobatKari = App.NewKarkardMahane.queryById('txtNobatKari');
+        var txtEzafeKari = App.NewKarkardMahane.queryById('txtEzafeKari');
+        var txtTatilKari = App.NewKarkardMahane.queryById('txtTatilKari');
+        var txtBaBeytute = App.NewKarkardMahane.queryById('txtBaBeytute');
+        var txtBeduneBeytute = App.NewKarkardMahane.queryById('txtBeduneBeytute');
+        var txtMosaede = App.NewKarkardMahane.queryById('txtMosaede');
+        var txtBa10 = App.NewKarkardMahane.queryById('txtBa10'); 
+        var txtBa20 = App.NewKarkardMahane.queryById('txtBa20');
+        var txtBa30 = App.NewKarkardMahane.queryById('txtBa30');
+        var txtBe10 = App.NewKarkardMahane.queryById('txtBe10');
+        var txtBe20 = App.NewKarkardMahane.queryById('txtBe20');
+        var txtBe30 = App.NewKarkardMahane.queryById('txtBe30');
+        if (txtKarKard.getValue() > parseInt('@ViewBag.days')) {
+            txtKarKard.setValue("0");
+        }
+        if (txtGheybat.getValue() > parseInt('@ViewBag.days')) {
+            txtGheybat.setValue("0");
+        }
+        if (txtNobatKari.getValue() > parseInt('@ViewBag.days')) {
+            txtNobatKari.setValue("0");
+        }
+        if (txtEzafeKari.getValue() > 175) {
+            txtEzafeKari.setValue("0");
+        }
+        if (txtTatilKari.getValue() > parseInt('@ViewBag.days')) {
+            txtTatilKari.setValue("0");
+        }
+        if (txtBaBeytute.getValue() > parseInt('@ViewBag.days')) {
+            txtBaBeytute.setValue("0");
+        }
+        if (txtBeduneBeytute.getValue() > parseInt('@ViewBag.days')) {
+            txtBeduneBeytute.setValue("0");
+        }
+
+        if (txtBa10.getValue() > parseInt('@ViewBag.days')) {
+            txtBa10.setValue("0");
+        }
+        if (txtBa20.getValue() > parseInt('@ViewBag.days')) {
+            txtBa20.setValue("0");
+        }
+        if (txtBa30.getValue() > parseInt('@ViewBag.days')) {
+            txtBa30.setValue("0");
+        }
+        if (txtBe10.getValue() > parseInt('@ViewBag.days')) {
+            txtBe10.setValue("0");
+        }
+        if (txtBe20.getValue() > parseInt('@ViewBag.days')) {
+            txtBe20.setValue("0");
+        }
+        if (txtBe30.getValue() > parseInt('@ViewBag.days')) {
+            txtBe30.setValue("0");
+        }
+
+    }
+    function LoadKarkardMahane() {
+        var txtBa10 = App.NewKarkardMahane.queryById('txtBa10');
+        var lblBa10 = App.NewKarkardMahane.queryById('lblBa10');
+        var txtBa20 = App.NewKarkardMahane.queryById('txtBa20');
+        var lblBa20 = App.NewKarkardMahane.queryById('lblBa20');
+        var txtBa30 = App.NewKarkardMahane.queryById('txtBa30');
+        var lblBa30 = App.NewKarkardMahane.queryById('lblBa30');
+        var txtBe10 = App.NewKarkardMahane.queryById('txtBe10');
+        var lblBe10 = App.NewKarkardMahane.queryById('lblBe10');
+        var txtBe20 = App.NewKarkardMahane.queryById('txtBe20');
+        var lblBe20 = App.NewKarkardMahane.queryById('lblBe20');
+        var txtBe30 = App.NewKarkardMahane.queryById('txtBe30');
+        var lblBe30 = App.NewKarkardMahane.queryById('lblBe30');
+        var lblBaBeytute = App.NewKarkardMahane.queryById('lblBaBeytute');
+        var lblBeduneBeytute = App.NewKarkardMahane.queryById('lblBeduneBeytute');
+        var txtBeduneBeytute = App.NewKarkardMahane.queryById('txtBeduneBeytute');
+        if ('@ViewBag.TypeEstekhdam' == 1)
+        {
+            lblBaBeytute.setText("ماموریت(روز)");
+            txtBa10.hide();
+            lblBa10.hide();
+            txtBa20.hide();
+            lblBa20.hide();
+            txtBa30.hide();
+            lblBa30.hide();
+            txtBe10.hide();
+            lblBe10.hide();
+            txtBe20.hide();
+            lblBe20.hide();
+            txtBe30.hide();
+            lblBe30.hide();
+            txtBeduneBeytute.hide();
+            lblBeduneBeytute.hide();
+        }
+        else
+        {
+            lblBaBeytute.setText("ماموریت با بیتوته(روز)");
+            txtBa10.show();
+            lblBa10.show();
+            txtBa20.show();
+            lblBa20.show();
+            txtBa30.show();
+            lblBa30.show();
+            txtBe10.show();
+            lblBe10.show();
+            txtBe20.show();
+            lblBe20.show();
+            txtBe30.show();
+            lblBe30.show();
+            txtBeduneBeytute.show();
+            lblBeduneBeytute.show();
+        }
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KarkardMahane/Details',
+                params: {
+                    id: '@ViewBag.Id',
+                    OrganId:'@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    var txtName = App.NewKarkardMahane.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    App.NewKarkardMahane.queryById('txtName').setReadOnly(true);
+                    var txtNationalCode = App.NewKarkardMahane.queryById('txtNationalCode');
+                    txtNationalCode.setValue(data.fldNationalCode);
+                    App.NewKarkardMahane.queryById('txtNationalCode').setReadOnly(true);
+                    var txtShomarePersoneli = App.NewKarkardMahane.queryById('txtShomarePersoneli');
+                    txtShomarePersoneli.setValue(data.fldShomarePersoneli);
+                    App.NewKarkardMahane.queryById('txtShomarePersoneli').setReadOnly(true);
+                    var CboYear = App.NewKarkardMahane.queryById('CboYear');
+                    CboYear.setValue(data.fldYear);
+                    App.NewKarkardMahane.queryById('CboYear').setReadOnly(true);
+                    var CboMonth = App.NewKarkardMahane.queryById('CboMonth');
+                    CboMonth.setValue(data.fldMah);
+                    App.NewKarkardMahane.queryById('CboMonth').setReadOnly(true);
+                    var txtKarKard = App.NewKarkardMahane.queryById('txtKarKard');
+                    txtKarKard.setValue(data.fldKarkard);
+                    var txtGheybat = App.NewKarkardMahane.queryById('txtGheybat');
+                    txtGheybat.setValue(data.fldGheybat);
+                    var txtNobatKari = App.NewKarkardMahane.queryById('txtNobatKari');
+                    txtNobatKari.setValue(data.fldNobateKari);
+                    var ghati = App.NewKarkardMahane.queryById('fldGhati');
+                    ghati.setValue(data.fldGhati);
+                    if (ghati.getValue() == "true") {
+                        var txtEzafeKari = App.NewKarkardMahane.queryById('txtEzafeKari');
+                        txtEzafeKari.setValue(data.fldEzafeKari);
+                        App.NewKarkardMahane.queryById('txtEzafeKari').setReadOnly(true);
+                    }
+                    else {
+                        var txtEzafeKari = App.NewKarkardMahane.queryById('txtEzafeKari');
+                        txtEzafeKari.setValue(data.fldEzafeKari);
+                    }
+                    var txtTatilKari = App.NewKarkardMahane.queryById('txtTatilKari');
+                    txtTatilKari.setValue(data.fldTatileKari);
+                    var txtBaBeytute = App.NewKarkardMahane.queryById('txtBaBeytute');
+                    txtBaBeytute.setValue(data.fldMamoriatBaBeitote);
+                    var txtBeduneBeytute = App.NewKarkardMahane.queryById('txtBeduneBeytute');
+                    txtBeduneBeytute.setValue(data.fldMamoriatBedoneBeitote);
+                    var txtMosaede = App.NewKarkardMahane.queryById('txtMosaede');
+                    txtMosaede.setValue(data.fldMosaedeh);
+                    var txtShift = App.NewKarkardMahane.queryById('txtShift');
+                    txtShift.setValue(data.fldShift);
+                    var CboNobatePardakht = App.NewKarkardMahane.queryById('CboNobatePardakht');
+                    CboNobatePardakht.setValue(data.fldNobatePardakht);
+                    var txtBa10 = App.NewKarkardMahane.queryById('txtBa10');
+                    txtBa10.setValue(data.fldBa10);
+                    var txtBa20 = App.NewKarkardMahane.queryById('txtBa20');
+                    txtBa20.setValue(data.fldBa20);
+                    var txtBa30 = App.NewKarkardMahane.queryById('txtBa30');
+                    txtBa30.setValue(data.fldBa30);
+                    var txtBe10 = App.NewKarkardMahane.queryById('txtBe10');
+                    txtBe10.setValue(data.fldBe10);
+                    var txtBe20 = App.NewKarkardMahane.queryById('txtBe20');
+                    txtBe20.setValue(data.fldBe20);
+                    var txtBe30 = App.NewKarkardMahane.queryById('txtBe30');
+                    txtBe30.setValue(data.fldBe30);
+                    var txtDesc = App.NewKarkardMahane.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var Id = App.NewKarkardMahane.queryById('fldId');
+                    Id.setValue(data.fldId);
+                    IsKargar = data.IsKargar;
+                    var chkMoavaghe = App.NewKarkardMahane.queryById('chkMoavaghe');
+                    chkMoavaghe.setValue(data.fldMoavaghe);
+                    var txtMonth = App.NewKarkardMahane.queryById('txtMonth');
+                    txtMonth.setValue((data.Month));
+                    var txtYear = App.NewKarkardMahane.queryById('txtYear');
+                    txtYear.setValue(data.Sal);
+                    var txtToMonth = App.NewKarkardMahane.queryById('txtToMonth');
+                    txtToMonth.setValue(data.TaMonth);
+                    var txtToYear = App.NewKarkardMahane.queryById('txtToYear');
+                    txtToYear.setValue(data.TaSal);
+                }
+            });
+        }
+        else {
+            var CboYear = App.NewKarkardMahane.queryById('CboYear');
+            var CboMonth = App.NewKarkardMahane.queryById('CboMonth');
+            var txtKarKard = App.NewKarkardMahane.queryById('txtKarKard');
+            var txtGheybat = App.NewKarkardMahane.queryById('txtGheybat');
+            var txtNobatKari = App.NewKarkardMahane.queryById('txtNobatKari');
+            var txtEzafeKari = App.NewKarkardMahane.queryById('txtEzafeKari');
+            var txtTatilKari = App.NewKarkardMahane.queryById('txtTatilKari'); 
+            var txtBaBeytute = App.NewKarkardMahane.queryById('txtBaBeytute');
+            var txtBeduneBeytute = App.NewKarkardMahane.queryById('txtBeduneBeytute');
+            var txtMosaede = App.NewKarkardMahane.queryById('txtMosaede');
+            var txtShift = App.NewKarkardMahane.queryById('txtShift');
+            var CboNobatePardakht = App.NewKarkardMahane.queryById('CboNobatePardakht');
+            var txtBa10 = App.NewKarkardMahane.queryById('txtBa10');
+            var txtBa20 = App.NewKarkardMahane.queryById('txtBa20');
+            var txtBa30 = App.NewKarkardMahane.queryById('txtBa30');
+            var txtBe10 = App.NewKarkardMahane.queryById('txtBe10');
+            var txtBe20 = App.NewKarkardMahane.queryById('txtBe20');
+            var txtBe30 = App.NewKarkardMahane.queryById('txtBe30');
+            CboYear.validate();
+            CboMonth.validate();
+            txtKarKard.validate();
+            txtGheybat.validate();
+            txtNobatKari.validate();
+            txtEzafeKari.validate();
+            txtTatilKari.validate(); 
+            txtBaBeytute.validate();
+            txtBeduneBeytute.validate();
+            txtMosaede.validate();
+            txtShift.validate();
+            CboNobatePardakht.validate();
+            txtBa10.validate();
+            txtBa20.validate();
+            txtBa30.validate();
+            txtBe10.validate();
+            txtBe20.validate();
+            txtBe30.validate();
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KarkardMahane/DetailsHeader',
+                params: {
+                    id: '@ViewBag.PersonalId',
+                    OrganId: '@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    var txtName = App.NewKarkardMahane.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    App.NewKarkardMahane.queryById('txtName').setReadOnly(true);
+                    var txtNationalCode = App.NewKarkardMahane.queryById('txtNationalCode');
+                    txtNationalCode.setValue(data.fldNationalCode);
+                    App.NewKarkardMahane.queryById('txtNationalCode').setReadOnly(true);
+                    var txtShomarePersoneli = App.NewKarkardMahane.queryById('txtShomarePersoneli');
+                    txtShomarePersoneli.setValue(data.fldShomarePersoneli);
+                    App.NewKarkardMahane.queryById('txtShomarePersoneli').setReadOnly(true);
+                    CboYear.setValue('@ViewBag.Year');
+                    CboMonth.setValue('@ViewBag.Month');
+                    txtKarKard.setValue('@ViewBag.days');
+                    txtNobatKari.setValue('@ViewBag.days');
+                    IsKargar = data.IsKargar;
+                }
+            });
+        }
+    }
+
+    function checkSaveKarkardMahane() {
+        var SelectedRow = App.KarkardMahane.queryById('GridAshkhas').selModel.getLastSelected();
+        if (SelectedRow.data.fldStatusId == 1) {
+            SaveKarkardMahane();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "وضعیت فرد مورد نظر " + SelectedRow.data.fldStatusTitle + " است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveKarkardMahane() {
+        var CboYear = App.NewKarkardMahane.queryById('CboYear');
+        var CboMonth = App.NewKarkardMahane.queryById('CboMonth');
+        var txtKarKard = App.NewKarkardMahane.queryById('txtKarKard');
+        var txtGheybat = App.NewKarkardMahane.queryById('txtGheybat');
+        var txtNobatKari = App.NewKarkardMahane.queryById('txtNobatKari');
+        var txtEzafeKari = App.NewKarkardMahane.queryById('txtEzafeKari');
+        var txtTatilKari = App.NewKarkardMahane.queryById('txtTatilKari');
+        var txtBaBeytute = App.NewKarkardMahane.queryById('txtBaBeytute'); 
+        var txtBeduneBeytute = App.NewKarkardMahane.queryById('txtBeduneBeytute');
+        var txtMosaede = App.NewKarkardMahane.queryById('txtMosaede');
+        var txtShift = App.NewKarkardMahane.queryById('txtShift');
+        var CboNobatePardakht = App.NewKarkardMahane.queryById('CboNobatePardakht');
+        var txtBa10 = App.NewKarkardMahane.queryById('txtBa10');
+        var txtBa20 = App.NewKarkardMahane.queryById('txtBa20');
+        var txtBa30 = App.NewKarkardMahane.queryById('txtBa30');
+        var txtBe10 = App.NewKarkardMahane.queryById('txtBe10');
+        var txtBe20 = App.NewKarkardMahane.queryById('txtBe20');
+        var txtBe30 = App.NewKarkardMahane.queryById('txtBe30');
+        var txtDesc = App.NewKarkardMahane.queryById('txtDesc');
+        var Id = App.NewKarkardMahane.queryById('fldId');
+        var chkMoavaghe = App.NewKarkardMahane.queryById('chkMoavaghe');
+        var txtMonth = App.NewKarkardMahane.queryById('txtMonth');
+        var txtYear = App.NewKarkardMahane.queryById('txtYear');
+        var txtToMonth = App.NewKarkardMahane.queryById('txtToMonth');
+        var txtToYear = App.NewKarkardMahane.queryById('txtToYear');
+        var er = false;
+
+        if (txtKarKard.validate() == false) {
+            er = true;
+        }
+
+        if (txtGheybat.validate() == false) {
+            er = true;
+        }
+
+        if (txtNobatKari.validate() == false) {
+            er = true;
+        }
+
+        if (txtEzafeKari.validate() == false) {
+            er = true;
+        }
+
+        if (txtTatilKari.validate() == false) {
+            er = true;
+        }
+
+        if (txtBaBeytute.validate() == false) {
+            er = true;
+        }
+
+        if (txtBeduneBeytute.validate() == false) {
+            er = true;
+        } 
+
+        if (txtMosaede.validate() == false) {
+            er = true;
+        }
+        if (txtShift.validate() == false) {
+            er = true;
+        }
+
+        if (CboNobatePardakht.validate() == false) {
+            er = true;
+        }
+
+        if (txtBa10.validate() == false) {
+            er = true;
+        }
+
+        if (txtBa20.validate() == false) {
+            er = true;
+        }
+
+        if (txtBa30.validate() == false) {
+            er = true;
+        }
+
+        if (txtBe10.validate() == false) {
+            er = true;
+        }
+
+        if (txtBe20.validate() == false) {
+            er = true;
+        }
+
+        if (txtBe30.validate() == false) {
+            er = true;
+        }
+        if (chkMoavaghe.getValue() == true)
+        {
+            if (txtMonth.validate() == false) {
+                er = true;
+            }
+            if (txtYear.validate() == false) {
+                er = true;
+            }
+            if (txtToMonth.validate() == false) {
+                er = true;
+            }
+            if (txtToYear.validate() == false) {
+                er = true;
+            }
+
+        }
+        var AzTarikh = "";
+        var TaTarikh="";
+        if (chkMoavaghe.getValue() == true)
+        {
+            AzTarikh = txtYear.getValue() + txtMonth.getValue();
+            TaTarikh = txtToYear.getValue() + txtToMonth.getValue();
+        }
+        if (er == true)
+            return;
+        if (AzTarikh>TaTarikh){
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "تاریخ پایان معوقه معتبر نیست.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+        if (IsKargar == 1 && parseInt(txtEzafeKari.getValue()) > 120)
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "اضافه کاری بیش از 120 ساعت مجاز نیست.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        else if (IsKargar == 0 && parseInt(txtEzafeKari.getValue()) + (parseInt(txtTatilKari.getValue())*7.33) > 175)
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "مجموع اضافه کاری و تعطیل کاری بیش از 175 ساعت مجاز نیست.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        /*else if (parseInt(txtKarKard.getValue()) == 0 || parseInt(txtNobatKari.getValue()) == 0)
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "میزان کارکرد و نوبت کاری باید بیشتر از 0 باشد.",
+                icon: Ext.MessageBox.INFO,
+                buttons: Ext.MessageBox.OK
+            });*/
+
+        else {
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KarkardMahane/CheckCloseHoghough',
+                params: {
+                    Year: CboYear.getValue(),
+                    Month: CboMonth.getValue(),
+                    OrganId: '@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    if (data.FlagC == false) {/*حقوق بسته نشده داشتیم*/
+                        Ext.MessageBox.show({
+                            title: "هشدار",
+                            msg: "حقوق ماه های گذشته بسته نشده است.آیا تمایل به بسته شدن اطلاعات کارکرد ماهانه دارید؟",
+                            icon: Ext.MessageBox.WARNING,
+                            buttons: Ext.MessageBox.YESNO,
+                            fn: function (btn) {
+                                if (btn == 'yes') {
+                                    Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+                                    Ext.net.DirectMethod.request({
+                                        url: '/PayRoll/KarkardMahane/Save',
+                                        params: {
+                                            fldId: Id.getValue(),
+                                            fldPersonalId: '@ViewBag.PersonalId',
+                                            fldYear: CboYear.getValue(),
+                                            fldMah: CboMonth.getValue(),
+                                            fldKarkard: txtKarKard.getValue(),
+                                            fldGheybat: txtGheybat.getValue(),
+                                            fldNobateKari: txtNobatKari.getValue(),
+                                            fldEzafeKari: txtEzafeKari.getValue(),
+                                            fldTatileKari: txtTatilKari.getValue(),
+                                            fldMamoriatBaBeitote: txtBaBeytute.getValue(),
+                                            fldMamoriatBedoneBeitote: txtBeduneBeytute.getValue(),
+                                            fldMosaedeh: txtMosaede.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                                            fldNobatePardakht: CboNobatePardakht.getValue(),
+                                            fldShift: txtShift.getValue(),
+                                            fldBa10: txtBa10.getValue(),
+                                            fldBa20: txtBa20.getValue(),
+                                            fldBa30: txtBa30.getValue(),
+                                            fldBe10: txtBe10.getValue(),
+                                            fldBe20: txtBe20.getValue(),
+                                            fldBe30: txtBe30.getValue(),
+                                            fldDesc: txtDesc.getValue(),
+                                            fldMoavaghe: chkMoavaghe.getValue(),
+                                            fldAzTarikhMoavaghe: AzTarikh,
+                                            fldTaTarikhMoavaghe:TaTarikh,
+                                            Flag: true,
+                                            DelCalc: '@ViewBag.DelCalc',
+                                            OrganId: '@ViewBag.OrganId'
+                                        },
+                                        success: function (data) {
+                                            var ico = Ext.MessageBox.INFO;
+                                            if (data.Er == 1)
+                                                ico = Ext.MessageBox.ERROR;
+                                            else {
+
+                                                ReloadAshkhasKarkard();
+
+                                            }
+                                            Ext.MessageBox.show({
+                                                title: data.MsgTitle,
+                                                msg: data.Msg,
+                                                icon: ico,
+                                                buttons: Ext.MessageBox.OK,
+                                                defaultFocus: 'ok',
+                                                fn: function (btn) {
+                                                    if (btn == 'ok' && data.Er != 1) {
+                                                        App.NewKarkardMahane.destroy();
+                                                        var nextfld1 = App.NewKarkardMahane.queryById("txtKarKard");
+                                                        nextfld1.focus();
+                                                    }
+                                                }
+                                            });
+                                            Ext.net.Mask.hide();
+
+                                        }
+
+                                    });
+                                }
+                                else if (btn == 'no') {
+                                    Ext.net.Mask.hide();
+                                    App.NewKarkardMahane.destroy();
+                                }
+                            }
+                        });
+                    }
+                    else {
+                        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/PayRoll/KarkardMahane/Save',
+                            params: {
+                                fldId: Id.getValue(),
+                                fldPersonalId: '@ViewBag.PersonalId',
+                                fldYear: CboYear.getValue(),
+                                fldMah: CboMonth.getValue(),
+                                fldKarkard: txtKarKard.getValue(),
+                                fldGheybat: txtGheybat.getValue(),
+                                fldNobateKari: txtNobatKari.getValue(),
+                                fldEzafeKari: txtEzafeKari.getValue(),
+                                fldTatileKari: txtTatilKari.getValue(),
+                                fldMamoriatBaBeitote: txtBaBeytute.getValue(),
+                                fldMamoriatBedoneBeitote: txtBeduneBeytute.getValue(),
+                                fldMosaedeh: txtMosaede.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                                fldNobatePardakht: CboNobatePardakht.getValue(),
+                                fldShift: txtShift.getValue(),
+                                fldBa10: txtBa10.getValue(),
+                                fldBa20: txtBa20.getValue(),
+                                fldBa30: txtBa30.getValue(),
+                                fldBe10: txtBe10.getValue(),
+                                fldBe20: txtBe20.getValue(),
+                                fldBe30: txtBe30.getValue(),
+                                fldDesc: txtDesc.getValue(),
+                                fldMoavaghe: chkMoavaghe.getValue(),
+                                fldAzTarikhMoavaghe: AzTarikh,
+                                fldTaTarikhMoavaghe: TaTarikh,
+                                Flag: false,
+                                DelCalc: '@ViewBag.DelCalc',
+                                OrganId: '@ViewBag.OrganId'
+                            },
+                            success: function (data) {
+                                var ico = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ico = Ext.MessageBox.ERROR;
+                                else {
+
+                                    ReloadAshkhasKarkard();
+
+                                }
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ico,
+                                    buttons: Ext.MessageBox.OK,
+                                    defaultFocus: 'ok',
+                                    fn: function (btn) {
+                                        if (btn == 'ok' && data.Er != 1) {
+                                            App.NewKarkardMahane.destroy();
+                                            var nextfld1 = App.NewKarkardMahane.queryById("txtKarKard");
+                                            nextfld1.focus();
+                                        }
+                                    }
+                                });
+                                Ext.net.Mask.hide();
+
+                            }
+
+                        });
+                    }
+                }
+            });
+        }
+    }
+    var addKeyMapNewKarkardMahane = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NewKarkardMahane.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if ('@ViewBag.TypeEstekhdam' == 1) {
+                        if (keyfield.itemId == "CboYear") {
+
+                            nextfld = App.NewKarkardMahane.queryById('CboMonth');
+                        }
+                        else if (keyfield.itemId == "CboMonth") {
+                            nextfld = App.NewKarkardMahane.queryById('CboNobatePardakht');
+                        }
+                        else if (keyfield.itemId == "CboNobatePardakht") {
+                            nextfld = App.NewKarkardMahane.queryById('txtKarKard');
+                        }
+                        else if (keyfield.itemId == "txtKarKard") {
+                            nextfld = App.NewKarkardMahane.queryById('txtGheybat');
+                        }
+                        else if (keyfield.itemId == "txtGheybat") {
+                            nextfld = App.NewKarkardMahane.queryById('txtNobatKari');
+                        }
+                        else if (keyfield.itemId == "txtNobatKari") {
+                            nextfld = App.NewKarkardMahane.queryById('txtEzafeKari');
+                        }
+                        else if (keyfield.itemId == "txtEzafeKari") {
+                            nextfld = App.NewKarkardMahane.queryById('txtTatilKari');
+                        }
+                        else if (keyfield.itemId == "txtTatilKari") {
+                            nextfld = App.NewKarkardMahane.queryById('txtMosaede');
+                        }
+                        else if (keyfield.itemId == "txtMosaede") {
+                            nextfld = App.NewKarkardMahane.queryById('txtBaBeytute');
+                        }
+                        else if (keyfield.itemId == "txtBaBeytute") {
+                            nextfld = App.NewKarkardMahane.queryById('txtShift');
+                        }
+                        else if (keyfield.itemId == "txtShift") {
+                            nextfld = App.NewKarkardMahane.queryById('txtDesc');
+                        }
+                        else if (keyfield.itemId == "txtDesc") {
+                            nextfld = App.NewKarkardMahane.queryById('btnSaveKarkard');
+                            checkSaveKarkardMahane();
+                            return;
+                        }
+
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                    else {
+                        if (keyfield.itemId == "CboYear") {
+
+                            nextfld = App.NewKarkardMahane.queryById('CboMonth');
+                        }
+                        else if (keyfield.itemId == "CboMonth") {
+                            nextfld = App.NewKarkardMahane.queryById('CboNobatePardakht');
+                        }
+                        else if (keyfield.itemId == "CboNobatePardakht") {
+                            nextfld = App.NewKarkardMahane.queryById('txtKarKard');
+                        }
+                        else if (keyfield.itemId == "txtKarKard") {
+                            nextfld = App.NewKarkardMahane.queryById('txtGheybat');
+                        }
+                        else if (keyfield.itemId == "txtGheybat") {
+                            nextfld = App.NewKarkardMahane.queryById('txtNobatKari');
+                        }
+                        else if (keyfield.itemId == "txtNobatKari") {
+                            nextfld = App.NewKarkardMahane.queryById('txtEzafeKari');
+                        }
+                        else if (keyfield.itemId == "txtEzafeKari") {
+                            nextfld = App.NewKarkardMahane.queryById('txtTatilKari');
+                        }
+                        else if (keyfield.itemId == "txtTatilKari") {
+                            nextfld = App.NewKarkardMahane.queryById('txtMosaede');
+                        }
+                        else if (keyfield.itemId == "txtMosaede") {
+                            nextfld = App.NewKarkardMahane.queryById('txtBaBeytute');
+                        }
+                        else if (keyfield.itemId == "txtBaBeytute") {
+                            nextfld = App.NewKarkardMahane.queryById('txtBa10');
+                        }
+                        else if (keyfield.itemId == "txtBa10") {
+                            nextfld = App.NewKarkardMahane.queryById('txtBa20');
+                        }
+                        else if (keyfield.itemId == "txtBa20") {
+                            nextfld = App.NewKarkardMahane.queryById('txtBa30');
+                        }
+                        else if (keyfield.itemId == "txtBa30") {
+                            nextfld = App.NewKarkardMahane.queryById('txtBeduneBeytute');
+                        }
+                        else if (keyfield.itemId == "txtBeduneBeytute") {
+                            nextfld = App.NewKarkardMahane.queryById('txtBe10');
+                        }
+                        else if (keyfield.itemId == "txtBe10") {
+                            nextfld = App.NewKarkardMahane.queryById('txtBe20');
+                        }
+                        else if (keyfield.itemId == "txtBe20") {
+                            nextfld = App.NewKarkardMahane.queryById('txtBe30');
+                        }
+                        else if (keyfield.itemId == "txtBe30") {
+                            nextfld = App.NewKarkardMahane.queryById('txtShift');
+                        }
+                        else if (keyfield.itemId == "txtShift") {
+                            nextfld = App.NewKarkardMahane.queryById('txtDesc');
+                        }
+                        else if (keyfield.itemId == "txtDesc") {
+                            nextfld = App.NewKarkardMahane.queryById('btnSaveKarkard');
+                            checkSaveKarkardMahane();
+                            return;
+                        }
+
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }
+            }]
+        });
+    };
+</script>

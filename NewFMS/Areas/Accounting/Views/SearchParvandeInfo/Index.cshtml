@@ -1,0 +1,335 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_ParvandeInfo>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+@(Html.X()
+    .Window()
+    .Modal(true)
+    .Width(1000)
+    .Title("پرونده")
+    .ID("ListParvandeInfo")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l => l.Destroy.Handler = "SetFocusOnMainPage()")
+    .Layout(LayoutType.Fit)
+    .Resizable(false)
+        //.Listeners(l => l.Destroy.Handler = "SetFocusFileComponent()")
+        //.ButtonAlign(Ext.Net.Alignment.Center)
+        //.Buttons(
+        //    X.Button()
+        //        .Text("ادامه")
+        //        .Icon(Ext.Net.Icon.NextGreen)
+        //        .Listeners(l => l.Click.Handler = "SettxtFile()"),
+        //    X.Button()
+        //        .Text("خروج")
+        //        .Icon(Ext.Net.Icon.DoorOut)
+        //        .OnClientClick("App.ListParvandeInfo.destroy()"))
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Padding(5)
+            .Items(
+                X.FieldSet()
+                    .Border(false)
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                    .Items(
+                        X.Label("نوع پرونده:").ItemID("lblTypeParvande"),
+                        X.ComboBox()
+                            .ItemID("CboTypeParvande")
+                            .AutoFocus(true)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع پرونده را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .EnableKeyEvents(true)
+                            .TriggerAction(TriggerAction.All)
+                            .Listeners(l =>
+                            {
+                                l.Change.Handler = "LoadGridParvandeInfo();";
+                                l.SpecialKey.Fn = "SetFocusonGrid2";
+                            })
+                            .Store(X.Store()
+                                .Listeners(l => l.Load.Handler = "setDefaultFileType()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetFileType"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            )
+                    ),
+        X.GridPanel()
+            .AutoScroll(true)
+            .ItemID("GridParvandeInfo")
+            .Width(976)
+            .Height(330)
+        //.Listeners(l => l.AfterRender.Handler = "App.ListParvandeInfo.queryById('GridParvandeInfo').setHeight(App.AccountingWin.getHeight() - 310)")
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(
+                        Html.X().Button()
+                            .Text("انتخاب")
+                            .Icon(Icon.NextGreen)
+                                .Listeners(l => l.Click.Handler = "SettxtParvande()")
+                    )
+            )
+            .BottomBar(X.PagingToolbar())
+                .Listeners(l => l.AfterRender.Handler = "HandleFocus3()")
+            .Store(
+                X.StoreForModel()
+                    .AutoLoad(false)
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("ReadFiles"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+                                        .ExtraParams(l => l.Add(new { Year = ViewBag.Year }))
+                        )
+                    .PageSize(10)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                        .Parameters(ps => { ps.Add(new StoreParameter("Type", "App.ListParvandeInfo.queryById('CboTypeParvande').getValue()", ParameterMode.Raw));
+                       })
+            )
+        //.View(
+        //    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+        //)
+                .ViewConfig(X.GridView().LoadingText("در حال بارگذاری...").RTL(true).Listeners(l => l.ItemKeyDown.Fn = "SettxtParvandewithKey"))
+                .Listeners(a => a.ItemDblClick.Handler = "SettxtParvande();")
+            .Plugins(X.FilterHeader().Remote(true))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).ID("ColfldId").Text("کد").Hidden(true).Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldName).ID("ColName_File").Text("نام و نام خانوادگی").Flex(6).Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کد ملی").ID("ColCodemeli_File").Flex(3).Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldStartContract).Text("تاریخ شروع قرارداد").ID("ColStartContract_File").Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldEndContract).Text("تاریخ پایان قرارداد").ID("ColEndContract").Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldMablagh).Text("مبلغ").ID("ColMablagh").Renderer("return value.toLocaleString()").Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldShenasePardakht).Text("شناسه پرداخت").ID("ColfldShenasePardakht").Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldShenaseGhabz).Text("شناسه قبض").ID("ColfldShenaseGhabz").Flex(4),
+                Html.X().Column().DataIndex(Model, m => m.fldShomareHesab).Text("شماره حساب").ID("ColfldShomareHesab").Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldSharh).Text("کدهای درآمد").ID("ColfldSharh").Flex(5).Wrap(true)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+        )
+    )
+)
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+    function SetFocusOnMainPage() {
+        if ('@ViewBag.State' == "1") {
+            App.RptCodingStatus.queryById('txtFileName').focus();
+        }
+    }
+    function setDefaultFileType() {
+        if (State == 1 || State==2) {
+            App.ListParvandeInfo.queryById('CboTypeParvande').setValue('@ViewBag.FileType');
+            App.ListParvandeInfo.queryById('CboTypeParvande').hide();
+            App.ListParvandeInfo.queryById('lblTypeParvande').hide();
+        }
+        else {
+            App.ListParvandeInfo.queryById('CboTypeParvande').setValue(App.ListParvandeInfo.queryById('CboTypeParvande').store.getAt(0));
+        }
+    }
+
+    var SetFocusonGrid2 = function (Fieldd, Eventt) {
+        if (Eventt.keyCode == 13) {
+            setTimeout(function () { App.ListParvandeInfo.queryById('GridParvandeInfo').plugins[0].fields[1].focus(); }, 200);
+        }
+    };
+
+
+    function HandleFocus3() {
+        App.ListParvandeInfo.queryById('GridParvandeInfo').columnManager.headerCt.el.on("keyup", function (e) {
+            if (e.getKey() == 13) {
+                var keyfield = Ext.getCmp(Ext.Element.getActiveElement().name);
+                if (Ext.getCmp(Ext.Element.getActiveElement().name).filterRow != undefined) {
+                    var nextfld = Ext.getCmp((Ext.Element.getActiveElement()).name).nextNode();
+                    while (nextfld.items != undefined) {
+                        if (nextfld.isHidden()) {
+                            nextfld = nextfld.nextNode();
+                        }
+                        else {
+                            nextfld.items.items[0].child().focus();
+                            return;
+                        }
+                    }
+                    App.ListParvandeInfo.queryById('GridParvandeInfo').getSelectionModel().select(0);
+                }
+            }
+        });
+    }
+    
+
+    function LoadGridParvandeInfo() {
+        var FileType = App.ListParvandeInfo.queryById('CboTypeParvande').getValue();
+        if (FileType == 1 || FileType == 2) {
+            if (FileType == 1) {
+                App.ColName_File.setText("نام و نام خانوادگی");
+                App.ColCodemeli_File.setText("کد ملی");
+            }
+            else {
+                App.ColName_File.setText("نام");
+                App.ColCodemeli_File.setText("شناسه ملی");
+            }
+            App.ColCodemeli_File.show();
+            App.ColStartContract_File.hide();
+            App.ColfldId.hide();
+            App.ColEndContract.hide();
+            App.ColMablagh.hide();
+            App.ColfldShenasePardakht.hide();
+            App.ColfldShenaseGhabz.hide();
+            App.ColfldShomareHesab.hide();
+            App.ColfldSharh.hide();
+            App.ListParvandeInfo.queryById('GridParvandeInfo').store.load();
+        }
+        else if (FileType == 13 || FileType == 14) {
+            App.ColName_File.setText("عنوان قرارداد");
+            App.ColCodemeli_File.hide();
+            App.ColStartContract_File.show();
+            App.ColEndContract.show();
+            App.ColMablagh.hide();
+            App.ColfldId.hide();
+            App.ColfldShenasePardakht.hide();
+            App.ColfldShenaseGhabz.hide();
+            App.ColfldShomareHesab.hide();
+            App.ColfldSharh.hide();
+            App.ListParvandeInfo.queryById('GridParvandeInfo').store.load();
+        }
+        else if (FileType == 3) {
+            App.ColName_File.setText("بابت");
+            App.ColCodemeli_File.show();
+            App.ColCodemeli_File.setText("شماره چک");
+            App.ColStartContract_File.show();
+            App.ColStartContract_File.setText("تاریخ دریافت");
+            App.ColEndContract.show();
+            App.ColEndContract.setText("تاریخ سررسید");
+            App.ColMablagh.show();
+            App.ColfldShenasePardakht.hide();
+            App.ColfldShenaseGhabz.hide();
+            App.ColfldShomareHesab.hide();
+            App.ColfldSharh.hide();
+            App.ColfldId.hide();
+            App.ListParvandeInfo.queryById('GridParvandeInfo').store.load();
+        }
+        else if (FileType == 4) {
+            App.ColName_File.setText("بابت");
+            App.ColCodemeli_File.show();
+            App.ColCodemeli_File.setText("شماره چک");
+            App.ColStartContract_File.show();
+            App.ColStartContract_File.setText("تاریخ صدور");
+            App.ColEndContract.show();
+            App.ColEndContract.setText("تاریخ سررسید");
+            App.ColMablagh.show();
+            App.ColfldShenasePardakht.hide();
+            App.ColfldShenaseGhabz.hide();
+            App.ColfldShomareHesab.hide();
+            App.ColfldSharh.hide();
+            App.ColfldId.hide();
+            App.ListParvandeInfo.queryById('GridParvandeInfo').store.load();
+        }
+        else if (FileType == 6) {
+            App.ColName_File.setText("نام و نام خانوادگی");
+            App.ColCodemeli_File.hide();
+            /*App.ColCodemeli_File.setText("کد ملی");*/
+            App.ColStartContract_File.show();
+            App.ColStartContract_File.setText("تاریخ فیش");
+            App.ColEndContract.hide();
+            /*App.ColEndContract.setText("تاریخ اعلام عوارض");*/
+            App.ColMablagh.show();
+            App.ColMablagh.setText("مبلغ عوارض");
+            App.ColfldShenasePardakht.show();
+            App.ColfldShenaseGhabz.show();
+            App.ColfldShomareHesab.show();
+            App.ColfldSharh.show();
+            App.ColfldSharh.setText("کدهای درآمد");
+            App.ColfldId.show();
+            App.ColfldId.setText("شماره فیش");
+            App.ListParvandeInfo.queryById('GridParvandeInfo').store.load();
+        }
+        else if (FileType == 15) {
+            App.ColName_File.setText("عنوان پروژه");
+            App.ColCodemeli_File.show();
+            App.ColCodemeli_File.setText("کد پروژه");
+            App.ColStartContract_File.show();
+            App.ColStartContract_File.setText("سال پروژه");
+            App.ColEndContract.hide();
+            App.ColMablagh.hide();
+            App.ColfldShenasePardakht.hide();
+            App.ColfldShenaseGhabz.hide();
+            App.ColfldShomareHesab.hide();
+            App.ColfldSharh.hide();
+            App.ColfldId.hide();
+            App.ListParvandeInfo.queryById('GridParvandeInfo').store.load();
+        }
+        else if (FileType == 5) {
+            App.ColName_File.setText("نام شخص حقوقی");
+            App.ColCodemeli_File.show();
+            App.ColCodemeli_File.setText("شناسه ملی");
+            App.ColStartContract_File.hide();
+            App.ColEndContract.hide();
+            App.ColMablagh.hide();
+            App.ColfldShenasePardakht.hide();
+            App.ColfldShenaseGhabz.hide();
+            App.ColfldShomareHesab.show();
+            App.ColfldSharh.show();
+            App.ColfldSharh.setText("نام بانک");
+            App.ColfldId.hide();
+            App.ListParvandeInfo.queryById('GridParvandeInfo').store.load();
+        }
+    }
+
+    function SettxtParvande() {
+        var SelectedRow = App.ListParvandeInfo.queryById('GridParvandeInfo').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (State == 1) {
+                App.RptCodingStatus.queryById('CaseTypeId').setValue(App.ListParvandeInfo.queryById('CboTypeParvande').getValue());
+                App.RptCodingStatus.queryById('txtFileName').setValue(SelectedRow.data.fldName);
+                App.RptCodingStatus.queryById('FileId').setValue(SelectedRow.data.fldId);
+            }
+            else if (State == 2) {
+                App.RptDafater.queryById('txtFileName').setValue(SelectedRow.data.fldName);
+                App.RptDafater.queryById('FileId').setValue(SelectedRow.data.fldId);
+            }
+           
+            App.ListParvandeInfo.destroy();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    var SettxtParvandewithKey = function (view, record, item, index, e) {
+        if (e.getKey() == 13) {
+            var SelectedRow = App.ListParvandeInfo.queryById('GridParvandeInfo').selModel.getLastSelected();
+            if (State == 1) {
+                App.RptCodingStatus.queryById('CaseTypeId').setValue(App.ListParvandeInfo.queryById('CboTypeParvande').getValue());
+                App.RptCodingStatus.queryById('txtFileName').setValue(SelectedRow.data.fldName);
+                App.RptCodingStatus.queryById('FileId').setValue(SelectedRow.data.fldId);
+            }
+            App.ListParvandeInfo.destroy();
+        }
+    };
+</script>

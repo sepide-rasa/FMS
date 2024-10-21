@@ -1,0 +1,233 @@
+﻿@model IEnumerable<NewFMS.WCF_Common_Pay.OBJ_Items_Estekhdam>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net.Utilities
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+
+
+
+@(X.Window().Title("فرمول جدید").Modal(true).Border(false).Listeners(li => li.AfterRender.Handler = "LoadFormul();")
+    .ID("NewWritingFormula")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+          .Width(500)
+          //.Height(580)
+    .Items(
+            X.FormPanel()
+                .ButtonAlign(Ext.Net.Alignment.Center)
+        .Border(false)
+        .KeyMap(Html.X().KeyMap()
+        .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+        .Binding(b =>
+        {
+            b.Add(Html.X().KeyBinding()
+            .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+            .Handler("SaveFormul(); ")
+            );
+
+        }))
+        .DefaultButton("btn")
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+        .Layout(Ext.Net.LayoutType.VBox)
+        .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+        .Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ToolTip("کلید میانبر F8")
+            .Listeners(l =>
+            {
+                l.Click.Handler = "SaveFormul();";
+
+            })
+        //.ItemID("btnSave"),
+        //X.Button().Text("محاسبه مجدد").Icon(Ext.Net.Icon.ArrowRefresh)
+        //.Listeners(l =>
+        //{
+        //    l.Click.Handler = "Calc();";
+
+            //})
+            .ItemID("btnRefresh"),
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                .OnClientClick("App.NewWritingFormula.destroy()")
+        )
+        .Items(
+                X.FieldSet().ItemID("Panel").Title("اطلاعات فرمول")
+            .Layout(Ext.Net.LayoutType.Table)
+            .Border(true)
+            .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+            .Defaults(new { Margin = 2 })
+            .Items(
+                X.Hidden().ItemID("fldId"),
+                         //X.Hidden().ItemID("OrganId"),
+                    //     X.Label().Text("سازمان (Ins):"),
+                    //     X.TextField()
+                    //     .ItemID("txtOrgan")
+                    //     //.FieldLabel("سازمان (Ins)")
+                    ////.MsgTarget(Ext.Net.MessageTarget.Side)
+                    //.AllowBlank(false)
+                    //.ReadOnly(true)
+                    //.Width(350)
+                    //.Icon(Icon.BuildingAdd)
+                    //.BlankText("لطفا سازمان را وارد کنید.")
+                    //.LabelAlign(Ext.Net.LabelAlign.Top)
+                    //        .Listeners(l =>
+                    //            {
+                    //                l.SpecialKey.Handler = "SearchOrganization(e.getKey());";
+                    //                l.IconClick.Handler = "Ext.net.DirectMethod.request({ url: '/Comon/SearchOrganization/Index?State=6'});";
+                    //            })
+                    // .ColSpan(3)
+                    //.AutoFocus(true)         
+                     X.Label().Text("از تاریخ:")
+                    , X.PDateField()
+                    .ItemID("txtTarikh")
+                    
+                    .AllowBlank(false)
+                    .BlankText("لطفا از تاریخ را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Right)              
+                ,X.Label().Text("نوع فرمول:")
+                 , X.ComboBox()
+                .ItemID("CboTypeFormul")
+                .LabelAlign(Ext.Net.LabelAlign.Right)
+                .Editable(false)
+                .TypeAhead(true)
+                .BlankText("لطفا نوع فرمول را انتخاب کنید.")
+                .QueryMode(DataLoadMode.Local)
+                .TriggerAction(TriggerAction.All)
+                .Items(
+                    new ListItem("احکام", "0"),
+                    new ListItem("حقوق", "1")
+                    )
+                .SelectedItems(new { Value = "0" })
+                
+
+            )
+     
+        )
+    )
+)
+
+<script type="text/javascript">
+
+    /*function SearchOrganization(Code) {
+        if (Code == 45) {
+
+            Ext.net.DirectMethod.request({
+                url: '/Comon/SearchOrganization/Index?State=6'
+            });
+        }
+    }*/
+
+   
+    function LoadFormul() {
+        var txtOrgan = App.NewWritingFormula.queryById('txtOrgan');
+        var txtTarikh = App.NewWritingFormula.queryById('txtTarikh');
+        var CboTypeFormul = App.NewWritingFormula.queryById('CboTypeFormul');
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/WritingFormula/Details',
+                params: {
+                    id: '@ViewBag.Id',
+                    OrganId:'@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    txtTarikh.setValue(data.fldAzTarikh);
+                    txtOrgan.setValue(data.NameOrgan);
+                    CboTypeFormul.setValue(data.fldType);
+                    var Id = App.NewWritingFormula.queryById('fldId');
+                    Id.setValue(data.fldId);
+                    /*var OrganId = App.NewWritingFormula.queryById('OrganId');
+                    OrganId.setValue(data.fldOrganId);*/
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            txtTarikh.validate();
+            txtOrgan.validate();
+            CboTypeFormul.validate();
+           
+        }
+
+    }
+   
+    
+    function SaveFormul() {
+        var txtTarikh = App.NewWritingFormula.queryById('txtTarikh');
+        /*var txtOrgan = App.NewWritingFormula.queryById('txtOrgan');*/
+        var CboTypeFormul = App.NewWritingFormula.queryById('CboTypeFormul');
+        /*var OrganId = App.NewWritingFormula.queryById('OrganId');*/
+        var Id = App.NewWritingFormula.queryById('fldId');
+        var er = false;
+
+        if (txtTarikh.validate() == false) {
+            er = true;
+        }
+        /*if (txtOrgan.validate() == false) {
+            er = true;
+        }*/
+        if (CboTypeFormul.validate() == false) {
+            er = true;
+        }
+        
+
+        if (er == true)
+            return;
+        var Type = false;
+        if (CboTypeFormul.getValue() == "1")
+            Type = true;
+        Ext.net.DirectMethod.request({
+            url: '/WritingFormula/SaveFormul',
+            params: {
+                fldId: Id.getValue(),
+                fldType: Type,
+                /*fldOrganId: OrganId.getValue(),*/
+                fldAzTarikh: txtTarikh.rawValue,
+                fldOrganId: '@ViewBag.OrganId'
+            },
+            success: function (data) {
+                var ico = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ico = Ext.MessageBox.ERROR;
+                else
+                    ClearFormul();
+                Ext.MessageBox.show({
+
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: Ext.MessageBox.INFO,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.OrganList.queryById('GridOrganList').store.load();
+            }
+
+        });
+    
+
+        
+    }
+    function ClearFormul() {
+        App.NewWritingFormula.queryById('txtTarikh').setValue("");
+        /*App.NewWritingFormula.queryById('OrganId').setValue("0");
+        App.NewWritingFormula.queryById('txtOrgan').setValue("");*/
+        App.NewWritingFormula.queryById('fldId').setValue(0);
+    }
+    
+    function EnterNext() {
+        var keyfield = App.NewWritingFormula.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling().nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+
+    }
+
+</script>

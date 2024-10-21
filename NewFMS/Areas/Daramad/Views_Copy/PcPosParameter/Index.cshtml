@@ -1,0 +1,415 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_PcPosParametr>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+    .ID("PcPosParameter")
+    .Listeners(li =>
+    {
+        li.AfterRender.Handler = "PcPosParameterSetSize();";
+        li.Render.Fn = "addKeyMapPcPosParameter";
+    })
+    .Title("تعریف پارامترهای PcPos")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .ButtonAlign(Alignment.Center)
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Icon.Disk)
+                    .Listeners(li => li.Click.Handler = "SavePcPosParameter()"),
+                X.Button()
+                    .Text("ویرایش")
+                    .Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(Li => Li.Click.Handler = "LoadPcPosParameter()"),
+                X.Button()
+                    .Text("حذف")
+                    .Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => l.Click.Handler = "DeletePcPosParameter()"),
+               X.Button()
+                    .Text("راهنما")
+                    .Icon(Ext.Net.Icon.Help)
+                    .Listeners(l => { l.Click.Handler = "HelpPcPosParameter();"; }),
+
+                Html.X().Button()
+                    .Text("خروج")
+                    .Icon(Icon.DoorOut)
+                    .OnClientClick("App.PcPosParameter.destroy()")
+            )
+            .Items(
+                X.Hidden().ItemID("fldId"),
+                X.FieldSet()
+                    .Border(true)
+                    .Title("مشخصات پارامترهای PcPos")
+                    .Layout(LayoutType.Table)
+                    .Defaults(new { margin = 2 })
+                    .MarginSpec("2px 2px 12px 2px")
+                    .PaddingSpec("5px 5px 8px 5px")
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                    .Items(
+                        X.Label("شرکت PSP:"),
+                        X.ComboBox()
+                            .ItemID("CboPSP")
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا شرکت PSP را انتخاب کنید.")
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .Width(367)
+                            .EmptyText("شرکت PSP ...")
+                            .Listeners(l => l.AfterRender.Handler = "App.PcPosParameter.queryById('CboPSP').validate();")
+                            .AutoFocus(true)
+                            .ColSpan(4)
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                            )
+                                    )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetPSP"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                                
+                            ),
+                    X.Label("نام فارسی:"),
+                    X.TextField()
+                        .ItemID("txtFaName")
+                        .EnableKeyEvents(true)
+                        .MaxLength(50)
+                        .EnforceMaxLength(true)
+                        .Listeners(l => {
+                            l.AfterRender.Handler = "App.PcPosParameter.queryById('txtFaName').validate();";
+                            l.KeyUp.Fn = "onInitializeToFN";
+                        })
+                        .AllowBlank(false)
+                        .BlankText("لطفا نام فارسی پارامتر را وارد کنید."),
+                    X.Label("نام انگلیسی:"),
+                    X.TextField()
+                        .ItemID("txtEnName")
+                        .MaxLength(50)
+                        .EnforceMaxLength(true)
+                        .EnableKeyEvents(true)
+                        .Listeners(l => {
+                            l.AfterRender.Handler = "App.PcPosParameter.queryById('txtEnName').validate();";
+                            l.KeyUp.Fn = "onInitializeToEn";
+                        })
+                        .AllowBlank(false)
+                        .BlankText("لطفا نام انگلیسی پارامتر را وارد کنید."),
+                    X.Label("توضیحات:"),
+                    X.TextField()
+                        .ItemID("txtDesc")
+                            .Width(367)
+                            .ColSpan(4)
+                    )),
+            X.GridPanel()
+                .AutoScroll(true)
+                .ItemID("PcPosParameterGrid")
+                .BottomBar(X.PagingToolbar())
+                .Store(
+                    X.StoreForModel()
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+
+                    )
+                    .PageSize(15)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                    .Listeners(l => l.DataChanged.Handler = "App.PcPosParameter.queryById('PcPosParameterGrid').selModel.refresh();")
+                )
+                .View(
+                    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                .Plugins(X.FilterHeader().Remote(true))
+                    .Listeners(l =>
+                                 {
+                                     l.AfterRender.Handler = "var grid = App.PcPosParameter.queryById('PcPosParameterGrid');grid.setHeight(App.DaramadWin.getHeight() - 320); ";
+
+                                 })
+                .ColumnModel(
+                    Html.X().RowNumbererColumn(),
+                    Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.fldPspId).Text("کد شرکت PSP").Hidden(true).Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.fldPspName).Text("نام شرکت PSP").Flex(3),                    
+                    Html.X().Column().DataIndex(Model, m => m.fldFaName).Text("نام فارسی").Flex(4),
+                    Html.X().Column().DataIndex(Model, m => m.fldEnName).Text("نام انگلیسی").Flex(4),
+                    Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(7)
+                    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+                )
+    )
+)
+<script type="text/javascript">
+
+    function PcPosParameterSetSize() {
+        App.PcPosParameter.setWidth(App.DaramadWin.getWidth());
+        App.PcPosParameter.queryById('PcPosParameterGrid').setHeight(App.DaramadWin.getHeight() - 320);
+    }
+
+    var onInitializeToFN = function () {
+        var tt = App.PcPosParameter.queryById('txtFaName');
+        changeLagToFa(tt);
+    };
+
+    var onInitializeToEn = function () {
+        var tt = App.PcPosParameter.queryById('txtEnName');
+        changeLagToEn(tt);
+    };
+
+    function changeLagToFa(tt) {
+        tt.setValue(tt.getValue().replace('a', 'ش').replace('A', 'ش'));
+        tt.setValue(tt.getValue().replace('b', 'ذ').replace('B', 'ذ'));
+        tt.setValue(tt.getValue().replace('c', 'ز').replace('C', 'ز'));
+        tt.setValue(tt.getValue().replace('d', 'ی').replace('D', 'ی'));
+        tt.setValue(tt.getValue().replace('e', 'ث').replace('E', 'ث'));
+        tt.setValue(tt.getValue().replace('f', 'ب').replace('F', 'ب'));
+        tt.setValue(tt.getValue().replace('g', 'ل').replace('G', 'ل'));
+        tt.setValue(tt.getValue().replace('h', 'ا'));
+        tt.setValue(tt.getValue().replace('H', 'آ'));
+        tt.setValue(tt.getValue().replace('i', 'ه').replace('I', 'ه'));
+        tt.setValue(tt.getValue().replace('j', 'ت').replace('J', 'ت'));
+        tt.setValue(tt.getValue().replace('k', 'ن').replace('K', 'ن'));
+        tt.setValue(tt.getValue().replace('l', 'م').replace('L', 'م'));
+        tt.setValue(tt.getValue().replace('m', 'ئ').replace('M', 'ئ'));
+        tt.setValue(tt.getValue().replace('n', 'د').replace('N', 'د'));
+        tt.setValue(tt.getValue().replace('o', 'خ').replace('O', 'خ'));
+        tt.setValue(tt.getValue().replace('p', 'ح').replace('P', 'ح'));
+        tt.setValue(tt.getValue().replace('q', 'ض').replace('Q', 'ض'));
+        tt.setValue(tt.getValue().replace('t', 'ف').replace('T', 'ف'));
+        tt.setValue(tt.getValue().replace('r', 'ق').replace('R', 'ق'));
+        tt.setValue(tt.getValue().replace('s', 'س').replace('S', 'س'));
+        tt.setValue(tt.getValue().replace('u', 'ع').replace('U', 'ع'));
+        tt.setValue(tt.getValue().replace('v', 'ر').replace('V', 'ر'));
+        tt.setValue(tt.getValue().replace('w', 'ص').replace('W', 'ص'));
+        tt.setValue(tt.getValue().replace('x', 'ط').replace('X', 'ط'));
+        tt.setValue(tt.getValue().replace('y', 'غ').replace('Y', 'غ'));
+        tt.setValue(tt.getValue().replace('z', 'ظ').replace('Z', 'ظ'));
+        tt.setValue(tt.getValue().replace(';', 'ک'));
+        tt.setValue(tt.getValue().replace("'", 'گ'));
+        tt.setValue(tt.getValue().replace('[', 'ج'));
+        tt.setValue(tt.getValue().replace(']', 'چ'));
+        tt.setValue(tt.getValue().replace(',', 'و'));
+        tt.setValue(tt.getValue().replace('\\', 'پ'));
+    }
+
+    function changeLagToEn(tt) {
+        tt.setValue(tt.getValue().replace('ش', 'a'));
+        tt.setValue(tt.getValue().replace('ذ', 'b'));
+        tt.setValue(tt.getValue().replace('ز', 'c'));
+        tt.setValue(tt.getValue().replace('ی', 'd'));
+        tt.setValue(tt.getValue().replace('ث', 'e'));
+        tt.setValue(tt.getValue().replace('ب', 'f'));
+        tt.setValue(tt.getValue().replace('ل', 'g'));
+        tt.setValue(tt.getValue().replace('ا', 'h'));
+        tt.setValue(tt.getValue().replace('ه', 'i'));
+        tt.setValue(tt.getValue().replace('ت', 'j'));
+        tt.setValue(tt.getValue().replace('ن', 'k'));
+        tt.setValue(tt.getValue().replace('م', 'l'));
+        tt.setValue(tt.getValue().replace('ئ', 'm'));
+        tt.setValue(tt.getValue().replace('د', 'n'));
+        tt.setValue(tt.getValue().replace('خ', 'o'));
+        tt.setValue(tt.getValue().replace('ح', 'p'));
+        tt.setValue(tt.getValue().replace('ض', 'q'));
+        tt.setValue(tt.getValue().replace('ف', 't'));
+        tt.setValue(tt.getValue().replace('ق', 'r'));
+        tt.setValue(tt.getValue().replace('س', 's'));
+        tt.setValue(tt.getValue().replace('ع', 'u'));
+        tt.setValue(tt.getValue().replace('ر', 'v'));
+        tt.setValue(tt.getValue().replace('ص', 'w'));
+        tt.setValue(tt.getValue().replace('ط', 'x'));
+        tt.setValue(tt.getValue().replace('غ', 'y'));
+        tt.setValue(tt.getValue().replace('ظ', 'z'));
+        tt.setValue(tt.getValue().replace('ک', ';'));
+        tt.setValue(tt.getValue().replace('ج', '['));
+        tt.setValue(tt.getValue().replace('چ', ']'));
+        tt.setValue(tt.getValue().replace('ژ', 'C'));
+        tt.setValue(tt.getValue().replace('و', ','));
+        tt.setValue(tt.getValue().replace('پ', '\\'));
+        return tt;
+    }
+    function HelpPcPosParameter() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/PcPosParameter/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SavePcPosParameter() {
+        var Id = App.PcPosParameter.queryById('fldId');
+        var CboPSP = App.PcPosParameter.queryById("CboPSP");
+        var txtFaName = App.PcPosParameter.queryById("txtFaName");
+        var txtEnName = App.PcPosParameter.queryById("txtEnName");
+        var txtDesc = App.PcPosParameter.queryById("txtDesc");
+
+        var er = false;
+        if (CboPSP.validate() == false) {
+            er = true;
+        }
+        if (txtFaName.validate() == false) {
+            er = true;
+        }
+        if (txtEnName.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/PcPosParameter/Save',
+            params: {
+                fldId: Id.getValue(),
+                fldFaName: txtFaName.getValue(),
+                fldEnName: txtEnName.getValue(),
+                fldPspId: CboPSP.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+                if (data.Er != 1) {
+                    App.PcPosParameter.queryById('PcPosParameterGrid').store.load();
+                    ClearPcPosParameter();
+                }
+            }
+        });
+    }
+
+    function LoadPcPosParameter() {
+        var Row=App.PcPosParameter.queryById('PcPosParameterGrid').getSelectionModel().getLastSelected();
+        if (Row != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/PcPosParameter/Details',
+                params: {
+                    Id: Row.data.fldId
+                },
+                success: function (data) {
+                    App.PcPosParameter.queryById('fldId').setValue(data.fldId);
+                    App.PcPosParameter.queryById("CboPSP").setValue(data.fldPspId);
+                    App.PcPosParameter.queryById("txtFaName").setValue(data.fldFaName);
+                    App.PcPosParameter.queryById("txtEnName").setValue(data.fldEnName);
+                    App.PcPosParameter.queryById("txtDesc").setValue(data.fldDesc);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DeletePcPosParameter() {
+        var Row = App.PcPosParameter.queryById('PcPosParameterGrid').getSelectionModel().getLastSelected();
+        if (Row != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/PcPosParameter/Delete',
+                            params: {
+                                Id: Row.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1) {
+                                    ic = Ext.MessageBox.ERROR;
+                                }
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                if (data.Er != 1) {
+                                    if (App.PcPosParameter.queryById('fldId').getValue() == Row.data.fldId) {
+                                        ClearPcPosParameter();
+                                    }
+                                    App.PcPosParameter.queryById('PcPosParameterGrid').store.load();
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearPcPosParameter() {
+        App.PcPosParameter.queryById('fldId').setValue(0);
+        App.PcPosParameter.queryById("CboPSP").setValue("");
+        App.PcPosParameter.queryById('txtFaName').setValue("");
+        App.PcPosParameter.queryById('txtEnName').setValue("");
+        App.PcPosParameter.queryById('txtDesc').setValue("");
+    }
+
+    var addKeyMapPcPosParameter = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.PcPosParameter.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

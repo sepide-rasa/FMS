@@ -1,0 +1,102 @@
+﻿@model IEnumerable<NewFMS.Models.spr_tblLetter_MergeFieldTypeSelect>
+@using Ext.Net.MVC;
+@{
+
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(l => l.AfterRender.Handler = "ReplaceArabic();")
+            .Width(400).Height(250)
+            .Title("بوکمارک ها")
+            .Resizable(false)
+                .ID("SetBookmark")
+            .Closable(false)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Items(
+                X.Panel().Border(false)
+                .Border(false)
+                //.AutoScroll(true)
+                .Items(
+
+                    X.GridPanel().AutoScroll(true)
+                        .TopBar(
+                            Html.X().Toolbar()
+                            .Items(
+                                    X.Button().Text("ادامه").Icon(Ext.Net.Icon.ArrowRedo)
+                                     .Listeners(li => li.Click.Handler = "NextSetBookmark();App.SetBookmark.destroy();")
+                            )
+                        )
+                            .ItemID("GridBookmark").Flex(2)
+                    //.BottomBar(X.PagingToolbar())
+                    .Height(220)
+                    //.ColumnWidth(0.6)
+                    //.Layout(Ext.Net.LayoutType.Column)
+                         .Store(
+                                               X.StoreForModel()//.AutoLoad(false)
+                                                .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReloadBookmark"))
+                                                .Reader(Html.X().JsonReader().Root("data"))
+                             .ExtraParams(x => x.Add(new { LetterId = @ViewBag.LetterId, PatternId = @ViewBag.PatternId }))
+                                            )
+                                            .PageSize(1000)
+                                            .RemoteFilter(false)
+                                            .RemotePaging(true)
+
+                                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                 //   .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldMergeTypeId).Text("MergeTypeId").Flex(2).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldFaName).Text("عنوان").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldValue).Text("مقدار").Flex(2).Editor(Html.X().TextField())
+                    )
+                    .Plugins(
+                            Html.X().CellEditing().ClicksToEdit(1)
+                            )
+
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+
+            )
+        )
+)
+
+<script type="text/javascript">
+    var PatternId = '@ViewBag.PatternId';
+    var LetterId = '@ViewBag.LetterId';
+
+    function NextSetBookmark() {
+        BookmarkVal = new Array();
+        var SelectedRow = App.SetBookmark.queryById('GridBookmark');
+        for (var i = 0; i < SelectedRow.selModel.store.count() ; i++) {
+            row = SelectedRow.selModel.store.data.items[i];
+
+            BookmarkVal.push({
+                'fldMergeTypeId': row.data.fldMergeTypeId,
+                'fldValue': row.data.fldValue
+            });
+        }
+       
+
+      
+    }
+    function ReloadBookmark() {
+        Ext.net.DirectMethod.request({
+            url: '/Automation/SadereLetter/ReloadBookmark',
+            params: {
+                PatternId: PatternId,
+                LetterId: LetterId
+            },
+            success: function (data) {
+                App.SetBookmark.queryById('GridBookmark').getStore().loadData(data);
+            }
+
+        });
+    }
+</script>

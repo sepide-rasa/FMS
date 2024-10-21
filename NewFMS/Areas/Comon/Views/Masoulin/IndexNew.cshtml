@@ -1,0 +1,409 @@
+﻿@model NewFMS.Models.Masoulin
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("Masoulin")
+        .Title("مسئولیت ها")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Border(false)
+        .Listeners(li => li.AfterRender.Handler = "MasoulinSetSize();")
+       .Items(
+    X.Panel().Border(false)//.Height(250)
+        .Items(
+                X.GridPanel()
+                                .AutoScroll(true)
+                                .Listeners(l => l.ItemClick.Handler = "ReloadGridDetail();")
+                                .TopBar(
+                                    Html.X().Toolbar()
+                                        .Items(
+                                            X.Button()
+                                                .Text("جدید")
+                                                .Icon(Ext.Net.Icon.Add)
+                                                .ToolTip("کلید میانبر F8")
+                                                .Listeners(li => li.Click.Handler = "NewMasoulin();"),
+                                            X.Button()
+                                                .Text("ویرایش")
+                                                .Icon(Ext.Net.Icon.Pencil)
+                                                .ToolTip("کلید میانبر F2")
+                                                .Listeners(Li => Li.Click.Handler = "EditMasoulin();"),
+                                            X.Button()
+                                                .Text("تعریف زیرلیست ها")
+                                                .Icon(Ext.Net.Icon.ApplicationSideList)
+                                                .Listeners(Li => Li.Click.Handler = "ZirList();"),
+                                                       X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpMasoulin();"; })
+                                                )
+                                           
+
+                                        )
+                                .ItemID("GridHeader")
+                                .BottomBar(X.PagingToolbar())
+                                        .Plugins(X.FilterHeader().Remote(true))
+                                .Flex(2)
+                                .Store(
+                                           X.StoreFor(Model.Masoulin_H)
+                                        .Proxy(Html.X().AjaxProxy()
+                                            .Url(Url.Action("ReadHeader"))
+                                            .Reader(Html.X().JsonReader().Root("data")))
+                                .PageSize(9)
+                                .RemotePaging(true)
+        /*.Listeners(l => l.DataChanged.Handler = "App.Masoulin.queryById('GridHeader').selModel.refresh();")*/)
+                                .View(
+                                    Html.X().GridView()
+                                        .LoadingText("در حال بارگذاری...")
+                                        .RTL(true))
+                                .ColumnModel(
+                                                    Html.X().Column().DataIndex(Model.Masoulin_H, m => m.fldModule_OrganId).Text("fldModule_OrganId").Hidden(true).Flex(1),
+                                            Html.X().Column().DataIndex(Model.Masoulin_H, m => m.fldId).Text("کد").Flex(1),
+                                            Html.X().Column().DataIndex(Model.Masoulin_H, m => m.fldTarikhEjra).Text("تاریخ اجرا").Flex(2),
+                                                Html.X().Column().DataIndex(Model.Masoulin_H, m => m.fldModule_OrganName).Text("نام ماژول").Flex(7))
+                                .SelectionModel(
+                                    Html.X().RowSelectionModel()
+                                        .Mode(Ext.Net.SelectionMode.Single)
+                                        )
+        ),
+           X.Panel()
+                                .ItemID("PnlGridDetail")
+                                .Title("مسئولیت")
+                                .Border(false)
+                                .Layout(Ext.Net.LayoutType.Fit)
+                                .Items(
+                                        X.GridPanel()
+                                            .TopBar(
+                                        Html.X().Toolbar()
+                                            .Items(
+                                                X.Button()
+                                                    .Text("ذخیره")
+                                                    .Icon(Ext.Net.Icon.Disk)
+                                                    .Listeners(li => li.Click.Handler = "SaveDetail();")
+                                                    ,
+
+                                                    X.Button()
+                                                        .Text("حذف")
+                                                        .Icon(Ext.Net.Icon.Delete)
+                                                        .Listeners(li => li.Click.Handler = "DelDetail();")
+
+
+                                            ))
+                                              .BottomBar(X.PagingToolbar())
+                                        .AutoScroll(true)
+                                            .ItemID("GridDetail")
+                                        .Flex(2).Height(187)
+                                        .Store(
+                                               X.StoreFor(Model.Masoulin_Detail)
+                                                .PageSize(9)
+                                                .RemotePaging(true)
+       // .Listeners(l => l.DataChanged.Handler = " App.Masoulin.queryById('GridDetail').selModel.refresh();")
+                        )
+                                        .View(
+                                            Html.X().GridView()
+                                                .LoadingText("در حال بارگذاری...")
+                                                .RTL(true)
+                        )
+                                            .ColumnModel(
+                                                        Html.X().Column().DataIndex(Model.Masoulin_Detail, m => m.fldMasuolinId).Text("کد header").Hidden(true),
+                                                Html.X().Column().DataIndex(Model.Masoulin_Detail, m => m.fldOrderId).Text("ردیف").RTL(true).Flex(1),
+                                                        Html.X().Column().DataIndex(Model.Masoulin_Detail, m => m.fldOrganPostId).Text("کد سازمان").Hidden(true),//.Hideable(false),
+                                                Html.X().Column().DataIndex(Model.Masoulin_Detail, m => m.fldEmployId).Text("کد کارمند").Hidden(true),//.Hideable(false),
+                                                Html.X().Column().DataIndex(Model.Masoulin_Detail, m => m.fldNameEmployee).Text("نام ونام خانوادگی(Ins)").Flex(4)
+                                                .Editor(Html.X().TextField()
+                                                        .ItemID("txtName").ReadOnly(false)
+        //  .Icon(Ext.Net.Icon.Add)
+                                                    .Listeners(li =>
+                                                    {
+                                                        // li.Focus.Handler = "ReadOnly();";
+                                                        // li.IconClick.Handler = "SearchEmployee(45);";
+                                                        li.SpecialKey.Handler = "SearchEmployee(e.getKey());";
+                                                    })
+                                            ),
+                                                    Html.X().Column().DataIndex(Model.Masoulin_Detail, m => m.TitlePost).Text("پست سازمانی(Ins)").Flex(15)
+                                                .Editor(Html.X().TextField()
+                                                    .ItemID("txtOrgan")
+        //     .Icon(Ext.Net.Icon.Add)
+                                                   .ReadOnly(true)
+                                                    .Listeners(li =>
+                                                    {
+                                                        //li.Focus.Handler = "ReadOnly();";
+                                                        //li.IconClick.Handler = "SearchOrganizationPost(45);";
+                                                        li.SpecialKey.Handler = "SearchOrganizationPost(e.getKey());";
+                                                    })
+                                                    ))
+                                        .Plugins(
+                                            Html.X().CellEditing().ClicksToEdit(1)
+                                            )
+                                        .SelectionModel(
+                                            Html.X().RowSelectionModel()
+                                                .Mode(Ext.Net.SelectionMode.Single)
+                                )
+                    )
+    )
+)
+<script type="text/javascript">
+    var dadat;
+  /*  App.Win.addListener('resize', function () {
+        App.Masoulin.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.Masoulin.queryById('GridHeader');
+        grid.setHeight(App.Win.getHeight() - 120);
+        var grid = App.Masoulin.queryById('PnlGridDetail');
+    });*/
+    function MasoulinSetSize() {
+        var grid = App.Masoulin.queryById('GridHeader');
+       grid.setHeight(App.Win.getHeight() - 387);
+        var GridDetail = App.Masoulin.queryById('GridDetail');
+    }
+    function SearchEmployee(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/comon/SearchEmployee/Index',
+                params: {
+                    State: 2
+                }
+            });
+        }
+      /*  if (Code == 46) {
+            var SelectedRow = App.Masoulin.queryById("GridDetail").getSelectionModel().getLastSelected();
+            if (SelectedRow != null) {
+                App.Masoulin.queryById("GridDetail").store.remove(SelectedRow);
+                grid.getView.refresh();
+            }
+        }*/
+    }
+    function HelpMasoulin() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Masoulin/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SearchOrganizationPost(Code) {
+        var SelectedRow = App.Masoulin.queryById("GridHeader").getSelectionModel().getLastSelected();
+         if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/comon/SearchOrganizationPost/Index',
+                params: {
+                    State: 1,
+                    Id: SelectedRow.data.fldModule_OrganId
+                }
+            });
+        }
+    }
+    function ReloadGridDetail() {
+        var SelectedRow = App.Masoulin.queryById("GridHeader").getSelectionModel().getLastSelected();
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Masoulin/ReloadDetail',
+            params: {
+                HeaderId: SelectedRow.data.fldId,
+            },
+            success: function (result) {
+                App.Masoulin.queryById('GridDetail').getStore().loadData(result);
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function ZirList() {
+        var SelectedRow = App.Masoulin.queryById('GridHeader').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/Masoulin/NewZirList',
+                params: {
+                    id: SelectedRow.data.fldId,
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function EditMasoulin() {
+        var SelectedRow = App.Masoulin.queryById('GridHeader').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/Masoulin/New',
+                params: {
+                    id: SelectedRow.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر راانتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function NewMasoulin() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Masoulin/New',
+            params: {
+                Id: 0
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SaveDetail() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        var Masoulin_DetailList = new Array();
+        var Grid = App.Masoulin.queryById('GridDetail');
+        var ModifiedRec = App.Masoulin.queryById('GridDetail').store.getModifiedRecords();
+            for (var i = 0; i <Grid.selModel.store.count() ; i++) {
+
+            row = Grid.selModel.store.data.items[i];
+
+           /* if (row.data.fldEmployId != 0 && row.data.fldOrganId != 0) {*/
+                fldMasuolinId =row.data.fldMasuolinId;
+                EmployeeId = row.data.fldEmployId;
+                OrganPostId =row.data.fldOrganPostId;
+                fldOrderId =row.data.fldOrderId;
+                if (EmployeeId == 0 && OrganPostId != 0) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "نام شخص انتخاب نشده است.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    return;
+                }
+                else if (EmployeeId != 0 && OrganPostId == 0) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "پست سازمانی انتخاب نشده است.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    return;
+                }
+                Masoulin_DetailList.push({
+                    'fldEmployId': EmployeeId,
+                    'fldOrganPostId': OrganPostId,
+                    'fldMasuolinId': fldMasuolinId,
+                    'fldOrderId': fldOrderId
+                });
+           /* }*/
+        }
+
+        var data1 = {
+            Masoulin_DetailList: Masoulin_DetailList
+        };
+        $.ajax({
+            type: "POST",
+            url: '/Comon/Masoulin/SaveDetail',
+            datatype: "json",
+            data: JSON.stringify(data1),
+            contentType: "application/json; charset=utf-8",
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var result = data;/*JSON.parse(data);*/
+                if (result.MsgTitle == "خطا") {
+                    Ext.MessageBox.show({
+                        title: result.MsgTitle,
+                        msg: result.Msg,
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: result.MsgTitle,
+                        msg: result.Msg,
+                        icon: Ext.MessageBox.INFO,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+        });
+    }
+    function DelDetail() {
+        var SelectedRow = App.Masoulin.queryById('GridDetail').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) { 
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/Masoulin/DeleteDetail',
+                            params: {
+                                MasuolinId: SelectedRow.data.fldMasuolinId,
+                                OrderId: SelectedRow.data.fldOrderId
+                            },
+                            success: function (data) {
+                                Ext.net.Mask.hide();
+                                if (data.Msg == "") {
+                                    var g = Ext.getCmp('GridDetail');
+                                    var sm = g.getSelectionModel();
+                                    sm.getSelection()[0].set('TitlePost', "");
+                                    sm.getSelection()[0].set('fldOrganPostId', 0);
+                                    sm.getSelection()[0].set('fldNameEmployee', "");
+                                    sm.getSelection()[0].set('fldEmployId', 0);
+                                }
+                                else {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Er == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    App.Masoulin.queryById('GridHeader').store.load();
+                                    App.Masoulin.queryById('GridDetail').store.load();
+                                }
+                            }
+                        });
+                        
+
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

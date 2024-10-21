@@ -1,0 +1,503 @@
+﻿@model IEnumerable<NewFMS.WCF_Budget.OBJ_Pishbini_Daramad>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+
+@{
+    var X = Html.X();
+}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+<style>
+    .ColoringL3p .x-grid-cell, .x-grid-rowwrap-div {
+        background-color: #B2E4F4 !important; /*CEF55E*/
+    }
+
+    .ColoringL2p .x-grid-cell, .x-grid-rowwrap-div {
+        background-color: #95D3E6 !important; /*CEF55E*/
+    }
+
+    .ColoringL1p .x-grid-cell, .x-grid-rowwrap-div {
+        background-color: #6DC9E5 !important; /*CEF55E*/
+    }
+</style>
+@(Html.X().Panel()
+    .ID("budgeProject")
+    .Title("پیش بینی مصارف پروژه ها")
+    .Closable(true)
+    .Listeners(li => li.AfterRender.Handler = "budgeProjectSetSize();")
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Layout(LayoutType.Fit)
+    .Items(
+        X.GridPanel()
+            .ItemID("budgeProjectGrid")
+            .Listeners(l => l.AfterRender.Handler = "SetHeader()")
+            //.BottomBar(X.PagingToolbar().Listeners(l => l.BeforeChange.Fn = "CheckModifiedbudgeProject"))
+            .TopBar(
+                    Html.X().Toolbar().Hidden(@ViewBag.NoeAmaliat == 1)
+                    .Items(
+
+                        //    X.Button()
+                        //.Text("بارگزاری از سنوات قبل").Listeners(l => l.Click.Handler = "GetFromGhablProj()")
+                        //    .Hidden(@ViewBag.NoeAmaliat == 2)
+                        //,
+                                        X.ComboBox()
+                                        .ItemID("CboMotamam")
+                                        .DisplayField("fldName")
+                                        .ValueField("fldId")
+                                        .AutoFocus(true)
+                                        .TypeAhead(true)
+                                        .Editable(false)
+                                        .AllowBlank(false)
+                                        .BlankText("لطفا متمم را انتخاب کنید.")
+                                        .QueryMode(DataLoadMode.Local)
+                                            .TriggerAction(TriggerAction.All)
+                                                        .Listeners(l => l.Change.Handler = "LoadGridbudgeProject()")
+                                                        
+                                        .Store(X.Store()
+                                                                                .Listeners(l => l.Load.Handler = "if(App.budgeProject.queryById('CboMotamam').store.count()==0){LoadGridbudgeProject();}else{App.budgeProject.queryById('CboMotamam').setValue(App.budgeProject.queryById('CboMotamam').store.getAt(0));}")
+                                            .Model(X.Model()
+                                                .IDProperty("fldId")
+                                                .Fields(
+                                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                )
+                                            )
+                                            .Proxy(X.AjaxProxy()
+                                                .Url(Url.Action("GetMotamam"))
+                                                .Reader(X.JsonReader().Root("data"))
+                                            )
+                                        )
+                        //,
+                        //X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(li => li.Click.Handler = "SavebudgeProject();")
+                    )
+            )
+                .Store(
+                    X.StoreForModel()
+         .AutoLoad(false)
+                                .Listeners(l => l.DataChanged.Handler = "App.budgeProject.queryById('budgeProjectGrid').selModel.refresh();")
+                        .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("ReadbudgeProject"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+                        //        .ExtraParams(l => l.Add(new { Year = ViewBag.Year }))
+                        )
+                        .PageSize(50)
+                        .RemoteFilter(false)
+                        .RemotePaging(false)
+                    )
+                    .View(
+                            Html.X().GridView()
+                                .PreserveScrollOnRefresh(true)
+                                .GetRowClass(l => l.Fn = "SetColorRowTamalok")
+                            .LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+         .Plugins(X.FilterHeader().Remote(false))
+                    //.Plugins(Html.X().CellEditing().ClicksToEdit(1)
+                    //.Listeners(l =>
+                    //{
+                    //    l.Edit.Fn = "nextcellRowbudgeProject";
+                    //    l.BeforeEdit.Fn = "LockGrid";
+                    //}))
+                .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model, m => m.fldCodingId).Text("کد ").Flex(1).Hidden(true),
+                                    
+                        Html.X().Column().DataIndex(Model, m => m.fldCode).Text("کد حساب").Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان حساب").Flex(5).Wrap(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldCol4).Text("عملکرد دو سال قبل").Flex(3).Renderer("return value.toLocaleString();")
+                            /*.Editor(Html.X().TextField().ID("txtCol4")
+                                .MaskRe("[0-9]").EnableKeyEvents(true).Listeners(l =>
+                                {
+                                    l.Change.Handler = "checkValidateandseperate_4()";
+                                    l.Focus.Handler = "checkValidateandseperate_4()";
+                                    l.SpecialKey.Handler = "checkhintkey_Paid(e.getKey())";
+                                }))*/.Hidden(@ViewBag.NoeAmaliat == 2),
+                                Html.X().Column().DataIndex(Model, m => m.fldCol2).Text("مصوب سال قبل").Flex(3).Renderer("return value.toLocaleString();")
+                                /*.Editor(Html.X().TextField().ID("txtCol2")
+                                    .AutoFocus(true).MaskRe("[0-9]").EnableKeyEvents(true).Listeners(l =>
+                                    {
+                                        l.Change.Handler = "checkValidateandseperate_2()";
+                                        l.Focus.Handler = "checkValidateandseperate_2()";
+                                        l.SpecialKey.Handler = "checkhintkey_Paid(e.getKey())";
+                                    }))*/.Hidden(@ViewBag.NoeAmaliat == 2),
+
+                                Html.X().Column().DataIndex(Model, m => m.fldCol1).Text("مبلغ پیشنهادی").Flex(3).Renderer("return value.toLocaleString();")
+                                /*.Editor(Html.X().TextField().ID("txtCol1")
+                                    .AutoFocus(true).MaskRe("[0-9]").EnableKeyEvents(true).Listeners(l =>
+                                    {
+                                        l.Change.Handler = "checkValidateandseperate_1()";
+                                        l.Focus.Handler = "checkValidateandseperate_1()";
+                                        l.SpecialKey.Handler = "checkhintkey_Paid(e.getKey())";
+                                    }))*/.Hidden(@ViewBag.NoeAmaliat == 2),
+                                        Html.X().Column().DataIndex(Model, m => m.fldCol9).Text("افزایش").Flex(3).Renderer("return value.toLocaleString();")
+                                            /*.Editor(Html.X().TextField().ID("txtCol9")
+                                            .AutoFocus(true).MaskRe("[0-9]").EnableKeyEvents(true).Listeners(l =>
+                                            {
+                                                l.Change.Handler = "checkValidateandseperate_9()";
+                                                l.Focus.Handler = "checkValidateandseperate_9()";
+                                                l.SpecialKey.Handler = "checkhintkey_Paid(e.getKey())";
+                                            }))*/.Hidden(@ViewBag.NoeAmaliat == 1),
+                                        Html.X().Column().DataIndex(Model, m => m.fldCol10).Text("کاهش").Flex(3).Renderer("return value.toLocaleString();")
+                                            /*.Editor(Html.X().TextField().ID("txtCol10")
+                                            .AutoFocus(true).MaskRe("[0-9]").EnableKeyEvents(true).Listeners(l =>
+                                            {
+                                                l.Change.Handler = "checkValidateandseperate_10()";
+                                                l.Focus.Handler = "checkValidateandseperate_10()";
+                                                l.SpecialKey.Handler = "checkhintkey_Paid(e.getKey())";
+                                            }))*/.Hidden(@ViewBag.NoeAmaliat == 1),
+                                Html.X().Column().DataIndex(Model, m => m.last).Text("last").Flex(2).Hidden(true).Hideable(false)
+                                    ,
+                                        Html.X().CommandColumn().Text("").ItemID("buttonProject").PrepareToolbar("disablebtn").Width(100)
+                                            .Commands(
+                                                            Html.X().GridCommand()
+                                                        .CommandName("Down")
+                                                        .StandOut(true)
+                                                            .Text("انتخاب کد حساب")
+                                                            
+                                                            .ToolTip(tt => tt.Text = "انتخاب کدحساب")
+
+                                            )
+                                                .Listeners(ls => ls.Command.Fn = "LinktoAccCoding")
+                                                    //.Hidden(@ViewBag.NoeAmaliat == 2)
+                                       
+                )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+                )
+
+        )
+)
+
+<script type="text/javascript">
+    var HintEnter_Paid = 0;
+    var SetColorRowTamalok = function (record, rowIndex, rowParams, store) {
+        if (record.data.fldLevelId == 1) {
+            return "ColoringL1p";
+        }
+        else if (record.data.fldLevelId == 2) {
+            return "ColoringL2p";
+        }
+        else if (record.data.fldLevelId == 3) {
+            return "ColoringL3p";
+        }
+    };
+    function GetFromGhablProj() {
+        App.budgeProject.queryById("budgeProjectGrid").getStore().getProxy().setExtraParam('Year', '@ViewBag.Year');
+        App.budgeProject.queryById("budgeProjectGrid").getStore().getProxy().setExtraParam('MotamamId', 0);
+        App.budgeProject.queryById("budgeProjectGrid").getStore().getProxy().setExtraParam('state', 2);
+        App.budgeProject.queryById("budgeProjectGrid").store.load();
+    }
+    function LoadGridbudgeProject() {
+        var MotamamId = 0;
+        if ('@ViewBag.NoeAmaliat' != 1)
+            MotamamId = App.budgeProject.queryById('CboMotamam').getValue();
+
+        App.budgeProject.queryById("budgeProjectGrid").getStore().getProxy().setExtraParam('Year', '@ViewBag.Year');
+        App.budgeProject.queryById("budgeProjectGrid").getStore().getProxy().setExtraParam('MotamamId', MotamamId);
+        App.budgeProject.queryById("budgeProjectGrid").getStore().getProxy().setExtraParam('state', 1);
+        App.budgeProject.queryById("budgeProjectGrid").store.load();
+    }
+
+    var disablebtn = function (grid, toolbar, rowIndex, record) {
+        var Button1 = toolbar.items.get(0);
+        if (record.data.last == 0) {
+            Button1.hide();
+        }
+    };
+    function LinktoAccCoding(grid, command, record, row) {
+        var RowId = record.data.fldCodingId;/*آیدی کدینگ بودجه*/
+        var MotamamId = 0;
+        if ('@ViewBag.NoeAmaliat' != 1)
+            MotamamId = App.budgeProject.queryById('CboMotamam').getValue();
+        if (command == "Down") {
+            App.budgeProject.body.mask('در حال بارگذاری...');
+            Ext.net.DirectMethod.request({
+                url: '/Budget/Pishbini/ProjeHa',
+                params: {
+                    CodingBudge: RowId,
+                    Year: '@ViewBag.Year',
+                    MotamamId: MotamamId
+                },
+                success: function (data) {
+                    App.budgeProject.body.mask().hide();
+                }
+            })
+        }
+
+    };
+
+    function checkValidateandseperate_1() {
+        App.txtCol1.setValue(accounting.formatNumber(App.txtCol1.getValue()));
+    }
+    function checkValidateandseperate_2() {
+        App.txtCol2.setValue(accounting.formatNumber(App.txtCol2.getValue()));
+    }
+    function checkValidateandseperate_4() {
+        App.txtCol4.setValue(accounting.formatNumber(App.txtCol4.getValue()));
+    }
+    function checkValidateandseperate_9() {
+        App.txtCol9.setValue(accounting.formatNumber(App.txtCol9.getValue()));
+    }
+    function checkValidateandseperate_10() {
+        App.txtCol10.setValue(accounting.formatNumber(App.txtCol10.getValue()));
+    }
+
+    function checkhintkey_Paid(e) {
+        if (e == 13) {
+            HintEnter_Paid = 1;
+        }
+    };
+
+    function SetHeader() {
+        var k = App.budgeProject.queryById("budgeProjectGrid");
+        var kk = k.getView().getHeaderCt().getGridColumns();
+        var sal = parseInt('@ViewBag.Year');
+        var salGhabl = sal - 1;
+        var salGhabl2 = sal - 2;
+        kk[4].setText("عملکرد سال " + salGhabl2);
+        kk[5].setText("مصوب سال " + salGhabl);
+    }
+    var CheckModifiedbudgeProject = function (pagetoolbar, page, eOpts) {
+        var MotamamId = 0;
+        if ('@ViewBag.NoeAmaliat' != 1)
+            MotamamId = App.budgeProject.queryById('CboMotamam').getValue();
+
+        var changedRow = App.budgeProject.queryById('budgeProjectGrid').store.getModifiedRecords();
+        if (changedRow.length > 0) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا تمایل دارید اطلاعات ویرایش شده ذخیره شود؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        App.budgeProject.body.mask('در حال ذخیره سازی...');
+                        var budgeProjectVal = new Array();
+                        var SelectedRow = App.budgeProject.queryById("budgeProjectGrid");
+                        for (var i = 0; i < SelectedRow.selModel.store.count() ; i++) {
+                            row = SelectedRow.selModel.store.data.items[i];
+                            if (row.data.last == 1) {
+                                if ('@ViewBag.NoeAmaliat' == 1) {
+                                    if (row.data.fldCol1 > 0)
+                                        budgeProjectVal.push({
+                                            'fldCodingBudje_DetailsId': row.data.fldCodingId,
+                                            'fldMablagh': row.data.fldCol1,
+                                            'fldBudgetTypeId': 1
+                                        });
+                                    if (row.data.fldCol2 > 0)
+                                        budgeProjectVal.push({
+                                            'fldCodingBudje_DetailsId': row.data.fldCodingId,
+                                            'fldMablagh': row.data.fldCol2,
+                                            'fldBudgetTypeId': 2
+                                        });
+                                    if (row.data.fldCol4 > 0)
+                                        budgeProjectVal.push({
+                                            'fldCodingBudje_DetailsId': row.data.fldCodingId,
+                                            'fldMablagh': row.data.fldCol4,
+                                            'fldBudgetTypeId': 4
+                                        });
+                                }
+                                else {
+                                    if (row.data.fldCol9 > 0)
+                                        budgeProjectVal.push({
+                                            'fldCodingAcc_DetailsId': row.data.fldCodingId,
+                                            'fldMablagh': row.data.fldCol9,
+                                            'fldBudgetTypeId': 9
+                                        });
+                                    if (row.data.fldCol10 > 0)
+                                        budgeProjectVal.push({
+                                            'fldCodingAcc_DetailsId': row.data.fldCodingId,
+                                            'fldMablagh': row.data.fldCol10,
+                                            'fldBudgetTypeId': 10
+                                        });
+                                }
+                            }
+                        }
+                        var data = {
+                            budgeProjectVal: budgeProjectVal,
+                            Year: '@ViewBag.Year',
+                            MotamamId: MotamamId
+                        };
+
+                        $.ajax({
+                            type: "POST",
+                            url: '/Budget/Pishbini/SavebudgeProject',
+                            datatype: "json",
+                            data: JSON.stringify(data),
+                            contentType: 'application/json',
+                            success: function (result) {
+                                App.budgeProject.body.mask().hide();
+                                if (result.Er == 1) {
+                                    Ext.MessageBox.show({
+                                        title: result.MsgTitle,
+                                        msg: result.Msg,
+                                        icon: Ext.MessageBox.ERROR,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                }
+                                else {
+                                    App.budgeProject.queryById("budgeProjectGrid").store.load();
+                                    pagetoolbar.getStore().loadPage(page);
+                                }
+                            },
+                            failure: function (data) {
+                                alert(data.data);
+                            }
+                        });
+                    }
+                    else {
+                        pagetoolbar.getStore().loadPage(page);
+                    }
+                }
+            });
+            return false;
+        }
+    };
+    var s;
+    var nextcellRowbudgeProject = function (a, b) {
+        s = b;
+        if (HintEnter_Paid == 1) {
+            HintEnter_Paid = 0;
+            App.budgeProject.queryById("budgeProjectGrid").editingPlugin.startEdit(b.rowIdx + 1, b.colIdx);
+            a.getEditor(b.row, b.column).field.selectText();
+            /*  if (s.record.data.last==0)
+                  App.budgeProject.queryById("txtCol4").setReadOnly(true);
+              else
+                  App.budgeProject.queryById("txtCol4").setReadOnly(false);*/
+        }
+
+        /*    App.budgeProject.queryById("budgeProjectGrid").editingPlugin.startEdit(b.rowIdx + 1, b.colIdx);
+         a.getEditor(b.row, b.column).field.selectText();
+
+         var Grid = App.budgeProject.queryById("budgeProjectGrid");
+
+        var row = Grid.selModel.store.data.items[b.rowIdx];
+        row.set(a.context.field, "111");*/
+
+    };
+
+    var LockGrid = function (a, b) {
+        if (b.record.data.last == 0) {
+            App.txtCol1.setReadOnly(true);
+            App.txtCol2.setReadOnly(true);
+            App.txtCol4.setReadOnly(true);
+            App.txtCol9.setReadOnly(true);
+            App.txtCol10.setReadOnly(true);
+        }
+        else {
+            App.txtCol1.setReadOnly(false);
+            App.txtCol2.setReadOnly(false);
+            App.txtCol4.setReadOnly(false);
+            App.txtCol9.setReadOnly(false);
+            App.txtCol10.setReadOnly(false);
+        }
+    };
+    function budgeProjectSetSize() {
+        App.budgeProject.setWidth(App.BudjeWin.getWidth());
+        App.budgeProject.queryById('budgeProjectGrid').setHeight(App.BudjeWin.getHeight() - 170);
+    }
+    function SavebudgeProject() {
+        App.budgeProject.body.mask('در حال ذخیره سازی...');
+        var MotamamId = 0;
+        if ('@ViewBag.NoeAmaliat' != 1)
+            MotamamId = App.budgeProject.queryById('CboMotamam').getValue();
+
+        var budgeProjectVal = new Array();
+        var grid = App.budgeProject.queryById("budgeProjectGrid");
+
+        var cc = grid.store.currentPage;
+
+        for (var i = 0; i < grid.selModel.store.count() ; i++) {
+            row = grid.selModel.store.data.items[i];
+            if (row.data.last == 1) {
+                if ('@ViewBag.NoeAmaliat' == 1) {
+                    if (row.data.fldCol1 > 0)
+                        budgeProjectVal.push({
+                            'fldCodingBudje_DetailsId': row.data.fldCodingId,
+                            'fldMablagh': row.data.fldCol1,
+                            'fldBudgetTypeId': 1
+                        });
+                    if (row.data.fldCol2 > 0)
+                        budgeProjectVal.push({
+                            'fldCodingBudje_DetailsId': row.data.fldCodingId,
+                            'fldMablagh': row.data.fldCol2,
+                            'fldBudgetTypeId': 2
+                        });
+                    if (row.data.fldCol4 > 0)
+                        budgeProjectVal.push({
+                            'fldCodingBudje_DetailsId': row.data.fldCodingId,
+                            'fldMablagh': row.data.fldCol4,
+                            'fldBudgetTypeId': 4
+                        });
+                }
+                else {
+                    if (row.data.fldCol9 > 0)
+                        budgeProjectVal.push({
+                            'fldCodingAcc_DetailsId': row.data.fldCodingId,
+                            'fldMablagh': row.data.fldCol9,
+                            'fldBudgetTypeId': 9
+                        });
+                    if (row.data.fldCol10 > 0)
+                        budgeProjectVal.push({
+                            'fldCodingAcc_DetailsId': row.data.fldCodingId,
+                            'fldMablagh': row.data.fldCol10,
+                            'fldBudgetTypeId': 10
+                        });
+                }
+            }
+        }
+        var data = {
+            budgeProjectVal: budgeProjectVal,
+            Year: '@ViewBag.Year',
+            MotamamId: MotamamId
+        };
+        $.ajax({
+            type: "POST",
+            url: '/Budget/Pishbini/SavebudgeProject',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json; charset=utf-8',
+            success: function (data1) {
+                App.budgeProject.body.mask().hide();
+                Ext.net.Mask.hide();
+                var result = data1;/*JSON.parse(data1);*/
+                var ico = Ext.MessageBox.INFO;
+                if (result.Er == 1)
+                    ico = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ico,
+                    buttons: Ext.MessageBox.OK
+                });
+
+                grid.store.load();
+                grid.store.loadPage(cc);
+            },
+            failure: function (data1) {
+                alert(data.data1);
+            }
+        });
+
+    }
+
+
+</script>
+

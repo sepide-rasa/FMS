@@ -1,0 +1,500 @@
+﻿@model NewFMS.Models.CodingStatus
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+<style>
+    .custom-icon {
+        margin-right: 210px !important;
+    }
+    .x-mcombo-item-unchecked {
+        background-position: right;
+        padding-right: 20px;
+    }
+
+    .x-mcombo-item-checked {
+        background-position: right;
+        padding-right: 20px;
+    }
+</style>
+
+<script>
+    var filterTree = function (tf, e) {
+        var tree = this.up("treepanel"),
+        text = tf.getRawValue();
+        tree.clearFilter();
+
+        if (Ext.isEmpty(text, false)) {
+            return;
+        }
+
+        if (e.getKey() === Ext.EventObject.ESC) {
+            clearFilter();
+        } else {
+            var re = new RegExp(".*" + text + ".*", "i");
+            tree.filterBy(function (node) {
+                return re.test(node.data.text);
+            });
+        }
+    };
+
+    var clearFilter = function () {
+        var field = this,
+        tree = this.up("treepanel");
+        field.setValue("");
+        tree.clearFilter();
+        tree.expandAll();
+        tree.getView().focus();
+    };
+</script>
+
+@(Html.X().Panel()
+    .ID("RptCodingStatus")
+    .Title("گزارش جامع تراز")
+    .Border(false)
+    .Listeners(li => li.AfterRender.Handler = "RptCodingStatusSetSize();")
+    .Listeners(l => l.Render.Fn = "addKeyMapRptCodingStatus")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Buttons(
+                X.Button()
+                    .Text("جستجو")
+                    .Icon(Ext.Net.Icon.Zoom)
+                    .Listeners(l => { l.Click.Handler = "SearchRptCodingStatus();"; }),
+                X.Button().Text("چاپ")
+                    .Icon(Ext.Net.Icon.Printer)
+                    .Listeners(l => { l.Click.Handler = "PrintRptCodingStatus();"; }),
+        //X.Button()
+        //.Text("راهنما")
+        //.Icon(Ext.Net.Icon.Help)
+        //.Listeners(l => { l.Click.Handler = "HelpRptCodingStatus();"; }),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.RptCodingStatus.destroy()")
+            )
+            .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .Title("آیتم های جستجو")
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.Panel()
+                            .Border(false)
+                            .Layout(LayoutType.HBox)
+                            .Defaults(new { Margin=2})
+                            .Items(
+                                X.Hidden().ItemID("FileId"),
+                                X.Hidden().ItemID("CaseTypeId"),
+                                X.Label("نوع پرونده:"),
+                                X.ComboBox()
+                                    .ItemID("CboCaseType")
+                                    .AutoFocus(true)
+                                    .TypeAhead(true)
+                                    .Editable(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .AllowBlank(true)
+                                    .BlankText("لطفا نوع پرونده را انتخاب کنید.")
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldTitle")
+                                    .ValueField("fldId")
+                                    .EmptyText("نوع پرونده ...")
+                                    .Store(X.Store()
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetCaseType"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                    )
+                                    .Listeners(l => l.Change.Handler = "ChangeCaseType()"),
+                                X.Label("پرونده:"),
+                                X.TextField()
+                                    .Width(230)
+                                    .ItemID("txtFileName")
+                                    .ReadOnly(true)
+                                    .FieldStyle("padding-right:6px;")
+                                    .Icon(Icon.Add)
+                                    .Listeners(l =>
+                                    {
+                                        l.SpecialKey.Handler = "SelectAshkhas(e.getKey());";
+                                        l.IconClick.Handler = "SelectAshkhas2()";
+                                        l.AfterRender.Handler = "App.RptCodingStatus.queryById('txtFileName').icon.dom.classList.add('custom-icon');";
+                                    }),
+                                X.Label("نوع سند:"),
+                                X.MultiCombo()
+                                    .ItemID("CboTypeSanad")
+                                    .TypeAhead(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا نوع سند انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .EmptyText("آئین نامه ...")
+                                    .Listeners(l => l.AfterRender.Handler = "setAllType4()")
+                                    .Items(
+                                        new ListItem("موقت", "0"),
+                                        new ListItem("قطعی", "1")
+                                    ),
+                                X.FieldSet()
+                                    .Layout(LayoutType.Table)
+                                    .Border(false)
+                                    .Defaults(new { Margin = 2 })
+                                    .Items(
+                                        X.Checkbox().ItemID("CheckedDetail"),
+                                        X.Label("نمایش جزئیات")
+                                     )
+                        ),
+                        X.TreePanel()
+                            .ID("TreeCoding_Detail")
+                            .TopBarItem(
+                                X.Label("مقدار جستجو:"),
+                                X.TextField()
+                                    .ItemID("TxtFilter")
+                                    .EnableKeyEvents(true)
+                                    .Listeners(l=>l.KeyDown.Fn = "StartSearching"),
+                                X.Button()
+                                    .Text("جستجو")
+                                    .Icon(Icon.Magnifier)
+                                    .Listeners(l =>
+                                    {
+                                        l.Click.Handler = "App.TreeCoding_Detail.store.load();setTimeout(function(){if(App.RptCodingStatus.queryById('TxtFilter').getValue()!=''){App.TreeCoding_Detail.expandAll();}},500);";
+                                        l.AfterRender.Handler = "App.TreeCoding_Detail.store.load();";
+                                    })
+    //Html.X().ToolbarTextItem().Text("جستجو:"),
+        //Html.X().ToolbarSpacer()
+        //Html.X().TriggerField()
+        //    .EnableKeyEvents(true)
+        //    .Triggers(
+        //        Html.X().FieldTrigger().Icon(TriggerIcon.Clear)
+        //    )
+        //    .Listeners(l =>
+        //    {
+        //        l.KeyUp.Fn = "filterTree";
+        //        l.KeyUp.Buffer = 250;
+
+                                    //        l.TriggerClick.Fn = "clearFilter";
+        //    })
+                            )
+                            .AutoScroll(true)
+                            .Frame(true)
+                            .TitleAlign(TitleAlign.Right)
+                            .Title("ساختار درختی کدینگ")
+                            .Width(700)
+                            .Margin(5)
+                            .UseArrows(true)
+            .Listeners(l => l.ItemDblClick.Handler = "SearchRptCodingStatus()")
+                            .Store(
+                                Html.X().TreeStore()
+                                    .AutoLoad(false)
+                                    .Model(
+                                        Html.X().Model()
+                                            .Fields(
+                                                X.ModelField().Name(Model.Coding_Details, m => m.fldCode).Type(ModelFieldType.String),
+                                                X.ModelField().Name(Model.Coding_Details, m => m.fldTempCodingId).Type(ModelFieldType.String),
+                                                X.ModelField().Name(Model.Coding_Details, m => m.fldTempNameId).Type(ModelFieldType.String),
+                                                X.ModelField().Name(Model.Coding_Details, m => m.fldAccountingTypeId).Type(ModelFieldType.String),
+                                                X.ModelField().Name(Model.Coding_Details, m => m.fldTitle).Type(ModelFieldType.String),
+                                                X.ModelField().Name(Model.Coding_Details, m => m.fldMahiyatId).Type(ModelFieldType.String),
+                                                X.ModelField().Name(Model.Coding_Details, m => m.fldAccountLevelId).Type(ModelFieldType.String),
+                                                X.ModelField().Name(Model.Coding_Details, m => m.fldName_AccountingLevel).Type(ModelFieldType.String),
+                                                X.ModelField().Name(Model.Coding_Details, m => m.fldPCod).Type(ModelFieldType.String),
+                                                X.ModelField().Name(Model.Coding_Details, m => m.fldDesc).Type(ModelFieldType.String)
+                                            )
+                                    )
+                                    .Proxy(
+                                        Html.X().AjaxProxy().Url(Url.Action("LoadTreeCoding"))
+                                    )
+                                    .Listeners(l => l.BeforeLoad.Fn = "GetParamTreeCoding_Detail")
+        //.Listeners(l => l.Load.Handler = "if(App.RptCodingStatus.queryById('TxtFilter').getValue()!=''){App.TreeCoding_Detail.expandAll();}")
+                            )
+                            .Root(Html.X().Node().NodeID("0").Text("ساختار درختی کدینگ").Expanded(true).EmptyChildren(true).Children())
+                )
+        )//,
+        //    X.GridPanel()
+        //        .ItemID("RptCodingStatusGrid")
+        //        .BottomBar(X.PagingToolbar())
+        //        .Store(
+        //                   X.StoreFor(Model.RptCoding).AutoLoad(false)
+        //                .Listeners(l => l.DataChanged.Handler = "App.RptCodingStatus.queryById('RptCodingStatusGrid').selModel.refresh();")
+        //                .Proxy(Html.X().AjaxProxy()
+        //                    .Url(Url.Action("Read"))
+        //                    .Reader(Html.X().JsonReader().Root("data"))
+        //                )
+        //                .PageSize(20)
+        //                .RemoteFilter(true)
+        //                .RemotePaging(true)
+        //            )
+        //        .View(
+        //            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+        //            )
+        //    .Plugins(X.FilterHeader().Remote(false))
+        //        .Listeners(l =>
+        //        {
+        //            l.AfterRender.Handler = "var grid = App.RptCodingStatus.queryById('RptCodingStatusGrid');grid.setHeight(App.AccountingWin.getHeight() - 260); ";
+
+    //        })
+        //    .ColumnModel(
+        //                    Html.X().RowNumbererColumn(),
+        //                        Html.X().Column().DataIndex(Model.RptCoding, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+        //                            Html.X().Column().DataIndex(Model.RptCoding, m => m.fldTitle).Text("عنوان کدینگ").Flex(2).Renderer("DetailCo"),
+        //                        Html.X().Column().DataIndex(Model.RptCoding, m => m.fldParentTitle).Text("عنوان کدینگ پدر").Flex(5),
+        //                        Html.X().Column().DataIndex(Model.RptCoding, m => m.fldTypeName).Text("ماهیت").Flex(2),
+        //                            Html.X().Column().DataIndex(Model.RptCoding, m => m.fldMande).Text("مانده حساب").Flex(2).Renderer("Rial")
+
+    //)
+        //            .SelectionModel(
+        //                Html.X().RowSelectionModel()
+        //                    .Mode(Ext.Net.SelectionMode.Single)
+        //)
+    )
+)
+<script type="text/javascript">
+
+    var StartSearching = function (Fieldd, Eventt) {
+        if (Eventt.keyCode == 13) {
+            App.TreeCoding_Detail.store.load(); setTimeout(function () { if (App.RptCodingStatus.queryById('TxtFilter').getValue() != '') { App.TreeCoding_Detail.expandAll(); } }, 500);
+        }
+    };
+
+    function SelectAshkhas2() {
+        if (App.RptCodingStatus.queryById('CboCaseType').getValue() != null) {
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/SearchParvandeInfo/Index',
+                params: {
+                    State: 1,
+                    FileType: App.RptCodingStatus.queryById("CboCaseType").getValue(),
+                    Year: '@ViewBag.Year'
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا نوع پرونده را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK,
+                fn:function(btn){
+                    if(btn=="ok"){
+                        App.RptCodingStatus.queryById("CboCaseType").focus();
+                    }
+                }
+            });
+        }
+    }
+
+    function ChangeCaseType() {
+        App.RptCodingStatus.queryById('FileId').setValue(0);
+        App.RptCodingStatus.queryById('txtFileName').setValue("");
+    }
+
+    function setAllType4() {
+        const AllType = ["0", "1"];
+        App.RptCodingStatus.queryById('CboTypeSanad').setValue(AllType);
+    }
+
+    function PrintRptCodingStatus() {
+        var CaseTypeId=0;
+        var FileId=0;
+        var flag = 0;
+        var SelectedRow = App.TreeCoding_Detail.getSelectionModel().getLastSelected();
+        var CboTypeSanad = App.RptCodingStatus.queryById('CboTypeSanad');
+        if (CboTypeSanad.validate() == false)
+            return;
+        if (SelectedRow == null) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا سرفصل مورد نظر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else {
+            if (App.RptCodingStatus.queryById('FileId').getValue() != 0) {
+                FileId = App.RptCodingStatus.queryById('FileId').getValue();
+                CaseTypeId = App.RptCodingStatus.queryById('CaseTypeId').getValue();
+            }
+            var CheckedDetail = App.RptCodingStatus.queryById('CheckedDetail');
+            if (CheckedDetail.getValue() == true)
+                flag = 1;
+
+            var Type = 2;
+            if (CboTypeSanad.getValue().length == 1)
+                Type = CboTypeSanad.getValue()[0];
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/RptCodingStatus/PrintRptCodingStatus',
+                params: {
+                    SourceId: FileId,
+                    CaseTypeId: CaseTypeId,
+                    flag: flag,
+                    CodingDetail: SelectedRow.data.id,
+                    Year: '@ViewBag.Year',
+                    TypeSanad: Type
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+
+    /*function GetIdCoding(record) {
+        CodingDetail = record.getId();
+    };*/
+
+    function SearchRptCodingStatus() {
+        var CaseTypeId=0;
+        var FileId=0;
+        var flag = 0;
+        var SelectedRow = App.TreeCoding_Detail.getSelectionModel().getLastSelected();
+        var CboTypeSanad = App.RptCodingStatus.queryById('CboTypeSanad');
+        if (CboTypeSanad.validate() == false)
+            return;
+        if (SelectedRow == null) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا سرفصل مورد نظر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else {
+            if (App.RptCodingStatus.queryById('FileId').getValue() != 0) {
+                FileId = App.RptCodingStatus.queryById('FileId').getValue();
+                CaseTypeId = App.RptCodingStatus.queryById('CaseTypeId').getValue();
+            }
+            var CheckedDetail = App.RptCodingStatus.queryById('CheckedDetail');
+            if (CheckedDetail.getValue() == true)
+                flag = 1;
+
+            var Type = 2;
+            if (CboTypeSanad.getValue().length == 1)
+                Type = CboTypeSanad.getValue()[0];
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/RptCodingStatus/ShowRptTaraz',
+                params: {
+                    SourceId: FileId,
+                    CaseTypeId: CaseTypeId,
+                    flag: flag,
+                    CodingDetail: SelectedRow.data.id,
+                    Year: '@ViewBag.Year',
+                    containerId: "FirstTabAccounting",
+                    TypeSanad: Type
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+
+    function SelectAshkhas(Code) {
+        if (Code == 45) {
+            if (App.RptCodingStatus.queryById('CboCaseType').getValue()!=null) {
+                Ext.net.DirectMethod.request({
+                    url: '/Accounting/SearchParvandeInfo/Index',
+                    params: {
+                        State: 1,
+                        FileType: App.RptCodingStatus.queryById('CboCaseType').getValue(),
+                        Year: '@ViewBag.Year'
+                    }
+                });
+            }
+            else{
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا نوع پرونده را انتخاب کنید.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            App.RptCodingStatus.queryById("CboCaseType").focus();
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    var GetParamTreeCoding_Detail = function (store, operation, eOpts) {
+        operation.params.nod = operation.node.getId();
+        operation.params.Year = '@ViewBag.Year';
+        operation.params.FilterValue = App.RptCodingStatus.queryById('TxtFilter').getValue();
+    };
+
+    function RptCodingStatusSetSize() {
+        App.RptCodingStatus.setSize(App.AccountingWin.getWidth(), App.AccountingWin.getHeight() - 170);
+        App.TreeCoding_Detail.setSize(App.AccountingWin.getWidth()-550, App.AccountingWin.getHeight() - 280);
+    }
+
+    /*function setDefaultOrgan_Module() {
+        var Id = App.RptCodingStatus.queryById('CboOrgan_Module').store.getAt(0).data.fldId;
+        App.RptCodingStatus.queryById('CboOrgan_Module').setValue(Id);
+    }*/
+    function HelpRptCodingStatus() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/RptCodingStatus/Help',
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+
+    var addKeyMapRptCodingStatus = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield;
+                    var nextfld;
+                    if ((Ext.Element.getActiveElement()).name == "") {
+                        nextfld = App.RptCodingStatus.queryById("TxtFilter");
+                        nextfld.focus();
+                        nextfld.selectText();
+                        return;
+                    }
+                    else {
+                        keyfield = App.RptCodingStatus.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    }
+                    if (keyfield.itemId == "CboTypeSanad") {
+                        nextfld = App.RptCodingStatus.queryById("CheckedDetail");
+                        nextfld.focus();
+                        return;
+                    }
+                    else {
+                        if (keyfield.itemId == "TxtFilter")
+                            return;
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                        nextfld.focus();
+
+                    }
+                }
+            }]
+        });
+    };
+</script>

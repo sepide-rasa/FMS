@@ -1,0 +1,204 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@{
+    var X = Html.X();
+}
+
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+@(Html.X().Window().Modal(true)
+.Width(280).Height(170)
+    .Title("نرخ جدید")
+        .ID("newNerkh")
+                .Listeners(li => { li.AfterRender.Handler = "LoadnewNerkh();"; li.Render.Fn = "addKeyMapnewNerkh"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+
+        .DefaultButton("btn")
+        .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+               .Listeners(l =>
+               {
+                   l.Click.Handler = "SavenewNerkh();";
+
+               })
+                   .ItemID("btnSaveNerkh")
+
+            ,
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.newNerkh.destroy()")
+        ).Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+        .Items(
+                X.Panel().Border(false)
+                     .PaddingSpec("5 0 5 0")
+            .Items(
+                X.FieldSet().Border(true).Title("نرخ جدید").PaddingSpec("5 5 5 5")
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                .Items(
+                X.Hidden().ItemID("fldId"),
+                 X.Label().Text("تاریخ اجرا:"),
+                   X.PDateField()
+                    .ItemID("txtTarikhFaalSazi")
+                    .MaskRe("/[0-9 /]/")
+                    .MaxLength(10)
+                    .EnforceMaxLength(true)
+        // .FieldLabel("تاریخ اجرا")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا تاریخ اجرا را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AutoFocus(true)
+                , X.Label().Text("مقدار:")
+                   , X.NumberField()
+                    .ItemID("txtValue")
+                     .AllowDecimals(false)
+                    .AllowExponential(false)
+                    .MaskRe("/[0-9]/")
+                    .MaxLength(10)
+                    .EnforceMaxLength(true)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا مقدار را وارد کنید.")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                        , X.NumberField()
+                        .ItemID("txtValue2")
+                         .AllowDecimals(true)
+                        .AllowExponential(true)
+                    .MaskRe("/[0-9 .]/")
+                    .MaxLength(10)
+                    .EnforceMaxLength(true)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا مقدار را وارد کنید.")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    )
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+        )
+)
+<script type="text/javascript">
+
+    function LoadnewNerkh() {
+        var txtValue2 = App.newNerkh.queryById('txtValue2');
+        var txtValue = App.newNerkh.queryById('txtValue');
+        if ('@ViewBag.NoeField' == "1")
+            txtValue2.hide();
+        else
+            txtValue.hide();
+
+        if ('@ViewBag.Id' != '0')
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/ParametreSabet/NerkhDetails',
+                    params: {
+                        id: '@ViewBag.Id'
+                    },
+                    success: function (data) {
+                        var txtTarikhFaalSazi = App.newNerkh.queryById('txtTarikhFaalSazi');
+                        txtTarikhFaalSazi.setRawValue(data.fldTarikhFaalSazi);
+                        var txtValue = App.newNerkh.queryById('txtValue');
+                        txtValue.setValue(data.fldValue);
+                        var txtValue2 = App.newNerkh.queryById('txtValue2');
+                        txtValue2.setValue(data.fldValue);
+                        var Id = App.newNerkh.queryById('fldId');
+                        Id.setValue(data.fldId);
+                    }
+                });
+        }
+        function SavenewNerkh() {
+
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            var txtTarikhFaalSazi = App.newNerkh.queryById('txtTarikhFaalSazi');
+            var txtValue = App.newNerkh.queryById('txtValue');
+            var txtValue2 = App.newNerkh.queryById('txtValue2');
+            var Id = App.newNerkh.queryById('fldId');
+            var er = false;
+
+            if (txtTarikhFaalSazi.validate() == false) {
+                er = true;
+            }
+            if ('@ViewBag.NoeField' == "1") {
+                if (txtValue.validate() == false) {
+                    er = true;
+                }
+            }
+            else {
+                if (txtValue2.validate() == false) {
+                    er = true;
+                }
+            }
+
+
+            if (er == true)
+                return;
+
+            var Val = txtValue.getValue();
+            if ('@ViewBag.NoeField' == "2")
+                Val = txtValue2.getValue();
+
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/ParametreSabet/SaveNerkh',
+                params: {
+                    fldId: '@ViewBag.Id',
+                    fldParametreSabetId: '@ViewBag.ParamId',
+                    fldTarikhFaalSazi: txtTarikhFaalSazi.rawValue,
+                    fldValue: Val
+                },
+                success: function (data) {
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    ReloadGridNerkh();
+                    ClearNerkh();
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        function ClearNerkh() {
+            App.newNerkh.queryById('txtTarikhFaalSazi').setValue("");
+            App.newNerkh.queryById('txtValue').setValue("");
+            App.newNerkh.queryById('txtValue2').setValue("");
+            App.newNerkh.queryById('fldId').setValue(0);
+        }
+        var addKeyMapnewNerkh = function (cmp) {
+            this.keyMap = new Ext.util.KeyMap({
+                target: cmp.getEl(),
+                binding: [{
+                    key: [13, 9], /*Ext.EventObject.ENTER,*/
+                    fn: function (key, e) {
+                        if (e.getKey() == 9) {
+                            e.stopEvent();
+                        }
+                        var keyfield = App.newNerkh.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        var nextfld;
+                        if (keyfield.itemId == "txtValue") {
+                            nextfld = App.newNerkh.queryById('btnSaveNerkh');
+                        }
+                        if (keyfield.itemId == "txtValue2") {
+                            nextfld = App.newNerkh.queryById('btnSaveNerkh');
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                    }
+                }]
+            });
+        }
+</script>

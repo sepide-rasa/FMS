@@ -1,0 +1,397 @@
+﻿@model IEnumerable<NewFMS.WCF_Deceased.OBJ_Kartabl>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+    .ID("SabtKartabl")
+    .Title("ثبت کارتابل")
+        .Closable(true)
+        .Listeners(li => { li.AfterRender.Handler = "KartablSetSize();"; li.Render.Fn = "addKeyMapSabtKartabl"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+                .Buttons(
+            //   X.Button().Text("اعمال ترتیب").Icon(Ext.Net.Icon.Disk).Listeners(Li => Li.Click.Handler = "SaveOrderKartabl();"),
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => { l.Click.Handler = "SaveKartabl();"; }).ItemID("btnSave"),
+                X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "LoadKartabl();"; }),
+                    X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteKartabl();"; }),
+                    X.Button().Text("اقدامات").Icon(Ext.Net.Icon.ApplicationSideList).Listeners(l => { l.Click.Handler = "SelectAction();"; }),
+        //X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpKartabl();"; }),
+                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.SabtKartabl.destroy()")
+                )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                          .Layout(LayoutType.VBox)
+                             .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+
+                    .Items(
+                        X.FieldSet().Title("کارتابل")
+                            //.Height(50)
+                            .Border(true)
+        //.Width(920)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                        .Items(
+                            X.Hidden()
+                                .ItemID("fldId"),
+                            X.Label("عنوان:"),
+                            X.TextField()
+                                .ItemID("txtTitle")
+                                .Width(180)
+        //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(false)
+                                     .MaxLength(50)
+                                    .EnforceMaxLength(true)
+                                .BlankText("لطفا عنوان را وارد کنید.")
+                               // .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                                .AutoFocus(true),
+                            Html.X().FieldSet()
+                                .Border(false)
+                                .Defaults(new { Margin = 2 })
+                                .Layout(LayoutType.Table)
+                                .ColSpan(2)
+                                .Items(
+                                    Html.X().Checkbox().ItemID("Ebtal"),
+                                    Html.X().Label("امکان ابطال"),
+                                    Html.X().Checkbox().ItemID("Etmam").PaddingSpec("0 20px 0 0"),
+                                    Html.X().Label("امکان اتمام")
+                                    ),
+                            X.Label("توضیحات:"),
+                            X.TextField()
+                                .ItemID("txtDesc")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Width(380)
+                                .ColSpan(3)
+                        )
+                    )
+        ),
+        X.GridPanel()
+            .ItemID("KartablGrid") 
+            .TopBar(
+                        Html.X().Toolbar()
+                                .Items(
+                                    X.Button().Text("اعمال ترتیب").Icon(Ext.Net.Icon.Disk)
+                                                            .Listeners(Li => Li.Click.Handler = "SaveOrderKartabl();")
+                                                        ))
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                        .Listeners(l => l.DataChanged.Handler = "App.SabtKartabl.queryById('KartablGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                .Plugins(X.FilterHeader().Remote(true))
+            .Listeners(l =>
+            {
+                l.AfterRender.Handler = "var grid = App.SabtKartabl.queryById('KartablGrid');grid.setHeight(App.MotevafiatWin.getHeight() - 260); ";
+            })
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                    Html.X().ImageCommandColumn().Align(Ext.Net.Alignment.Center).Sortable(false).Listeners(l => l.Command.Fn = "SetOrderKartabl").PrepareCommand("showhideorderKartabl").Flex(1).Commands(
+                    Html.X().ImageCommand().CommandName("RowDownKartabl").Icon(Ext.Net.Icon.ArrowDown),
+                    Html.X().ImageCommand().CommandName("RowUpKartabl").Icon(Ext.Net.Icon.ArrowUp)),
+                    Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.fldTitleKartabl).Text("عنوان").Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.fldTitleEbtal).Text("امکان ابطال").Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.fldTitleEtmam).Text("امکان اتمام").Flex(1),                    
+                    Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*  App.Win.addListener('resize', function () {
+        App.SabtKartabl.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.SabtKartabl.queryById('KartablGrid');
+        grid.setHeight(App.Win.getHeight() - 240);
+    });*/
+
+    function KartablSetSize() {
+        App.SabtKartabl.setWidth(App.MotevafiatWin.getWidth());
+        var grid = App.SabtKartabl.queryById('KartablGrid');
+        grid.setHeight(App.MotevafiatWin.getHeight() - 260);
+    }
+
+    function LoadKartabl() {
+        var SelectedRow = App.SabtKartabl.queryById('KartablGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/Kartabl/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTitle = App.SabtKartabl.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitleKartabl);
+                    var chkEbtal = App.SabtKartabl.queryById('Ebtal');
+                    chkEbtal.setValue(data.fldEbtal);
+                    var chkEtmam = App.SabtKartabl.queryById('Etmam');
+                    chkEtmam.setValue(data.fldEtmam);
+                    var txtDesc = App.SabtKartabl.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtKartabl.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveKartabl() {
+        var txtTitle = App.SabtKartabl.queryById('txtTitle');
+        var chkEbtal = App.SabtKartabl.queryById('Ebtal');
+        var chkEtmam = App.SabtKartabl.queryById('Etmam');
+        var txtDesc = App.SabtKartabl.queryById('txtDesc');
+        var fldId = App.SabtKartabl.queryById('fldId');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/Kartabl/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldTitleKartabl: txtTitle.getValue(),
+                fldDesc: txtDesc.getValue(),
+                fldEbtal: chkEbtal.getValue(),
+                fldEtmam: chkEtmam.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.SabtKartabl.queryById('KartablGrid').store.load();
+                if (data.Err != 1)
+                    ClearKartabl();
+            }
+
+        });
+    }
+    function DeleteKartabl() {
+        var SelectedRow = App.SabtKartabl.queryById('KartablGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Deceased/Kartabl/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtKartabl.queryById('KartablGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                        ClearKartabl();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearKartabl() {
+        App.SabtKartabl.queryById('fldId').setValue(0);
+        App.SabtKartabl.queryById('txtTitle').setValue("");
+        App.SabtKartabl.queryById('txtDesc').setValue("");
+        App.SabtKartabl.queryById('Ebtal').setValue(false);
+        App.SabtKartabl.queryById('Etmam').setValue(false);
+    }
+    function SelectAction() {
+        var SelectedRow = App.SabtKartabl.queryById('KartablGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/Kartabl/SelectActions',
+                params: {
+                    KartablId: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function HelpKartabl() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/Kartabl/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var showhideorderKartabl = function (grid, command, record, rowIndex) {
+        if (command.command == 'RowDownKartabl') {
+            if (rowIndex == App.SabtKartabl.queryById("KartablGrid").store.count() - 1) {
+                command.disabled = true;
+            }
+            else {
+                command.disabled = false;
+            }
+        }
+        else {
+            if (rowIndex == 0) {
+                command.disabled = true;
+            }
+            else {
+                command.disabled = false;
+            }
+        }
+    };
+    var SetOrderKartabl = function (grid, command, record, rowIndex) {
+        var grid = App.SabtKartabl.queryById("KartablGrid");
+        if (command == 'RowDownKartabl') {
+            grid.getStore().remove(record);
+            grid.getStore().insert(rowIndex + 1, record);
+            grid.getView().refresh();
+        }
+        else {
+            grid.getStore().remove(record);
+            grid.getStore().insert(rowIndex - 1, record);
+            grid.getView().refresh();
+        }
+    };
+    function SaveOrderKartabl() {
+        var Grid = App.SabtKartabl.queryById("KartablGrid");
+        var Order = new Array();
+        for (var i = 0; i < Grid.store.count() ; i++) {
+            var item = Grid.store.data.items[i];
+            Order.push({
+                "fldId": item.data.fldId,
+                "fldorderid": Grid.store.indexOf(item) + 1
+            });
+        }
+       
+        var data = {
+            Order: Order
+        };
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Kartabl/SaveOrder',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (result) {
+                var ic = Ext.MessageBox.INFO;
+                if (result.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+        });
+
+    }
+    var addKeyMapSabtKartabl = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtKartabl.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtKartabl.queryById('btnSave');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

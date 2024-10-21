@@ -1,0 +1,380 @@
+﻿@model IEnumerable<NewFMS.WCF_Chek.OBJ_AghsatCheckAmani>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+@{
+    var X = Html.X();
+}
+
+<style>
+    .custom-BaratDar {
+        margin-right: 124px !important;
+    }
+
+    .x-grid-row-summary {
+        background-color: #d3e1f1;
+    }
+
+    .margincommand {
+        margin: 0 0 0 5px !important;
+    }
+</style>
+
+
+@(Html.X().Window()
+    .Closable(true)
+    .Width(680)
+    .CloseAction(CloseAction.Destroy)
+    .Title("نحوه پرداخت اقساط چک امانی")
+    .Layout(LayoutType.Fit)
+        .ID("DetailAghsat")
+    .Modal(true)
+    .Listeners(l =>
+    {
+        l.AfterRender.Handler = "setSizeDetailAghsat()";
+        //l.Render.Fn = "addKeyMapInstalments";
+    })
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .PaddingSpec("8px 12px 8px 12px")
+            .Items(
+                X.FieldSet()
+                    .Border(false)
+                    .Padding(0)
+                    .Layout(LayoutType.HBox)
+                    .Items(
+                    X.FieldSet()
+                        .Border(false)
+                        .Layout(LayoutType.VBox)
+                        .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Stretch })
+                        .Defaults(new { Margin = 2 })
+                        .Items(
+                            X.FieldSet()
+                                .Layout(LayoutType.Table)
+                                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 8 })
+                                .Border(false)
+                                .Defaults(new { margin = 2 })
+                                .Padding(0)
+                                .Items(
+                            X.Label("مبلغ پرداختی:"),
+                                X.TextField().Width(110).ReadOnly(true)
+                                 .ItemID("txtMablagh").Listeners(l => { l.Change.Handler = "App.DetailAghsat.queryById('txtMablagh').setValue(accounting.formatNumber(App.DetailAghsat.queryById('txtMablagh').getValue()));"; })
+                              , X.Label("تاریخ اولین قسط:"),
+                                    X.PDateField().Width(110)
+                                     .ItemID("txtTarikhGhest").Editable(false).ReadOnly(true),
+                                  X.Label("تعداد اقساط:"),
+                                    X.TextField().Width(80)
+                                     .ItemID("txtTedad")
+                                    .AllowBlank(false).MaskRe("[0-9]")
+                                    .BlankText("لطفا کاربر را انتخاب کنید.")
+                                     , X.Button().Text("اعمال").Icon(Ext.Net.Icon.Add)
+                                     .Listeners(l => l.Click.Handler = "SetValueGrid()")
+                                     )
+                                     )
+                                    ),
+                            X.GridPanel()
+                            .Width(640)
+                                .TopBar(
+                                    Html.X().Toolbar()
+                                        .Items(
+                                            X.Button()
+                                                .Text("ذخیره")
+                                                .Icon(Ext.Net.Icon.Disk)
+                                                    .Listeners(l => { l.Click.Handler = "SaveDetailAghsat();"; })
+                                        )
+                                    )
+                                        .ID("DetailAghsatGrid")
+                                    .AutoScroll(true)
+                                    .Height(300)
+                                    .Store(
+                                        X.StoreForModel()//.AutoLoad(false)
+                                        .Listeners(l=>l.Load.Handler="LoadEdit()")
+                                            .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("Read"))
+                                                .Reader(Html.X().JsonReader().Root("data"))
+                                                        .ExtraParams(x => x.Add(new { ChekVaredeId = @ViewBag.ChekVaredeId }))
+                                                    )
+                                            .RemoteFilter(true)
+                                            .RemotePaging(true)
+                                        )
+                                    .View(
+                                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                                        )
+        //.Plugins(X.FilterHeader().Remote(false))
+                                                   .Plugins(Html.X().CellEditing().ClicksToEdit(1).Listeners(l => { l.Edit.Fn = "Calc"; l.BeforeEdit.Fn = "CalcB"; }))
+                                    .ColumnModel(
+                                        Html.X().RowNumbererColumn(),
+                                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                                        Html.X().Column().DataIndex(Model, m => m.fldIdCheckHayeVarede).Text("کد چک").Flex(3).Hidden(true).Wrap(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldMablagh).Text("مبلغ").Flex(3).Wrap(true).Editor(Html.X().TextField().MaskRe("/[0-9]/").ItemID("MablaghGrid").Listeners(l=>l.Focus.Handler="CheckReadonly()")),
+                                        Html.X().Column().DataIndex(Model, m => m.fldTarikh).Text("تاریخ").Flex(3).Wrap(true).Editor(Html.X().TextField().MaskRe("/[0-9-/]/")),
+                                        Html.X().Column().DataIndex(Model, m => m.fldNobat).Text("نوبت").Flex(1).Wrap(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldTarikhVaziat).Text("تاریخ پرداخت").Flex(3).Wrap(true)
+                                    )//.Listeners(l=>l.CellDblClick.Handler="EditMablagh_Tarikh()")
+                                    .SelectionModel(
+                                        Html.X().RowSelectionModel()
+                                            .Mode(Ext.Net.SelectionMode.Single)
+                        )
+            )
+    )
+)
+<script type="text/javascript">
+    var ChekVaredeId = '@ViewBag.ChekVaredeId';
+    var eee1; var ccc1; var ddd1; var editor111;
+    var se1=0;
+    var se2=0;
+
+    function CheckReadonly() {
+        var SelectedRow = App.DetailAghsat.queryById('DetailAghsatGrid').selModel.getLastSelected();
+        var tedadkol = App.DetailAghsat.queryById('txtTedad');
+        if (SelectedRow.data.fldNobat == tedadkol.getValue()) {
+            App.DetailAghsat.queryById("MablaghGrid").setReadOnly(true);
+        }
+        else
+            App.DetailAghsat.queryById("MablaghGrid").setReadOnly(false);
+    }
+    var CalcB = function (editor1, e, c, d) {
+        var grid = App.DetailAghsat.queryById('DetailAghsatGrid');
+        se1 = e.record.data.fldMablagh;
+        se2 = 0;
+    };
+
+    var Calc = function (editor1, e, c, d) {
+        var grid = App.DetailAghsat.queryById('DetailAghsatGrid');
+        se2=e.record.data.fldMablagh;
+        
+        if (se1 != se2) {
+            var txtMablagh = App.DetailAghsat.queryById('txtMablagh');
+            var mm = parseInt(txtMablagh.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''));
+            var tedadkol = App.DetailAghsat.queryById('txtTedad');
+            eee1 = e; ccc1 = c; ddd1 = d; editor111 = editor1;
+            var fldMablagh = e.record.data.fldMablagh; var jam1 = 0; var MablaghNahaeii1 = 0;
+
+            var ss = 0;
+            var taghiri = 0;
+            var Ma = parseInt(txtMablagh.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', '')) - parseInt(fldMablagh); var MablaghNahaeii1; var jam1; var j = 1;
+            if (e.column.dataIndex == "fldMablagh") {
+                for (var i = 0; i < parseInt(tedadkol.getValue()) ; i++) {
+                    var row = grid.selModel.store.data.items[i];
+                    if (i <= e.row.rowIndex) {
+                        ss = ss + parseInt(row.data.fldMablagh);
+                        taghiri = i;
+                    }
+                    else {
+                        var k = mm - ss;
+                        var k2 = tedadkol.getValue() - (taghiri + 1);
+                        var k3 = k / k2;
+                        if (i + 1 == tedadkol.getValue()) {
+                            row.set('fldMablagh', k - ((k2 - 1) * k3));
+                        }
+                        else {
+                            row.set('fldMablagh', k3);
+                        }
+                    }
+                    /*if (i != e.row.rowIndex) {
+                        if (Ma % parseInt(tedadkol.getValue() - 1) != 0) {
+                            var Mablagh_r = Ma / parseInt(tedadkol.getValue() - 1);
+                            var q1 = parseInt(Mablagh_r);
+    
+                            if (i < tedadkol.getValue() - 1) {
+                                MablaghNahaeii1 = q1;
+                                jam1 = jam1 + q1;
+                            }
+                            else {
+                                MablaghNahaeii1 = (Ma - jam1);
+                            }
+    
+                        }
+                        else {
+                            MablaghNahaeii1 = Ma / parseInt(tedadkol.getValue() - 1);
+                        }
+                        var row = grid.selModel.store.data.items[i];
+                        row.set('fldMablagh', MablaghNahaeii1);
+                    }*/
+
+                }
+            }
+        }
+    };
+    function setSizeDetailAghsat() {
+        
+       /* App.DetailAghsat.setWidth(App.ChekWin.getWidth() - 400);
+        App.DetailAghsat.queryById('DetailAghsatGrid').setWidth(App.ChekWin.getWidth() - 500);*/
+        
+        var txtMablagh = App.DetailAghsat.queryById('txtMablagh');
+        txtMablagh.setValue('@ViewBag.Mablagh');
+        var txtTarikhGhest = App.DetailAghsat.queryById('txtTarikhGhest');
+        txtTarikhGhest.setValue('@ViewBag.tarikh');
+    }
+    function TarazMablagh() {
+        var txtMablagh = App.DetailAghsat.queryById('txtMablagh');
+        var txtTedad = App.DetailAghsat.queryById('txtTedad');
+        var MablaghGrid = App.DetailAghsat.queryById('MablaghGrid');
+    }
+    function EditMablagh_Tarikh() {
+        var SelectedRow = App.DetailAghsat.queryById('DetailAghsatGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Chek/AghsatCheckAmani/EditTarikh_Mablagh',
+                params: {
+                    Mablagh: SelectedRow.data.fldMablagh,
+                    Tarikh: SelectedRow.data.fldTarikh,
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+    function SaveDetailAghsat() {
+        if ('@ViewBag.status' == 1) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "برای اقساط، تعیین وضعیت شده و قابل ویرایش نمی باشند.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else {
+            var grid = App.DetailAghsat.queryById('DetailAghsatGrid');
+            var rowArray = new Array();
+            var IdCheckHayeVarede; var Id; var Mablagh; var TarikhV; var Nobat;
+            for (var i = 0; i < grid.selModel.store.count() ; i++) {
+                row = grid.selModel.store.data.items[i];
+                IdCheckHayeVarede = row.data.fldIdCheckHayeVarede;
+                Mablagh = row.data.fldMablagh;
+                TarikhV = row.data.fldTarikh;
+                Nobat = row.data.fldNobat;
+                Id = row.data.fldId;
+                rowArray.push({
+                    'fldIdCheckHayeVarede': IdCheckHayeVarede,
+                    'fldMablagh': Mablagh,
+                    'fldTarikh': TarikhV,
+                    'fldNobat': Nobat,
+                    'fldId': Id
+                });
+            }
+
+            var data = {
+                rowArray: rowArray,
+                IdCheckHayeVarede: IdCheckHayeVarede
+            };
+
+            $.ajax({
+                type: "POST",
+                url: '/Chek/AghsatCheckAmani/Save',
+                datatype: "json",
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                success: function (data) {
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    /*App.DetailAghsat.queryById("GridGuild").store.load();*/
+                },
+                failure: function (data) {
+                    alert(data.data);
+                }
+            });
+        }
+    }
+    function SetValueGrid() {
+        var txtMablagh = App.DetailAghsat.queryById('txtMablagh');
+        var txtTarikhGhest = App.DetailAghsat.queryById('txtTarikhGhest');
+        var txtTedad = App.DetailAghsat.queryById('txtTedad');
+        var Mablagh = parseInt(txtMablagh.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''));
+        var er = false;
+        if (txtTedad.validate() == false) {
+            er = true;
+        }
+
+        var Mablagh_gh;
+        var MablaghNahaeii = 0;
+        var jam = 0;
+        if (er == true)
+            return;
+        
+        var j = 0;
+        /*.store.insert(0, { fldId: 0, fldMablaghSanad: Mablagh, fldTypeSanadName: "نقدی", fldTypeSanad: 1, fldStatusFishId: "1", fldStatusFish: "صادر نشده", fldDesc: txtDesc, fldShomareHesabOrgan: txtShomareHesabPardakht_N, fldShomareHesabIdOrgan: fldShomareHesabIdPardakht_N });*/
+        var grid = App.DetailAghsat.queryById('DetailAghsatGrid');
+        
+        var Tarikh_V = txtTarikhGhest.rawValue;
+        var TarikhV_S = Tarikh_V.split('/');
+        var Mah = TarikhV_S[1]; Sal = TarikhV_S[0], Roz = TarikhV_S[2]; var fldTarikh;
+        var MahNahaeii;
+        if (grid.store.count() != 0) {
+            grid.store.removeAll();
+        }
+
+        for (var i = 0; i < txtTedad.getValue() ; i++) {
+
+            
+            if (Mablagh % parseInt(txtTedad.getValue()) != 0) {
+                Mablagh_gh = Mablagh / parseInt(txtTedad.getValue());
+                var q = parseInt(Mablagh_gh);
+
+                if (i < txtTedad.getValue() - 1) {
+                    MablaghNahaeii = q;
+                    jam = jam + q;
+                }
+                else {
+                    MablaghNahaeii = (Mablagh - jam);
+                }
+
+            }
+            else {
+                MablaghNahaeii = Mablagh / parseInt(txtTedad.getValue());
+            }
+            
+            if (i == 0)
+                fldTarikh = Tarikh_V;
+            else {
+                var MahS = Tarikh_V.substring(5, 7);
+                
+                MahNahaeii = parseInt(MahS) + i;
+                if (MahNahaeii < 10)
+                    fldTarikh = Sal + "/0" + MahNahaeii + "/" + Roz;
+                else
+                    fldTarikh = Sal + "/" + MahNahaeii + "/" + Roz;
+                if (MahNahaeii == 13 || MahNahaeii > 13) {
+                       var Mahjadid = 1;
+                        if (MahNahaeii > 13) {
+                            Mahjadid = parseInt(Mahjadid) + (i-3);
+                        }
+                        if (Mahjadid < 10)
+                            fldTarikh = (parseInt(Sal) + 1) + "/0" + Mahjadid + "/" + Roz;
+                        else
+                            fldTarikh = (parseInt(Sal) + 1) + "/0" + Mahjadid + "/" + Roz;
+                }
+                
+            }
+
+            grid.store.insert(j, {
+                fldId: 0,
+                fldIdCheckHayeVarede: ChekVaredeId,
+                fldMablagh: MablaghNahaeii,
+                fldTarikh: fldTarikh,
+                fldNobat: i + 1,
+                fldTarikhPardakht: ""
+            });
+            j++;
+        }
+    }
+    function LoadEdit() {
+        var txtTedad = App.DetailAghsat.queryById('txtTedad');
+        var grid = App.DetailAghsat.queryById('DetailAghsatGrid');
+        if (grid.store.count()!=0)
+        txtTedad.setValue(grid.store.count());
+    }
+</script>

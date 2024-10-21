@@ -1,0 +1,205 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<style>
+    .custom-IncomeIc {
+        margin-right: 405px !important;
+    }
+
+    .custom-IncomeIcsh {
+        margin-right: 125px !important;
+    }
+</style>
+
+@(Html.X().Window()
+    .Closable(true)
+    .CloseAction(CloseAction.Destroy)
+    //.Listeners(l =>
+    //{
+    //    l.AfterRender.Handler = "loadIncomSettingg()";
+    //    l.Render.Fn = "addKeyMapConvertCode";
+    //})
+    .Title("تبدیل کدهای درآمد")
+    .Layout(LayoutType.Fit)
+    .ID("ConvertCode")
+    .Modal(true)
+        .Width(400)
+        .Height(150)
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        //Html.X().Button()
+        //    .Text("ذخیره")
+        //        .ItemID("BtnSave")
+        //    .Icon(Ext.Net.Icon.Disk)
+        //    .Listeners(l => l.Click.Handler = "SaveIncomeSetting()"),
+                 //    Html.X().Button()
+                 //.Text("راهنما")
+                 //.Icon(Ext.Net.Icon.Help)
+                 //    .Listeners(l => { l.Click.Handler = "HelpIncomeSetting();"; }),
+        Html.X().Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => l.Click.Handler = "App.ConvertCode.destroy()")
+    )
+    .Items(
+            X.FormPanel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.PaddingSpec("4px 12px 4px 12px")
+            .Items(
+               X.FormPanel().Border(false)
+
+               .Layout(LayoutType.VBox)
+                .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Defaults(new { Margin = 5 })
+                .Items(
+
+                                    
+              X.FileUploadField()
+                    .FieldStyle("direction:ltr;")
+                .ID("FileUploadField1")
+                .ButtonOnly(true).ButtonText("انتخاب فایل اکسل")
+                .DirectEvents(l =>
+                {
+                    l.Change.Action = "Upload";
+                    l.Change.Success = "hideprogress();";
+                })
+                .Listeners(l => l.Change.Fn = "showFile")
+
+                            , X.Container().Content(@<center><div id="fi-button-msg" style="display:none; width:210px;height:60px"></div></center>)
+
+)
+
+            )
+        )
+)
+
+<script type="text/javascript">
+
+    var fileId = 0;
+    var Mojaz = 0;
+    var sizee = 0;
+    var EndUpload = false;
+    var AllHeaderIds = "";
+
+    var Check = setInterval(CheckEnd, 1000);
+
+    function Showstatus(HeaderId) {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Tax/SooratHesab/ShowstatusWin',
+            params: {
+                HeaderId: HeaderId
+            },
+            success: function (data) {
+
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    
+  
+    function CheckEnd() {
+        if (EndUpload == true) {
+            Ext.MessageBox.hide();
+            /* Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');*/
+
+            Ext.MessageBox.show({
+                title: 'عملیات موفق',
+                msg: 'فایل با موفقیت آپلود شد.تایید جهت ذخیره اطلاعات',
+                icon: Ext.MessageBox.INFO,
+                buttons: Ext.MessageBox.OK,
+                fn: function (btn) {
+                    if (btn == 'ok') {
+                        ReloadGrid();
+                    }
+                }
+            });
+            clearInterval(CheckEnd);
+            EndUpload = false;
+        }
+    }
+    var showFile = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msg');
+        if (v) {
+            showProgressBar();
+            if (v.split('.').pop().toLowerCase() == "xlsx") {
+                Mojaz = 1;
+                if (document.getElementById(id).files[0].size <= 1024000000) {
+                    sizee = 1;
+                }
+                if (sizee == 1) {
+                    el.update('<b>فایل انتخاب شده:</b> ' + v);
+                }
+                else {
+                    el.update("");
+                }
+
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                } else {
+                    el.highlight();
+                }
+            }
+            else {
+                el.update("");
+            }
+        }
+    };
+
+    function hideprogress() {
+        if (Mojaz == 1 && sizee == 1) {
+            EndUpload = true;
+        }
+        Mojaz = 0;
+        sizee = 0;
+        /* ReloadGrid();*/
+    }
+
+    function showProgressBar() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    } 
+
+    function ReloadGrid() {
+       
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/ConvertCode/ProcessXlsRecords',
+            success: function (data) {
+
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        });
+    }
+    </script>

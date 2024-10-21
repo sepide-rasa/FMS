@@ -1,0 +1,360 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_CaseBills>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .color {
+        color: red;
+    }
+</style>
+<br />
+@(Html.X().Panel()
+            .ID("SabtCaseBills")
+        .Title("تعریف پرونده قبوض")
+            .Listeners(li => { li.AfterRender.Handler = "CaseBillsSetSize();"; li.Render.Fn = "addKeyMapDescription"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                       X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveCaseBills")
+                        .Listeners(l => { l.Click.Handler = "SaveCaseBills();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                        .Listeners(l => { l.Click.Handler = "LoadCaseBills();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                        .Listeners(l => { l.Click.Handler = "DeleteCaseBills();"; })
+                        , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpCaseBills();"; }),
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.SabtCaseBills.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                 X.FieldSet().Border(false).Items(
+                    X.FieldSet().Border(true).Title("اطلاعات پرونده").Height(75)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.Hidden().ItemID("AshkhasId"),
+                    X.Hidden().ItemID("CenterCoId"),
+                    X.Hidden().ItemID("ChartOrganId"),
+                    X.Label("انواع قبوض:"),
+                    X.ComboBox()
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .ItemID("CboBillsType")
+                    .TypeAhead(true)
+                    .Editable(true)
+                    .QueryMode(DataLoadMode.Local)
+                    .BlankText("لطفا انواع قبوض را انتخاب کنید.")
+                    .ForceSelection(true)
+                    .TriggerAction(TriggerAction.All)
+                        .DisplayField("fldName")
+                    .ValueField("fldId")
+                    .EmptyText("...")
+                    .Store(X.Store()
+                    .Model(X.Model()
+                    .IDProperty("fldId")
+                    .Fields(
+                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                        
+                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                            )
+                                )
+                    .Proxy(X.AjaxProxy()
+                                .Url(Url.Action("GetBillsType"))
+                    .Reader(X.JsonReader().Root("data"))
+                            )
+                            )
+                        .AllowBlank(false),
+                    X.Label("شماره پرونده:"),
+                    X.TextField()
+                    .ItemID("txtNumber")
+                    .AllowBlank(false)
+                    .BlankText("لطفا شماره پرونده را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    //.MaxLength(150)
+                    //.EnforceMaxLength(true)
+                        , X.Label("چارت سازمانی (Ins):"),
+                        X.TextField().Width(220)
+                            .ItemID("txtChartOrgan")
+                        .AllowBlank(false)
+                        .BlankText("لطفا چارت سازمانی را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ReadOnly(true)
+                             .DirectEvents(li =>
+                                    {
+                                        li.SpecialKey.Url = "/Comon/SearchChartOrgan/Index?State=2";
+                                        li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                        li.IconClick.Url = "/Comon/SearchChartOrgan/Index?State=2";
+                                    })
+                    .MaskRe("[0-9]"),
+                    X.Label("شخص (Ins):"),
+                    X.TextField()
+                    .ItemID("txtAshkhas")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .DirectEvents(li =>
+                        {
+                            li.SpecialKey.Url = "/Daramad/SearchAshkhas/Index?State=11";
+                            li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                            li.IconClick.Url = "/Daramad/SearchAshkhas/Index?State=11";
+                        })
+                    .ReadOnly(true),
+                    X.Label("مرکز هزینه (Ins):"),
+                    X.TextField()
+                    .ItemID("txtCenterCo")
+                    .AllowBlank(false)
+                    .BlankText("لطفا مرکز هزینه را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .ReadOnly(true)
+                        .DirectEvents(li =>
+                            {
+                                li.SpecialKey.Url = "/Accounting/SearchCenterCost/Index?State=1&&rowIdx=0";
+                                li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                li.IconClick.Url = "/Accounting/SearchCenterCost/Index?State=1&&rowIdx=0";
+                            })
+                    
+                )
+             )
+            )
+        ),
+        X.GridPanel()
+                    .ItemID("CaseBillsGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                        X.StoreForModel()
+                            .Listeners(l => l.DataChanged.Handler = "App.SabtCaseBills.queryById('CaseBillsGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtCaseBills.queryById('CaseBillsGrid');grid.setHeight(App.Win.getHeight() - 294); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldFileNum).Text("شماره پرونده").Flex(2).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldShakhs_Type).Text("نوع شخص").Flex(2).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldName_shakhs).Text("نام شخص/شرکت").Flex(2).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldCodeMelli).Text("کد/شناسه ملی").Flex(2).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldName_Organ).Text("نام ارگان").Flex(2).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldTitle_chartOrgan).Text("چارت سازمانی").Flex(2).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldNameCenter).Text("مراکز هزینه").Flex(2).Wrap(true)
+               )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+          )
+    )
+)
+<script type="text/javascript">
+    function HelpCaseBills() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/CaseBills/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function CaseBillsSetSize() {
+        App.SabtCaseBills.setWidth(App.Win.getWidth());
+        var grid = App.SabtCaseBills.queryById('CaseBillsGrid');
+        grid.setHeight(App.Win.getHeight() - 294);
+    }
+
+    function LoadCaseBills() {
+        var SelectedRow = App.SabtCaseBills.queryById('CaseBillsGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/CaseBills/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var AshkhasId = App.SabtCaseBills.queryById('AshkhasId');
+                    AshkhasId.setValue(data.fldAshkhasId);
+                    var txtAshkhas = App.SabtCaseBills.queryById('txtAshkhas');
+                    txtAshkhas.setValue(data.fldName_shakhs);
+                    var CenterCoId = App.SabtCaseBills.queryById('CenterCoId');
+                    CenterCoId.setValue(data.fldCentercoId);
+                    var txtCenterCo = App.SabtCaseBills.queryById('txtCenterCo');
+                    txtCenterCo.setValue(data.fldNameCenter);
+                    var ChartOrganId = App.SabtCaseBills.queryById('ChartOrganId');
+                    ChartOrganId.setValue(data.fldOrganChartId);
+                    var txtChartOrgan = App.SabtCaseBills.queryById('txtChartOrgan');
+                    txtChartOrgan.setValue(data.fldTitle_chartOrgan);
+                    var CboBillsType = App.SabtCaseBills.queryById('CboBillsType');
+                    CboBillsType.setValue(data.fldBillsTypeId);
+                    var txtNumber = App.SabtCaseBills.queryById('txtNumber');
+                    txtNumber.setValue(data.fldFileNum);
+                    var fldId = App.SabtCaseBills.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveCaseBills() {
+        var AshkhasId = App.SabtCaseBills.queryById('AshkhasId');
+        var txtAshkhas = App.SabtCaseBills.queryById('txtAshkhas');
+        var CenterCoId = App.SabtCaseBills.queryById('CenterCoId');
+        var txtCenterCo = App.SabtCaseBills.queryById('txtCenterCo');
+        var ChartOrganId = App.SabtCaseBills.queryById('ChartOrganId');
+        var txtChartOrgan = App.SabtCaseBills.queryById('txtChartOrgan');
+        var CboBillsType = App.SabtCaseBills.queryById('CboBillsType');
+        var txtNumber = App.SabtCaseBills.queryById('txtNumber');
+        var fldId = App.SabtCaseBills.queryById('fldId');
+            var er = false;
+            if (txtAshkhas.validate() == false) {
+                er = true;
+            }
+            if (txtCenterCo.validate() == false) {
+                er = true;
+            }
+            if (txtChartOrgan.validate() == false) {
+                er = true;
+            }
+            if (CboBillsType.validate() == false) {
+                er = true;
+            }
+            if (txtNumber.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/CaseBills/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldAshkhasId: AshkhasId.getValue(),
+                    fldCentercoId: CenterCoId.getValue(),
+                    fldOrganChartId: ChartOrganId.getValue(),
+                    fldBillsTypeId: CboBillsType.getValue(),
+                    fldFileNum: txtNumber.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtCaseBills.queryById('CaseBillsGrid').store.load();
+                    if (data.Err != 1)
+                        ClearCaseBills();
+                }
+
+            });
+    }
+    function DeleteCaseBills() {
+        var SelectedRow = App.SabtCaseBills.queryById('CaseBillsGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/CaseBills/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtCaseBills.queryById('CaseBillsGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearCaseBills() {
+        App.SabtCaseBills.queryById('AshkhasId').setValue(0);
+        App.SabtCaseBills.queryById('CenterCoId').setValue(0);
+        App.SabtCaseBills.queryById('ChartOrganId').setValue(0);
+        App.SabtCaseBills.queryById('fldId').setValue(0);
+        App.SabtCaseBills.queryById('txtAshkhas').setValue("");
+        App.SabtCaseBills.queryById('txtCenterCo').setValue("");
+        App.SabtCaseBills.queryById('txtChartOrgan').setValue("");
+        App.SabtCaseBills.queryById('txtNumber').setValue("");
+    }
+    var addKeyMapDescription = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtCaseBills.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtCaseBills.queryById('btnSaveCaseBills');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

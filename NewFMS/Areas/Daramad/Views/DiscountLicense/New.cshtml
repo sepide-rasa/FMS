@@ -1,0 +1,403 @@
+﻿@model NewFMS.WCF_Daramad.OBJ_ShomareHesabCodeDaramad
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X()
+    .Window()
+    .Modal(true)
+    .Listeners(li => { li.Render.Fn = "addKeyMapDiscountLicensee"; })
+    .Width(600)
+    .Title("ثبت مجوز جدید")
+    .ID("NewDiscountLicensee")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .ButtonAlign(Ext.Net.Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveDiscountLicensee();"),
+        
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.NewDiscountLicensee.destroy()"))
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .Title("اطلاعات مجوز")
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                    .Items(
+                        X.Hidden().ItemID("fldId"),
+                        X.Label("شماره مجوز:"),
+                        X.TextField()
+                            .ItemID("txtShMojavez")
+                            .AutoFocus(true)
+                            .MaxLength(50)
+                            .EnforceMaxLength(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا شماره مجوز را وارد کنید."),
+                        X.Label("تاریخ مجوز:"),
+                        X.PDateField()
+                            .ItemID("txtTarikhMojavez")
+                            //.Listeners(l => l.Focus.Handler = "SetValidateForDate('txtTarikhMojavez')")
+                            .AllowBlank(false)
+                            .BlankText("لطفا تاریخ مجوز را وارد کنید.")
+                            .Editable(true)
+                            .MaskRe("/[0-9 /]/")
+                            .MaxLength(10)
+                            .EnforceMaxLength(true),
+                        X.Label("از تاریخ:"),
+                        X.PDateField()
+                            .ItemID("txtAzTarikh")
+                            .Listeners(l => l.Change.Handler = "setDateAzTarikhLicense()")
+                            .AllowBlank(false)
+                            .BlankText("لطفا تاریخ شروع اعتبار را وارد کنید.")
+                            .Editable(true)
+                            .MaskRe("/[0-9 /]/")
+                            .MaxLength(10)
+                            .EnforceMaxLength(true),
+                        X.Label("تا تاریخ:"),
+                        X.PDateField()
+                            .ItemID("txtTaTarikh")
+                            .Listeners(l => l.Change.Handler = "setDateTaTarikhLicense()")
+                            .AllowBlank(false)
+                            .BlankText("لطفا تاریخ پایان اعتبار را وارد کنید.")
+                            .Editable(true)
+                            .MaskRe("/[0-9 /]/")
+                            .MaxLength(10)
+                            .EnforceMaxLength(true),
+                        X.Label("درصد تخفیف کلی:"),
+                        X.TextField()
+                            .MaskRe("[0-9,.]")
+                            .ItemID("txtTotalPersent")
+                            .Listeners(l => { l.Change.Handler = "ChangePersent('txtTotalPersent');"; l.Blur.Handler = "BlurPersent('txtTotalPersent')"; }),
+                            //.AllowBlank(false)
+                            //.BlankText("لطفا درصد تخفیف کلی را وارد کنید."),
+                        X.Label("درصد تخفیف نقدی مازاد:"),
+                        X.TextField()
+                            .MaskRe("[0-9,.]")
+                            .ItemID("txtextraPersent")
+                            .Listeners(l => { l.Change.Handler = "ChangePersent('txtextraPersent');"; l.Blur.Handler = "BlurPersent('txtextraPersent')"; }),
+                            //.AllowBlank(false)
+                            //.BlankText("لطفا درصد تخفیف مازاد را وارد کنید."),
+                        X.Label("توضیحات:"),
+                        X.TextField()
+                            .Width(421)
+                            .ItemID("txtDesc")
+                            .ColSpan(3)),
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Padding(5)
+            .Items(
+                X.GridPanel()
+                    //.Listeners(l => l.AfterRender.Handler = "App.NewDiscountLicensee.queryById('GridIncomeCodes').setSize(App.DaramadWin.getWidth() - 740,App.DaramadWin.getHeight() - 330)")
+                    .ColSpan(4)
+ 			.Width(520).Height(300)
+                    .AutoScroll(true)
+                    .Title("لیست کدهای درآمد")
+                    .ItemID("GridIncomeCodes")
+                    //.BottomBar(X.PagingToolbar())
+                    .Store(
+                        X.StoreForModel()
+                            .Listeners(l => l.Load.Handler = "LoadDiscountLicensee();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("ReadIncomeCodes"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                                                                    .ExtraParams(l => l.Add(new { FiscalYearId = ViewBag.FiscalYearId }))
+                            )
+                            .PageSize(20000)
+                            .RemoteFilter(false)
+                            .RemotePaging(false)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(false))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn().Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldCodeDaramadId).Text("کد درآمد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldDaramadCode).Text("کد درآمد").Flex(4).Wrap(true),                                    
+                        Html.X().Column().DataIndex(Model, m => m.fldDaramadTitle).Text("شرح کد درآمد").Flex(10).Wrap(true)
+                    )
+                    .SelectionModel(
+                        Html.X().CheckboxSelectionModel().CheckOnly(true).PruneRemoved(false)
+                            .Mode(Ext.Net.SelectionMode.Multi)
+                )
+            )
+                )
+                
+                )
+)
+<script type="text/javascript">
+
+    @*function SetValidateForDate(field) {
+        var txtTarikh = App.NewDiscountLicensee.queryById(field);
+        var date = new Date('@ViewBag.Date');
+        if (recordd == null) {/*حالت ویرایش*/
+            txtTarikh.setMinValue(date);
+            txtTarikh.minText = "تاریخ نمی تواند قبل از امروز باشد.";
+        }
+    }*@
+
+    function setDateAzTarikhLicense() {
+        var txtAzTarikh = App.NewDiscountLicensee.queryById('txtAzTarikh');
+        var txtTaTarikh = App.NewDiscountLicensee.queryById('txtTaTarikh');
+        txtTaTarikh.setMinValue(txtAzTarikh.getValue());
+        txtTaTarikh.minText = "تاریخ پایان نباید قبل از تاریخ شروع باشد.";
+    }
+
+    function setDateTaTarikhLicense() {
+        var txtAzTarikh = App.NewDiscountLicensee.queryById('txtAzTarikh');
+        var txtTaTarikh = App.NewDiscountLicensee.queryById('txtTaTarikh');
+        txtAzTarikh.setMaxValue(txtTaTarikh.getValue());
+        txtAzTarikh.maxText = "تاریخ شروع نباید بعد از تاریخ پایان باشد.";
+    }
+
+    function ChangePersent(field) {
+        var txtPersent = App.NewDiscountLicensee.queryById(field);
+        if (parseFloat(txtPersent.getValue()) > 100) {
+            txtPersent.setValue("");
+            txtPersent.validate();
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "مقدار وارد شده بیشتر از حد مجاز است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function BlurPersent(field) {
+        var txtPersent = App.NewDiscountLicensee.queryById(field);
+        if (txtPersent.getValue() != "") {
+            var a = parseFloat(txtPersent.getValue());
+            var s = a.toFixed(2);
+            txtPersent.setValue(s);
+        }
+        else {
+            txtPersent.setValue("");
+        }
+    }
+
+    function LoadDiscountLicensee() {
+        if ('@ViewBag.Id' != '0') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/DiscountLicense/Details',
+                params: {
+                    Id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    var txtShMojavez = App.NewDiscountLicensee.queryById('txtShMojavez');
+                    txtShMojavez.setValue(data.fldShomareMojavez);
+
+                    var txtTarikhMojavez = App.NewDiscountLicensee.queryById('txtTarikhMojavez');
+                    txtTarikhMojavez.setValue(data.fldTarikhMojavez);
+
+                    var txtAzTarikh = App.NewDiscountLicensee.queryById('txtAzTarikh');
+                    txtAzTarikh.setValue(data.fldAzTarikh);
+
+                    var txtTaTarikh = App.NewDiscountLicensee.queryById('txtTaTarikh');
+                    txtTaTarikh.setValue(data.fldTaTarikh);
+
+                    var txtTotalPersent = App.NewDiscountLicensee.queryById('txtTotalPersent');
+                    txtTotalPersent.setValue(data.fldTakhfifKoli);
+
+                    var txtextraPersent = App.NewDiscountLicensee.queryById('txtextraPersent');
+                    txtextraPersent.setValue(data.fldTakhfifNaghdi);
+
+                    var txtDesc = App.NewDiscountLicensee.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+
+                    var Id = App.NewDiscountLicensee.queryById('fldId');
+                    Id.setValue(data.fldId);
+
+                    if (data.IncomeCode.length != 0) {
+                        for (var j = 0; j < data.IncomeCode.length; j++) {
+                            var index2 = App.NewDiscountLicensee.queryById("GridIncomeCodes").getStore().findExact("fldId", data.IncomeCode[j]);
+                            App.NewDiscountLicensee.queryById("GridIncomeCodes").getSelectionModel().select(index2, true);
+                        }
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            App.NewDiscountLicensee.queryById('txtShMojavez').validate();
+            App.NewDiscountLicensee.queryById('txtTarikhMojavez').validate();
+            App.NewDiscountLicensee.queryById('txtAzTarikh').validate();
+            App.NewDiscountLicensee.queryById('txtTaTarikh').validate();
+            App.NewDiscountLicensee.queryById('txtTotalPersent').validate();
+            App.NewDiscountLicensee.queryById('txtextraPersent').validate();
+            Ext.net.Mask.hide();
+        }
+    }
+    
+    function SaveDiscountLicensee() {
+        var txtShMojavez = App.NewDiscountLicensee.queryById('txtShMojavez');
+        var txtTarikhMojavez = App.NewDiscountLicensee.queryById('txtTarikhMojavez');
+        var txtAzTarikh = App.NewDiscountLicensee.queryById('txtAzTarikh');
+        var txtTaTarikh = App.NewDiscountLicensee.queryById('txtTaTarikh');
+        var txtTotalPersent = App.NewDiscountLicensee.queryById('txtTotalPersent');
+        var txtextraPersent = App.NewDiscountLicensee.queryById('txtextraPersent');
+        var txtDesc = App.NewDiscountLicensee.queryById('txtDesc');
+        var Id = App.NewDiscountLicensee.queryById('fldId');
+        var SelectedRow = App.NewDiscountLicensee.queryById('GridIncomeCodes').getSelectionModel().getSelection();
+        var IncomesCode = new Array();
+        for (var i = 0; i < SelectedRow.length; i++) {
+            IncomesCode.push(SelectedRow[i].data.fldId);
+        }
+
+        var er = false;
+
+        if (txtShMojavez.validate() == false) {
+            er = true;
+        }
+        if (txtTarikhMojavez.validate() == false) {
+            er = true;
+        }
+        if (txtAzTarikh.validate() == false) {
+            er = true;
+        }
+        if (txtTaTarikh.validate() == false) {
+            er = true;
+        }        
+        if (txtDesc.validate() == false) {
+            er = true;
+        }
+
+        if (txtTotalPersent.getValue() == 0 && txtextraPersent.getValue()==0) {
+            er = true;
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا درصد تخفیف را وارد نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+
+        if (er == true)
+            return;
+        if (IncomesCode.length == 0) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا کدهای درآمد مربوط با مجوز را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else {
+            var data1 = {
+                fldId: Id.getValue(),
+                fldShomareMojavez: txtShMojavez.getValue(),
+                fldTarikhMojavez: txtTarikhMojavez.getRawValue(),
+                fldAzTarikh:txtAzTarikh.getRawValue(),
+                fldTaTarikh:txtTaTarikh.getRawValue(),
+                fldTakhfifKoli:txtTotalPersent.getValue(),
+                fldTakhfifNaghdi:txtextraPersent.getValue(),
+                fldDesc:txtDesc.getValue(),
+                IncomesCode: IncomesCode
+            };
+
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            $.ajax({
+                type: "POST",
+                url: '/Daramad/DiscountLicense/Save',
+                datatype: "json",
+                data: JSON.stringify(data1),
+                contentType: "application/json; charset=utf-8",
+                success: function (data) {
+                    var result = data;/*JSON.parse(data);*/
+                    var ic = Ext.MessageBox.INFO;
+                    if (result.Er == 1) {
+                        ic = Ext.MessageBox.ERROR;
+                    }
+                    Ext.MessageBox.show({
+                        title: result.MsgTitle,
+                        msg: result.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    if (result.Er != 1) {
+                        ClearNewDiscountLicensee();
+                    }
+                    App.DiscountLicensee.queryById('GridDiscountLicensee').getStore().load();
+                    Ext.net.Mask.hide();
+                },
+                failure: function (data) {
+                    alert(data.data);
+                }
+            });
+        }
+    }
+
+    function ClearNewDiscountLicensee() {
+        App.NewDiscountLicensee.queryById('txtShMojavez').setValue("");
+        App.NewDiscountLicensee.queryById('txtTarikhMojavez').setValue("");
+        App.NewDiscountLicensee.queryById('txtAzTarikh').setValue("");
+        App.NewDiscountLicensee.queryById('txtTaTarikh').setValue("");
+        App.NewDiscountLicensee.queryById('txtTotalPersent').setValue("");
+        App.NewDiscountLicensee.queryById('txtextraPersent').setValue("");
+        App.NewDiscountLicensee.queryById('txtDesc').setValue("");
+        App.NewDiscountLicensee.queryById('fldId').setValue(0);
+        App.NewDiscountLicensee.queryById('GridIncomeCodes').getSelectionModel().deselectAll();
+        App.NewDiscountLicensee.queryById('GridIncomeCodes').getSelectionModel().clearSelections();
+    }
+
+    var addKeyMapDiscountLicensee = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NewDiscountLicensee.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

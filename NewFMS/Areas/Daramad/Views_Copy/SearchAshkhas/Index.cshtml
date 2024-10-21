@@ -1,0 +1,371 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_Ashkhas>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+@(Html.X().Window().Modal(true).Listeners(l => l.AfterRender.Handler = "LoadCboTypeShakhs()")
+            .Width(500).Height(360)
+            .Title("اشخاص")
+            .ID("SearchAshkhas")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Items(
+                X.Panel().Border(false)
+                .Border(false)
+                .AutoScroll(true)
+                .Items(
+
+                        X.GridPanel().AutoScroll(true).Border(false)
+                        .TopBar(
+                            Html.X().Toolbar()
+                            .Items(
+                            X.ComboBox().ColSpan(5)
+                        .ItemID("CboTypeShakhs")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Editable(false).Width(120)
+                        .ForceSelection(true)
+                        .TypeAhead(true)
+                        .BlankText("لطفا نوع شخص را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .EmptyText("...")
+    //  .FieldLabel("جنسیت")
+                        .Items(
+                            new ListItem("حقوقی", "1"),
+                            new ListItem("حقیقی", "0"),
+                            new ListItem("هردو", "2")
+                            )
+                                .Listeners(l => l.Change.Handler = "ChangeTypeShakhs()")
+                                   // .SelectedItems(new { Value = "2" })
+                            ,
+                            X.Button().Text("جدید").Icon(Ext.Net.Icon.Add).ItemID("btnNew")
+                                                    .Listeners(li => li.Click.Handler = "NewSearchAshkhas();"),
+                            X.Button().Text("انتخاب").Icon(Ext.Net.Icon.ArrowRedo)
+                                                        .Listeners(li => li.Click.Handler = "NextSearchAshkhas();")
+                           , X.Button().Text("اطلاعات تکمیلی").Icon(Ext.Net.Icon.ApplicationViewDetail)
+                                    .Listeners(l =>  l.Click.Handler = "EmployeeDetail();" ).ItemID("btnTakmili")
+
+                            )
+                        )
+                                    .ItemID("GridSearchAshkhas").Flex(2)
+                    .BottomBar(X.PagingToolbar())
+                    .Height(330)
+                    .ColumnWidth(0.6)
+                    .Layout(Ext.Net.LayoutType.Column)
+                    .Store(
+                        X.StoreForModel().AutoLoad(false)
+                        .Proxy(Html.X().AjaxProxy()
+                            .Url(Url.Action("Read"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+                            //.ExtraParams(x => x.Add(new { Value = "2" }))
+                        )
+                        .PageSize(10)
+                        .RemoteFilter(true)
+                        .RemotePaging(true)
+
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                                    Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),//.Hideable(false),
+                                        Html.X().Column().DataIndex(Model, m => m.fldHoghoghiId).Text("کد").Flex(1).Hidden(true).Hideable(false),
+                                            Html.X().Column().DataIndex(Model, m => m.fldHaghighiId).Text("کد").Flex(1).Hidden(true).Hideable(false),
+                                Html.X().Column().DataIndex(Model, m => m.Name).Text("نام").Flex(5),
+                                Html.X().Column().DataIndex(Model, m => m.fldShenase_CodeMeli).Text("شناسه/کد ملی").Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.shomareshabt_father).Text("شماره ثبت/نام پدر").Flex(3),//.Hidden(true)
+                                Html.X().Column().DataIndex(Model, m => m.NoeShakhs).Text("نوع شخص").Flex(2)
+                    )
+                                .Listeners(a => a.CellDblClick.Handler = "NextSearchAshkhas();")
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+
+            )
+        )
+)
+
+<script type="text/javascript">
+    var _State = '@ViewBag.State';
+
+    function LoadCboTypeShakhs() {
+        if ('@ViewBag.State' == 2) {
+            ShakhsIdBeforBlur = App.AnnouncementComplication.queryById("fldAshkhasId").getValue();
+
+            App.SearchAshkhas.queryById('GridSearchAshkhas').columns[6].hide();
+            var CboTypeShakhs = App.SearchAshkhas.queryById('CboTypeShakhs');
+            CboTypeShakhs.hide();
+            var CboType = App.AnnouncementComplication.queryById('CboType');
+            var CboTypeShakhs = App.SearchAshkhas.queryById('CboTypeShakhs');
+            App.SearchAshkhas.queryById('GridSearchAshkhas').getStore().getProxy().setExtraParam("Value", CboType.getValue());
+            App.SearchAshkhas.queryById('GridSearchAshkhas').getStore().load();
+        }
+        else if ('@ViewBag.State' == 5) {
+            App.SearchAshkhas.queryById('GridSearchAshkhas').columns[6].hide();
+            var CboTypeShakhs = App.SearchAshkhas.queryById('CboTypeShakhs');
+            CboTypeShakhs.hide();
+            var CboType = App.FishMotefareghe.queryById("CboTypeAshkhas");
+            App.SearchAshkhas.queryById('GridSearchAshkhas').getStore().getProxy().setExtraParam("Value", CboType.getValue());
+            App.SearchAshkhas.queryById('GridSearchAshkhas').getStore().load();
+        }
+        else if (_State == 6) {
+            App.SearchAshkhas.queryById('btnNew').hide();
+            App.SearchAshkhas.queryById('btnTakmili').hide();
+            var CboTypeShakhs = App.SearchAshkhas.queryById('CboTypeShakhs');
+            CboTypeShakhs.setValue("2");
+        }
+        else if (_State == 7 || _State == 8) {
+            App.SearchAshkhas.queryById('btnNew').hide();
+            App.SearchAshkhas.queryById('btnTakmili').hide();
+            var CboTypeShakhs = App.SearchAshkhas.queryById('CboTypeShakhs');
+            CboTypeShakhs.setValue("2");
+        }
+        else if(_State==10)
+        {
+            var CboTypeShakhs = App.SearchAshkhas.queryById('CboTypeShakhs');
+            CboTypeShakhs.setValue("2");
+            App.SearchAshkhas.queryById('GridSearchAshkhas').getStore().getProxy().setExtraParam("Value", CboTypeShakhs.getValue());
+            App.SearchAshkhas.queryById('GridSearchAshkhas').getStore().load();
+        }
+        else if (_State == 11) {
+            var CboTypeShakhs = App.SearchAshkhas.queryById('CboTypeShakhs');
+            CboTypeShakhs.setValue("2");
+            App.SearchAshkhas.queryById('GridSearchAshkhas').getStore().getProxy().setExtraParam("Value", CboTypeShakhs.getValue());
+            App.SearchAshkhas.queryById('GridSearchAshkhas').getStore().load();
+        }
+        else {
+            var CboTypeShakhs = App.SearchAshkhas.queryById('CboTypeShakhs');
+            CboTypeShakhs.setValue("2");
+        }
+
+    }
+    function ChangeTypeShakhs() {
+        var CboTypeShakhs = App.SearchAshkhas.queryById('CboTypeShakhs');
+        App.SearchAshkhas.queryById('GridSearchAshkhas').getStore().getProxy().setExtraParam("Value", CboTypeShakhs.getValue());
+        App.SearchAshkhas.queryById('GridSearchAshkhas').getStore().load();
+    }
+    function NextSearchAshkhas() {
+        var SelectedRow = App.SearchAshkhas.queryById('GridSearchAshkhas').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            if (_State == 1) {
+                App.SabtShomareHesabeOmoomi.queryById('txtName').setValue(SelectedRow.data.Name);
+                App.SabtShomareHesabeOmoomi.queryById('fldAshkhasId').setValue(SelectedRow.data.fldId);
+            }
+            else if (_State == 2) {
+                if (parseInt(ShakhsIdBeforBlur) != parseInt(SelectedRow.data.fldId)) {
+                    ClearItems();
+                    var DetailMalek = App.AnnouncementComplication.queryById('DetailMalek');
+                    DetailMalek.show();
+                    var CboType = App.AnnouncementComplication.queryById('CboType');
+                    if (SelectedRow.data.fldShenase_CodeMeli != "") {
+                        App.AnnouncementComplication.queryById('txtCode_ShenaseMelli').setValue(SelectedRow.data.fldShenase_CodeMeli);
+                        App.AnnouncementComplication.queryById('txtCode_ShenaseMelli').setFieldStyle("direction:ltr;");
+                    }
+
+                    else {
+                        App.AnnouncementComplication.queryById('txtCode_ShenaseMelli').setValue("سایر");
+                        App.AnnouncementComplication.queryById('txtCode_ShenaseMelli').setFieldStyle("direction:rtl;");
+                    }
+
+                    App.AnnouncementComplication.queryById('fldAshkhasId').setValue(SelectedRow.data.fldId);
+                    App.AnnouncementComplication.queryById('NameMalek').setText(SelectedRow.data.Name);
+                    App.AnnouncementComplication.queryById('NameFather').setText(SelectedRow.data.shomareshabt_father);
+                    var lblFather = App.AnnouncementComplication.queryById("lblFather");
+                    if (CboType.getValue() == "1")
+                        lblFather.setText("شماره ثبت: ");
+                    else
+                        lblFather.setText("نام پدر: ");
+                }
+            }
+            else if (_State == 3) {
+                App.Instalments.queryById('txtBaratDar').setValue(SelectedRow.data.Name);
+                App.Instalments.queryById('fldBaratDarId').setValue(SelectedRow.data.fldId);
+            }
+            else if (_State == 4) {
+                App.AddNewShomareHesab.queryById('txtName').setValue(SelectedRow.data.Name);
+                App.AddNewShomareHesab.queryById('fldAshkhasId').setValue(SelectedRow.data.fldId);
+            }
+            else if (_State == 5) {
+                if (SelectedRow.data.fldShenase_CodeMeli != "") {
+                    App.FishMotefareghe.queryById('txtCode_ShenaseMelli').setValue(SelectedRow.data.fldShenase_CodeMeli);
+                    App.FishMotefareghe.queryById('txtCode_ShenaseMelli').setFieldStyle("direction:ltr;");
+                }
+                else {
+                    App.FishMotefareghe.queryById('txtCode_ShenaseMelli').setValue("سایر");
+                    App.FishMotefareghe.queryById('txtCode_ShenaseMelli').setFieldStyle("direction:rtl;");
+                }
+                App.FishMotefareghe.queryById('fldAshkhasId').setValue(SelectedRow.data.fldId);
+            }
+            else if (_State == 6) {
+                
+                  
+                if (SelectedRow.data.fldShenase_CodeMeli != "") {
+                    App.MainAnnouncementComplication.queryById('txtShenase_Code').setValue(SelectedRow.data.fldShenase_CodeMeli);
+                }
+                else {
+                    App.MainAnnouncementComplication.queryById('txtShenase_Code').setValue("سایر(" + SelectedRow.data.Name + ")");
+                    App.MainAnnouncementComplication.queryById('txtShenase_Code').setFieldStyle("direction:rtl;");
+                }
+            }
+            else if (_State == 7) {
+                
+                if (SelectedRow.data.fldShenase_CodeMeli != "") {                    
+                    App.RptMoadi.queryById('txtShenase_Code').setValue(SelectedRow.data.fldShenase_CodeMeli);
+                    App.RptMoadi.queryById('AshkhasId').setValue(SelectedRow.data.fldId);
+                    App.RptMoadi.queryById('lblName').setText(SelectedRow.data.Name);
+                }
+                else {
+                    App.RptMoadi.queryById('txtShenase_Code').setValue("_");
+                    App.RptMoadi.queryById('AshkhasId').setValue(SelectedRow.data.fldId);
+                    App.RptMoadi.queryById('lblName').setText("سایر(" + SelectedRow.data.Name + ")");
+                }
+            }
+            else if (_State == 8) {
+
+                if (SelectedRow.data.fldShenase_CodeMeli != "") {
+                    App.SabtSodorCheck.queryById('txtDarVajh').setValue(SelectedRow.data.Name);
+                    App.SabtSodorCheck.queryById('AshkhasId').setValue(SelectedRow.data.fldId);
+                }
+                else {
+                    App.SabtSodorCheck.queryById('txtDarVajh').setValue("سایر(" + SelectedRow.data.Name + ")");;
+                    App.SabtSodorCheck.queryById('AshkhasId').setValue(SelectedRow.data.fldId);
+                }
+            }
+            else if (_State == 10) {
+                App.RegContract.queryById('txtShakhs').setValue(SelectedRow.data.Name);
+                App.RegContract.queryById('fldShakhsId').setValue(SelectedRow.data.fldId);
+            }
+            else if (_State == 11) {
+                if (SelectedRow.data.fldShenase_CodeMeli != "") {
+                    App.SabtCaseBills.queryById('txtAshkhas').setValue(SelectedRow.data.Name);
+                    App.SabtCaseBills.queryById('AshkhasId').setValue(SelectedRow.data.fldId);
+                }
+                else {
+                    App.SabtCaseBills.queryById('txtAshkhas').setValue("سایر(" + SelectedRow.data.Name + ")");;
+                    App.SabtCaseBills.queryById('AshkhasId').setValue(SelectedRow.data.fldId);
+                }
+            }
+            App.SearchAshkhas.destroy();
+        }
+
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function NewSearchAshkhas() {
+        var typePerson;
+        if (_State == 2)
+            typePerson = App.AnnouncementComplication.queryById('CboType').getValue();
+        else if (_State == 5)
+            typePerson = App.FishMotefareghe.queryById('CboTypeAshkhas').getValue();
+        else
+            typePerson = App.SearchAshkhas.queryById('CboTypeShakhs').getValue();
+
+        if (typePerson == 2)
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یکی از موارد حقیقی یا حقوقی را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        else {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            if (typePerson == 1)
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/SearchAshkhas/NewHoghughi',
+                    params: {
+                        State: 1
+                    },
+                    success: function (data) {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            else if (typePerson == 0)
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/SearchAshkhas/NewHaghighi',
+                    params: {
+                        State: 1
+                    },
+                    success: function (data) {
+                        Ext.net.Mask.hide();
+                    }
+                });
+        }
+    }
+    function EmployeeDetail() {
+        var typePerson;
+        if (_State == 2)
+            typePerson = App.AnnouncementComplication.queryById('CboType').getValue();
+        else if (_State == 5)
+            typePerson = App.FishMotefareghe.queryById('CboTypeAshkhas').getValue();
+        else
+            typePerson = App.SearchAshkhas.queryById('CboTypeShakhs').getValue();
+
+        if (typePerson == 2){
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یکی از موارد حقیقی یا حقوقی را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+            
+        else {
+            var SelectedRow = App.SearchAshkhas.queryById('GridSearchAshkhas').selModel.getLastSelected();
+            if (SelectedRow != null) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+
+                if (typePerson == 1){
+                    Ext.net.DirectMethod.request({
+                        url: '/Comon/AshkhaseHoghoghi/AshkhasHoghoghiDetails',
+                        params: {
+                            Id: SelectedRow.data.fldHoghoghiId,
+                            flag: 0,
+                            FishId: 0,
+                            ElamAvarezId: 0
+                        },
+                        success: function (data) {
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+                    
+                else if (typePerson == 0) {
+                    Ext.net.DirectMethod.request({
+                        url: '/Comon/Employee/EmployeeDetails',
+                        params: {
+                            Id: SelectedRow.data.fldHaghighiId,
+                            flag: 0,
+                            FishId: 0,
+                            ElamAvarezId: 0
+                        },
+                        success: function (data) {
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+                    
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+    }
+</script>

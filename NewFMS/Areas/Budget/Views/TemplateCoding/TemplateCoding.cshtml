@@ -1,0 +1,556 @@
+﻿@model IEnumerable<NewFMS.WCF_Budget.OBJ_TemplatCoding>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .rowheightTemplate {
+        height: 50px;
+    }
+</style>
+@(Html.X().Window()
+    .Width(800)
+    .Modal(true)
+    .ID("TemplateCoding_Bud")
+    .Title("ساختار درختی الگوی کدینگ")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l =>
+    {
+        l.Render.Fn = "addKeyMapTemplateCoding_Bud";
+        l.BeforeClose.Handler = "validPcode_Bud=false;";
+    })
+    .Resizable(false)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.HBox)
+            .Padding(10)
+            .Items(
+                X.FieldSet()
+                    .Title("مشخصات ساختار درختی")
+                    .Border(true)
+                    .ItemID("TreeFieldset")
+                    .Listeners(l => l.Render.Handler = "App.TemplateCoding_Bud.queryById('TreeFieldset').setHeight(Ext.getBody().getViewSize().height-270);")
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 2, TRAttrs = { Cls = "rowheightTemplate" } })
+                    .Items(
+                        X.Hidden()
+                            .ItemID("fldId").Value(0),
+                        X.Hidden()
+                            .ItemID("fldCodingLevelId"),
+                        X.Label("کد گــره پــدر:"),
+                        X.TextField()
+                            .ItemID("txtPCode")
+                            .FieldStyle("direction:ltr;")
+                            .Listeners(l =>
+                            {
+                                l.Change.Handler = "validPcode_Bud=false;";
+                            })
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                            .MaskRe("[0-9]"),
+                        X.Label("کد گره فـرزنـد:"),
+                        X.TextField()
+                            .ItemID("txtCode")
+                            .FieldStyle("direction:ltr;")
+                            .Listeners(l =>
+                            {
+                                l.Focus.Handler = "CheckValidatePCode_Bud()";
+                                l.Blur.Handler = "CheckValidateCode_Bud()";
+                            })
+                            .AllowBlank(false)
+                            .BlankText("لطفا کد را وارد کنید.")
+                            .MaskRe("[0-9]")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true),
+                        X.Label("عنــوان آیتم:"),
+                        X.TextArea()
+                            .ItemID("txtItemName")
+                            .AllowBlank(false)
+                            .BlankText("لطفا عنوان آیتم را وارد کنید.")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true),
+                        X.Label("سطــح:"),
+                        X.TextField()
+                            .ItemID("txtLevel")
+                            .ReadOnly(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا سطح را وارد کنید."),
+                        X.Label("توضیحات:"),
+                        X.TextArea()
+                            .ItemID("txtDesc"),  
+                        X.FieldSet()
+                            .ColSpan(2)
+                            .Width(235)
+                            .PaddingSpec("40px 0 0 0")
+                            .Border(false)
+                            .Layout(LayoutType.VBox)
+                            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                            .Items(
+                                X.Button()
+                                    .Text("ثبت")
+                                    .Icon(Icon.Disk)
+                                    .Listeners(l => l.Click.Handler = "SaveTemplateCoding_Bud()"))
+                    ),
+                X.TreePanel()
+                    .ID("TreeTemplateCoding_Bud")
+                    .AutoScroll(true)
+                    .Frame(true)
+                    .Title("ساختار درختی الگوی کدینگ")
+                    .Width(500)
+                    .Margin(5)
+                    .UseArrows(true)
+                    .Border(true)
+                    .Listeners(l =>
+                    {
+                        l.Render.Handler = "App.TreeTemplateCoding_Bud.setHeight(Ext.getBody().getViewSize().height-270);";
+                        l.AfterRender.Handler = "AddMenuTreeTemplateCoding_Bud()";
+                        l.ItemClick.Handler = "setPCodeFromTree_Bud()";
+                    })
+                    //.View(X.TreeView().Listeners(l => l.BeforeDrop.Fn = "moveNodesTreeAnbar").Plugins(X.TreeViewDragDrop().AppendOnly(true)))
+                    .Store(
+                        Html.X().TreeStore()
+                            //.Listeners(l=>l.Load.Fn="CheckLeaf")
+                            .Model(
+                                Html.X().Model()
+                                    .Fields(
+                                        X.ModelField().Name(Model, m => m.fldCode).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldTemplatNameId).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldName).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldPCod).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldDesc).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldCodingLevelId).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldNameCodingLevel).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldLevelId).Type(ModelFieldType.Int)
+                                    )
+                            )
+                            .Proxy(
+                                Html.X().AjaxProxy().Url(Url.Action("LoadTreeTemplateCoding"))
+                            )
+                            .Listeners(l => l.BeforeLoad.Fn = "GetParamTreeTemplateCoding_Bud")
+                    )
+                        .Root(Html.X().Node().NodeID("0").Text(ViewBag.fldTemplateName)/*.AttributesObject(new { fldName = "", fldNodeType = "2", fldDesc = "" })*/.Expanded(true))
+                )
+        )
+)
+<script type="text/javascript">
+    var validPcode_Bud = false;
+    var GetParamTreeTemplateCoding_Bud = function (store, operation, eOpts) {
+        operation.params.nod = operation.node.getId();
+        operation.params.TemplateId = '@ViewBag.fldTemplateId';
+    };
+
+    function AddMenuTreeTemplateCoding_Bud() {
+        var menu_grid = new Ext.menu.Menu({
+            bodyStyle: 'background-color:#dfe8f6 !important;',
+            items: [
+                { text: "ویرایش", iconCls: "Editico", handler: function () { EditNodeTreeTemplateCoding_Bud(); } },
+                { text: "حذف", iconCls: "Deleteico", handler: function () { DeleteNodeTreeTemplateCoding_Bud(); } }
+            ]
+        });
+        App.TreeTemplateCoding_Bud.on("itemcontextmenu", function (view, record, item, index, e, eOpts) { if (record.getId() != 0) { var position = e.getXY(); e.stopEvent(); menu_grid.showAt(position); } });
+    }
+
+    /*var CheckLeaf = function (tree,record,c,d) {
+        if (record.childNodes.length == 0) {
+            record.set("leaf", true);
+        }
+        else {
+            record.set("leaf", false);
+        }
+    };*/
+
+    function setPCodeFromTree_Bud() {
+        App.TemplateCoding_Bud.queryById('txtPCode').setValue(App.TreeTemplateCoding_Bud.getSelectionModel().getLastSelected().data.fldCode);
+        App.TemplateCoding_Bud.queryById('txtPCode').enable();
+        App.TemplateCoding_Bud.queryById('txtPCode').focus();
+        App.TemplateCoding_Bud.queryById("txtCode").setValue("");
+        if (App.TemplateCoding_Bud.queryById("fldId").getValue() != 0) {
+            App.TemplateCoding_Bud.queryById('fldId').setValue(0);
+            App.TemplateCoding_Bud.queryById('fldCodingLevelId').setValue(0);
+            App.TemplateCoding_Bud.queryById('txtItemName').setValue("");
+            App.TemplateCoding_Bud.queryById('txtLevel').setValue("");
+            App.TemplateCoding_Bud.queryById('txtDesc').setValue("");
+        }
+    }
+
+    function CheckValidateCode_Bud() {
+        var txtCode = App.TemplateCoding_Bud.queryById("txtCode");
+        var txtPCode = App.TemplateCoding_Bud.queryById('txtPCode');
+        var fldId = App.TemplateCoding_Bud.queryById('fldId');
+
+        if (validPcode_Bud == true) {
+            Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+            Ext.net.DirectMethod.request({
+                url: '/Budget/TemplateCoding/CheckValidateCode_Bud',
+                params: {
+                    Code: txtCode.getValue(),
+                    Pcode: txtPCode.getValue(),
+                    TempNameId:'@ViewBag.fldTemplateId',
+                    Id:fldId.getValue()
+                },
+                success: function (data) {
+                    if (data.Valid == 1) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "کد گره فرزند تکراری است.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK,
+                            closable:false,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    txtCode.setValue("");
+                                    /*txtCode.focus();*/
+                                }
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                    else if (data.Valid == 2) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "کد گره فرزند نامعتبر است.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK,
+                            closable: false,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    txtCode.setValue("");
+                                    /*txtCode.focus();*/
+                                }
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                    else if (data.Valid == 3) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "کد گره فرزند وارد شده بیشتر از تعداد سطوح تعریف شده است.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK,
+                            closable: false,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    txtCode.setValue("");
+                                    /*txtCode.focus();*/
+                                }
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                    else {
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+    }
+
+    function CheckValidatePCode_Bud() {
+        var txtPCode = App.TemplateCoding_Bud.queryById('txtPCode');
+        var txtCode = App.TemplateCoding_Bud.queryById("txtCode");
+        var txtLevel = App.TemplateCoding_Bud.queryById("txtLevel");
+
+        if (App.TemplateCoding_Bud.queryById('fldId').getValue() == 0) {
+            if (txtPCode.getValue() != "") {
+                Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Budget/TemplateCoding/CheckExistPCode',
+                    params: {
+                        Pcode: txtPCode.getValue(),
+                        TemplateId:'@ViewBag.fldTemplateId'
+                    },
+                    success: function (data) {
+                        if (data.Valid == 0) {
+                            Ext.MessageBox.show({
+                                title: "خطا",
+                                msg: "کد گره پدر نامعتبر است.",
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK,
+                                closable: false,
+                                fn: function (btn) {
+                                    if (btn == "ok") {
+                                        validPcode_Bud = false;
+                                        txtPCode.setValue("");
+                                        txtPCode.focus();
+                                        App.TreeTemplateCoding_Bud.getSelectionModel().deselectAll();
+                                        App.TreeTemplateCoding_Bud.getSelectionModel().clearSelections();
+                                    }
+                                }
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                        else {
+                            var record = App.TreeTemplateCoding_Bud.getRootNode().findChild("fldCode", txtPCode.getValue(), true);
+                            App.TreeTemplateCoding_Bud.getSelectionModel().select(record);
+                            Ext.net.DirectMethod.request({
+                                url: '/Budget/TemplateCoding/GetDefaultCode',
+                                params: {
+                                    Pcode: txtPCode.getValue(),
+                                    TempNameId: '@ViewBag.fldTemplateId'
+                                },
+                                success: function (data) {
+                                    txtCode.setValue(data.DefaultCode);
+                                    txtLevel.setValue(data.LevelName);
+                                    App.TemplateCoding_Bud.queryById("fldCodingLevelId").setValue(data.LevelId);
+                                    txtCode.focus();
+                                    validPcode_Bud = true;
+                                    Ext.net.Mask.hide();
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+            else {
+                Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+                var record = App.TreeTemplateCoding_Bud.getRootNode();
+                App.TreeTemplateCoding_Bud.getSelectionModel().select(record);
+                Ext.net.DirectMethod.request({
+                    url: '/Budget/TemplateCoding/GetDefaultCode',
+                    params: {
+                        Pcode: txtPCode.getValue(),
+                        TempNameId: '@ViewBag.fldTemplateId'
+                    },
+                    success: function (data) {
+                        txtCode.setValue(data.DefaultCode);
+                        txtLevel.setValue(data.LevelName);
+                        App.TemplateCoding_Bud.queryById("fldCodingLevelId").setValue(data.LevelId);
+                        validPcode_Bud = true;
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+        else {
+            validPcode_Bud = true;
+        }
+    }
+
+    function SaveTemplateCoding_Bud() {
+        var SelectedNode;
+        var ParentNode;
+        if (App.TreeTemplateCoding_Bud.getSelectionModel().getLastSelected() != undefined) {
+            SelectedNode = App.TreeTemplateCoding_Bud.getSelectionModel().getLastSelected();
+            ParentNode = App.TreeTemplateCoding_Bud.getSelectionModel().getLastSelected().parentNode;
+        }
+        var Id = App.TemplateCoding_Bud.queryById('fldId');
+        var txtPCode = App.TemplateCoding_Bud.queryById("txtPCode");
+        var txtCode = App.TemplateCoding_Bud.queryById("txtCode");
+        var txtItemName = App.TemplateCoding_Bud.queryById('txtItemName');
+        var txtLevel = App.TemplateCoding_Bud.queryById('txtLevel');
+        var txtDesc = App.TemplateCoding_Bud.queryById('txtDesc');
+        var fldCodingLevelId = App.TemplateCoding_Bud.queryById("fldCodingLevelId");
+
+        var er = false;
+
+        if (txtCode.validate() == false) {
+            er = true;
+        }
+        if (txtItemName.validate() == false) {
+            er = true;
+        }
+        if (txtLevel.validate() == false) {
+            er = true;
+        }
+        if (App.TreeTemplateCoding_Bud.getSelectionModel().getLastSelected().data.fldLevelId >1) {
+            er = true;
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "امکان تعریف بیش از دو سطح مجاز نیست.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        if (er == true)
+            return;
+        /*var PID = null;
+        if (txtPCode.getValue() != "") {*/
+            var PID = App.TreeTemplateCoding_Bud.getSelectionModel().getLastSelected().data.id;
+        /*}*/
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Budget/TemplateCoding/SaveTemplateCoding',
+            params: {
+                fldId:Id.getValue(),
+                PID: PID,
+                fldName: txtItemName.getValue(),
+                fldCodingLevelId: fldCodingLevelId.getValue(),
+                fldPCod: txtPCode.getValue(),
+                fldCode: txtCode.getValue(),
+                fldTemplatNameId: '@ViewBag.fldTemplateId',
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    closable:false,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            if (data.Er != 1) {
+                                if (Id.getValue() == 0) {
+                                    SelectedNode.reload();
+                                    ClearTemplateCoding_Bud();
+                                    /*App.TreeTemplateCoding_Bud.getStore().load({ node: App.TreeTemplateCoding_Bud.getSelectionModel().getLastSelected()});*/
+                                }
+                                else {
+                                    ParentNode.reload();
+                                    ClearTemplateCoding_Bud();
+                                    /*App.TreeTemplateCoding_Bud.getStore().load({ node: App.TreeTemplateCoding_Bud.getSelectionModel().getLastSelected().parentNode });*/
+                                }
+                            }
+                        }
+                    }
+                });
+                Ext.net.Mask.hide();
+                if (data.Er != 1) {
+                    if (Id.getValue() == 0) {/*insert*/
+                        SelectedNode.collapse();
+                    }
+                    else {/*edit*/
+                        ParentNode.collapse();
+                    }
+                }
+            }
+        });
+    }
+
+    function ClearTemplateCoding_Bud() {
+        App.TemplateCoding_Bud.queryById('fldId').setValue(0);
+        App.TemplateCoding_Bud.queryById('fldCodingLevelId').setValue(0);
+        /*App.TemplateCoding_Bud.queryById("txtPCode").setValue("");*/
+        App.TemplateCoding_Bud.queryById("txtCode").setValue("");
+        App.TemplateCoding_Bud.queryById('txtLevel').setValue("");
+        App.TemplateCoding_Bud.queryById('txtDesc').setValue("");
+        App.TemplateCoding_Bud.queryById("txtItemName").setValue("");
+        /*App.TreeTemplateCoding_Bud.getSelectionModel().deselectAll();
+        App.TreeTemplateCoding_Bud.getSelectionModel().clearSelections();*/
+    }
+
+    function EditNodeTreeTemplateCoding_Bud() {
+        var SelectedNode = App.TreeTemplateCoding_Bud.getSelectionModel().getLastSelected();
+        App.TemplateCoding_Bud.queryById('fldId').setValue(SelectedNode.data.id);
+        App.TemplateCoding_Bud.queryById('fldCodingLevelId').setValue(SelectedNode.data.fldCodingLevelId);
+        App.TemplateCoding_Bud.queryById('txtDesc').setValue(SelectedNode.data.fldDesc);
+        App.TemplateCoding_Bud.queryById("txtPCode").setValue(SelectedNode.data.fldPCod);
+        App.TemplateCoding_Bud.queryById("txtPCode").disable();
+        App.TemplateCoding_Bud.queryById("txtCode").setValue(SelectedNode.data.fldCode);
+        App.TemplateCoding_Bud.queryById("txtItemName").setValue(SelectedNode.data.fldName);
+        App.TemplateCoding_Bud.queryById('txtLevel').setValue(SelectedNode.data.fldNameCodingLevel);
+    }
+
+    function DeleteNodeTreeTemplateCoding_Bud() {
+        var SelectedNode = App.TreeTemplateCoding_Bud.getSelectionModel().getLastSelected();
+        var ParentNode = SelectedNode.parentNode;
+        if (SelectedNode != null) {
+            if (SelectedNode.data.id != 0) {
+                if (SelectedNode.childNodes.length == 0) {
+                    Ext.MessageBox.show({
+                        title: "هشدار",
+                        msg: "آیا برای حذف مطمئن هستید؟",
+                        icon: Ext.MessageBox.WARNING,
+                        buttons: Ext.MessageBox.YESNO,
+                        fn: function (btn) {
+                            if (btn == 'yes') {
+                                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                Ext.net.DirectMethod.request({
+                                    url: '/Budget/TemplateCoding/DeleteNode',
+                                    params: {
+                                        Id: SelectedNode.data.id
+                                    },
+                                    success: function (data) {
+                                        var ic = Ext.MessageBox.INFO;
+                                        if (data.Er == 1) {
+                                            ic = Ext.MessageBox.ERROR;
+                                        }
+                                        Ext.MessageBox.show({
+                                            title: data.MsgTitle,
+                                            msg: data.Msg,
+                                            icon: ic,
+                                            buttons: Ext.MessageBox.OK,
+                                            closable: false,
+                                            fn: function (btn) {
+                                                if (btn == "ok") {
+                                                    if (data.Er != 1) {
+                                                        ParentNode.reload();
+                                                    }
+                                                }
+                                            }
+                                        });
+                                        if (data.Er != 1) {
+                                            ParentNode.collapse();
+                                            /*App.TreeTemplateCoding_Bud.getStore().load({ node: ParentNode });
+                                            ClearTemplateCoding_Bud();*/
+                                        }
+                                        Ext.net.Mask.hide();
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا ابتدا زیرشاخه های مربوطه را پاک نموده و سپس اقدام به حذف شاخه مورد نظر نمایید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "امکان حذف گره مورد نظر وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر (گره) را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    var addKeyMapTemplateCoding_Bud = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var nextfld;
+                    var keyfield = App.TemplateCoding_Bud.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);                    
+                    if (keyfield.itemId == "txtDesc") {
+                        SaveTemplateCoding_Bud();
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                    
+                }
+            }]
+        });
+    };
+</script>
+

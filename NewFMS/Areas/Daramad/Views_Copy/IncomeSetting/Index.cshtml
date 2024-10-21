@@ -1,0 +1,613 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<style>
+    .custom-IncomeIc{
+        margin-right: 405px!important;
+    }
+     .custom-IncomeIcsh{
+        margin-right: 125px!important;
+    }
+</style>
+
+@(Html.X().Window()
+    .Closable(true)
+    .CloseAction(CloseAction.Destroy)
+    .Listeners(l => {
+        l.AfterRender.Handler = "loadIncomSettingg()";
+        l.Render.Fn = "addKeyMapIncomeSettingg";
+    })
+    .Title("تنظیمات درآمد")
+    .Layout(LayoutType.Fit)
+    .ID("IncomeSettingg")
+    .Modal(true)
+    .Width(590)
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        Html.X().Button()
+            .Text("ذخیره")
+                .ItemID("BtnSave")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveIncomeSetting()"),
+                     Html.X().Button()
+                 .Text("راهنما")
+                 .Icon(Ext.Net.Icon.Help)
+                     .Listeners(l => { l.Click.Handler = "HelpIncomeSetting();"; }),
+        Html.X().Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => l.Click.Handler = "App.IncomeSettingg.destroy()")
+    )
+    .Items(
+            X.FormPanel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            //.PaddingSpec("4px 12px 4px 12px")
+            .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .Title("تنظیمات")
+                    //.Height(200)
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Hidden().ItemID("MaliyatCodeId"),
+                        X.Hidden().ItemID("AvarezCodeId"),
+                        X.Hidden().ItemID("TakhirCodeId"),
+                        X.Hidden().ItemID("ShomareHesabIdPishfarz"),
+                        X.Hidden().ItemID("SazmanId"),
+                        X.Label("سازمان:"),
+                        X.TextField()
+                            .ItemID("txtSazman")
+                            .FieldStyle("background-image:none;background-color:#dfe8f6")
+                            .ColSpan(3)
+                            .Width(427)
+                            .ReadOnly(true),
+                        /*X.ComboBox()
+                            .ItemID("CboSazman")
+                            .TypeAhead(true)
+                            .BlankText("لطفا سازمان را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .AllowBlank(false)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .Editable(true)
+                            .Listeners(l => l.Select.Handler = "loadIncomSettingg()")
+                            .EmptyText("سازمان ...")
+                            .Store(X.Store()
+                                .Listeners(l => l.Load.Handler = "setDefaultINC()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                    )
+                                .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetSazman"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                    )
+                            ),  */
+                        X.Label("کد درآمد مالیات:"),
+                        X.TextField()
+                            .ItemID("MaliyatCode")
+                            .ColSpan(3)
+                            .Width(427)
+                            .AllowBlank(false)
+                            .FieldStyle("padding-right:6px;")
+                            .ReadOnly(true)
+                            .BlankText("لطفا کد درآمد مالیات را وارد کنید.")
+                            .Icon(Icon.MoneyAdd)
+                            .Listeners(l =>
+                            {
+                                l.SpecialKey.Handler = "SearchCodeDaramadIn(e.getKey(),2);";
+                                l.IconClick.Handler = "Ext.net.DirectMethod.request({ url: '/Daramad/SearchCodeDaramad/Search?State=2'});";
+                                l.AfterRender.Handler = "App.IncomeSettingg.queryById('MaliyatCode').icon.dom.classList.add('custom-IncomeIc');";
+                            }),
+                        X.Label("کد درآمد عوارض:"),
+                        X.TextField()
+                            .ItemID("AvarezCode")
+                            .ColSpan(3)
+                            .Width(427)
+                            .AllowBlank(false)
+                            .ReadOnly(true)
+                            .FieldStyle("padding-right:6px;")
+                            .BlankText("لطفا کد درآمد عوارض را وارد کنید.")
+                            .Icon(Icon.MoneyAdd)
+                            .Listeners(l =>
+                            {
+                                l.SpecialKey.Handler = "SearchCodeDaramadIn(e.getKey(),3);";
+                                l.IconClick.Handler = "Ext.net.DirectMethod.request({ url: '/Daramad/SearchCodeDaramad/Search?State=3'});";
+                                l.AfterRender.Handler = "App.IncomeSettingg.queryById('AvarezCode').icon.dom.classList.add('custom-IncomeIc');";
+                            }),
+                        X.Label("کد درآمدی کارمزد:"),
+                        X.TextField()
+                            .ItemID("TakhirCode")
+                            .AllowBlank(false)
+                            .ReadOnly(true)
+                            .ColSpan(3)
+                            .Width(427)
+                            .FieldStyle("padding-right:6px;")
+                            .BlankText("لطفا کد درآمدی کارمزد را وارد کنید.")
+                            .Icon(Icon.MoneyAdd)
+                            .Listeners(l =>
+                            {
+                                l.SpecialKey.Handler = "SearchCodeDaramadIn(e.getKey(),4);";
+                                l.IconClick.Handler = "Ext.net.DirectMethod.request({ url: '/Daramad/SearchCodeDaramad/Search?State=4'});";
+                                l.AfterRender.Handler = "App.IncomeSettingg.queryById('TakhirCode').icon.dom.classList.add('custom-IncomeIc');";
+                            }),
+                        Html.X().FieldSet()
+                            .Border(false)
+                            .Margin(0)
+                            .PaddingSpec("0 0 0 90px")
+                            .Items(
+                                Html.X().Checkbox()
+                                    .ItemID("ChkRound")
+                                    .Listeners(l => l.Change.Fn = "enabletxtRound")
+                            ),
+                        Html.X().FieldSet()
+                            .Border(false)
+                            .Padding(0)
+                            .Layout(LayoutType.HBox)
+                            .Items(
+                                X.Label("گرد کردن تا:"),
+                                X.TextField()
+                                    .Width(85)
+                                    .ItemID("txtRound")
+                                    .MaxLength(10)
+                                    .EnforceMaxLength(true)
+                                    .Disabled(true)
+                                    .Regex("^[1][0]*$")
+                                    .MaskRe("[0-9]")
+                                    .RegexText("مقدار فیلد باید توانی از 10 باشد.")
+                                    ),
+                        X.Label("شماره حساب پیش فرض:"),
+                        X.TextField()
+                            .ItemID("ShomareHesab")
+                            .AutoFocus(true)
+                            .AllowBlank(false)
+                            .ReadOnly(true)
+                            .FieldStyle("padding-right:6px;")
+                            .BlankText("لطفا شماره حساب  را وارد کنید.")
+                            .IconCls("ShomareHesab")
+                            .Listeners(l =>
+                            {
+                                l.SpecialKey.Handler = "SearchSh_HesabIn(e.getKey(),6);";
+                                l.IconClick.Handler = "Ext.net.DirectMethod.request({ url: '/Comon/SearchShomareHesab/Index?State=6'});";
+                                l.AfterRender.Handler = "App.IncomeSettingg.queryById('ShomareHesab').icon.dom.classList.add('custom-IncomeIcsh');";
+                            }),
+                        X.FieldSet().Border(false).PaddingSpec("0 0 0 87px")
+                                    .Layout(LayoutType.HBox)
+                            .Items(
+                            X.Checkbox().ItemID("CheckShenase")
+                            , X.Label().Text("چاپ شناسه قبض و پرداخت").Width(150)
+                        )
+
+                        .ColSpan(2),
+                            X.Label("نرخ(درصد):"),
+                            X.TextField()
+                            .Width(145)
+                            .MaxLength(5)
+                            .EnforceMaxLength(true)
+                            .ItemID("txtNerkh")
+                                        .Listeners(l => l.Change.Handler = "CheckDarsadNerkh(App.IncomeSettingg.queryById('txtNerkh'))")
+                            .AllowBlank(false)
+                            .FieldStyle("padding-right:6px;")
+                            .BlankText("لطفا نرخ را وارد کنید.")
+                            .MaskRe("[0-9,.]"),
+                            X.FieldSet().Border(false).PaddingSpec("0 0 0 87px")
+                                    .Layout(LayoutType.HBox)
+                            .Items(
+                            X.Checkbox().ItemID("CheckSumMaliat")
+                            , X.Label().Text("جمع مالیات و عوارض در فیش").Width(150)
+                            ).ColSpan(2)
+                            ,
+                            X.Label().Text("شروع شناسه قبض:"),//.PaddingSpec("-100px 0 0 0"),
+                        X.TextField()
+                        .ItemID("txtStartBillingID")
+                        .AllowBlank(false)
+                        .BlankText("لطفا شروع شناسه قبض را وارد کنید.")
+                        .Regex("^[1-9]")
+                        .MaskRe("[0-9]")
+                        .MaxLength(2)
+                        .MinLength(2)
+                        .EnforceMaxLength(true)
+                        ,X.Label("توضیحات:"),
+                        X.TextField()
+                            .ItemID("txtDesc")
+                            .Width(427)
+                            .ColSpan(3)
+                            
+                        )
+                        @*,
+                            X.FieldSet().Title("فایل پش فرض فیش")//.Border(false)
+                                    .ColSpan(4).Width(560)
+                                     .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                            .Items(
+                                X.FileUploadField().PaddingSpec("0 20px 0 0")
+                                .ItemID("FileUploadField1")
+                                    .ButtonOnly(true).ButtonText("انتخاب فایل")
+                                .DirectEvents(l =>
+                                        {
+                                            l.Change.Action = "Upload";
+                                            l.Change.Success = "hideprogressPatternR();";
+                                        }
+                                    )
+                                    .Listeners(l => l.Change.Fn = "showFilePatternR")
+                                        .Icon(Ext.Net.Icon.DiskUpload)
+                                         ,X.Button().Text("دانلود فایل").Icon(Ext.Net.Icon.ArrowDown).ItemID("DlFile")
+                        .Listeners(l => { l.Click.Handler = "DownloadReport();"; })
+,
+                                   X.Container().Content(@<div id="fi-button-msgPatternR" style="display:none;width:250px;height:20px"></div>)//.ColSpan(3)
+
+                                 )*@
+            )
+    )
+)
+
+<script type="text/javascript">
+    var DefaultReportFish = 0;
+    var MojazPatternR = 0;
+    var EndUploadPatternR = false;
+    function CheckEndPatternR() {
+        if (EndUploadPatternR == true) {
+
+            Ext.MessageBox.hide();
+            Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+            clearInterval(CheckEndPatternR);
+            EndUploadPatternR = false;
+        }
+    }
+    var Check = setInterval(CheckEndPatternR, 500);
+    var showFilePatternR = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msgPatternR');
+        if (v) {
+            showProgressBarPatternR();
+            if (v.split('.').pop().toLowerCase() == "frx") {
+                MojazPatternR = 1;
+                el.update('<b>فایل انتخاب شده:</b> ' + v);
+                App.IncomeSettingg.queryById('BtnSave').enable(true);
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                } else {
+                    el.highlight();
+                }
+            }
+            else {
+                el.update('<b>فایل انتخاب شده:</b> ');
+            }
+        }
+    };
+
+
+    function hideprogressPatternR() {
+        if (MojazPatternR == 1) {
+            EndUploadPatternR = true;
+        }
+        MojazPatternR = 0;
+    }
+
+    function showProgressBarPatternR() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+    function SearchCodeDaramadIn(keyy, State) {
+        if (keyy == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/SearchCodeDaramad/Index',
+                params: {
+                    State: State
+                }
+            });
+        }
+    }
+
+    function SearchSh_HesabIn(keyy, State) {
+        if (keyy == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/Comon/SearchShomareHesab/Index',
+                params: {
+                    State: State,
+                    AshkhasId:''
+                }
+            });
+        }
+    }
+
+    /*function setDefaultINC() {
+        var Id = App.IncomeSettingg.queryById('CboSazman').store.getAt(0).data.fldId;
+        App.IncomeSettingg.queryById('CboSazman').setValue(Id);
+        loadIncomSettingg();
+    }*/
+
+    var enabletxtRound = function (checkbox, value, c) {
+        if (value == true) {
+            App.IncomeSettingg.queryById("txtRound").enable();
+        }
+        else {
+            App.IncomeSettingg.queryById("txtRound").disable();
+            App.IncomeSettingg.queryById("txtRound").setValue("");
+        }
+    };
+
+    function CheckDarsadNerkh(txt) {
+        if (parseFloat(txt.getValue()) > 100) {
+            txt.blankText = "مقدار وارد شده بیشتر از حد مجاز است.";
+            txt.setValue("");
+        }        
+    }
+    function HelpIncomeSetting() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/IncomeSetting/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function loadIncomSettingg() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/IncomeSetting/Details',
+            success: function (data) {
+                var txtSazman = App.IncomeSettingg.queryById('txtSazman');
+                txtSazman.setValue(data.fldOrganName);
+
+                var SazmanId = App.IncomeSettingg.queryById('SazmanId');
+                SazmanId.setValue(data.organId);
+
+                var ShomareHesabIdPishfarz = App.IncomeSettingg.queryById('ShomareHesabIdPishfarz');
+                ShomareHesabIdPishfarz.setValue(data.fldShomareHesabIdPishfarz);
+
+                var ShomareHesab = App.IncomeSettingg.queryById('ShomareHesab');
+                ShomareHesab.setValue(data.fldShomareHesab);
+
+                var MaliyatCodeId = App.IncomeSettingg.queryById('MaliyatCodeId');
+                MaliyatCodeId.setValue(data.fldMaliyatId);
+
+                var AvarezCodeId = App.IncomeSettingg.queryById('AvarezCodeId');
+                AvarezCodeId.setValue(data.fldAvarezId);
+
+                var TakhirCodeId = App.IncomeSettingg.queryById('TakhirCodeId');
+                TakhirCodeId.setValue(data.fldTakhirId);
+
+                var MaliyatCode = App.IncomeSettingg.queryById('MaliyatCode');
+                MaliyatCode.setValue(data.fldMaliyatTitle);
+
+                var AvarezCode = App.IncomeSettingg.queryById('AvarezCode');
+                AvarezCode.setValue(data.fldAvarezTitle);
+
+                var TakhirCode = App.IncomeSettingg.queryById('TakhirCode');
+                TakhirCode.setValue(data.fldTakhirTitle);
+
+                var txtRound = App.IncomeSettingg.queryById('txtRound');
+                txtRound.setValue(data.fldMablaghGerdKardan);
+
+                var ChkRound = App.IncomeSettingg.queryById('ChkRound');
+                if (data.fldMablaghGerdKardan != 0) {
+                    ChkRound.setValue(true);
+                }
+                else {
+                    ChkRound.setValue(false);
+                }                
+                var CheckShenase = App.IncomeSettingg.queryById('CheckShenase');
+                if (data.fldChapShenaseGhabz_Pardakht == true) {
+                    CheckShenase.setValue(true);
+                }
+                else {
+                    CheckShenase.setValue(false);
+                }
+
+                var CheckSumMaliat = App.IncomeSettingg.queryById('CheckSumMaliat');
+                if (data.fldSumMaliyat_Avarez == true) {
+                    CheckSumMaliat.setValue(true);
+                }
+                else {
+                    CheckSumMaliat.setValue(false);
+                }
+
+                
+
+                var txtNerkh = App.IncomeSettingg.queryById('txtNerkh');
+                txtNerkh.setValue(data.fldNerkh);
+
+                var txtStartBillingID = App.IncomeSettingg.queryById('txtStartBillingID');
+                txtStartBillingID.setValue(data.fldShorooshenaseGhabz);
+                var txtDesc = App.IncomeSettingg.queryById('txtDesc');
+                txtDesc.setValue(data.fldDesc);
+                /*DefaultReportFish = data.fldDefaultReportFish;
+                var DlFile = App.IncomeSettingg.queryById('DlFile');
+                if (DefaultReportFish == 0 || DefaultReportFish==null)
+                    DlFile.setDisabled(true);*/
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function SaveIncomeSetting() {
+        var MaliyatCodeId = App.IncomeSettingg.queryById('MaliyatCodeId');
+        var AvarezCodeId = App.IncomeSettingg.queryById('AvarezCodeId');
+        var TakhirCodeId = App.IncomeSettingg.queryById('TakhirCodeId');
+        var MaliyatCode = App.IncomeSettingg.queryById('MaliyatCode');
+        var AvarezCode = App.IncomeSettingg.queryById('AvarezCode');
+        var TakhirCode = App.IncomeSettingg.queryById('TakhirCode');
+        var SazmanId = App.IncomeSettingg.queryById('SazmanId');
+        var txtRound = App.IncomeSettingg.queryById('txtRound');
+        var ShomareHesab = App.IncomeSettingg.queryById('ShomareHesab');
+        var ShomareHesabIdPishfarz = App.IncomeSettingg.queryById('ShomareHesabIdPishfarz');
+        var txtNerkh = App.IncomeSettingg.queryById('txtNerkh');
+        var txtDesc = App.IncomeSettingg.queryById('txtDesc');
+        var CheckShenase = App.IncomeSettingg.queryById('CheckShenase');
+        var CheckSumMaliat = App.IncomeSettingg.queryById('CheckSumMaliat');
+        var txtStartBillingID = App.IncomeSettingg.queryById('txtStartBillingID');
+
+        var er = false;
+
+        if (MaliyatCode.validate() == false) {
+            er = true;
+        }
+        if (AvarezCode.validate() == false) {
+            er = true;
+        }
+        if (TakhirCode.validate() == false) {
+            er = true;
+        }
+        /*if (CboSazman.validate() == false) {
+            er = true;
+        }*/
+        if (txtRound.validate() == false) {
+            er = true;
+        }
+        if (ShomareHesab.validate() == false) {
+            er = true;
+        }
+        
+        if (txtNerkh.validate() == false) {
+            er = true;
+        }
+        if (txtStartBillingID.validate() == false) {
+            er = true;
+        }
+        
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/IncomeSetting/Save',
+            params: {
+                fldAvarezId: AvarezCodeId.getValue(),
+                fldMaliyatId: MaliyatCodeId.getValue(),
+                fldTakhirId: TakhirCodeId.getValue(),
+                fldOrganId: SazmanId.getValue(),
+                fldMablaghGerdKardan: txtRound.getValue(),
+                fldShomareHesabIdPishfarz:ShomareHesabIdPishfarz.getValue(),
+                fldNerkh: txtNerkh.getValue(),
+                fldDesc:txtDesc.getValue(),
+                fldChapShenaseGhabz_Pardakht: CheckShenase.getValue(),
+                fldSumMaliyat_Avarez: CheckSumMaliat.getValue(),
+                fldShorooshenaseGhabz: txtStartBillingID.getValue()
+               /* fldDefaultReportFish: DefaultReportFish*/
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                   /* var el = Ext.get('fi-button-msgPatternR');
+                    el.update('');*/
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                /*if (data.Er != 1) {
+                    DefaultReportFish = data.ReportFileID;
+                    App.IncomeSettingg.queryById('DlFile').setDisabled(false);
+                }*/
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    var addKeyMapIncomeSettingg = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield;
+                    var nextfld;
+                    if (Ext.Element.getActiveElement().name != "") {
+                        keyfield = App.IncomeSettingg.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        if (keyfield.itemId == "txtDesc") {
+                            return;
+                        }
+                        else if (keyfield.itemId == "TakhirCode") {
+                            nextfld = App.IncomeSettingg.queryById("ChkRound");
+                            nextfld.focus();
+                            return;
+                        }
+                        else if (keyfield.itemId == "txtRound") {
+                            nextfld = App.IncomeSettingg.queryById("ShomareHesab");
+                        }
+                        else if (keyfield.itemId == "ShomareHesab") {
+                            nextfld = App.IncomeSettingg.queryById("CheckShenase");
+                        }
+                        else if (keyfield.itemId == "CheckShenase") {
+                            nextfld = App.IncomeSettingg.queryById("txtNerkh");
+                            nextfld.focus();
+                            return;
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                    else {
+                        if (App.IncomeSettingg.queryById("ChkRound").hasFocus == true) {
+                            nextfld = App.IncomeSettingg.queryById("txtRound");
+                            nextfld.focus();
+                            nextfld.selectText();
+                            return;
+                        }
+                        else if (App.IncomeSettingg.queryById("CheckShenase").hasFocus == true) {
+                            nextfld = App.IncomeSettingg.queryById("txtStartBillingID");
+                            nextfld.focus();
+                            nextfld.selectText();
+                            return;
+                        }
+                    }
+                    
+                    
+                }
+            }]
+        });
+    };
+    function DownloadReport() {
+        window.location.href = '@Url.Content("~/Daramad/PatternFish/Download?FileId=")' + DefaultReportFish;
+    }
+    /*function ClearIncomeSettingg() {
+        App.IncomeSettingg.queryById('MaliyatCodeId').setValue(0);
+        App.IncomeSettingg.queryById('AvarezCodeId').setValue(0);
+        App.IncomeSettingg.queryById('TakhirCodeId').setValue(0);
+        App.IncomeSettingg.queryById('MaliyatCode').setValue("");
+        App.IncomeSettingg.queryById('AvarezCode').setValue("");
+        App.IncomeSettingg.queryById('TakhirCode').setValue("");
+        App.IncomeSettingg.queryById('txtRound').setValue("");
+        App.IncomeSettingg.queryById('txtDesc').setValue("");
+        App.IncomeSettingg.queryById('ShomareHesab').setValue("");
+        App.IncomeSettingg.queryById('ShHesab_Fish').setValue("");
+        App.IncomeSettingg.queryById('ShomareHesabIdPishfarz').setValue(0);
+        App.IncomeSettingg.queryById('Sh_HesabFishId').setValue(0);
+    }*/
+</script>

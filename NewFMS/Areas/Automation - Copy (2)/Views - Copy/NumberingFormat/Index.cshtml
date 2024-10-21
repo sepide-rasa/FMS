@@ -1,0 +1,225 @@
+﻿@model NewFMS.Models.NumberFormat
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("FormatNumbering")
+        .Title("تعیین فرمت شماره دهی")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Border(false)
+            .Listeners(li => li.AfterRender.Handler = "FormatNumberingSetSize();")
+       .Items(
+    X.Panel().Border(false)//.Height(250)
+        .Items(
+                X.GridPanel()
+                                .AutoScroll(true)
+                                .Listeners(l => l.ItemClick.Handler = "ReloadGridDetail();")
+                                .TopBar(
+                                    Html.X().Toolbar()
+                                        .Items(
+                                                   X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                                                )
+                                        )
+                                .ItemID("GridHeader")
+                                .BottomBar(X.PagingToolbar())
+                                        .Plugins(X.FilterHeader().Remote(true))
+                                .Flex(2)
+                                .Store(
+                                                   X.StoreFor(Model.Secretariat)
+                                        .Proxy(Html.X().AjaxProxy()
+                                            .Url(Url.Action("ReadHeader"))
+                                            .Reader(Html.X().JsonReader().Root("data")))
+                                .PageSize(9)
+                                .RemotePaging(true)
+        /*.Listeners(l => l.DataChanged.Handler = "App.Masoulin.queryById('GridHeader').selModel.refresh();")*/)
+                                .View(
+                                    Html.X().GridView()
+                                        .LoadingText("در حال بارگذاری...")
+                                        .RTL(true))
+                                .ColumnModel(
+                                            Html.X().RowNumbererColumn(),
+                                        Html.X().Column().DataIndex(Model.Secretariat, m => m.fldID).Text("fldId").Hidden(true).Flex(1),
+                                        Html.X().Column().DataIndex(Model.Secretariat, m => m.fldTitle).Text("چارت سازمانی").Flex(2))
+                                .SelectionModel(
+                                    Html.X().RowSelectionModel()
+                                        .Mode(Ext.Net.SelectionMode.Single)
+                                        )
+        ),
+           X.Panel()
+                                .ItemID("PnlGridDetail")
+                                .Title("فرمت شماره دهی")
+                                .Border(false)
+                                .Layout(Ext.Net.LayoutType.Fit)
+                                .Items(
+                                        X.GridPanel()
+                                            .TopBar(
+                                        Html.X().Toolbar()
+                                            .Items(
+                                                X.Button()
+                                                    .Text("جدید")
+                                                    .Icon(Ext.Net.Icon.Add)
+                                                    .Listeners(li => li.Click.Handler = "NewNumbering();")
+                                                    ,
+                                                    X.Button()
+                                                    .Text("ویرایش")
+                                                        .Icon(Ext.Net.Icon.Pencil)
+                                                    .Listeners(li => li.Click.Handler = "EditNumbering();")
+                                                    ,
+                                                    X.Button()
+                                                        .Text("حذف")
+                                                        .Icon(Ext.Net.Icon.Delete)
+                                                        .Listeners(li => li.Click.Handler = "DeleteDetail();")
+
+
+                                            ))
+                                              .BottomBar(X.PagingToolbar())
+                                        .AutoScroll(true)
+                                            .ItemID("GridDetail")
+                                        .Flex(2).Height(187)
+                                        .Store(
+                                                   X.StoreFor(Model.NumberingFormat)
+                                                .PageSize(9)
+                                                .RemotePaging(true)
+        // .Listeners(l => l.DataChanged.Handler = " App.Masoulin.queryById('GridDetail').selModel.refresh();")
+                        )
+                                        .View(
+                                            Html.X().GridView()
+                                                .LoadingText("در حال بارگذاری...")
+                                                .RTL(true)
+                        )
+                                            .ColumnModel(
+                                                Html.X().RowNumbererColumn(),
+                                                Html.X().Column().DataIndex(Model.NumberingFormat, m => m.fldID).Text("کد").Hidden(true),
+                                                Html.X().Column().DataIndex(Model.NumberingFormat, m => m.fldSecretariatID).Text("کد").Hidden(true),
+                                                Html.X().Column().DataIndex(Model.NumberingFormat, m => m.fldYear).Text("سال").Flex(1),
+                                                Html.X().Column().DataIndex(Model.NumberingFormat, m => m.fldStartNumber).Text("شماره شروع").Flex(1),
+                                                Html.X().Column().DataIndex(Model.NumberingFormat, m => m.fldNumberFormat).Text("شماره شروع").Flex(4)
+                                                    )
+                                        //.Plugins(
+                                        //    Html.X().CellEditing().ClicksToEdit(1)
+                                        //    )
+                                        .SelectionModel(
+                                            Html.X().RowSelectionModel()
+                                                .Mode(Ext.Net.SelectionMode.Single)
+                                )
+                    )
+    )
+)
+<script type="text/javascript">
+    function FormatNumberingSetSize() {
+        var grid = App.FormatNumbering.queryById('GridHeader');
+        grid.setHeight(App.AutomationWin.getHeight() - 387);
+        var GridDetail = App.FormatNumbering.queryById('GridDetail');
+    }
+    function EditNumbering() {
+        var SelectedRow = App.FormatNumbering.queryById("GridHeader").getSelectionModel().getLastSelected();
+        var SelectedRowDetail = App.FormatNumbering.queryById("GridDetail").getSelectionModel().getLastSelected();
+        if (SelectedRowDetail != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/NumberingFormat/New',
+                params: {
+                    SecretariatID: SelectedRow.data.fldID,
+                    id: SelectedRowDetail.data.fldID
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ReloadGridDetail() {
+        var SelectedRow = App.FormatNumbering.queryById("GridHeader").getSelectionModel().getLastSelected();
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/NumberingFormat/ReloadDetail',
+            params: {
+                HeaderId: SelectedRow.data.fldID,
+            },
+            success: function (result) {
+                App.FormatNumbering.queryById('GridDetail').getStore().loadData(result);
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function NewNumbering() {
+        var SelectedRow = App.FormatNumbering.queryById("GridHeader").getSelectionModel().getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/NumberingFormat/New',
+                params: {
+                    SecretariatID: SelectedRow.data.fldID,
+                    id:0
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteDetail() {
+        var SelectedRow = App.FormatNumbering.queryById('GridDetail').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Automation/NumberingFormat/Delete',
+                            params: {
+                                id: SelectedRow.data.fldID
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.FormatNumbering.queryById('GridHeader').store.load();
+                                App.FormatNumbering.queryById('GridDetail').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

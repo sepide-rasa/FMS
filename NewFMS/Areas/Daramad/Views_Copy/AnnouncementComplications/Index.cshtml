@@ -1,0 +1,2364 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_CodhayeDaramadiElamAvarez>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();
+   var oo = (Session["OrganId"]).ToString();}
+<br />
+@*<style>
+    .x-rtl .x-textfield-icon {
+        margin-right: 120px; 
+    }
+
+    .x-rtl .x-textfield-icon-input {
+        padding-right: 5px;
+    }
+
+    .rowheight {
+        height: 40px;
+    }
+</style>*@
+
+@(Html.X().Panel()
+    .ID("AnnouncementComplication")
+    .Title("اعلام عوارض")
+    .Listeners(li => { li.AfterRender.Handler = "AnnouncementComplicationSetSize();"; li.Render.Fn = "addKeyMapAnnouncementComplication"; })
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.VBox)
+    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        .Border(false)
+                    .Defaults(new { Margin = 20 })
+    .Items(
+            X.FieldSet()
+        .AutoScroll(true)
+        .Title("اعلام عوارض جدید")
+            .Border(true)
+                .Defaults(new { Margin = 5 })
+                .Layout(LayoutType.VBox)
+                                .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Padding(10)
+        //.LayoutConfig(new TableLayoutConfig{Columns=4})
+            .Items(
+                X.Hidden().ItemID("fldAshkhasId"),
+                X.Hidden().ItemID("fldElamAvarezId"),
+                 X.PDateField().Hidden(true),
+
+                 X.FieldSet()
+                     .Width(600).Border(false)
+                         .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                 .Items(
+                     X.Label("سازمان:")
+                            .PaddingSpec("0 0 0 20px"),
+                 X.ComboBox().ColSpan(5)
+                            .ItemID("CboOrgan")
+                            .Width(435)
+                        .TypeAhead(true)
+                        .Editable(true)
+                        .ReadOnly(true)
+                        .QueryMode(DataLoadMode.Local)
+                            .BlankText("لطفا سازمان را انتخاب کنید.")
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldTitle")
+                        .ValueField("fldId")
+                            .EmptyText("سازمان ...")
+                        .Store(X.Store()
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                )
+                                    )
+                        .Proxy(X.AjaxProxy()
+                                .Url(Url.Action("GetOrgan"))
+                        .Reader(X.JsonReader().Root("data"))
+                                        )
+                                 .Listeners(l => l.Load.Handler = "setdefaultValueOrgan()")
+                                )
+                            .AllowBlank(false)
+                        ,
+                    X.Label("نوع شخص:")
+                      .PaddingSpec("0 0 0 20px")
+                ,X.ComboBox()
+                    .ItemID("CboType")
+                            .AutoFocus(true)
+                    .TypeAhead(true)
+                        .Width(75)
+                    .QueryMode(DataLoadMode.Local)
+                    .TriggerAction(TriggerAction.All)
+                    .EmptyText("نوع شخص")
+                    .SelectedItems(new { Value = "0" })
+                    .AllowBlank(false)
+                    .Editable(false)
+                    .BlankText("لطفا نوع شخص را انتخاب کنید.")
+                   // .PaddingSpec("0 0 0 100px")
+                    .Items(
+                        new ListItem("حقیقی", "0"),
+                        new ListItem("حقوقی", "1")
+                        )
+                      .Listeners(l => l.Select.Handler = "ChangeType()")
+                        ,
+                        X.Label("کد ملی:")
+                                .PaddingSpec("0 0 0 10px").ItemID("lblCode_ShenaseMelli"),
+                    X.TextField()
+                            .Width(103)
+                    .ItemID("txtCode_ShenaseMelli")
+                        .AllowBlank(false)
+                            .FieldStyle("direction:ltr;")
+                    .BlankText("لطفا کد/شناسه ملی را وارد کنید.")
+                    //.ReadOnly(true)
+                    .Icon(Icon.UserAdd)
+                        .Listeners(l =>
+                                {
+                                    l.SpecialKey.Handler = "ChangeCode_ShenaseMelli(e.getKey());";
+                                    l.Blur.Handler = "ChangeCode_ShenaseMelli(0);";
+                                    l.Focus.Handler = "ShakhsBeforBlur();";
+                                })
+                    .DirectEvents(li =>
+                    {
+                        //li.SpecialKey.Url = "/Daramad/SearchAshkhas/Index?State=2";
+                        li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                        li.IconClick.Url = "/Daramad/SearchAshkhas/Index?State=2";
+                    })
+                    ,X.Label("گروه درآمد:")
+                            .PaddingSpec("0 0 0 10px"),
+                 X.ComboBox()
+                            .ItemID("CboDaramadGroup")
+                            .Width(140)
+                        .TypeAhead(true)
+                        .Editable(false)
+                        .QueryMode(DataLoadMode.Local)
+                            .BlankText("لطفا گروه درآمد را انتخاب کنید.")
+                            .ForceSelection(true)
+                       // .SelectedItems(new { Value = "0" })
+                        .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldTitle")
+                        .ValueField("fldId")
+                            .EmptyText("گروه درآمدی").Listeners(l=>l.Change.Handler="ChangeDaramadGroup()")
+                                .Store(X.Store().Listeners(l => l.Load.Handler = " LoadFormInEdit();")
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                )
+                                    )
+                        .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetDaramadGroup"))
+                        .Reader(X.JsonReader().Root("data"))
+                                        )
+                                )
+                            .AllowBlank(false)
+                    )
+                    ,
+                    X.FieldSet()
+                        .Layout(LayoutType.Table)
+                .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                    .Width(600)
+                    .ColSpan(4)
+                    .Title("مشخصات مالک")
+                    .ItemID("DetailMalek")
+                    .Items(
+                            X.FieldSet().Width(285).Border(false)
+                                  .Layout(LayoutType.HBox)
+                            .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Middle })
+                            .Items(
+                        X.Label("نام: ")
+                            .PaddingSpec("0 0 0 50px"),
+                    X.Label().ItemID("NameMalek")
+                    )
+                    ,
+                            X.FieldSet().Width(285).Border(false)
+                                  .Layout(LayoutType.HBox)
+                            .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Middle })
+                            .Items(
+                        X.Label("نام پدر: ").ItemID("lblFather")
+                                .PaddingSpec("0 0 0 35px"),
+                    X.Label().ItemID("NameFather")
+                    )
+
+                    )
+                                  ,
+                            X.FieldSet()
+                                .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                            .Width(600)
+                            .ColSpan(4)
+
+                            .Title("پارامترهای گروه درآمد")
+                                 .ID("BasePanelDaramadGroup")
+                    ,
+                    X.FieldSet()
+                     .Width(600).Border(false)
+                         .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                 .Items(
+                        X.Hidden().ItemID("fldShomareHesabCodeDaramadId"),
+                            X.Label("کد درآمد:")
+                            .PaddingSpec("0 0 0 32px"),
+                    X.TextField()
+                        .ItemID("txtCodeDaramad")
+                        .AllowBlank(false)
+                            .Width(145)
+                                .FieldStyle("direction:ltr;")
+                        .BlankText("لطفا کد درآمد را وارد کنید.")
+        //.ReadOnly(true)
+                        .Icon(Icon.BulletPlus)
+                                .Listeners(l =>
+                                {
+                                    l.SpecialKey.Handler = "ChangeCodeDaramad(e.getKey());";
+                                    l.Blur.Handler = "ChangeCodeDaramad(0);";
+                                    l.Focus.Handler = "CodeBeforBlur();";
+                                })
+                        .DirectEvents(li =>
+                        {
+                            li.SpecialKey.Url = "/Daramad/SearchCodeDaramad/Index?State=1";
+                            li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                            li.IconClick.Url = "/Daramad/SearchCodeDaramad/Index?State=1";
+                        })
+                            .MarginSpec("0px 40px 0px 0px")
+                        ,
+                            X.FieldSet()
+                                .MarginSpec("2px 0px 0px 0px")
+                        .Border(false)
+                        .Width(200).ColSpan(2)
+                               .Layout(LayoutType.HBox)
+                            .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Middle })
+                            .Items(
+                                    X.Button().Icon(Icon.Tick).MarginSpec("0px 5px 0px 60px").ItemID("btnAddItemParam").ToolTip("بارگذاری پارامترهای اختصاصی")
+                                        .Listeners(l => l.Click.Handler = "AddItems(1)"),
+                                        X.Button().Icon(Icon.BulletCross).MarginSpec("0px 5px 0px 0px").ItemID("btnClearItemParam").ToolTip("حذف پارامترهای اختصاصی")
+                                        .Listeners(l => l.Click.Handler = "ClearItems()"),
+                                    X.Button().Icon(Icon.ScriptCode).ItemID("btnShowFormul").ToolTip("فرمول")
+                                        .Listeners(l => l.Click.Handler = "ShowFormulWin()")
+                            )
+                                            , X.FieldSet()
+                                .MarginSpec("0px 0px 0px 70px")
+                        .Border(false)
+                        .Width(400).ColSpan(4)
+                               .Layout(LayoutType.HBox)
+                            .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Middle })
+                                .Items(X.Label().ItemID("LblCodeDaramad"))
+                            )
+                                ,
+                        X.FieldSet()
+                            .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                        .Width(600)
+                        .ColSpan(4)
+
+                        .Title("پارامترهای اختصاصی")
+                             .ID("BasePanel")
+                             ,
+                              X.FieldSet()
+                     .Width(540).Border(false)
+                         .Layout(LayoutType.HBox)
+                 .Items(
+                 X.Label("توضیحات:"),
+                     X.TextArea().ItemID("txtDesc").Width(430)
+                     )
+                                ,
+                                X.Button().Text("ذخیره").ItemID("btnSaveDesc").Icon(Ext.Net.Icon.Disk)
+                                        .Listeners(l => l.Click.Handler = "SaveDesc()")
+                                 ,
+                                     X.Button().Text("ذخیره").ItemID("btnAddToGrid").Icon(Ext.Net.Icon.Disk)
+                                     .Listeners(l => l.Click.Handler = "CheckAllFields()")
+                                 ,
+                               X.GridPanel().AutoScroll(true)
+                            .Title("مبلغ عوارض")
+                            .Padding(5)
+                                    .ItemID("AvarezGrid").Flex(2)
+                            .Width(600)
+                                .Height(200)
+                    .Features(Html.X().Summary().ID("summary").Dock(SummaryDock.Bottom))
+                            .Store(
+                                X.StoreForModel().AutoLoad(false)
+                                .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadCodeDaramadAvarez"))
+                                            .Reader(Html.X().JsonReader().Root("data"))
+                                            .ExtraParams(l => l.Add(new { elamAvarez = @ViewBag.Id }))
+                                )
+                                .PageSize(2000)
+                                .RemoteFilter(true)
+                                .RemotePaging(true)
+
+                            )
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+
+                            .ColumnModel(
+                                    Html.X().RowNumbererColumn(),
+
+                                                        Html.X().ImageCommandColumn().PrepareCommand("prepareCommandGridCode")
+                        .Listeners(l => l.Command.Fn = "ActionsInGridCode")
+                        .Flex(2).Commands(
+                               Html.X().ImageCommand().CommandName("EditCode").Icon(Ext.Net.Icon.PageEdit).ToolTip(tt => tt.Text = "ویرایش")
+                                , Html.X().ImageCommand().CommandName("DelCode").Icon(Ext.Net.Icon.Delete).ToolTip(tt => tt.Text = "حذف")
+                                , Html.X().ImageCommand().CommandName("InfoCode").Icon(Ext.Net.Icon.Information).ToolTip(tt => tt.Text = "مشاهده")
+                        )
+                        ,
+        /*       Html.X().ImageCommandColumn().Hideable(false).Listeners(l => l.Command.Handler = "EditCode(record);")
+         .Flex(1).Commands(Html.X().ImageCommand().Icon(Ext.Net.Icon.Pencil).CommandName("EditCode").ToolTip(tt => tt.Text = "ویرایش")
+         ),
+             Html.X().ImageCommandColumn().Hideable(false).Listeners(l => l.Command.Handler = "DelCode(record);")
+                 .Flex(1).Commands(Html.X().ImageCommand().Icon(Ext.Net.Icon.Delete).CommandName("DelCode").ToolTip(tt => tt.Text = "حذف")
+             ),*/
+                                        Html.X().Column().DataIndex(Model, m => m.fldID).Text("کد").Flex(1).Hidden(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldElamAvarezId).Text("کد").Flex(1).Hidden(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldShomareHesabCodeDaramadId).Text("کد").Flex(1).Hidden(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldDaramadCode).Text("کد درآمد").Flex(1).Hidden(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldSharheCodeDaramad).Text("شرح کد درآمد").Flex(4),
+                                            Html.X().Column().DataIndex(Model, m => m.fldAsliValue).Text("مبلغ").Renderer("LocalString").SummaryRenderer(new Renderer { Handler = "totalMablagh" }).Flex(3),
+                                            Html.X().Column().DataIndex(Model, m => m.fldMaliyatValue).Text("مالیات").Renderer("LocalString").SummaryRenderer(new Renderer { Handler = "totalMaliat" }).Flex(3),
+                                            Html.X().Column().DataIndex(Model, m => m.fldAvarezValue).Text("عوارض").Renderer("LocalString").SummaryRenderer(new Renderer { Handler = "totalAvarez" }).Flex(3),
+                                            Html.X().Column().DataIndex(Model, m => m.fldSumMablgh).Text("جمع").Renderer("LocalString").SummaryRenderer(new Renderer { Handler = "totalSumMablgh" }).Flex(4)
+                                )
+                                        ,
+                            X.FieldSet()
+                            .Defaults(new { Margin = 5 })
+                            .Border(false)
+                            .Items(
+                            X.Button().Text("صدور فیش").ItemID("btnSodurFish").Listeners(l => l.Click.Handler = "SodurFishInAvarez()").IconCls("SodorFish")
+                             ,
+                            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.AnnouncementComplication.destroy()")
+                            )
+                )
+
+
+
+
+
+
+                )
+        )
+)
+<script type="text/javascript">
+    var CodeDaramadElamAvarezID = 0;
+    var HaveFormulForMablagh = 0;
+    var IsMahdud = 0;
+    var InfoPage = '@ViewBag.Info';
+    function setdefaultValueOrgan() {
+        var CboOrgan = App.AnnouncementComplication.queryById('CboOrgan');
+        CboOrgan.select(String(@oo));        
+        /*CboOrgan.select(CboOrgan.store.getAt(0));*/
+    }
+    function AnnouncementComplicationSetSize() {
+        App.AnnouncementComplication.queryById("btnClearItemParam").setDisabled(true);
+
+        App.AnnouncementComplication.queryById('txtCode_ShenaseMelli').validate();
+        App.AnnouncementComplication.queryById('txtCodeDaramad').validate();
+        App.AnnouncementComplication.queryById('CboDaramadGroup').validate();
+
+        App.AnnouncementComplication.setWidth(App.DaramadWin.getWidth());
+        App.AnnouncementComplication.setHeight(App.DaramadWin.getHeight() - 172);
+        var DetailMalek = App.AnnouncementComplication.queryById('DetailMalek');
+        DetailMalek.hide();
+        App.BasePanel.hide();
+        App.BasePanelDaramadGroup.hide();
+        App.AnnouncementComplication.queryById("btnAddToGrid").hide();
+        App.AnnouncementComplication.queryById("btnSaveDesc").hide();
+        App.AnnouncementComplication.queryById("btnSodurFish").hide();
+        if ('@ViewBag.Id' != 0) {
+           /* LoadFormInEdit();*/
+            App.AnnouncementComplication.queryById("btnSaveDesc").show();
+            App.AnnouncementComplication.queryById("btnSodurFish").show();
+        }
+
+        App.AnnouncementComplication.queryById("btnShowFormul").hide();
+
+        if ('@ViewBag.Info' == 1) {
+            App.AnnouncementComplication.queryById("btnSaveDesc").hide();
+            App.AnnouncementComplication.queryById("btnAddToGrid").hide();
+            App.AnnouncementComplication.queryById("btnClearItemParam").hide();
+            App.AnnouncementComplication.queryById("btnAddItemParam").hide();
+            App.AnnouncementComplication.queryById("txtCodeDaramad").icon.hide();
+            App.AnnouncementComplication.queryById("btnSodurFish").hide();
+        }
+    }
+    var prepareCommandGridCode = function (grid, command, record, row) {
+        if (command.command == 'InfoCode') {
+            if ('@ViewBag.Info' != 1) {
+                command.hidden = true;
+                command.hideMode = 'visibility';
+            }
+            else {
+                command.hidden = false;
+                command.hideMode = 'visibility';
+            }
+        }
+        else if (command.command == 'DelCode') {
+            if ('@ViewBag.Info' == 1) {
+                command.hidden = true;
+                command.hideMode = 'visibility';
+            }
+            else {
+                command.hidden = false;
+                command.hideMode = 'visibility';
+            }
+        }
+        else if (command.command == 'EditCode') {
+            if ('@ViewBag.Info' == 1) {
+                command.hidden = true;
+                command.hideMode = 'visibility';
+            }
+            else {
+                command.hidden = false;
+                command.hideMode = 'visibility';
+            }
+        }
+    };
+
+    var LocalString = function (value) {
+        return value.toLocaleString();
+    };
+    var totalMablagh = function (records) {
+        var store = App.AnnouncementComplication.queryById('AvarezGrid').store;
+        var sum = store.sum('fldAsliValue');
+
+        return "جمع:" + sum.toLocaleString();
+
+    };
+    var totalMaliat = function (records) {
+        var store = App.AnnouncementComplication.queryById('AvarezGrid').store;
+        var sum = store.sum('fldMaliyatValue');
+
+        return "مالیات:" + sum.toLocaleString();
+
+    };
+    var totalAvarez = function (records) {
+        var store = App.AnnouncementComplication.queryById('AvarezGrid').store;
+        var sum = store.sum('fldAvarezValue');
+
+        return "عوارض:" + sum.toLocaleString();
+
+    };
+    var totalSumMablgh = function (records) {
+        var store = App.AnnouncementComplication.queryById('AvarezGrid').store;
+        var sum = store.sum('fldSumMablgh');
+
+        return "کل:" + sum.toLocaleString();
+    };
+    function ChangeType() {
+        var lblCode_ShenaseMelli = App.AnnouncementComplication.queryById("lblCode_ShenaseMelli");
+        var txtCode_ShenaseMelli = App.AnnouncementComplication.queryById("txtCode_ShenaseMelli");
+        var fldAshkhasId = App.AnnouncementComplication.queryById("fldAshkhasId");
+        var CboType = App.AnnouncementComplication.queryById("CboType");
+        if (CboType.getValue() == "0") {
+            lblCode_ShenaseMelli.setText("کدملی: ");
+            txtCode_ShenaseMelli.setValue("");
+            fldAshkhasId.setValue(0);
+        }
+        else {
+            lblCode_ShenaseMelli.setText("شناسه ملی: ");
+            txtCode_ShenaseMelli.setValue("");
+            fldAshkhasId.setValue(0);
+        }
+    }
+    function ActionsInGridCode(grid, command, record, row) {
+        if (command == 'EditCode') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/AnnouncementComplications/DetailCodhayeDaramadiElamAvarez',
+                params: {
+                    Id: record.data.fldID
+                },
+                success: function (result) {
+                    ClearItems();
+                    App.AnnouncementComplication.queryById("btnClearItemParam").show();
+                    App.AnnouncementComplication.queryById("btnAddItemParam").show();
+                    App.AnnouncementComplication.queryById("txtCodeDaramad").icon.show();
+                    var LblCodeDaramad = App.AnnouncementComplication.queryById("LblCodeDaramad");
+                    LblCodeDaramad.setText(result.fldDaramadTitle);
+                    var txtCodeDaramad = App.AnnouncementComplication.queryById("txtCodeDaramad");
+                    txtCodeDaramad.setValue(result.fldDaramadCode);
+                    var fldShomareHesabCodeDaramadId = App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId");
+                    fldShomareHesabCodeDaramadId.setValue(result.fldShomareHesabCodeDaramadId);
+                    CodeDaramadElamAvarezID = record.data.fldID;
+                    AddItems(2);
+
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else if (command == 'DelCode') {
+            var fldElamAvarezId = App.AnnouncementComplication.queryById('fldElamAvarezId');
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        ClearItems();
+                        /*   if (SelectedRow.data.fldID == 0) {
+                               App.AnnouncementComplication.queryById('AvarezGrid').deleteSelected();
+                           }
+                           else {*/
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/AnnouncementComplications/DelCode',
+                            params: {
+                                id: record.data.fldID,
+                                ElamAvarezID: fldElamAvarezId.getValue()
+                            },
+                            success: function (data) {
+                                if (data.Er == 3) {
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: Ext.MessageBox.INFO,
+                                        buttons: Ext.MessageBox.OK,
+                                        fn: function (btn) {
+                                            if (btn == 'ok'){
+                                                App.AnnouncementComplication.destroy();
+                                                App.MainAnnouncementComplication.queryById('AvarezGrid').store.load();
+                                                }
+                                        }
+                                    });
+                                }
+                                else {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Er == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                }
+                                App.AnnouncementComplication.queryById('AvarezGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                        /*   }*/
+                    }
+                }
+            });
+        }
+        else if (command == "InfoCode") {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/AnnouncementComplications/DetailCodhayeDaramadiElamAvarez',
+                params: {
+                    Id: record.data.fldID
+                },
+                success: function (result) {
+                    ClearItems();
+                    App.AnnouncementComplication.queryById("btnClearItemParam").hide();
+                    App.AnnouncementComplication.queryById("btnAddItemParam").hide();
+                    var LblCodeDaramad = App.AnnouncementComplication.queryById("LblCodeDaramad");
+                    LblCodeDaramad.setText(result.fldDaramadTitle);
+                    var txtCodeDaramad = App.AnnouncementComplication.queryById("txtCodeDaramad");
+                    txtCodeDaramad.setValue(result.fldDaramadCode);
+                    App.AnnouncementComplication.queryById("txtCodeDaramad").icon.hide();
+                    var fldShomareHesabCodeDaramadId = App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId");
+                    fldShomareHesabCodeDaramadId.setValue(result.fldShomareHesabCodeDaramadId);
+                    CodeDaramadElamAvarezID = record.data.fldID;
+                    AddItems(3);
+
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+    function ClearItems() {
+        App.AnnouncementComplication.queryById("btnClearItemParam").setDisabled(true);
+        App.BasePanel.removeAll();
+        App.BasePanel.hide();
+        var btnAddToGrid = App.AnnouncementComplication.queryById("btnAddToGrid");
+        btnAddToGrid.hide();
+
+        App.AnnouncementComplication.queryById("txtCodeDaramad").setValue("");
+        App.AnnouncementComplication.queryById("LblCodeDaramad").setText("");
+        App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId").setValue(0);
+        App.AnnouncementComplication.queryById("btnAddItemParam").setDisabled(false);
+        HaveFormulForMablagh = 0;
+        IsMahdud = 0;
+        MatnSharhCodeWithParamId = "";
+
+        App.AnnouncementComplication.queryById("btnShowFormul").hide();
+    }
+    function ClearItems2() {
+        App.AnnouncementComplication.queryById("btnClearItemParam").setDisabled(true);
+        App.BasePanel.removeAll();
+        App.BasePanel.hide();
+        var btnAddToGrid = App.AnnouncementComplication.queryById("btnAddToGrid");
+        btnAddToGrid.hide();
+
+        App.AnnouncementComplication.queryById("btnAddItemParam").setDisabled(false);
+        HaveFormulForMablagh = 0;
+        IsMahdud = 0;
+        MatnSharhCodeWithParamId = "";
+
+        App.AnnouncementComplication.queryById("btnShowFormul").hide();
+    }
+    function AddToGrid() {
+        var txtCodeDaramad = App.AnnouncementComplication.queryById("txtCodeDaramad");
+        var fldShomareHesabCodeDaramadId = App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId");
+        var AvarezGrid = App.AnnouncementComplication.queryById("AvarezGrid");
+        AvarezGrid.store.insert(AvarezGrid.getStore().count(), {
+            ID: 0,
+            TitleCodeDaramad: txtCodeDaramad.getValue(),
+            CodeDaramadId: fldShomareHesabCodeDaramadId.getValue(),
+            Maliat: 0,
+            Avarez: 2
+        });
+    }
+    var eee;
+    var MatnSharhCodeWithParamId = "";
+    function AddItems(State) {
+        var txtCodeDaramad = App.AnnouncementComplication.queryById("txtCodeDaramad");
+        var txtCode_ShenaseMelli = App.AnnouncementComplication.queryById("txtCode_ShenaseMelli");
+        
+        var er = false;
+        var message = "";
+
+        if (txtCodeDaramad.validate() == false) {
+            er = true;
+            message = "لطفا کد درآمد را انتخاب کنید.";
+        }
+        else if (txtCode_ShenaseMelli.validate() == false) {
+            er = true;
+            message = "لطفا کد/شناسه ملی را وارد کنید.";
+        }
+        if (er == true) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: message,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else {
+
+            var MatnSharhCode = "";
+            App.AnnouncementComplication.queryById("btnAddItemParam").setDisabled(true);
+            App.AnnouncementComplication.queryById("btnClearItemParam").setDisabled(false);
+
+            var GoToCombo = 0;
+            var btnAddToGrid = App.AnnouncementComplication.queryById("btnAddToGrid");
+            var added = 0;
+            var fldShomareHesabCodeDaramadId = App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId");
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/AnnouncementComplications/GetParams',
+                params: {
+                    Id: fldShomareHesabCodeDaramadId.getValue(),
+                    CodeDaramadElamAvarezID: CodeDaramadElamAvarezID,
+                    AshkhasId: App.AnnouncementComplication.queryById("fldAshkhasId").getValue()
+                },
+                success: function (data) {
+                    if (data.Er == 1) {
+                        Ext.net.Mask.hide();
+                        Ext.MessageBox.show({
+                            title: data.MsgTitle,
+                            msg: data.Msg,
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                    else {
+                        IsMahdud = data.IsMahdud;
+                        HaveFormulForMablagh = data.HaveFormul;
+                        MatnSharhCode = data.SharheCodeDaramad;
+                        MatnSharhCodeWithParamId = data.MatnSharhCodeWithParamId;
+                        var HaveParamInSharh = data.HaveParamInSharh;
+                        NameKhasiyat_FaItems = data.NameKhasiyat_FaItems.split(';');
+                        NameKhasiyat_EnItems = data.NameKhasiyat_EnItems.split(';');
+                        JenseKhasiyatItems = data.JenseKhasiyatItems.split(';');
+                        ItemPropertiesId = data.ItemPropertiesId.split(';');
+                        /* NoeKhasiyat = data.NoeKhasiyat.split(';');*/
+
+                        /*if (JenseKhasiyatItems.length > 1) {*/
+                        if (State != 3)
+                            btnAddToGrid.show();
+                        App.AnnouncementComplication.queryById("btnSaveDesc").hide();
+                        App.BasePanel.show();
+
+                        if (HaveFormulForMablagh == 1 && IsMahdud==0)
+                            App.AnnouncementComplication.queryById("btnShowFormul").show();
+                        /* }*/
+                        /* else {
+                             Ext.MessageBox.show({
+                                 title: "خطا",
+                                 msg: "برای کد درآمد مورد نظر، هیچ پارامتر اختصاصی ثبت نشد است.",
+                                 icon: Ext.MessageBox.ERROR,
+                                 buttons: Ext.MessageBox.OK
+                             });
+                         }*/
+
+                        /****************/
+                        var labeltedad = Ext.create('Ext.form.Label', {
+                            text: "تعداد(" + data.NameVahed + "):",
+                            margin: "0px 0px 0px 27px"
+                        });
+
+                        var numberInttedad = Ext.create('Ext.form.field.Number', {
+                            allowDecimals: false,
+                            allowExponential: false,
+                            allowBlank: false,
+                            itemId: "txtTedad",
+                            emptyText: "عدد صحیح",
+                            blankText: "این فیلد باید مقداری داشته باشد.",
+                            width: 145,
+                            /*colSpan:4,*/
+                            listeners: {
+                                change: function (field) {
+                                    if (String(field.getValue()).includes('-') == true) {
+                                        field.setValue("");
+                                    }
+                                    if (field.getValue() > 2147483647) {
+                                        Ext.MessageBox.show({
+                                            title: "خطا",
+                                            msg: "مقدار وارد شده بیشتر از حد مجاز است.",
+                                            icon: Ext.MessageBox.ERROR,
+                                            buttons: Ext.MessageBox.OK,
+                                            fn: function (btn) {
+                                                if (btn == 'ok') {
+                                                    field.setValue("1");
+                                                }
+                                            }
+                                        });
+                                        /* field.setValue("");*/
+                                    }
+                                    else if (field.getValue() < 1) {
+                                        Ext.MessageBox.show({
+                                            title: "خطا",
+                                            msg: "مقدار وارد شده کمتر از حد مجاز است.",
+                                            icon: Ext.MessageBox.ERROR,
+                                            buttons: Ext.MessageBox.OK,
+                                            fn: function (btn) {
+                                                if (btn == 'ok') {
+                                                    field.setValue("1");
+                                                }
+                                            }
+                                        });
+                                    }
+                                },
+                                AfterRender: function (field) {
+                                    if (State == 3)
+                                        App.BasePanel.queryById("txtTedad").setReadOnly(true);
+                                }
+                            }
+                        });
+
+                        App.BasePanel.add(labeltedad);
+                        App.BasePanel.add(numberInttedad);
+                        added = added + 1;
+
+                        App.BasePanel.queryById("txtTedad").setValue(data.tedad);
+
+                        /****************/
+                        if (HaveFormulForMablagh == 0 || IsMahdud==1) {
+                            var labelMablaghAsli = Ext.create('Ext.form.Label', {
+                                text: "مبلغ:",
+                                margin: "0px 0px 0px 90px"
+                            });
+
+                            var numberIntMablaghAsli = Ext.create('Ext.form.field.Number', {
+                                allowDecimals: false,
+                                allowExponential: false,
+                                allowBlank: false,
+                                itemId: "txtMablaghAsli",
+                                emptyText: "مبلغ واحد",
+                                blankText: "این فیلد باید مقداری داشته باشد.",
+                                width: 145,
+                                /*colSpan:4,*/
+                                listeners: {
+                                    change: function (field) {
+                                        if (String(field.getValue()).includes('-') == true) {
+                                            field.setValue("");
+                                        }
+                                        /*if (field.getValue() > 20147483647) {
+                                            Ext.MessageBox.show({
+                                                title: "خطا",
+                                                msg: "مقدار وارد شده بیشتر از حد مجاز است.",
+                                                icon: Ext.MessageBox.ERROR,
+                                                buttons: Ext.MessageBox.OK
+                                            });
+                                            field.setValue("0");
+                                        }*/
+                                    },
+                                    AfterRender: function (field) {
+                                        if (State == 1)
+                                            field.setValue(0);
+                                        else if (State == 3)
+                                            field.setReadOnly(true);
+                                    }
+                                }
+                            });
+
+                            App.BasePanel.add(labelMablaghAsli);
+                            App.BasePanel.add(numberIntMablaghAsli);
+                            added = added + 1;
+
+                            App.BasePanel.queryById("txtMablaghAsli").setValue(data.MablaghAsli);
+                        }
+                        /****************/
+                        if (IsMahdud == 0) {
+                            for (var i = 0; i < JenseKhasiyatItems.length - 1; i++) {
+
+                                var Marg = "0px 0px 0px 0px";
+                                if (added == 0)
+                                    Marg = "0px 0px 0px 27px";
+                                else if (added == 1)
+                                    Marg = "0px 0px 0px 90px";
+
+                                if (JenseKhasiyatItems[i] == "1") {
+                                    var label = Ext.create('Ext.form.Label', {
+                                        text: NameKhasiyat_FaItems[i] + ":",
+                                        margin: Marg
+                                    });
+
+                                    var numberInt = Ext.create('Ext.form.field.Number', {
+                                        allowDecimals: false,
+                                        allowExponential: false,
+                                        itemId: ItemPropertiesId[i],
+                                        emptyText: "عدد صحیح",
+                                        blankText: "این فیلد باید مقداری داشته باشد.",
+                                        width: 145,
+                                        listeners: {
+                                            change: function (field) {
+                                                if (String(field.getValue()).includes('-') == true) {
+                                                    field.setValue("");
+                                                }
+                                               /* if (field.getValue() > 2147483647) {
+                                                    Ext.MessageBox.show({
+                                                        title: "خطا",
+                                                        msg: "مقدار وارد شده بیشتر از حد مجاز است.",
+                                                        icon: Ext.MessageBox.ERROR,
+                                                        buttons: Ext.MessageBox.OK
+                                                    });
+                                                    field.setValue("0");
+                                                }*/
+                                            },
+                                            Blur: function (field) {
+                                                if (State != 3)
+                                                    GoToCheckField(String(field.getValue()), String(field.itemId));
+                                                /* MatnSharhCode = MatnSharhCode.replace(NameKhasiyat_EnItems[i], String(field.getValue()));
+                                                 App.BasePanel.queryById("txtsharheCodeDaramad").setValue(MatnSharhCode);*/
+                                            },
+                                            SpecialKey: function (field) {
+                                                if (State != 3)
+                                                    GoToCheckField(String(field.getValue()), String(field.itemId));
+                                            },
+                                            AfterRender: function (field) {
+                                                if (State == 1)
+                                                    field.setValue(0);
+                                                else if (State == 3)
+                                                    field.setReadOnly(true);
+                                            }
+                                        }
+                                    });
+
+                                    App.BasePanel.add(label);
+                                    App.BasePanel.add(numberInt);
+                                    added = added + 1;
+                                    numberInt.allowBlank = false;
+                                    numberInt.validate();
+                                }
+
+
+                                else if (JenseKhasiyatItems[i] == "2") {
+                                    var label = Ext.create('Ext.form.Label', {
+                                        text: NameKhasiyat_FaItems[i] + ":",
+                                        margin: Marg
+                                    });
+
+                                    var numberDecimal = Ext.create('Ext.form.field.Number', {
+                                        emptyText: "عدد اعشاری",
+                                        blankText: "این فیلد باید مقداری داشته باشد.",
+                                        allowDecimals: true,
+                                        allowExponential: false,
+                                        itemId: ItemPropertiesId[i],
+                                        decimalPrecision: 4,
+                                        width: 145,
+                                        listeners: {
+                                            change: function (field) {
+                                                if (String(field.getValue()).includes('-') == true) {
+                                                    field.setValue("");
+                                                }
+                                               /* if (field.getValue() > 9999.9999) {
+                                                    Ext.MessageBox.show({
+                                                        title: "خطا",
+                                                        msg: "مقدار وارد شده بیشتر از حد مجاز است.",
+                                                        icon: Ext.MessageBox.ERROR,
+                                                        buttons: Ext.MessageBox.OK
+                                                    });
+                                                    field.setValue("");
+                                                }*/
+                                            },
+                                            Blur: function (field) {
+                                                if (State != 3)
+                                                    GoToCheckField(String(field.getValue()), String(field.itemId));
+                                                /*MatnSharhCode = MatnSharhCode.replace(NameKhasiyat_EnItems[i], String(field.getValue()));
+                                                App.BasePanel.queryById("txtsharheCodeDaramad").setValue(MatnSharhCode);*/
+                                            },
+                                            SpecialKey: function (field) {
+                                                if (State != 3)
+                                                    GoToCheckField(String(field.getValue()), String(field.itemId));
+                                            },
+                                            AfterRender: function (field) {
+                                                if (State == 1)
+                                                    field.setValue(0);
+                                                else if (State == 3)
+                                                    field.setReadOnly(true);
+                                            }
+                                        }
+                                    });
+
+                                    App.BasePanel.add(label);
+                                    App.BasePanel.add(numberDecimal);
+                                    added = added + 1;
+                                    numberDecimal.allowBlank = false;
+                                    numberDecimal.validate();
+                                }
+
+
+                                else if (JenseKhasiyatItems[i] == "3") {
+                                    var label = Ext.create('Ext.form.Label', {
+                                        text: NameKhasiyat_FaItems[i] + ":",
+                                        margin: Marg
+                                    });
+
+                                    var text = Ext.create('Ext.form.field.Text', {
+                                        enforceMaxLength: true,
+                                        maxLength: 450,
+                                        itemId: ItemPropertiesId[i],
+                                        blankText: "این فیلد باید مقداری داشته باشد.",
+                                        width: 145,
+                                        listeners: {
+                                            Blur: function (field) {
+                                                if (State != 3)
+                                                    GoToCheckField(String(field.getValue()), String(field.itemId));
+                                                /*MatnSharhCode = MatnSharhCode.replace(NameKhasiyat_EnItems[i], String(field.getValue()));
+                                                App.BasePanel.queryById("txtsharheCodeDaramad").setValue(MatnSharhCode);*/
+                                            },
+                                            SpecialKey: function (field) {
+                                                if (State != 3)
+                                                    GoToCheckField(String(field.getValue()), String(field.itemId));
+                                            },
+                                            AfterRender: function (field) {
+                                                if (State == 1)
+                                                    field.setValue("-");
+                                                else if (State == 3)
+                                                    field.setReadOnly(true);
+                                            }
+                                        }
+                                    });
+
+                                    App.BasePanel.add(label);
+                                    App.BasePanel.add(text);
+                                    added = added + 1;
+                                    text.allowBlank = false;
+                                    text.validate();
+                                }
+
+
+                                else if (JenseKhasiyatItems[i] == "4") {
+                                    var label = Ext.create('Ext.form.Label', {
+                                        text: NameKhasiyat_FaItems[i] + ":",
+                                        margin: Marg
+                                    });
+
+                                    var date = Ext.create('Ext.form.field.PDate', {
+                                        format: "Y/m/d",
+                                        editable: false,
+                                        itemId: ItemPropertiesId[i],
+                                        blankText: "این فیلد باید مقداری داشته باشد.",
+                                        width: 145,
+                                        listeners: {
+                                            Blur: function (field) {
+                                                if (State != 3)
+                                                    GoToCheckField(String(field.rawValue), String(field.itemId));
+                                                /*MatnSharhCode = MatnSharhCode.replace(NameKhasiyat_EnItems[i], String(field.getRawValue()));
+                                                App.BasePanel.queryById("txtsharheCodeDaramad").setValue(MatnSharhCode);*/
+                                            },
+                                            SpecialKey: function (field) {
+                                                if (State != 3)
+                                                    GoToCheckField(String(field.rawValue), String(field.itemId));
+                                            },
+                                            AfterRender: function (field) {
+                                                if (State == 1)
+                                                    field.setValue('@ViewBag.tarikhNow');
+                                                else if (State == 3)
+                                                    field.setReadOnly(true);
+                                            }
+                                        }
+                                    });
+
+                                    App.BasePanel.add(label);
+                                    App.BasePanel.add(date);
+                                    added = added + 1;
+                                    date.allowBlank = false;
+                                    date.validate();
+                                }
+
+                                else if (JenseKhasiyatItems[i] == "5") {
+                                    var label = Ext.create('Ext.form.Label', {
+                                        text: NameKhasiyat_FaItems[i] + ":",
+                                        margin: Marg
+                                    });
+
+                                    Ext.define('User', {
+                                        extend: 'Ext.data.Model',
+                                        fields: [
+                                            { name: 'value', type: 'string' },
+                                            { name: 'text', type: 'string' }
+                                        ]
+                                    });
+
+                                    var cbo = Ext.create('Ext.form.field.ComboBox', {
+                                        displayField: "text",
+                                        valueField: "value",
+                                        triggerAction: "all",
+                                        editable: false,
+                                        itemId: ItemPropertiesId[i],
+                                        blankText: "این فیلد باید مقداری داشته باشد.",
+                                        width: 145,
+                                        listeners: {
+                                            Blur: function (field) {
+                                                if (State != 3)
+                                                    GoToCheckField(String(field.getValue()), String(field.itemId));
+                                                /*MatnSharhCode = MatnSharhCode.replace(NameKhasiyat_EnItems[i], String(field.getValue()));
+                                                App.BasePanel.queryById("txtsharheCodeDaramad").setValue(MatnSharhCode);*/
+                                            },
+                                            SpecialKey: function (field) {
+                                                if (State != 3)
+                                                    GoToCheckField(String(field.getValue()), String(field.itemId));
+                                            },
+                                            AfterRender: function (field) {
+                                                if (State == 3)
+                                                    field.setReadOnly(true);
+                                            }
+                                        }
+                                        ,
+                                        store: Ext.create('Ext.data.Store', {
+                                            model: 'User',
+                                            proxy: {
+                                                type: 'ajax',
+                                                url: '/Daramad/AnnouncementComplications/combodata?Id=' + ItemPropertiesId[i],
+                                                reader: {
+                                                    type: 'json',
+                                                    root: 'data' /*you may need to modify this*/
+                                                }
+                                            },
+                                            autoLoad: true,
+                                            listeners: {
+                                                /*Load: function (field) {
+                                                    if (State == 2 && GoToCombo == 0) {
+                                                        Ext.net.DirectMethod.request({
+                                                            url: '/Daramad/AnnouncementComplications/DetailProperties',
+                                                            params: {
+                                                                Id: CodeDaramadElamAvarezID
+                                                            },
+                                                            success: function (data) {
+                                                                GoToCombo = 1;
+                                                                var ic = Ext.MessageBox.INFO;
+                                                                if (data.Er == 1) {
+                                                                    ic = Ext.MessageBox.ERROR;
+                                                                    Ext.MessageBox.show({
+                                                                        title: data.MsgTitle,
+                                                                        msg: data.Msg,
+                                                                        icon: ic,
+                                                                        buttons: Ext.MessageBox.OK
+                                                                    });
+                                                                }
+                                                                else {
+                                                                    for (var i = 1; i < App.BasePanel.items.length; i = i + 2) {
+                                                                        for (var j = 0; j < data.ParametreSabetId.length; j++) {
+                                                                            if (App.BasePanel.items.items[i].itemId == data.ParametreSabetId[j]) {
+                                                                                App.BasePanel.items.items[i].setValue(data.value[j]);
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        });
+                                                    }
+                                                }*/
+                                            }
+                                        })
+                                    });
+
+
+                                    App.BasePanel.add(label);
+                                    App.BasePanel.add(cbo);
+                                    added = added + 1;
+                                    cbo.allowBlank = false;
+                                    cbo.validate();
+                                }
+
+                                if (i == JenseKhasiyatItems.length - 2 && (State == 2 || State == 3) && GoToCombo == 0) {
+                                    Ext.net.DirectMethod.request({
+                                        url: '/Daramad/AnnouncementComplications/DetailProperties',
+                                        params: {
+                                            Id: CodeDaramadElamAvarezID
+                                        },
+                                        success: function (data) {
+                                            var ic = Ext.MessageBox.INFO;
+                                            if (data.Er == 1) {
+                                                ic = Ext.MessageBox.ERROR;
+                                                Ext.MessageBox.show({
+                                                    title: data.MsgTitle,
+                                                    msg: data.Msg,
+                                                    icon: ic,
+                                                    buttons: Ext.MessageBox.OK
+                                                });
+                                            }
+                                            else {
+
+                                                for (var i = 1; i < App.BasePanel.items.length; i = i + 2) {
+                                                    for (var j = 0; j < data.ParametreSabetId.length; j++) {
+                                                        if (App.BasePanel.items.items[i].itemId == data.ParametreSabetId[j]) {
+                                                            App.BasePanel.items.items[i].setValue(data.value[j]);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+
+                            }
+                        }
+                        /**************************/
+                        var Marg = "0px 0px 0px 0px";
+                        if (added == 0)
+                            Marg = "0px 0px 0px 27px";
+                        else if (added == 1)
+                            Marg = "0px 0px 0px 60px";
+
+                        var labelSharh = Ext.create('Ext.form.Label', {
+                            text: "شرح کد درآمد:",
+                            margin: Marg
+                        });
+
+                        var textSharh = Ext.create('Ext.form.field.TextArea', {
+                            enforceMaxLength: true,
+                            readOnly: true,
+                            maxLength: 450,
+                            itemId: "txtsharheCodeDaramad",
+                            blankText: "این فیلد باید مقداری داشته باشد.",
+                            width: 145,
+                            listeners: {
+                                AfterRender: function (field) {
+                                    /*  if (HaveParamInSharh == 1) {
+                                          Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                                          Ext.net.DirectMethod.request({
+                                              url: '/Daramad/AnnouncementComplications/SharheCodeDaramadWin?ShomareHesabeCodeDaramad=' + fldShomareHesabCodeDaramadId.getValue(),
+                                              success: function () {
+                                                  Ext.net.Mask.hide();
+                                              }
+                                          });
+                                      }
+                                      else*/
+                                    App.BasePanel.queryById("txtsharheCodeDaramad").setValue(MatnSharhCode);
+                                }
+                            }
+                        });
+
+                        App.BasePanel.add(labelSharh);
+                        App.BasePanel.add(textSharh);
+                        added = added + 1;
+                        /**************************/
+                        nextfld = App.BasePanel.items.items[1];
+                        nextfld.focus();
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+    }
+    function GoToCheckField(Field, ParamId) {
+        var er = false;
+        var k = App.AnnouncementComplication.queryById(ParamId);
+        if (k.el.id.substring(0, 8) == "combobox") {
+            if (Field == null || Field == "null") {
+                k.allowBlank = false;
+                k.validate();
+                er = true;
+            }
+        }
+        else if (Field == null || Field == "null" || Field == "") {
+            k.allowBlank = false;
+            k.validate();
+            er = true;
+        }
+        if (er == false) {
+            var fldShomareHesabCodeDaramadId = App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId");
+            Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/AnnouncementComplications/ValidateOneParam',
+                params: {
+                    ShomareHesabCodeDaramadId: fldShomareHesabCodeDaramadId.getValue(),
+                    ParamId: ParamId,
+                    Value: Field
+                },
+                success: function (data) {
+                    var k = App.AnnouncementComplication.queryById(ParamId);
+                    if (!data.Valid) {
+                        k.setValue("");
+                        k.allowBlank = false;
+                        k.validate();
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+    function CheckAllFields() {        
+        var txtCodeDaramad = App.AnnouncementComplication.queryById("txtCodeDaramad");
+        var txtCode_ShenaseMelli = App.AnnouncementComplication.queryById("txtCode_ShenaseMelli");
+        var CboDaramadGroup = App.AnnouncementComplication.queryById("CboDaramadGroup");
+        var txtTedad = App.BasePanel.queryById("txtTedad");
+        var MablaghAsli = 0;
+        var er = false;
+
+        var ParamItemValue = new Array();
+
+        for (var i = 1; i < App.BasePanelDaramadGroup.items.length; i = i + 2) {
+            var k = App.BasePanelDaramadGroup.items.items[i];
+            if (k.el.id.substring(0, 8) == "combobox") {
+                if (k.validate() == false || String(k.getValue()) == "null" || String(k.getValue()) == null) {
+                    k.allowBlank = false;
+                    k.validate();
+                    er = true;
+                }
+            }
+            else if (k.validate() == false || String(k.getValue()) == "null" || String(k.getValue()) == null || String(k.getValue()) == "") {
+                k.allowBlank = false;
+                k.validate();
+                er = true;
+            }
+        }
+
+        if (txtTedad.validate() == false) {
+            er = true;
+        }
+        if (HaveFormulForMablagh == 0 || IsMahdud==1) {
+            var txtMablaghAsli = App.BasePanel.queryById("txtMablaghAsli");
+            if (txtMablaghAsli.validate() == false) {
+                er = true;
+            }
+            else
+                MablaghAsli = txtMablaghAsli.getValue();
+        }
+        var ItemValue = new Array();
+
+        if (IsMahdud == 0) {
+            var ii = 3;
+            if (HaveFormulForMablagh == 0)
+                ii = 5;
+            for (var i = ii; i < App.BasePanel.items.length - 2; i = i + 2) {
+                var k = App.BasePanel.items.items[i];
+                if (k.el.id.substring(0, 8) == "combobox") {
+                    if (k.validate() == false || String(k.getValue()) == "null" || String(k.getValue()) == null) {
+                        k.allowBlank = false;
+                        k.validate();
+                        er = true;
+                    }
+                }
+                else if (k.validate() == false || String(k.getValue()) == "null" || String(k.getValue()) == null || String(k.getValue()) == "") {
+                    k.allowBlank = false;
+                    k.validate();
+                    er = true;
+                }
+            }
+        } 
+        if (txtCode_ShenaseMelli.validate() == false) {
+            er = true;
+        }
+        if (CboDaramadGroup.validate() == false) {
+            er = true;
+        }
+        if (er == true) {
+            return;
+        }
+
+        for (var i = 1; i < App.BasePanelDaramadGroup.items.length ; i = i + 2) {
+            var Meghdar = App.BasePanelDaramadGroup.items.items[i].value;
+            if (App.BasePanelDaramadGroup.items.items[i].xtype == "pdatefield") {
+                Meghdar = App.BasePanelDaramadGroup.items.items[i].rawValue;
+            }
+
+            ParamItemValue.push({
+                'fldParametrGroupDaramadId': App.BasePanelDaramadGroup.items.items[i].itemId.substring(2),
+                'fldValue': Meghdar
+            });
+        }
+
+        if (IsMahdud == 1) {
+            var dd = {
+                Paramval: ParamItemValue,
+                Mablagh: MablaghAsli,
+                fldTedad: txtTedad.getValue(),
+                ShomareHesabCodeDaramadId: App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId").getValue(),
+                ElamAvarezId: App.AnnouncementComplication.queryById("fldElamAvarezId").getValue(),
+                Desc: App.AnnouncementComplication.queryById("txtDesc").getValue(),
+                sharheCodeDaramad: App.AnnouncementComplication.queryById("txtsharheCodeDaramad").getValue(),
+                CodeDaramadElamAvarezID: CodeDaramadElamAvarezID,
+                AshkhasId: App.AnnouncementComplication.queryById("fldAshkhasId").getValue(),
+                DaramadGroupId:App.AnnouncementComplication.queryById("CboDaramadGroup").getValue(),
+                OrganId: App.AnnouncementComplication.queryById("CboOrgan").getValue()
+            };
+
+
+            $.ajax({
+                type: "POST",
+                url: '/Daramad/AnnouncementComplications/MohasebeBaMahdudiat',
+                contentType: "application/json; charset=utf-8",
+                data: JSON.stringify(dd),
+                datatype: "json",
+                success: function (data4) {
+                    var ic = Ext.MessageBox.INFO;
+                    if (data4.Er == 1) {
+                        ic = Ext.MessageBox.ERROR;
+                        App.AnnouncementComplication.queryById("btnSodurFish").hide();
+                    }
+                    Ext.MessageBox.show({
+                        title: data4.MsgTitle,
+                        msg: data4.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+
+                    if (data4.Er != 1) {
+                        ClearItems();
+                        CodeDaramadElamAvarezID = 0;
+                        App.AnnouncementComplication.queryById('fldElamAvarezId').setValue(data4.IDElamAvarez);
+                        App.AnnouncementComplication.queryById('AvarezGrid').getStore().getProxy().setExtraParam("elamAvarez", data4.IDElamAvarez);
+                        App.AnnouncementComplication.queryById('AvarezGrid').getStore().load();
+                        App.MainAnnouncementComplication.queryById('AvarezGrid').store.load();
+                        /* App.AnnouncementComplication.queryById('AvarezGrid').store.load();*/
+                        
+                        App.AnnouncementComplication.queryById("txtCode_ShenaseMelli").icon.hide();
+                        App.AnnouncementComplication.queryById("txtCode_ShenaseMelli").setReadOnly(true);
+                        /*App.AnnouncementComplication.queryById("CboDaramadGroup").setReadOnly(true);*/
+                        App.AnnouncementComplication.queryById("CboType").setReadOnly(true);
+                        App.AnnouncementComplication.queryById("CboOrgan").setReadOnly(true);
+                        /*App.AnnouncementComplication.queryById("txtDesc").setReadOnly(true);*/
+                        App.AnnouncementComplication.queryById("btnSodurFish").show();
+                    }
+                    App.AnnouncementComplication.queryById("btnAddToGrid").setDisabled(false);
+                    Ext.net.Mask.hide();
+
+                }
+            });
+        }
+        else {
+
+            for (var i = ii; i < App.BasePanel.items.length - 2; i = i + 2) {
+                var Meghdar = App.BasePanel.items.items[i].value;
+                if (App.BasePanel.items.items[i].xtype == "pdatefield") {
+                    Meghdar = App.BasePanel.items.items[i].rawValue;
+                }
+
+                ItemValue.push({
+                    'fldParametreSabetId': App.BasePanel.items.items[i].itemId,
+                    'fldValue': Meghdar
+                });
+            }
+
+            var data1 = {
+                val: ItemValue,
+                Paramval: ParamItemValue,
+                ShomareHesabCodeDaramadId: App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId").getValue(),
+                AshkhasId: App.AnnouncementComplication.queryById("fldAshkhasId").getValue(),
+                DaramadGroupId: App.AnnouncementComplication.queryById("CboDaramadGroup").getValue(),
+                OrganId: App.AnnouncementComplication.queryById("CboOrgan").getValue(),
+                ElamAvarezId: App.AnnouncementComplication.queryById("fldElamAvarezId").getValue(),
+                Desc: App.AnnouncementComplication.queryById("txtDesc").getValue(),
+                MatnSharhCodeWithParamId: MatnSharhCodeWithParamId,
+                CodeDaramadElamAvarezID: CodeDaramadElamAvarezID
+            };
+
+            App.AnnouncementComplication.queryById("btnAddToGrid").setDisabled(true);
+
+            Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+            $.ajax({
+                type: "POST",
+                url: '/Daramad/AnnouncementComplications/ValidateAllParams',
+                contentType: "application/json; charset=utf-8",
+                data: JSON.stringify(data1),
+                datatype: "json",
+                success: function (data2) {
+                    var data = data2;/*JSON.parse(data2);*/
+                    if (data.Valid != "") {
+                        Ext.net.Mask.hide();
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: data.Valid,
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                    else {
+                        $.ajax({
+                            type: "POST",
+                            url: '/Daramad/AnnouncementComplications/SaveMaghadir',
+                            contentType: "application/json; charset=utf-8",
+                            data: JSON.stringify(data1),
+                            datatype: "json",
+                            success: function (data3) {
+                                var result = data3;/*JSON.parse(data3);*/
+                                /*Ext.net.DirectMethod.request({
+                                    url: '/Daramad/AnnouncementComplications/CheckHaveFormulId',
+                                    params: {
+                                        ShomareHesabCodeDaramadId: App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId").getValue()
+                                    },
+                                    success: function (result) {*/
+                                App.AnnouncementComplication.queryById("btnAddToGrid").setDisabled(true);
+
+                                if (result.Er == 1) {
+                                    Ext.net.Mask.hide();
+                                    Ext.MessageBox.show({
+                                        title: "خطا",
+                                        msg: result.Msg,
+                                        icon: Ext.MessageBox.ERROR,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                }
+                                    /*  AddToGrid();*/
+                                else {
+                                    App.BasePanel.queryById("txtsharheCodeDaramad").setValue(result.GenerateMatnSharhCode);
+
+                                    App.AnnouncementComplication.queryById("fldElamAvarezId").setValue(result.ElamAvarezId);
+                                    if (result.HaveFormulId == 1 || result.HaveFormulId == 0) {/*قرمول نویس یا بدون فرمول*/
+                                        Ext.net.DirectMethod.request({
+                                            url: '/Daramad/AnnouncementComplications/Mohasebe',
+                                            params: {
+                                                HaveFormulId: result.HaveFormulId,
+                                                Mablagh: MablaghAsli,
+                                                fldTedad: txtTedad.getValue(),
+                                                ShomareHesabCodeDaramadId: App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId").getValue(),
+                                                ElamAvarezId: result.ElamAvarezId,
+                                                sharheCodeDaramad: result.GenerateMatnSharhCode,
+                                                CodeDaramadElamAvarezID: result.CodeDaramadElamAvarezId
+                                            },
+                                            success: function (data4) {
+                                                var ic = Ext.MessageBox.INFO;
+                                                if (data4.Er == 1) {
+                                                    ic = Ext.MessageBox.ERROR;
+                                                    App.AnnouncementComplication.queryById("btnSodurFish").hide();
+                                                }
+                                                Ext.MessageBox.show({
+                                                    title: data4.MsgTitle,
+                                                    msg: data4.Msg,
+                                                    icon: ic,
+                                                    buttons: Ext.MessageBox.OK
+                                                });
+
+                                                if (data4.Er != 1) {
+                                                    ClearItems();
+                                                    CodeDaramadElamAvarezID = 0;
+                                                    App.AnnouncementComplication.queryById('AvarezGrid').getStore().getProxy().setExtraParam("elamAvarez", result.ElamAvarezId);
+                                                    App.AnnouncementComplication.queryById('AvarezGrid').getStore().load();
+                                                    App.MainAnnouncementComplication.queryById('AvarezGrid').store.load();
+                                                    /* App.AnnouncementComplication.queryById('AvarezGrid').store.load();*/
+                                                    
+                                                    App.AnnouncementComplication.queryById("txtCode_ShenaseMelli").icon.hide();
+                                                    App.AnnouncementComplication.queryById("txtCode_ShenaseMelli").setReadOnly(true);
+                                                    /*App.AnnouncementComplication.queryById("CboDaramadGroup").setReadOnly(true);*/
+                                                    App.AnnouncementComplication.queryById("CboType").setReadOnly(true);
+                                                    App.AnnouncementComplication.queryById("CboOrgan").setReadOnly(true);
+                                                    /*App.AnnouncementComplication.queryById("txtDesc").setReadOnly(true);*/
+                                                    App.AnnouncementComplication.queryById("btnSodurFish").show();
+                                                }
+                                                App.AnnouncementComplication.queryById("btnAddToGrid").setDisabled(false);
+                                                Ext.net.Mask.hide();
+
+                                            }
+                                        });
+                                        /*  $.ajax({
+                                              type: "POST", 
+                                              url: '/Daramad/AnnouncementComplications/Mohasebe',
+                                              contentType: "application/json; charset=utf-8",
+                                              data: JSON.stringify(data1),
+                                              datatype: "json",
+                                              success: function (d) {
+                                                  var data4 = JSON.parse(d);
+                                                  var AvarezGrid = App.AnnouncementComplication.queryById("AvarezGrid");
+                                                  AvarezGrid.store.insert(AvarezGrid.getStore().count(), {
+                                                      fldID: data4.fldID,
+                                                      fldSharheCodeDaramad:txtCodeDaramad.getValue(),
+                                                      fldCodhayeDaramdId: data4.fldCodhayeDaramdId,
+                                                      fldAsliValue: data4.fldAsliValue,
+                                                      fldAvarezValue: data4.fldAvarezValue,
+                                                      fldMaliyatValue: data4.fldMaliyatValue
+                                                  });
+                                                  App.AnnouncementComplication.queryById("btnAddToGrid").setDisabled(false);
+                                                  Ext.net.Mask.hide();
+                                              }
+                                          });*/
+                                    }
+
+                                    else if (result.HaveFormulId == 2) {/*فرمول ساز*/
+                                        Ext.net.DirectMethod.request({
+                                            url: '/Daramad/IncomeCodes/CalcFormul',
+                                            params: {
+                                                Formul: result.EnFormul,
+                                                ShomareHesabCodeDaramadId: App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId").getValue(),
+                                                ElamAvarezId: App.AnnouncementComplication.queryById("fldElamAvarezId").getValue(),
+                                                CodeDaramadElamAvarezID: result.CodeDaramadElamAvarezId
+                                            },
+                                            success: function (data5) {
+                                                if (data5.Er == 1) {
+                                                    Ext.MessageBox.show({
+                                                        title: data5.MsgTitle,
+                                                        msg: data5.Msg,
+                                                        icon: Ext.MessageBox.ERROR,
+                                                        buttons: Ext.MessageBox.OK
+                                                    });
+                                                }
+                                                else {
+                                                    Ext.net.DirectMethod.request({
+                                                        url: '/Daramad/AnnouncementComplications/Mohasebe',
+                                                        params: {
+                                                            HaveFormulId: result.HaveFormulId,
+                                                            Mablagh: data5.FResult,
+                                                            fldTedad: txtTedad.getValue(),
+                                                            ShomareHesabCodeDaramadId: App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId").getValue(),
+                                                            ElamAvarezId: result.ElamAvarezId,
+                                                            sharheCodeDaramad: result.GenerateMatnSharhCode,
+                                                            CodeDaramadElamAvarezID: result.CodeDaramadElamAvarezId
+                                                        },
+                                                        success: function (data4) {
+                                                            var ic = Ext.MessageBox.INFO;
+                                                            if (data4.Er == 1) {
+                                                                ic = Ext.MessageBox.ERROR;
+                                                                App.AnnouncementComplication.queryById("btnSodurFish").hide();
+                                                            }
+                                                            Ext.MessageBox.show({
+                                                                title: data4.MsgTitle,
+                                                                msg: data4.Msg,
+                                                                icon: ic,
+                                                                buttons: Ext.MessageBox.OK
+                                                            });
+
+                                                            if (data4.Er != 1) {
+                                                                ClearItems();
+                                                                CodeDaramadElamAvarezID = 0;
+                                                                App.AnnouncementComplication.queryById('AvarezGrid').getStore().getProxy().setExtraParam("elamAvarez", result.ElamAvarezId);
+                                                                App.AnnouncementComplication.queryById('AvarezGrid').getStore().load();
+                                                                App.MainAnnouncementComplication.queryById('AvarezGrid').store.load();
+                                                                /* App.AnnouncementComplication.queryById('AvarezGrid').store.load();*/
+                                                                
+                                                                App.AnnouncementComplication.queryById("txtCode_ShenaseMelli").icon.hide();
+                                                                App.AnnouncementComplication.queryById("txtCode_ShenaseMelli").setReadOnly(true);
+                                                                /*App.AnnouncementComplication.queryById("CboDaramadGroup").setReadOnly(true);*/
+                                                                App.AnnouncementComplication.queryById("CboType").setReadOnly(true);
+                                                                App.AnnouncementComplication.queryById("CboOrgan").setReadOnly(true);
+                                                                /*App.AnnouncementComplication.queryById("txtDesc").setReadOnly(true);*/
+                                                                App.AnnouncementComplication.queryById("btnSodurFish").show();
+                                                            }
+                                                            App.AnnouncementComplication.queryById("btnAddToGrid").setDisabled(false);
+                                                            Ext.net.Mask.hide();
+
+                                                        }
+                                                    });
+                                                }
+                                                Ext.net.Mask.hide();
+                                            }
+                                        });
+                                    }
+
+                                }
+
+                            },
+                            failure: function (data) {
+                                App.AnnouncementComplication.queryById("btnAddToGrid").setDisabled(false);
+                                alert(data.data);
+                            }
+                        });
+                    }
+                },
+                failure: function (data) {
+                    App.AnnouncementComplication.queryById("btnAddToGrid").setDisabled(false);
+                    alert(data.data);
+                }
+            });
+        }
+    }
+
+    /* function EditCode(record) {
+         Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+         Ext.net.DirectMethod.request({
+             url: '/Daramad/AnnouncementComplications/DetailCodhayeDaramadiElamAvarez',
+             params: {
+                 Id: record.data.fldID
+             },
+             success: function (result) {
+                 ClearItems();
+                 var txtCodeDaramad = App.AnnouncementComplication.queryById("txtCodeDaramad");
+                 txtCodeDaramad.setValue(result.codeDaramadTitle);
+                 var fldShomareHesabCodeDaramadId = App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId");
+                 fldShomareHesabCodeDaramadId.setValue(result.fldShomareHesabCodeDaramadId);
+                 CodeDaramadElamAvarezID = record.data.fldID;
+                 AddItems(2);
+
+                 Ext.net.Mask.hide();
+             }
+         });
+     }
+     function DelCode(record) {
+         var fldElamAvarezId = App.AnnouncementComplication.queryById('fldElamAvarezId');
+         Ext.MessageBox.show({
+             title: "هشدار",
+             msg: "آیا برای حذف مطمئن هستید؟",
+             icon: Ext.MessageBox.WARNING,
+             buttons: Ext.MessageBox.YESNO,
+             fn: function (btn) {
+                 if (btn == 'yes') {
+                     Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                     Ext.net.DirectMethod.request({
+                         url: '/Daramad/AnnouncementComplications/DelCode',
+                         params: {
+                             id: record.data.fldID,
+                             ElamAvarezID: fldElamAvarezId.getValue()
+                         },
+                         success: function (data) {
+                             if (data.Er == 3) {
+                                 App.MainAnnouncementComplication.queryById('AvarezGrid').store.load();
+                                 Ext.MessageBox.show({
+                                     title: data.MsgTitle,
+                                     msg: data.Msg,
+                                     icon: Ext.MessageBox.INFO,
+                                     buttons: Ext.MessageBox.OK,
+                                     fn: function (btn) {
+                                         if (btn == 'ok')
+                                             App.AnnouncementComplication.destroy();
+                                     }
+                                 });
+                             }
+                             else {
+                                 var ic = Ext.MessageBox.INFO;
+                                 if (data.Er == 1)
+                                     ic = Ext.MessageBox.ERROR;
+                                 Ext.MessageBox.show({
+                                     title: data.MsgTitle,
+                                     msg: data.Msg,
+                                     icon: ic,
+                                     buttons: Ext.MessageBox.OK
+                                 });
+                             }
+                             App.AnnouncementComplication.queryById('AvarezGrid').store.load();
+                         }
+                     });
+                     Ext.net.Mask.hide();
+
+                 }
+             }
+         });
+     }*/
+    function LoadFormInEdit() {
+        if ('@ViewBag.Id' != 0) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/AnnouncementComplications/DetailAvarez',
+                params: {
+                    Id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    var txtCode_ShenaseMelli = App.AnnouncementComplication.queryById("txtCode_ShenaseMelli");
+                    txtCode_ShenaseMelli.setValue(data.fldShenaseMeli);
+                    if (data.fldShenaseMeli == "") {
+                        txtCode_ShenaseMelli.setValue("سایر");
+                        txtCode_ShenaseMelli.setFieldStyle("direction:rtl;");
+                    }
+                    txtCode_ShenaseMelli.icon.hide();
+                    txtCode_ShenaseMelli.setReadOnly(true);
+                    var fldAshkhasId = App.AnnouncementComplication.queryById("fldAshkhasId");
+                    fldAshkhasId.setValue(data.fldAshakhasID);
+                    var CboDaramadGroup = App.AnnouncementComplication.queryById("CboDaramadGroup");
+                    CboDaramadGroup.setValue(data.fldDaramadGroupId);
+                    /*CboDaramadGroup.setReadOnly(true);*/
+                    var CboType = App.AnnouncementComplication.queryById("CboType");
+                    CboType.setValue(data.fldNoeShakhs);
+                    CboType.setReadOnly(true);
+                    var txtDesc = App.AnnouncementComplication.queryById("txtDesc");
+                    txtDesc.setValue(data.fldDesc);
+                    var CboOrgan = App.AnnouncementComplication.queryById("CboOrgan");
+                    CboOrgan.setValue(data.fldOrganId);
+                    CboOrgan.setReadOnly(true);
+                    var DetailMalek = App.AnnouncementComplication.queryById('DetailMalek');
+                    DetailMalek.show();
+                    var NameMalek = App.AnnouncementComplication.queryById('NameMalek');
+                    NameMalek.setText(data.fldNameShakhs);
+                    var NameFather = App.AnnouncementComplication.queryById('NameFather');
+                    NameFather.setText(data.fldFather_Sabt);
+                    var lblFather = App.AnnouncementComplication.queryById("lblFather");
+                    if (CboType.getValue() == "1")
+                        lblFather.setText("شماره ثبت: ");
+                    else
+                        lblFather.setText("نام پدر: ");
+                    var fldElamAvarezId = App.AnnouncementComplication.queryById('fldElamAvarezId');
+                    fldElamAvarezId.setValue(data.fldId);
+                    App.AnnouncementComplication.queryById('AvarezGrid').store.load();
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else
+            App.AnnouncementComplication.queryById('CboDaramadGroup').setValue('0');
+    }
+    function SaveDesc() {
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        var er = false;
+
+        var ParamItemValue = new Array();
+
+        for (var i = 1; i < App.BasePanelDaramadGroup.items.length ; i = i + 2) {
+            var k = App.BasePanelDaramadGroup.items.items[i];
+            if (k.el.id.substring(0, 8) == "combobox") {
+                if (k.validate() == false || String(k.getValue()) == "null" || String(k.getValue()) == null) {
+                    k.allowBlank = false;
+                    k.validate();
+                    er = true;
+                }
+            }
+            else if (k.validate() == false || String(k.getValue()) == "null" || String(k.getValue()) == null || String(k.getValue()) == "") {
+                k.allowBlank = false;
+                k.validate();
+                er = true;
+            }
+        }
+        if (er == true) {
+            return;
+        }
+
+        for (var i = 1; i < App.BasePanelDaramadGroup.items.length ; i = i + 2) {
+            var Meghdar = App.BasePanelDaramadGroup.items.items[i].value;
+            if (App.BasePanelDaramadGroup.items.items[i].xtype == "pdatefield") {
+                Meghdar = App.BasePanelDaramadGroup.items.items[i].rawValue;
+            }
+
+            ParamItemValue.push({
+                'fldParametrGroupDaramadId': App.BasePanelDaramadGroup.items.items[i].itemId.substring(2),
+                'fldValue': Meghdar
+            });
+        }
+        var data1 = {
+            Paramval: ParamItemValue,
+            fldId: App.AnnouncementComplication.queryById('fldElamAvarezId').getValue(),
+            fldDesc: App.AnnouncementComplication.queryById("txtDesc").getValue(),
+            fldAshakhasID: App.AnnouncementComplication.queryById("fldAshkhasId").getValue(),
+            fldDaramadGroupId: App.AnnouncementComplication.queryById("CboDaramadGroup").getValue(),
+            fldOrganId: App.AnnouncementComplication.queryById("CboOrgan").getValue()
+        };
+
+
+        $.ajax({
+            type: "POST",
+            url: '/Daramad/AnnouncementComplications/SaveDesc',
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify(data1),
+            datatype: "json",
+            success: function (data4) {
+                var ic = Ext.MessageBox.INFO;
+                if (data4.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data4.MsgTitle,
+                    msg: data4.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.AnnouncementComplication.queryById('fldElamAvarezId').setValue(data4.ElamAvarezID);
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function ChangeCodeDaramad(code) {
+        var txtCodeDaramad = App.AnnouncementComplication.queryById('txtCodeDaramad');
+        if (txtCodeDaramad.getValue() != "") {
+            var LblCodeDaramad = App.AnnouncementComplication.queryById('LblCodeDaramad');
+            if (code == 0 || code == 13) {
+                var HaveThisId = false;
+                var SelectedRow = App.AnnouncementComplication.queryById('AvarezGrid');
+                for (var i = 0; i < SelectedRow.selModel.store.count() ; i++) {
+                    row = SelectedRow.selModel.store.data.items[i];
+                    if (row.data.fldDaramadCode == txtCodeDaramad.getValue())
+                        HaveThisId = true;
+                }
+               /* if (HaveThisId) {
+                    txtCodeDaramad.setValue("");
+                    LblCodeDaramad.setText("");
+                    App.AnnouncementComplication.queryById('fldShomareHesabCodeDaramadId').setValue(0);
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "کد درآمد مورد نظر قبلا انتخاب شده است.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+                else {*/
+                    Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Daramad/AnnouncementComplications/CheckCodeDaramad',
+                        params: {
+                            CodeDaramad: txtCodeDaramad.getValue(),
+                            OrganId: App.AnnouncementComplication.queryById("CboOrgan").getValue()
+                        },
+                        success: function (data) {
+                            if (data.Err != 0) {
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.ERROR,
+                                    buttons: Ext.MessageBox.OK,
+                                    fn: function (btn) {
+                                        if (btn == 'ok') {
+                                            ClearItems();
+                                        }
+                                    }
+                                });
+                            }
+                            else {
+                                LblCodeDaramad.setText(data.TitleCodeDaramad);
+                                App.AnnouncementComplication.queryById('fldShomareHesabCodeDaramadId').setValue(data.fldId);
+                            }
+
+                            if (parseInt(CodeIdBeforBlur) != parseInt(App.AnnouncementComplication.queryById('fldShomareHesabCodeDaramadId').getValue()))
+                                ClearItems2();
+                            
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                /*}*/
+            }
+        }
+    }
+    function ChangeCode_ShenaseMelli(code) {
+        var txtCode_ShenaseMelli = App.AnnouncementComplication.queryById('txtCode_ShenaseMelli');
+        var CboType = App.AnnouncementComplication.queryById('CboType');
+        var cc = txtCode_ShenaseMelli.getValue();
+        if ((CboType.getValue() == "0" && cc.length == 10) || (CboType.getValue() == "1" && cc.length == 11)) {
+            if (code == 0 || code == 13) {
+                Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/AnnouncementComplications/CheckCode_ShenaseMelli',
+                    params: {
+                        Code_ShenaseMelli: txtCode_ShenaseMelli.getValue(),
+                        Type: CboType.getValue()
+                    },
+                    success: function (data) {
+                        if (data.Err == 1) {
+                            Ext.MessageBox.show({
+                                title: data.MsgTitle,
+                                msg: data.Msg,
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK,
+                                fn: function (btn) {
+                                    if (btn == 'ok') {
+                                        App.AnnouncementComplication.queryById('txtCode_ShenaseMelli').setValue("");
+                                        App.AnnouncementComplication.queryById('fldAshkhasId').setValue(0);
+                                        App.AnnouncementComplication.queryById('NameMalek').setText("");
+                                        App.AnnouncementComplication.queryById('NameFather').setText("");
+                                        var DetailMalek = App.AnnouncementComplication.queryById('DetailMalek');
+                                        DetailMalek.hide();
+                                    }
+                                }
+                            });
+                        }
+                        else if (data.Err == 2) {
+                            Ext.MessageBox.show({
+                                title: data.MsgTitle,
+                                msg: data.Msg,
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.YESNO,
+                                fn: function (btn) {
+                                    if (btn == 'yes') {
+                                        if (App.AnnouncementComplication.queryById('CboType').getValue() == "1")
+                                            Ext.net.DirectMethod.request({
+                                                url: '/Daramad/SearchAshkhas/NewHoghughi',
+                                                params: {
+                                                    State: 2
+                                                },
+                                                success: function (data) {
+                                                    Ext.net.Mask.hide();
+                                                }
+                                            });
+                                        else if (App.AnnouncementComplication.queryById('CboType').getValue() == "0")
+                                            Ext.net.DirectMethod.request({
+                                                url: '/Daramad/SearchAshkhas/NewHaghighi',
+                                                params: {
+                                                    State: 2
+                                                },
+                                                success: function (data) {
+                                                    Ext.net.Mask.hide();
+                                                }
+                                            });
+                                    }
+                                    else {
+                                        App.AnnouncementComplication.queryById('txtCode_ShenaseMelli').setValue("");
+                                        App.AnnouncementComplication.queryById('fldAshkhasId').setValue(0);
+                                        var DetailMalek = App.AnnouncementComplication.queryById('DetailMalek');
+                                        DetailMalek.hide();
+                                    }
+                                }
+                            });
+                        }
+                        else {
+                            var DetailMalek = App.AnnouncementComplication.queryById('DetailMalek');
+                            DetailMalek.show();
+                            var CboType = App.AnnouncementComplication.queryById('CboType');
+                            App.AnnouncementComplication.queryById('txtCode_ShenaseMelli').setValue(data.fldShenase_CodeMeli);
+                            App.AnnouncementComplication.queryById('fldAshkhasId').setValue(data.fldId);
+                            App.AnnouncementComplication.queryById('NameMalek').setText(data.Name);
+                            App.AnnouncementComplication.queryById('NameFather').setText(data.shomareshabt_father);
+                            var lblFather = App.AnnouncementComplication.queryById("lblFather");
+                            if (CboType.getValue() == "1")
+                                lblFather.setText("شماره ثبت: ");
+                            else
+                                lblFather.setText("نام پدر: ");
+                        }
+
+                        if (parseInt(ShakhsIdBeforBlur) != parseInt(App.AnnouncementComplication.queryById('fldAshkhasId').getValue()))
+                            ClearItems();
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+        else {
+            App.AnnouncementComplication.queryById('txtCode_ShenaseMelli').setValue("");
+            App.AnnouncementComplication.queryById('fldAshkhasId').setValue(0);
+            var DetailMalek = App.AnnouncementComplication.queryById('DetailMalek');
+            DetailMalek.hide();
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "کد/شناسه ملی نامعتبر است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SodurFishInAvarez() {
+        Ext.net.Mask.show({
+            msg: 'در حال بارگذاری...'
+        });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/SodurFish/Index',
+            params: {
+                Id: App.AnnouncementComplication.queryById('fldElamAvarezId').getValue(),
+                State: 3
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+
+            }
+        });
+    }
+    function ShowFormulWin() {
+        Ext.net.Mask.show({
+            msg: 'در حال بارگذاری...'
+        });
+        var fldShomareHesabCodeDaramadId = App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId");
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/AnnouncementComplications/WinShowFormul',
+            params: {
+                ShomareHesabCodeDaramadId: fldShomareHesabCodeDaramadId.getValue()
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var ShakhsIdBeforBlur = "";
+    function ShakhsBeforBlur() {
+        ShakhsIdBeforBlur = App.AnnouncementComplication.queryById("fldAshkhasId").getValue();
+    }
+    var CodeIdBeforBlur = "";
+    function CodeBeforBlur() {
+        CodeIdBeforBlur = App.AnnouncementComplication.queryById("fldShomareHesabCodeDaramadId").getValue();
+    }
+    function ChangeDaramadGroup() {
+        App.BasePanelDaramadGroup.removeAll();
+        App.BasePanelDaramadGroup.hide();
+
+        var CboDaramadGroup = App.AnnouncementComplication.queryById("CboDaramadGroup").getValue();
+        if (CboDaramadGroup != 0)
+            {
+            var addedGroup = 0;
+            App.BasePanelDaramadGroup.show();
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/AnnouncementComplications/GetParamsDaramadGroup',
+                params: {
+                    DaramadGroupId: CboDaramadGroup
+                },
+                success: function (data) {
+                    if (data.Er == 1) {
+                        Ext.net.Mask.hide();
+                        Ext.MessageBox.show({
+                            title: data.MsgTitle,
+                            msg: data.Msg,
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                    else {
+                        NameKhasiyat_FaItems = data.NameKhasiyat_FaItems.split(';');
+                        NameKhasiyat_EnItems = data.NameKhasiyat_EnItems.split(';');
+                        ItemPropertiesId = data.ItemPropertiesId.split(';');
+                        JenseKhasiyatItems = data.JenseKhasiyatItems.split(';');
+
+                  
+                        for (var i = 0; i < NameKhasiyat_FaItems.length - 1; i++) {
+
+                                var Marg = "0px 0px 0px 0px";
+                                if (addedGroup == 0)
+                                    Marg = "0px 0px 0px 27px";
+                                else if (addedGroup == 1)
+                                    Marg = "0px 0px 0px 90px";
+
+                               
+                                if (JenseKhasiyatItems[i] == "1") {
+                                    var label = Ext.create('Ext.form.Label', {
+                                        text: NameKhasiyat_FaItems[i] + ":",
+                                        margin: Marg
+                                    });
+
+                                    var numberInt = Ext.create('Ext.form.field.Number', {
+                                        allowDecimals: false,
+                                        allowExponential: false,
+                                        itemId: "Da"+ItemPropertiesId[i],
+                                        emptyText: "عدد صحیح",
+                                        blankText: "این فیلد باید مقداری داشته باشد.",
+                                        width: 145,
+                                        listeners: {
+                                            change: function (field) {
+                                                if (String(field.getValue()).includes('-') == true) {
+                                                    field.setValue("");
+                                                }
+                                            },
+                                            Blur: function (field) {
+                                                if (InfoPage != 1)
+                                                    GoToCheckFieldDaramadGroup(String(field.getValue()), String(field.itemId));
+                                            },
+                                            SpecialKey: function (field) {
+                                                if (InfoPage != 1)
+                                                    GoToCheckFieldDaramadGroup(String(field.getValue()), String(field.itemId));
+                                            },
+                                            AfterRender: function (field) {
+                                                if (InfoPage == 1)
+                                                    field.setReadOnly(true);
+                                            }
+                                        }
+                                    });
+
+                                    App.BasePanelDaramadGroup.add(label);
+                                    App.BasePanelDaramadGroup.add(numberInt);
+                                    addedGroup = addedGroup + 1;
+                                    numberInt.allowBlank = false;
+                                    numberInt.validate();
+                                }
+
+
+                                else if (JenseKhasiyatItems[i] == "2") {
+                                    var label = Ext.create('Ext.form.Label', {
+                                        text: NameKhasiyat_FaItems[i] + ":",
+                                        margin: Marg
+                                    });
+
+                                    var numberDecimal = Ext.create('Ext.form.field.Number', {
+                                        emptyText: "عدد اعشاری",
+                                        blankText: "این فیلد باید مقداری داشته باشد.",
+                                        allowDecimals: true,
+                                        allowExponential: false,
+                                        itemId: "Da"+ItemPropertiesId[i],
+                                        decimalPrecision: 4,
+                                        width: 145,
+                                        listeners: {
+                                            change: function (field) {
+                                                if (String(field.getValue()).includes('-') == true) {
+                                                    field.setValue("");
+                                                }
+                                            },
+                                            Blur: function (field) {
+                                                if (InfoPage != 1)
+                                                    GoToCheckFieldDaramadGroup(String(field.getValue()), String(field.itemId));
+                                            },
+                                            SpecialKey: function (field) {
+                                                if (InfoPage != 1)
+                                                    GoToCheckFieldDaramadGroup(String(field.getValue()), String(field.itemId));
+                                            },
+                                            AfterRender: function (field) {
+                                                if (InfoPage == 1)
+                                                    field.setReadOnly(true);
+                                            }
+                                        }
+                                    });
+
+                                    App.BasePanelDaramadGroup.add(label);
+                                    App.BasePanelDaramadGroup.add(numberDecimal);
+                                    addedGroup = addedGroup + 1;
+                                    numberDecimal.allowBlank = false;
+                                    numberDecimal.validate();
+                                }
+
+
+                                else if (JenseKhasiyatItems[i] == "3") {
+                                    var label = Ext.create('Ext.form.Label', {
+                                        text: NameKhasiyat_FaItems[i] + ":",
+                                        margin: Marg
+                                    });                                    
+
+                                    var text = Ext.create('Ext.form.field.Text', {
+                                        enforceMaxLength: true,
+                                        maxLength: 450,
+                                        itemId: "Da"+ItemPropertiesId[i],
+                                        blankText: "این فیلد باید مقداری داشته باشد.",
+                                        width: 145,
+                                        listeners: {
+                                            Blur: function (field) {
+                                                if (InfoPage != 1)
+                                                    GoToCheckFieldDaramadGroup(String(field.getValue()), String(field.itemId));
+                                            },
+                                            SpecialKey: function (field) {
+                                                if (InfoPage != 1)
+                                                    GoToCheckFieldDaramadGroup(String(field.getValue()), String(field.itemId));
+                                            },
+                                            AfterRender: function (field) {
+                                                if (InfoPage == 1)
+                                                    field.setReadOnly(true);
+                                            }
+                                        }
+                                    });
+
+                                    App.BasePanelDaramadGroup.add(label);
+                                    App.BasePanelDaramadGroup.add(text);
+                                    addedGroup = addedGroup + 1;
+                                    text.allowBlank = false;
+                                    text.validate();
+                                }
+
+
+                                else if (JenseKhasiyatItems[i] == "4") {
+                                    var label = Ext.create('Ext.form.Label', {
+                                        text: NameKhasiyat_FaItems[i] + ":",
+                                        margin: Marg
+                                    });
+
+                                    var date = Ext.create('Ext.form.field.PDate', {
+                                        format: "Y/m/d",
+                                        editable: false,
+                                        itemId: "Da"+ItemPropertiesId[i],
+                                        blankText: "این فیلد باید مقداری داشته باشد.",
+                                        width: 145,
+                                        listeners: {
+                                            Blur: function (field) {
+                                                if (InfoPage !=1)
+                                                    GoToCheckFieldDaramadGroup(String(field.rawValue), String(field.itemId));
+                                            },
+                                            SpecialKey: function (field) {
+                                                if (InfoPage != 1)
+                                                    GoToCheckFieldDaramadGroup(String(field.rawValue), String(field.itemId));
+                                            },
+                                            AfterRender: function (field) {
+                                                 if (InfoPage == 1)
+                                                    field.setReadOnly(true);
+                                            }
+                                        }
+                                    });
+
+                                    App.BasePanelDaramadGroup.add(label);
+                                    App.BasePanelDaramadGroup.add(date);
+                                    addedGroup = addedGroup + 1;
+                                    date.allowBlank = false;
+                                    date.validate();
+                                }
+
+                                else if (JenseKhasiyatItems[i] == "5") {
+                                    var label = Ext.create('Ext.form.Label', {
+                                        text: NameKhasiyat_FaItems[i] + ":",
+                                        margin: Marg
+                                    });
+
+                                    Ext.define('User', {
+                                        extend: 'Ext.data.Model',
+                                        fields: [
+                                            { name: 'value', type: 'string' },
+                                            { name: 'text', type: 'string' }
+                                        ]
+                                    });
+
+                                    var cbo = Ext.create('Ext.form.field.ComboBox', {
+                                        displayField: "text",
+                                        valueField: "value",
+                                        triggerAction: "all",
+                                        editable: false,
+                                        itemId: "Da"+ItemPropertiesId[i],
+                                        blankText: "این فیلد باید مقداری داشته باشد.",
+                                        width: 145,
+                                        listeners: {
+                                            Blur: function (field) {
+                                                if (InfoPage != 1)
+                                                    GoToCheckFieldDaramadGroup(String(field.getValue()), String(field.itemId));
+                                            },
+                                            SpecialKey: function (field) {
+                                                if (InfoPage != 1)
+                                                    GoToCheckFieldDaramadGroup(String(field.getValue()), String(field.itemId));
+                                            },
+                                            AfterRender: function (field) {
+                                                if (InfoPage == 1)
+                                                    field.setReadOnly(true);
+                                            }
+                                        }
+                                        ,
+                                        store: Ext.create('Ext.data.Store', {
+                                            model: 'User',
+                                            proxy: {
+                                                type: 'ajax',
+                                                url: '/Daramad/AnnouncementComplications/combodataDaramadGroup?Id=' + ItemPropertiesId[i],
+                                                reader: {
+                                                    type: 'json',
+                                                    root: 'data' /*you may need to modify this*/
+                                                }
+                                            },
+                                            autoLoad: true,
+                                        })
+                                    });
+
+
+                                    App.BasePanelDaramadGroup.add(label);
+                                    App.BasePanelDaramadGroup.add(cbo);
+                                    addedGroup = addedGroup + 1;
+                                    cbo.allowBlank = false;
+                                    cbo.validate();
+                                }
+
+                                    
+                                
+
+
+                                    if (i == NameKhasiyat_FaItems.length - 2 && ('@ViewBag.Id' != 0)) {
+                                        Ext.net.DirectMethod.request({
+                                            url: '/Daramad/AnnouncementComplications/ParamsDaramadGroupValue',
+                                            params: {
+                                                ElamAvarezId: '@ViewBag.Id'
+                                            },
+                                            success: function (data) {
+                                                var ic = Ext.MessageBox.INFO;
+                                                if (data.Er == 1) {
+                                                    ic = Ext.MessageBox.ERROR;
+                                                    Ext.MessageBox.show({
+                                                        title: data.MsgTitle,
+                                                        msg: data.Msg,
+                                                        icon: ic,
+                                                        buttons: Ext.MessageBox.OK
+                                                    });
+                                                }
+                                                else {
+
+                                                    for (var i = 1; i < App.BasePanelDaramadGroup.items.length; i = i + 2) {
+                                                        for (var j = 0; j < data.ParametrId.length; j++) {
+                                                            if (App.BasePanelDaramadGroup.items.items[i].itemId.substring(2) == data.ParametrId[j]) {
+                                                                App.BasePanelDaramadGroup.items.items[i].setValue(data.value[j]);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        });
+                                    }
+                            }
+                        /**************************/
+                        if (addedGroup != 0) {
+                            nextfld = App.BasePanelDaramadGroup.items.items[1];
+                            nextfld.focus();
+                        }
+                        else {
+                            App.BasePanelDaramadGroup.hide();
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                }
+            })
+        }
+
+    }
+    function GoToCheckFieldDaramadGroup(Field, ParamId) {
+        var CboDaramadGroup = App.AnnouncementComplication.queryById("CboDaramadGroup");
+        var er = false;
+        var k = App.AnnouncementComplication.queryById(ParamId);
+        if (k.el.id.substring(0, 8) == "combobox") {
+            if (Field == null || Field == "null") {
+                k.allowBlank = false;
+                k.validate();
+                er = true;
+            }
+        }
+        else if (Field == null || Field == "null" || Field == "") {
+            k.allowBlank = false;
+            k.validate();
+            er = true;
+        }
+        if (er == false) {
+            Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/AnnouncementComplications/ValidateDaramadGroupParam',
+                params: {
+                    DaramadGroupId: CboDaramadGroup.getValue(),
+                    ParamId: ParamId.substring(2),
+                    Value: Field
+                },
+                success: function (data) {
+                    var k = App.AnnouncementComplication.queryById(ParamId);
+                    if (!data.Valid) {
+                        k.setValue("");
+                        k.allowBlank = false;
+                        k.validate();
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+    var addKeyMapAnnouncementComplication = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    } 
+                    var keyfield = App.AnnouncementComplication.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    if (keyfield.itemId != "txtCode_ShenaseMelli" && keyfield.itemId != "txtCodeDaramad") {
+                        var nextfld;
+                        /* if (keyfield.itemId == "txtCode_ShenaseMelli") {
+                             nextfld = App.AnnouncementComplication.queryById('txtCodeDaramad');
+                        }
+                        else if (keyfield.itemId == "txtCodeDaramad") {
+                           nextfld = App.AnnouncementComplication.queryById('btnAddItemParam');
+                        }
+                        else */if (App.BasePanel.items.length > 0) {
+                            if (keyfield.itemId == App.BasePanel.items.items[App.BasePanel.items.length - 1].itemId) {
+                                nextfld = App.AnnouncementComplication.queryById('btnAddToGrid');
+                            }
+                            else {
+                                nextfld = keyfield.nextSibling().nextSibling();
+                                nextfld.selectText();
+                            }
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }
+            }]
+        });
+    }
+</script>

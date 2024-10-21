@@ -1,0 +1,132 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_ParamDocumentDesc>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X()
+    .Window()
+    .Modal(true)
+    .Height(300)
+    .Width(400)
+    .Title("ثبت مقادیر پارامترها")
+    .ID("ParameterValues")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .ButtonAlign(Ext.Net.Alignment.Center)
+    .Listeners(l => l.Destroy.Handler = "App.SearchDescDoc.queryById('GridSearchDescDoc').getView().focus();")
+    .Buttons(
+        X.Button()
+            .Text("ادامه")
+            .Icon(Ext.Net.Icon.NextGreen)
+            .ItemID("btnContinue")
+            .Listeners(l => l.Click.Handler = "SettxtDescDoc();"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.ParameterValues.destroy()"))
+    .Items(
+        X.GridPanel()
+            .AutoScroll(true)
+            .Border(false)
+            .ItemID("GridParameter")
+            .Listeners(l => l.ViewReady.Handler = "Tanzim()")
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l=>l.Load.Handler="SetFocusFirstComponent()")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("ReadParameter"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                        .ExtraParams(pa => pa.Add(new { DescDoc = ViewBag.DescDoc }))
+                        )
+                    .PageSize(20000)
+                    .RemoteFilter(false)
+                    .RemotePaging(false)
+            )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .Plugins(Html.X().CellEditing().ClicksToEdit(1).Listeners(l => l.Edit.Fn = "nextcellRowParameterValues")
+            )
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.param).Wrap(true).Text("عنوان پارامتر").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.Value).Text("مقدار پارامتر").Flex(2).Wrap(true)
+                .Editor(
+                    Html.X().TextField().ItemID("txtValue").EnableKeyEvents(true).Listeners(l =>l.SpecialKey.Handler = "checkhintkeyPV(e.getKey())")
+                )
+            )
+            .SelectionModel(
+                Html.X().CellSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+                )
+        )
+)
+<script type="text/javascript">
+    var HintEnterParameterValues = 0;
+
+    function checkhintkeyPV(e) {
+        if (e == 13) {
+            HintEnterParameterValues = 1;
+        }
+    };
+
+    var nextcellRowParameterValues = function (a, b) {
+        if (HintEnterParameterValues == 1) {
+            HintEnterParameterValues = 0;
+            if (b.rowIdx == App.ParameterValues.queryById("GridParameter").store.count() - 1) {
+                SettxtDescDoc();
+            }
+            else {
+                App.ParameterValues.queryById("GridParameter").editingPlugin.startEdit(b.rowIdx + 1, 2);
+            }
+        }
+    };
+
+    function Tanzim() {
+        App.ParameterValues.queryById("GridParameter").headerCt.child().container.dom.style.marginRight = "18px";
+    }
+
+    var SetFocusFirstComponent = function (a, b, c, d) {        
+        setTimeout(function () {
+            App.ParameterValues.queryById("GridParameter").editingPlugin.startEdit(0, 2);
+        }, 300);
+    };
+
+    function SettxtDescDoc() {
+        var str = '@ViewBag.DescDoc';
+        for (var i = 0; i < App.ParameterValues.queryById("GridParameter").store.count() ; i++) {
+            var parameter = App.ParameterValues.queryById("GridParameter").store.data.items[i].data.param;
+            var value = App.ParameterValues.queryById("GridParameter").store.data.items[i].data.Value;
+            if (value == "") {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا مقدار پارامتر را وارد کنید.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                return;
+            }
+            else {
+                str=str.replace(parameter, value);
+            }
+
+        }
+        if (i == App.ParameterValues.queryById("GridParameter").store.count()) {
+            if ('@ViewBag.State' == "1") {
+                App.DocRegister_Details.queryById("txtDescDoc").setValue(str);
+            }
+            else if ('@ViewBag.State' == "3") {
+                App.DocRegister_DetailsKhazane.queryById("txtDescDoc").setValue(str);
+            }
+            else {
+                App.ColDescription.getComponent(parseInt('@ViewBag.rowIdx')).setValue(str);
+            }
+            App.ParameterValues.destroy();
+            App.SearchDescDoc.destroy();
+        }
+    }
+</script>

@@ -1,0 +1,497 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+
+@{
+    var X = Html.X();
+}
+<style>
+    .custom-KhedmatDetail{
+        margin-right: 125px!important;
+    }
+</style>
+
+@(Html.X().Window()
+    .ID("KhedmatDetail")
+    .Modal(true)
+    .Title("خدمت")
+    .Closable(true)
+    .Listeners(li => { li.AfterRender.Handler = "KhedmatDetailSetSize();"; li.Render.Fn = "addKeyMapKhedmatDetail"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .ButtonAlign(Ext.Net.Alignment.Center)    
+    .Layout(LayoutType.Fit)
+    .Buttons(
+        X.Button()
+            .Text("ثبت")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "FillKhedmatArray();"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.KhedmatDetail.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet()
+                    .Title("مشخصات خدمت")
+                    .Border(true)
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                    .Items(
+                        X.Hidden()
+                            .ItemID("fldId"),
+                        X.Hidden()
+                            .ItemID("fldHaghighiId").Value(null),
+                        X.Hidden()
+                            .ItemID("fldHoghoughiId").Value(null),
+                        X.Label("نوع اعتبار:"),
+                        X.ComboBox()
+                            .ItemID("CboTypeEtebar")
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .AutoFocus(true)
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع اعتبار را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Listeners(l =>l.AfterRender.Handler = "App.KhedmatDetail.queryById('CboTypeEtebar').store.getAt(0);")
+                            .Store(X.Store()
+                                //.Listeners(l => l.Load.Handler = "SetDefaultTypeEtebar()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldTitle" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetTypeEtebar"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            ),
+                        X.Label("نوع مصرف:"),
+                        X.ComboBox()
+                            .ItemID("CboTypeMasraf")
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع مصرف را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Listeners(l =>l.AfterRender.Handler = "App.KhedmatDetail.queryById('CboTypeMasraf').store.getAt(0);")
+                            .Store(X.Store()
+                                //.Listeners(l => l.Load.Handler = "SetDefaultTypeMasraf()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldTitle" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetTypeMasraf"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            ),
+                        X.Label("نام سازمان:"),
+                        X.ComboBox()
+                            .ItemID("CboOrganName")
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .AllowBlank(false)
+                            .BlankText("لطفا سازمان مربوطه را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Listeners(l => l.AfterRender.Handler = "App.KhedmatDetail.queryById('CboOrganName').store.getAt(0);")
+                            .Store(X.Store()
+                                .Listeners(l => l.Load.Handler = "LoadDetailsKhedmat()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetOrgan"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            ),
+                        X.Label("آدرس:"),
+                        X.TextField()
+                            .ItemID("txtAdress")
+                            .AllowBlank(false)
+                            .BlankText("لطفا آدرس را وارد کنید.")
+                            .Width(360)
+                            .ColSpan(3),
+                        X.Label("نوع مجری:"),
+                        X.ComboBox()
+                            .ItemID("CboType")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .BlankText("لطفا نوع مجری را انتخاب کنید.")
+                            .Listeners(l => l.Select.Handler = "App.KhedmatDetail.queryById('txtNameOperator').setValue('');")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .AllowBlank(false)
+                            .EmptyText("نوع مجری...")
+                            .SelectedItems(new {value="1" })
+                            .Items(
+                                new ListItem("حقیقی", "1"),
+                                new ListItem("حقوقی", "2")
+                            ),
+                        X.Label("نام مجری:"),
+                        X.TextField()
+                            .ItemID("txtNameOperator")
+                            .Icon(Icon.UserAdd)
+                            .AllowBlank(false)
+                            .BlankText("لطفا مجری را وارد کنید.")
+                            .FieldStyle("padding-right:5px;")
+                            .Listeners(l =>
+                            {
+                                l.SpecialKey.Handler = "SelectOperator(e.getKey());";
+                                l.IconClick.Handler = "GotoSearchOperator()";
+                                l.AfterRender.Handler = "App.KhedmatDetail.queryById('txtNameOperator').icon.dom.classList.add('custom-KhedmatDetail');";
+                            }),
+                        X.Label("سال شروع:"),             
+                        X.TextField()
+                            .ItemID("txtStartYear")
+                            .FieldStyle("direction:ltr;")
+                            .Listeners(l =>
+                            {
+                                l.Blur.Handler = "CheckValidateYearStart()";
+                            })
+                            .AllowBlank(false)
+                            .BlankText("لطفا سال شروع را وارد کنید.")
+                            .MaskRe("[0-9]")
+                            .MaxLength(4)
+                            .MinLength(4)
+                            .EnforceMaxLength(true),
+                        X.Label("سال پایان:"),
+                        X.TextField()
+                            .ItemID("txtEndYear")
+                            .FieldStyle("direction:ltr;")
+                            .Listeners(l =>
+                            {
+                                l.Blur.Handler = "CheckValidateYearEnd()";
+                            })
+                            .AllowBlank(false)
+                            .BlankText("لطفا سال پایان را وارد کنید.")
+                            .MaskRe("[0-9]")
+                            .MaxLength(4)
+                            .MinLength(4)
+                            .EnforceMaxLength(true),
+                        X.Label("مقدار:"),
+                        X.TextField()
+                            .ItemID("txtValue")
+                            .FieldStyle("direction:ltr;")
+                            .AllowBlank(false)
+                            .BlankText("لطفا مقدار را وارد کنید.")
+                            .MaskRe("[0-9]")
+                            .EnforceMaxLength(true),
+                        X.Label("قیمت واحد:"),
+                        X.TextField()
+                            .ItemID("txtAmount")
+                            .FieldStyle("direction:ltr;")
+                            .AllowBlank(false)
+                            .BlankText("لطفا قیمت واحد را وارد کنید.")
+                            .Listeners(l => l.Change.Handler = "App.KhedmatDetail.queryById('txtAmount').setValue(accounting.formatNumber(App.KhedmatDetail.queryById('txtAmount').getValue()));")
+                            .MaskRe("[0-9]")
+                            .EnforceMaxLength(true),
+                        X.Label("کل اعتبار موردنیاز:"),
+                        X.TextField()
+                            .ItemID("txtEtebar")
+                            .FieldStyle("direction:ltr;")
+                            .AllowBlank(false)
+                            .BlankText("لطفا اعتبار مورد نیاز را وارد کنید.")
+                            .Listeners(l => l.Change.Handler = "App.KhedmatDetail.queryById('txtEtebar').setValue(accounting.formatNumber(App.KhedmatDetail.queryById('txtEtebar').getValue()));")                            
+                            .MaskRe("[0-9]")
+                            .EnforceMaxLength(true)                        
+                    )
+                )
+        )
+)
+<script type="text/javascript">
+    function KhedmatDetailSetSize() {
+        App.KhedmatDetail.setWidth(App.BudjeWin.getWidth() - 640);
+        App.KhedmatDetail.queryById("CboTypeEtebar").validate();
+        App.KhedmatDetail.queryById("CboTypeMasraf").validate();
+        App.KhedmatDetail.queryById("CboOrganName").validate();
+        App.KhedmatDetail.queryById("txtNameOperator").validate();
+        App.KhedmatDetail.queryById("txtStartYear").validate();
+        App.KhedmatDetail.queryById("txtEndYear").validate();
+        App.KhedmatDetail.queryById("txtValue").validate();
+        App.KhedmatDetail.queryById("txtAmount").validate();
+        App.KhedmatDetail.queryById("txtEtebar").validate();
+    }
+
+    function LoadDetailsKhedmat() {
+        if ('@ViewBag.CodingTarh_KhedmatId' != 0 && FirstEditModeKhedmat == false) {
+            FirstEditModeKhedmat = true;
+            App.KhedmatDetail.body.mask("در حال بارگذاری");
+            Ext.net.DirectMethod.request({
+                url: '/Budget/Coding/DetailsKhedmat',
+                params: {
+                    Id: '@ViewBag.CodingTarh_KhedmatId'
+                },
+                success: function (data) {
+                    App.KhedmatDetail.queryById("CboTypeEtebar").setValue(data.fldEtebarTypeId);
+                    App.KhedmatDetail.queryById("CboTypeMasraf").setValue(data.fldTypeMasrafId);
+                    App.KhedmatDetail.queryById("CboOrganName").setValue(data.fldOrganId);
+                    App.KhedmatDetail.queryById("txtAdress").setValue(data.fldAddress);
+                    App.KhedmatDetail.queryById("fldHaghighiId").setValue(data.fldHaghighiId);
+                    App.KhedmatDetail.queryById("fldHoghoughiId").setValue(String(data.fldHoghoghiId));
+                    App.KhedmatDetail.queryById("fldId").setValue(data.fldId);
+                    App.KhedmatDetail.queryById("txtNameOperator").setValue(data.NameOperator);
+                    App.KhedmatDetail.queryById("txtStartYear").setValue(data.fldStartYear);
+                    App.KhedmatDetail.queryById("txtEndYear").setValue(data.fldEndYear);
+                    App.KhedmatDetail.queryById("txtValue").setValue(data.fldValue);
+                    App.KhedmatDetail.queryById("txtAmount").setValue(data.fldPriceVahed);
+                    App.KhedmatDetail.queryById("txtEtebar").setValue(data.fldKolEtebar);
+                    if (data.fldHaghighiId == null) {
+                        App.KhedmatDetail.queryById("CboType").setValue("2");
+                    }
+                    else {
+                        App.KhedmatDetail.queryById("CboType").setValue("1");
+                    }
+                    ServiceInfo = {
+                        fldId: '@ViewBag.CodingTarh_KhedmatId',
+                        fldCodingBudjeId: '@ViewBag.BudgetCodingId',
+                        fldEtebarTypeId: data.fldEtebarTypeId,
+                        fldTypeMasrafId: data.fldTypeMasrafId,
+                        fldOrganId: data.fldOrganId,
+                        fldAddress: data.fldAddress,
+                        fldHoghoghiId: data.fldHoghoghiId,
+                        fldHaghighiId: data.fldHaghighiId,
+                        fldStartYear: data.fldStartYear,
+                        fldEndYear: data.fldEndYear,
+                        fldValue: data.fldValue,
+                        fldPriceVahed: data.fldPriceVahed,
+                        fldKolEtebar: data.fldKolEtebar,
+                        NameOperator: data.NameOperator
+                    };
+                    App.KhedmatDetail.body.mask().hide();
+                }
+            });
+        }
+        else {
+            if (ServiceInfo.fldEtebarTypeId=="") {
+                App.KhedmatDetail.queryById("CboTypeEtebar").setValue(App.KhedmatDetail.queryById("CboTypeEtebar").store.getAt(0));
+                App.KhedmatDetail.queryById("CboTypeMasraf").setValue(App.KhedmatDetail.queryById("CboTypeMasraf").store.getAt(0));
+                App.KhedmatDetail.queryById("CboType").setValue("1");
+            }
+            else {
+                App.KhedmatDetail.queryById("CboTypeEtebar").setValue(ServiceInfo.fldEtebarTypeId);
+                App.KhedmatDetail.queryById("CboTypeMasraf").setValue(ServiceInfo.fldTypeMasrafId);
+                if (ServiceInfo.fldHaghighiId == null || ServiceInfo.fldHaghighiId == "") {
+                    App.KhedmatDetail.queryById("CboType").setValue("2");
+                }
+                else {
+                    App.KhedmatDetail.queryById("CboType").setValue("1");
+                }
+            }
+            App.KhedmatDetail.queryById("CboOrganName").setValue(ServiceInfo.fldOrganId);
+            App.KhedmatDetail.queryById("txtAdress").setValue(ServiceInfo.fldAddress);
+            App.KhedmatDetail.queryById("fldHaghighiId").setValue(ServiceInfo.fldHaghighiId);
+            App.KhedmatDetail.queryById("fldHoghoughiId").setValue(ServiceInfo.fldHoghoghiId);
+            App.KhedmatDetail.queryById("fldId").setValue(ServiceInfo.fldId);
+            App.KhedmatDetail.queryById("txtNameOperator").setValue(ServiceInfo.NameOperator);
+            App.KhedmatDetail.queryById("txtStartYear").setValue(ServiceInfo.fldStartYear);
+            App.KhedmatDetail.queryById("txtEndYear").setValue(ServiceInfo.fldEndYear);
+            App.KhedmatDetail.queryById("txtValue").setValue(ServiceInfo.fldValue);
+            App.KhedmatDetail.queryById("txtAmount").setValue(ServiceInfo.fldPriceVahed);
+            App.KhedmatDetail.queryById("txtEtebar").setValue(ServiceInfo.fldKolEtebar);            
+        }
+    }
+
+    function CheckValidateYearStart() {
+        if (App.KhedmatDetail.queryById("txtStartYear").getValue() != "") {
+            App.KhedmatDetail.body.mask("در حال بررسی");
+            Ext.net.DirectMethod.request({
+                url: '/Budget/Coding/CheckValidYear',
+                params: {
+                    Year: App.KhedmatDetail.queryById("txtStartYear").getValue()
+                },
+                success: function (data) {
+                    if (data.Valid == false) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "سال وارد شده معتبر نمی باشد.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    App.KhedmatDetail.queryById("txtStartYear").setValue("");
+                                    App.KhedmatDetail.queryById("txtStartYear").focus();
+                                }
+                            }
+                        });
+                    }
+                    App.KhedmatDetail.body.mask().hide();
+                }
+            });
+        }
+    }
+
+    function CheckValidateYearEnd() {
+        if (App.KhedmatDetail.queryById("txtEndYear").getValue() != "") {
+            App.KhedmatDetail.body.mask("در حال بررسی");
+            Ext.net.DirectMethod.request({
+                url: '/Budget/Coding/CheckValidYear',
+                params: {
+                    Year: App.KhedmatDetail.queryById("txtEndYear").getValue()
+                },
+                success: function (data) {
+                    if (data.Valid == false) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "سال وارد شده معتبر نمی باشد.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    App.KhedmatDetail.queryById("txtEndYear").setValue("");
+                                    App.KhedmatDetail.queryById("txtEndYear").focus();
+                                }
+                            }
+                        });
+                    }
+                    App.KhedmatDetail.body.mask().hide();
+                }
+            });
+        }
+    }
+
+    function SelectOperator(key) {
+        if (key == 45) {
+            App.KhedmatDetail.body.mask("در حال بارگذاری");
+            Ext.net.DirectMethod.request({
+                url: '/Budget/Coding/SearchOperator',
+                params: {
+                    Type: App.KhedmatDetail.queryById('CboType').getValue(),
+                    Year:'@ViewBag.Year'
+                },
+                success: function () {
+                    App.KhedmatDetail.body.mask().hide();
+                }
+            });
+        }
+    }
+
+    function GotoSearchOperator() {
+        App.KhedmatDetail.body.mask("در حال بارگذاری");
+        Ext.net.DirectMethod.request({
+            url: '/Budget/Coding/SearchOperator',
+            params: {
+                Type: App.KhedmatDetail.queryById('CboType').getValue(),
+                Year: '@ViewBag.Year'
+            },
+            success: function () {
+                App.KhedmatDetail.body.mask().hide();
+            }
+        });
+    }
+
+    function FillKhedmatArray() {
+        var CboTypeEtebar = App.KhedmatDetail.queryById("CboTypeEtebar");
+        var CboTypeMasraf = App.KhedmatDetail.queryById("CboTypeMasraf");
+        var CboOrganName = App.KhedmatDetail.queryById("CboOrganName");
+        var txtNameOperator = App.KhedmatDetail.queryById("txtNameOperator");
+        var txtStartYear = App.KhedmatDetail.queryById("txtStartYear");
+        var txtEndYear = App.KhedmatDetail.queryById("txtEndYear");
+        var txtValue = App.KhedmatDetail.queryById("txtValue");
+        var txtAmount = App.KhedmatDetail.queryById("txtAmount");
+        var txtEtebar = App.KhedmatDetail.queryById("txtEtebar");
+        var txtAdress = App.KhedmatDetail.queryById("txtAdress");
+        var fldHaghighiId = App.KhedmatDetail.queryById("fldHaghighiId");
+        var fldHoghoughiId = App.KhedmatDetail.queryById("fldHoghoughiId");
+
+        var er = false;
+
+        if (CboTypeEtebar.validate() == false) {
+            er = true;
+        }
+        if (CboTypeMasraf.validate() == false) {
+            er = true;
+        }
+        if (CboOrganName.validate() == false) {
+            er = true;
+        }
+        if (txtNameOperator.validate() == false) {
+            er = true;
+        }
+        if (txtStartYear.validate() == false) {
+            er = true;
+        }
+        if (txtEndYear.validate() == false) {
+            er = true;
+        }
+        if (txtValue.validate() == false) {
+            er = true;
+        }
+        if (txtAmount.validate() == false) {
+            er = true;
+        }
+        if (txtEtebar.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+        else
+            ServiceInfo = {
+                fldId: '@ViewBag.CodingTarh_KhedmatId',
+                fldCodingBudjeId: '@ViewBag.BudgetCodingId',
+                fldEtebarTypeId: CboTypeEtebar.getValue(),
+                fldTypeMasrafId: CboTypeMasraf.getValue(),
+                fldOrganId: CboOrganName.getValue(),
+                fldAddress: txtAdress.getValue(),
+                fldHoghoghiId: fldHoghoughiId.getValue(),
+                fldHaghighiId: fldHaghighiId.getValue(),
+                fldStartYear: txtStartYear.getValue(),
+                fldEndYear: txtEndYear.getValue(),
+                fldValue: txtValue.getValue(),
+                NameOperator: txtNameOperator.getValue(),
+                fldPriceVahed: txtAmount.getValue().replace(",", "").replace(",", "").replace(",", "").replace(",", "").replace(",", ""),
+                fldKolEtebar: txtEtebar.getValue().replace(",", "").replace(",", "").replace(",", "").replace(",", "").replace(",", "")
+            };
+        App.KhedmatDetail.destroy();
+    }
+
+    var addKeyMapKhedmatDetail = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.KhedmatDetail.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        FillKhedmatArray();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }
+            }]
+        });
+    };
+</script>
+

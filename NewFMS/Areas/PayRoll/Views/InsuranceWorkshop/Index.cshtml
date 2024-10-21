@@ -1,0 +1,392 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_InsuranceWorkshop>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("InsuranceWorkshop")
+        .Title("ثبت کارگاه بیمه")
+            .Listeners(li => { li.AfterRender.Handler = "InsuranceWorkshopSetSize();"; li.Render.Fn = "addKeyMapInsuranceWorkshop"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                .Listeners(l => { l.Click.Handler = "SaveInsuranceWorkshop();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadInsuranceWorkshop();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteInsuranceWorkshop();"; })
+                , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpInsuranceWorkshop();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.InsuranceWorkshop.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("اطلاعات کارگاه بیمه").Height(130)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                        X.Label("سازمان:"),
+                        X.ComboBox()
+                                    .ItemID("CboOrgan")
+                                    .TypeAhead(true)
+                                   // .ColSpan(3)
+                                    .AutoFocus(true)
+                                    .Editable(true)
+                                         .QueryMode(DataLoadMode.Local)
+                                                .TriggerAction(TriggerAction.All)
+                                        .BlankText("لطفا سازمان را انتخاب کنید.")
+        //.Listeners(l => l.AfterRender.Handler = "setSizeCboOrgan()")
+                                                .Listeners(l => l.Change.Handler = "ChangeCboOrgan()")
+                                        .AllowBlank(false)
+                                    .ForceSelection(true)
+                                        .DisplayField("fldTitle")
+                                    .ValueField("fldId")
+                                        .EmptyText("سازمان ...")
+                                    //.Width(375)
+                                    .Store(X.Store()
+                                    .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                        new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                            )
+                                                )
+                                    .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetOrgan"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                                    )
+                        .Listeners(l => l.Load.Handler = "setdefaultValueCost()")
+                                            ),
+                         X.Label("نام کارگاه بیمه:"),
+                       X.TextField()
+                        .ItemID("txtWorkShopName")
+                        .AllowBlank(false)
+                        .MaxLength(100)
+                        .EnforceMaxLength(true)
+                        .BlankText("لطفا نام کارگاه را وارد کنید.")
+                        .AutoFocus(true)
+                        , X.Label("شماره کارگاه:")
+                        , X.TextField()
+                        .ItemID("txtWorkShopNum")
+                        .AllowBlank(false)
+                        .BlankText("لطفا شماره کارگاه را وارد کنید.")
+                        .Plugins(X.InputMask()
+                        .Mask("AAAAAAAAAA")
+                        .UnmaskOnBlur(true)
+                        .ClearWhenInvalid(true)
+                        .MaskSymbols(ls =>
+                        {
+                            ls.Add(new MaskSymbol { Name = "A", Regex = "[0-9]", Placeholder = "_".ToCharArray()[0] });
+                        })
+                            )
+                        , X.Label("نام کارفرما:")
+                        , X.TextField()
+                        .ItemID("txtEmployerName")
+                        .MaxLength(100)
+                        .EnforceMaxLength(true)
+                        .AllowBlank(false)
+                        .BlankText("لطفا نام کارفرما را وارد کنید.")
+                        , X.Label("درصد حق بیمه:")
+                        , X.TextField()
+                        .ItemID("txtPersent")
+                        .MaskRe("/[0-9-.]/")
+                        .AllowBlank(false)
+                        .BlankText("لطفا درصد حق بیمه را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        , X.Label("ردیف پیمان:")
+                        , X.TextField()
+                        .ItemID("txtPeyman")
+                          .AllowBlank(true)
+                        .BlankText("لطفا بیمه پیمانکار را وارد کنید.")
+                        .Plugins(X.InputMask()
+                        .Mask("AAA")
+                        .UnmaskOnBlur(true)
+                        .ClearWhenInvalid(true)
+                        .MaskSymbols(ls =>
+                        {
+                            ls.Add(new MaskSymbol { Name = "A", Regex = "[0-9]", Placeholder = "_".ToCharArray()[0] });
+                        })
+                            )
+                            .ColSpan(3)
+                    , X.Label("آدرس:"),
+                        X.TextField()
+                        .ItemID("txtAddress")
+                    .ColSpan(5)
+                    .Width(600)
+                    , X.Label("توضیحات:"),
+                    X.TextField()
+                .ItemID("txtDesc")
+                    .ColSpan(5)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(600)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("InsuranceWorkshopGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.InsuranceWorkshop.queryById('InsuranceWorkshopGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .Parameters(ps => ps.Add(new StoreParameter("OrganId", "App.InsuranceWorkshop.queryById('CboOrgan').getValue()", ParameterMode.Raw)))
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.InsuranceWorkshop.queryById('InsuranceWorkshopGrid');grid.setHeight(App.PayWin.getHeight() - 340); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldWorkShopName).Text("نام کارگاه بیمه").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldWorkShopNum).Text("شماره کارگاه").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldEmployerName).Text("نام کارفرما").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldPersent).Text("درصد حق بیمه").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldPeyman).Text("بیمه پیمانکار").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldAddress).Text("آدرس").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.PayWin.addListener('resize', function () {
+        App.InsuranceWorkshop.setWidth(App.PayWin.getWidth());
+    });
+    App.PayWin.addListener('resize', function () {
+        var grid = App.InsuranceWorkshop.queryById('InsuranceWorkshopGrid');
+        grid.setHeight(App.PayWin.getHeight()-260);
+    });*/
+    function ChangeCboOrgan() {
+        if (App.InsuranceWorkshop.queryById('CboOrgan').getValue() != null) {
+            App.InsuranceWorkshop.queryById('InsuranceWorkshopGrid').store.load();
+        }
+    }
+  
+    function setdefaultValueCost() {
+        App.InsuranceWorkshop.queryById('CboOrgan').select(App.InsuranceWorkshop.queryById('CboOrgan').store.getAt(0));
+    }
+    function InsuranceWorkshopSetSize() {
+        App.InsuranceWorkshop.setWidth(App.PayWin.getWidth());
+        var grid = App.InsuranceWorkshop.queryById('InsuranceWorkshopGrid');
+        grid.setHeight(App.PayWin.getHeight() - 340);
+    }
+    function LoadInsuranceWorkshop() {
+        var SelectedRow = App.InsuranceWorkshop.queryById('InsuranceWorkshopGrid').selModel.getLastSelected();
+        var CboOrgan = App.InsuranceWorkshop.queryById('CboOrgan');
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/InsuranceWorkshop/Details',
+                params: {
+                    Id: SelectedRow.data.fldId,
+                    OrganId:CboOrgan.getValue()
+                },
+                success: function (data) {
+                    var txtWorkShopName = App.InsuranceWorkshop.queryById('txtWorkShopName');
+                    txtWorkShopName.setValue(data.fldWorkShopName);
+                    var txtWorkShopNum = App.InsuranceWorkshop.queryById('txtWorkShopNum');
+                    txtWorkShopNum.setValue(data.fldWorkShopNum);
+                    var txtEmployerName = App.InsuranceWorkshop.queryById('txtEmployerName');
+                    txtEmployerName.setValue(data.fldEmployerName);
+                    var txtPersent = App.InsuranceWorkshop.queryById('txtPersent');
+                    txtPersent.setValue(data.fldPersent);
+                    var txtAdres = App.InsuranceWorkshop.queryById('txtAddress');
+                    txtAdres.setValue(data.fldAddress);
+                    var txtPeyman = App.InsuranceWorkshop.queryById('txtPeyman');
+                    txtPeyman.setValue(data.fldPeyman);
+                    var txtDesc = App.InsuranceWorkshop.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.InsuranceWorkshop.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveInsuranceWorkshop() {
+        var txtWorkShopName = App.InsuranceWorkshop.queryById('txtWorkShopName');
+        var CboOrgan = App.InsuranceWorkshop.queryById('CboOrgan');
+        var txtWorkShopNum = App.InsuranceWorkshop.queryById('txtWorkShopNum');
+        var txtEmployerName = App.InsuranceWorkshop.queryById('txtEmployerName');
+        var txtPersent = App.InsuranceWorkshop.queryById('txtPersent');
+        var txtAddress = App.InsuranceWorkshop.queryById('txtAddress');
+        var txtPeyman = App.InsuranceWorkshop.queryById('txtPeyman');
+        var txtDesc = App.InsuranceWorkshop.queryById('txtDesc');
+        var fldId = App.InsuranceWorkshop.queryById('fldId');
+            var er = false;
+
+            if (txtWorkShopName.validate() == false) {
+                er = true;
+            }
+            if (txtWorkShopNum.validate() == false) {
+                alert("شماره کارگاه را وارد کنید.");
+                er = true;
+            }
+            if (txtEmployerName.validate() == false) {
+                er = true;
+            }
+            if (txtPersent.validate() == false) {
+                er = true;
+            }
+            if (txtPeyman.validate() == false) {
+                alert("ردیف پیمان را وارد کنید.");
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/InsuranceWorkshop/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldWorkShopName: txtWorkShopName.getValue(),
+                    fldWorkShopNum: txtWorkShopNum.getValue(),
+                    fldEmployerName: txtEmployerName.getValue(),
+                    fldPersent: txtPersent.getValue(),
+                    fldAddress: txtAddress.getValue(),
+                    fldPeyman: txtPeyman.getValue(),
+                    fldDesc: txtDesc.getValue(),
+                    fldOrganId: CboOrgan.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.InsuranceWorkshop.queryById('InsuranceWorkshopGrid').store.load();
+                    if (data.Er != 1)
+                        ClearInsuranceWorkshop();
+                }
+
+            });
+    }
+    function HelpInsuranceWorkshop() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/InsuranceWorkshop/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function DeleteInsuranceWorkshop() {        
+        var CboOrgan = App.InsuranceWorkshop.queryById('CboOrgan');
+        var SelectedRow = App.InsuranceWorkshop.queryById('InsuranceWorkshopGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/InsuranceWorkshop/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId,
+                                OrganId:CboOrgan.getValue()
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.InsuranceWorkshop.queryById('InsuranceWorkshopGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearInsuranceWorkshop() {
+        App.InsuranceWorkshop.queryById('fldId').setValue(0);
+        App.InsuranceWorkshop.queryById('txtWorkShopName').setValue("");
+        App.InsuranceWorkshop.queryById('txtWorkShopNum').setValue("");
+        App.InsuranceWorkshop.queryById('txtEmployerName').setValue("");
+        App.InsuranceWorkshop.queryById('txtPersent').setValue("");
+        App.InsuranceWorkshop.queryById('txtAddress').setValue("");
+        App.InsuranceWorkshop.queryById('txtPeyman').setValue("");
+        App.InsuranceWorkshop.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapInsuranceWorkshop = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+        var keyfield = App.InsuranceWorkshop.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtDesc") {
+            nextfld = App.InsuranceWorkshop.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

@@ -1,0 +1,208 @@
+﻿@model IEnumerable<NewFMS.Models.spr_SendToSecretariat>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+
+@(Html.X().Window().Modal(true)//.Listeners(li => { li.Render.Fn = "addKeyMapBox"; })
+.Width(400)//.Height(300)
+    .Title("ارسال به دبیرخانه")
+    .ID("SendToSecretariat")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+        .ButtonAlign(Alignment.Center)
+        .Buttons(
+            Html.X().Button()
+                .Text("ارسال")
+                .Icon(Ext.Net.Icon.Disk)
+                        .Listeners(l => l.Click.Handler = "SaveSendToSecretariat()"),
+            Html.X().Button()
+                .Text("خروج")
+                .Icon(Ext.Net.Icon.DoorOut)
+                        .Listeners(l => l.Click.Handler = "App.SendToSecretariat.destroy()")
+        )
+    .Items(
+            X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)//.Title("پوشه های شخصی")
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                .Defaults(new { Margin = 1 })
+                .Items(
+                X.Hidden().ItemID("fldId").Value(0),
+                 X.Label("دبیرخانه:"),
+                        X.ComboBox()
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboSecretariat")
+                            .Width(200)
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("Name")
+                            .ValueField("ID")
+                                     .Listeners(l => l.Change.Handler = "ChangeSecretariat()")
+                            .Store(
+                                X.Store()
+                                        .Listeners(l => l.Load.Handler = "setDefaultCboSecretariat();")
+                                    .Model(
+                                        X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                                new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                                    )
+                                        )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetSecretariat"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                     )
+                             ),
+                                X.TreePanel().ColSpan(2)
+                                     .ID("SecretariatTree")
+                                .Width(300)
+                                .Height(200)
+                                .AutoScroll(true)
+                                .UseArrows(true)
+                                .Border(false)
+                                .Store(
+                                    X.TreeStore().AutoLoad(false)
+                                        .Proxy(
+                                             X.AjaxProxy().Url(Url.Action("NodeLoadSendToSecretariat"))
+                                            .ActionMethods(l => l.Read = HttpMethod.POST)
+                                        )
+                                            .Model(
+                                            Html.X().Model()
+                                                .Fields(
+                                                        X.ModelField().Name(Model, m => m.CommisionId).Type(ModelFieldType.String),
+                                                        X.ModelField().Name(Model, m => m.fldStaffName).Type(ModelFieldType.String)
+                                                )
+                                        )
+                                    .Listeners(l =>
+                                    {
+                                        l.BeforeLoad.Fn = "GetParamSecretariatTree";
+                                    })
+                                )
+                                .Listeners(a =>
+                                {
+                                    a.ItemClick.Handler = "GetIdSecretariatTree(record)";
+                                    a.AfterRender.Handler = "App.SecretariatTree.expandAll();";
+                                    //a.Load.Handler = "App.TreeBox.expandAll();";
+                                })
+
+                                    .Root(Html.X().Node().NodeID("0").Text("کاربران دبیرخانه").Checked(null))
+                        )
+
+
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+        )
+)
+<script type="text/javascript">
+    var ReciverComId;
+    var GetParamSecretariatTree = function (store, operation, eOpts) {
+        var nodeId = operation.node.getId();
+        operation.params.nod = nodeId;
+        operation.params.SecretariatID = App.SendToSecretariat.queryById('CboSecretariat').getValue();
+    };
+    function setDefaultCboSecretariat() {
+        if (App.SendToSecretariat.queryById('fldId').getValue() == 0) {
+            App.SendToSecretariat.queryById("CboSecretariat").setValue(App.SendToSecretariat.queryById("CboSecretariat").store.getAt(0));
+        }
+    }
+    function GetIdSecretariatTree(record) {
+        ReciverComId = record.getId();
+
+    };
+    function ChangeSecretariat() {
+        App.SecretariatTree.store.load();
+    }
+
+    function SaveSendToSecretariat() {
+        var Id = App.SendToSecretariat.queryById('fldId');
+        var CboSecretariat = App.SendToSecretariat.queryById('CboSecretariat');
+        var Father = App.SecretariatTree;
+        var Checked = Father.getChecked();
+        if (Checked == []) { return; }
+        var Secretariat = new Array();
+        var er = false;
+        if (CboSecretariat.validate() == false) {
+            er = true;
+        }
+
+        for (var i = 0; i < Checked.length ; i++) {
+            FatherId = Checked[i];
+            Secretariat.push({
+                'CommisionId': FatherId.getId()
+            });
+        }
+        if (Secretariat == null) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک گزینه از ساختار درختی را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK,
+            });
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+
+
+        App.SendToSecretariat.body.mask("در حال ذخیره سازی");
+        
+
+        var data = {
+            checkedNodes: Secretariat,
+            LetterId: '@ViewBag.LetterID',
+            SourceId: '@ViewBag.SourceAssId',
+            SenderComId: '@ViewBag.CurrentComId',
+            secretriant: CboSecretariat.getValue()
+        };
+
+        $.ajax({
+            type: "POST",
+            url: '/Automation/SendToSecretariat/Send',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == 'ok') {
+                            if (data.Er != 1) {
+                                App.SendToSecretariat.destroy();
+                                App.SadereLetterWin.destroy();
+                            }
+                        }
+                    }
+                });
+                App.SendToSecretariat.body.mask().hide();
+                SearchSK();
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+
+        });
+    }
+    function ClearBox() {
+        App.SendToSecretariat.queryById('fldId').setValue(0);
+    }
+
+</script>

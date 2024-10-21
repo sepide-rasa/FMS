@@ -1,0 +1,258 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_WarrantyType>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+    .ID("WarrantyType")
+    .Title("انواع ضمانت نامه")
+    .Closable(true)
+    .Listeners(li => { li.AfterRender.Handler = "WarrantyTypeSetSize();"; li.Render.Fn = "addKeyMapWarrantyType"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => { l.Click.Handler = "SaveWarrantyType();"; }).ItemID("btnSave"),
+                X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "LoadWarrantyType();"; }),
+                X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteWarrantyType();"; }),
+                //X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpWarrantyType();"; }),
+                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.WarrantyType.destroy()")
+            )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Title("مشخصات ضمانت نامه")
+                            .Height(50)
+                            .Border(true)
+                            //.Width(920)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                        .Items(
+                            X.Hidden()
+                                .ItemID("fldId"),
+                            X.Label("عنوان:"),
+                            X.TextField()
+                            .ItemID("txtTitle")
+                            .AllowBlank(false)
+                            .BlankText("لطفا عنوان را وارد کنید.")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                            .AutoFocus(true),
+                            X.Label("توضیحات:"),
+                            X.TextField()
+                                .ItemID("txtDesc")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Width(380)
+                                .ColSpan(3)
+                        )
+                    )
+        ),
+        X.GridPanel()
+            .ItemID("WarrantyTypeGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.WarrantyType.queryById('WarrantyTypeGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+            .Plugins(X.FilterHeader().Remote(true))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان").Flex(5).Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(6).Wrap(true)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    
+    function WarrantyTypeSetSize() {
+        App.WarrantyType.setWidth(App.Win.getWidth());
+        App.WarrantyType.queryById('WarrantyTypeGrid').setHeight(App.Win.getHeight() - 260);
+    }
+
+    function LoadWarrantyType() {
+        var SelectedRow = App.WarrantyType.queryById('WarrantyTypeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/WarrantyType/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTitle = App.WarrantyType.queryById('txtTitle');
+                    txtTitle.setValue(data.fldName);
+                    var txtDesc = App.WarrantyType.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.WarrantyType.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveWarrantyType() {
+        var txtTitle = App.WarrantyType.queryById('txtTitle');
+        var txtDesc = App.WarrantyType.queryById('txtDesc');
+        var fldId = App.WarrantyType.queryById('fldId');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/WarrantyType/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldName: txtTitle.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.WarrantyType.queryById('WarrantyTypeGrid').store.load();
+                if (data.Er != 1)
+                    ClearWarrantyType();
+            }
+
+        });
+    }
+
+    function DeleteWarrantyType() {
+        var SelectedRow = App.WarrantyType.queryById('WarrantyTypeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/WarrantyType/Delete',
+                            params: {
+                                Id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                if (App.WarrantyType.queryById('fldId').getValue() == SelectedRow.data.fldId) {
+                                    ClearWarrantyType();
+                                }
+                                App.WarrantyType.queryById('WarrantyTypeGrid').store.load();                                
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearWarrantyType() {
+        App.WarrantyType.queryById('fldId').setValue(0);
+        App.WarrantyType.queryById('txtTitle').setValue("");
+        App.WarrantyType.queryById('txtDesc').setValue("");
+    }
+
+    function HelpWarrantyType() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/WarrantyType/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    var addKeyMapWarrantyType = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.WarrantyType.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        SaveWarrantyType();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

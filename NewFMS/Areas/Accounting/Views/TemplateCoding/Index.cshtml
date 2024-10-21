@@ -1,0 +1,347 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_TemplateName>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Panel()
+    .ID("TemplateName")
+    .Title("تعریف الگوی کدینگ")
+    .Closable(true)
+    .Listeners(li => { li.AfterRender.Handler = "TemplateNameSetSize();"; li.Render.Fn = "addKeyMapTemplateName"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l =>l.Click.Handler = "SaveTemplateName();"),
+                //X.Button()
+                //    .Text("راهنما")
+                //    .Icon(Ext.Net.Icon.Help)
+                //    .Listeners(l => l.Click.Handler = "HelpTemplateName();"),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.TemplateName.destroy()")
+            )
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Title("مشخصات الگو")
+                            .Height(70)
+                            .Border(true)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                            .Items(
+                                X.Hidden()
+                                    .ItemID("fldId"),
+                                X.Label("عنوان الگو:"),
+                                X.TextField()
+                                    .AutoFocus(true)
+                                    .ItemID("txtTemplateName")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا عنوان الگو را وارد کنید.")
+                                    .MaxLength(100)
+                                    .EnforceMaxLength(true),
+                                X.Label("نوع حسابداری:"),
+                                X.ComboBox()
+                                    .ItemID("CboAccountingType")
+                                    .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                    .TypeAhead(true)
+                                    .Editable(false)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا نوع حسابداری را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    //.Listeners(l => l.Change.Handler = "LoadGridAccountingLevel()")
+                                    .Store(X.Store()
+                                        .Listeners(l => l.Load.Handler = "setDefaultCboAccountingType()")
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetAccountingType"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                ),
+                            X.Label("توضیحات:"),
+                            X.TextField()
+                                .ItemID("txtDesc")
+                                .ColSpan(3)
+                                .Width(375)
+                        )
+                )
+        ),
+        X.GridPanel()
+            .ItemID("TemplateNameGrid")
+            .BottomBar(X.PagingToolbar())
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(
+                        X.Button()
+                            .Text("ویرایش")
+                            .Icon(Ext.Net.Icon.Pencil)
+                            .Listeners(l => { l.Click.Handler = "LoadTemplateName();"; }),
+                        X.Button()
+                            .Text("حذف")
+                            .Icon(Ext.Net.Icon.Delete)
+                            .Listeners(l => { l.Click.Handler = "DeleteTemplateName();"; }),
+                        Html.X().Button()
+                            .Text("تعریف ساختار الگو")
+                            .IconCls("treeIcon")
+                            .Listeners(l => l.Click.Handler = "DefineTemplateCoding();")
+                    )
+            )
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.TemplateName.queryById('TemplateNameGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+            .Plugins(X.FilterHeader().Remote(true))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان الگو").Flex(5),
+                Html.X().Column().DataIndex(Model, m => m.fldName_AccountingType).Text("نوع حسابداری").Flex(5),                
+                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(7)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+    )
+)
+<script type="text/javascript">
+
+    function setDefaultCboAccountingType() {
+        App.TemplateName.queryById('CboAccountingType').setValue(App.TemplateName.queryById('CboAccountingType').store.getAt(0));
+    }
+
+    function DeleteTemplateName() {
+        var SelectedRow = App.TemplateName.queryById('TemplateNameGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Accounting/TemplateCoding/Delete',
+                            params: {
+                                Id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                if (App.TemplateName.queryById('fldId').getValue() == SelectedRow.data.fldId) {
+                                    ClearTemplateName();
+                                }
+                                if (data.Er != 1) {
+                                    App.TemplateName.queryById('TemplateNameGrid').store.load();
+                                }
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearTemplateName() {
+        App.TemplateName.queryById('fldId').setValue(0);
+        App.TemplateName.queryById('txtTemplateName').setValue("");
+        App.TemplateName.queryById('txtDesc').setValue("");
+    }
+
+    function TemplateNameSetSize() {
+        App.TemplateName.setWidth(App.AccountingWin.getWidth());
+        App.TemplateName.queryById('TemplateNameGrid').setHeight(App.AccountingWin.getHeight() - 209);
+    }
+
+    function LoadTemplateName() {
+        var SelectedRow = App.TemplateName.queryById('TemplateNameGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/TemplateCoding/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTemplateName = App.TemplateName.queryById('txtTemplateName');
+                    txtTemplateName.setValue(data.fldName);
+                    var CboAccountingType = App.TemplateName.queryById('CboAccountingType');
+                    CboAccountingType.setValue(data.fldAccountingTypeId);
+                    var txtDesc = App.TemplateName.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.TemplateName.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DefineTemplateCoding() {
+        var SelectedRow = App.TemplateName.queryById('TemplateNameGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/TemplateCoding/TemplateCoding',
+                params: {
+                    fldTemplateId: SelectedRow.data.fldId,
+                    fldAccountingTypeId: SelectedRow.data.fldAccountingTypeId,
+                    fldTemplateName: SelectedRow.data.fldName
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveTemplateName() {
+        var txtTemplateName = App.TemplateName.queryById('txtTemplateName');
+        var CboAccountingType = App.TemplateName.queryById('CboAccountingType');
+        var txtDesc = App.TemplateName.queryById('txtDesc');
+        var fldId = App.TemplateName.queryById('fldId');
+        var er = false;
+
+        if (txtTemplateName.validate() == false) {
+            er = true;
+        }
+        if (CboAccountingType.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/TemplateCoding/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldName: txtTemplateName.getValue(),
+                fldAccountingTypeId: CboAccountingType.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.TemplateName.queryById('TemplateNameGrid').store.load();
+                if (data.Er != 1)
+                    ClearTemplateName();
+            }
+        });
+    }
+
+    /*function HelpTemplateName() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/TemplateCoding/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }*/
+
+    var addKeyMapTemplateName = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.TemplateName.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        SaveTemplateName();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

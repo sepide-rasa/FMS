@@ -1,0 +1,118 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_ParvandeInfo>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+@(Html.X()
+    .Window()
+    .Modal(true)
+    .Width(650)
+    .Title("انتخاب مجری")
+    .Listeners(l => l.Destroy.Handler = "SetFocusKhedmat()")
+    .ID("ListOperator")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)    
+    .Layout(LayoutType.Fit)
+    .Resizable(false)
+    .Items(
+        X.GridPanel()
+            .AutoScroll(true)
+            .ItemID("GridOperator")
+            .Width(626)
+            .Height(330)
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(
+                        Html.X().Button()
+                            .Text("انتخاب")
+                            .Icon(Icon.NextGreen)
+                            .Listeners(l => l.Click.Handler = "SetOperator()")
+                    )
+            )
+            .BottomBar(X.PagingToolbar())
+            .Listeners(l=>l.ViewReady.Handler="ManageGridOperator()")
+            .Store(
+                X.StoreForModel()
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("ReadOperator"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                                .ExtraParams(l => l.Add(new { Type = ViewBag.Type, Year = ViewBag.Year }))
+                    )
+                    .PageSize(10)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+            )
+            .ViewConfig(X.GridView().LoadingText("در حال بارگذاری...").RTL(true).Listeners(l => l.ItemKeyDown.Fn = "SettxtFilewithKey"))
+            .Listeners(a => a.ItemDblClick.Handler = "SetOperator();")
+            .Plugins(X.FilterHeader().Remote(true))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldName).ID("ColName_File").Text("نام و نام خانوادگی").Flex(6).Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کد ملی").ID("ColCodemeli_File").Flex(3)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+    )
+)
+<script type="text/javascript">
+    function SetFocusKhedmat() {
+        App.KhedmatDetail.queryById("txtStartYear").focus();
+    }
+
+    function ManageGridOperator() {
+        if ('@ViewBag.Type' == 1) {
+            App.ColName_File.setText("نام و نام خانوادگی");
+            App.ColCodemeli_File.setText("کد ملی");
+        }
+        else {
+            App.ColName_File.setText("نام");
+            App.ColCodemeli_File.setText("شناسه ملی");
+        }
+    }
+
+    function SetOperator() {
+        var SelectedRow = App.ListOperator.queryById('GridOperator').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if ('@ViewBag.Type' == 1) {
+                App.KhedmatDetail.queryById("fldHaghighiId").setValue(SelectedRow.data.fldId);
+                App.KhedmatDetail.queryById("fldHoghoughiId").setValue(0);
+                App.KhedmatDetail.queryById("txtNameOperator").setValue(SelectedRow.data.fldName.split("(")[0]);
+                App.ListOperator.destroy();
+            }
+            else {
+                App.KhedmatDetail.queryById("fldHoghoughiId").setValue(SelectedRow.data.fldId);
+                App.KhedmatDetail.queryById("fldHaghighiId").setValue(0);
+                App.KhedmatDetail.queryById("txtNameOperator").setValue(SelectedRow.data.fldName.split("(")[0]);
+                App.ListOperator.destroy();
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    var SettxtFilewithKey = function (view, record, item, index, e) {
+        if (e.getKey() == 13) {
+            if ('@ViewBag.Type' == 1) {
+                App.KhedmatDetail.queryById("fldHaghighiId").setValue(record.data.fldId);
+                App.KhedmatDetail.queryById("fldHoghoughiId").setValue(null);
+            }
+            else {
+                App.KhedmatDetail.queryById("fldHoghoughiId").setValue(record.data.fldId);
+                App.KhedmatDetail.queryById("fldHaghighiId").setValue(null);
+            }
+            App.KhedmatDetail.queryById("txtNameOperator").setValue(record.data.fldName);
+            App.KhedmatDetail.destroy();
+        }
+    };
+</script>

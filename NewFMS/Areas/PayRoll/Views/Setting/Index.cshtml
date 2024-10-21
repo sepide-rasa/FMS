@@ -1,0 +1,656 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+<style>
+    td {
+        text-align: left;
+    }
+    #fieldsetB legend {
+        text-align: right;
+        font-family: Tahoma !important;
+    }
+    #fieldsetD legend {
+        text-align: right;
+        font-family: Tahoma !important;
+    }
+    .custom-SettingFormicon{
+        margin-right: 124px!important;
+    }
+    /*.x-rtl .x-textfield-icon {
+        margin-right: 122px;
+    }
+
+    .x-rtl .x-textfield-icon-input {
+        padding-right: 5.5px;
+    }*/
+</style>
+<script>
+    var ID = 5;
+</script>
+
+@(Html.X().Window()
+    .Closable(true)
+    .Border(false)
+    .Width(680)
+    .Modal(true)
+    .AutoScroll(true)
+    .CloseAction(CloseAction.Destroy)
+    .Title("تنظیمات")
+    .Layout(LayoutType.Fit)
+    .ButtonAlign(Alignment.Center)
+    .Listeners(li => {  li.AfterRender.Fn = "addKeyMapSettingForm"; })
+    .ID("SettingForm")
+    .Buttons(
+        Html.X().Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.ReportDisk)
+            .Listeners(l => l.Click.Handler = "SaveSettingg()"),
+        X.Button()
+             .Text("راهنما")
+             .Icon(Ext.Net.Icon.Help)
+             .Listeners(l => { l.Click.Handler = "HelpSettingg();"; }),
+        Html.X().Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.SettingForm.destroy();")
+        )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.Fit)
+                    .Items(
+                        X.FieldSet()
+                            .Border(true)
+                            .Title("تنظیمات برنامه")
+                            .PaddingSpec("0 7px 7px 7px")
+                            .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                            .Defaults(new { Margin = 2 })
+                            .Items(
+                                X.Hidden().ItemID("fldIdSetting"),
+                                X.Hidden().ItemID("fldPrs_PersonalId"),
+                                X.Hidden().ItemID("H_BankFixId"),
+                                X.Hidden().ItemID("B_BankFixId"),
+                                X.Hidden().ItemID("B_ShHesabId"),
+                                X.Hidden().ItemID("Sh_CheckId"),
+                                X.Label("سازمان:"),
+                                X.ComboBox()
+                                    .ItemID("CboOrgan")
+                                    .TypeAhead(true)
+                                    .ColSpan(3)
+                                    .AutoFocus(true)
+                                    .Editable(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .BlankText("لطفا سازمان را انتخاب کنید.")
+                                    .Listeners(l => l.Change.Handler = "loadSetting();")
+                                    .AllowBlank(false)
+                                    .ForceSelection(true)
+                                    .DisplayField("fldTitle")
+                                    .ValueField("fldId")
+                                    .EmptyText("سازمان ...")
+                                //.Width(250)
+                                    .Store(X.Store()
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")                                    
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetOrgan"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                        .Listeners(l => l.Load.Handler = "setdefaultValueSetting()")
+                                        ),
+                                X.Label("شـمــــاره حســـــــاب:").ItemID("lblSh_Check"),
+                                X.TextField()
+                                    .ItemID("txtSh_Check")
+                                    .MaxLength(20)
+                                    .AutoFocus(true)
+                                    .EnforceMaxLength(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا شماره حساب را وارد کنید.")
+                                    .ReadOnly(true)
+                                    .IconCls("ShomareHesab")
+                                    .FieldStyle("padding-right:6px;")    
+                                    .Listeners(li => li.AfterRender.Handler = "App.SettingForm.queryById('txtSh_Check').icon.dom.classList.add('custom-SettingFormicon');")
+                                    .DirectEvents(li =>
+                                    {
+                                        li.SpecialKey.Url = "/Comon/SearchShomareHesab/Index?State=4&AshkhasId=";
+                                        li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                        li.IconClick.Url = "/Comon/SearchShomareHesab/Index?State=4&AshkhasId=";
+                                    }),                                
+                                X.Label("بانک:").ItemID("lblBank"),
+                                X.TextField()
+                                    .ItemID("CboBank")
+                                    .ReadOnly(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا بانک را وارد کنید."),
+                                X.Label("نام شعبه:").ItemID("lblShobeName"),
+                                X.TextField()
+                                    .ItemID("txtShobeName")
+                                    .MaxLength(250)
+                                    .EnforceMaxLength(true)
+                                    .ReadOnly(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا شماره حساب را وارد کنید."),
+                                X.Label("کد شعبه:").ItemID("lblShobeCode"),
+                                X.TextField()
+                                    .ItemID("txtShobeCode")
+                                    .MaxLength(50)
+                                    .EnforceMaxLength(true)
+                                    .AllowBlank(false)
+                                    .ReadOnly(true)
+                                    .BlankText("لطفا کد شعبه را وارد کنید."),
+                                X.Label("کد سازمان:").ItemID("lblOrganCode"),
+                                X.TextField()
+                                    .ItemID("txtOrganCode")
+                                    .MaxLength(50)
+                                    .EnforceMaxLength(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا کد سازمان را وارد کنید."),                               
+                                X.Label("کـد ســـازمان دیسکــت پس انداز:").ItemID("lblCodeOrganP"),
+                                X.TextField()
+                                    .ItemID("txtCodeOrganP")
+                                    .MaxLength(50)
+                                    .EnforceMaxLength(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا کد سازمان پس انداز را وارد کنید."),
+                                    X.Label("بانک عامل پس انداز:").ItemID("lblBankP").Hidden(false)
+                             , X.ComboBox()
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboBankP")
+                                .TypeAhead(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .Editable(true)
+                                .TriggerAction(TriggerAction.All)
+                                .DisplayField("Name")
+                                .ValueField("ID")
+                                .EmptyText("بانک عامل پس انداز")
+                                .Listeners(ls =>
+                                        ls.Select.Handler = " App.SettingForm.queryById('cboShobeNameP').getStore().load();"
+                                        )
+                                    .Store(X.Store()
+                                    .Listeners(l => l.Load.Handler = "loadSetting();")
+                                    .Model(X.Model()
+                                        .IDProperty("ID")
+                                        .Fields(
+                                        new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                        new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                                .Url(Url.Action("GetBank"))
+                                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                                    )
+                                   
+                               ,X.Label("نام شعبه عامل پس انداز:").ItemID("lblShobeNameP").Hidden(false)
+                                , X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("cboShobeNameP")
+                                    .EmptyText("شعبه...")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا شعبه مورد نظر را انتخاب نمایید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("Name")
+                            .ValueField("ID")
+                            .Store(X.Store().AutoLoad(false)
+                                .Model(X.Model()
+                                    .IDProperty("fldCityId")
+                                    .Fields(
+                                        new ModelField("ID", ModelFieldType.String) { Mapping = "fldID" },
+                                        new ModelField("Name", ModelFieldType.String) { Mapping = "fldName" })
+                                        )
+                                .Proxy(X.AjaxProxy()
+                                .Url(Url.Action("GetShobe"))
+                                .Reader(X.JsonReader().Root("data")))
+                                .Parameters(ps => ps.Add(new StoreParameter("ID", "App.SettingForm.queryById('CboBankP').getValue()", ParameterMode.Raw)))
+                                                )
+                                .BlankText("لطفا شعبه عامل پس انداز را وارد  کنید."),   
+                                X.Label("کد دستگاه:").ItemID("lblCodeDastgah"),
+                                X.TextField()
+                                    .ItemID("txtCodeDastgah")
+                                    .MaxLength(50)
+                                    .EnforceMaxLength(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا کد دستگاه را وارد کنید."),
+                                Html.X().FieldSet()
+                                    .ColSpan(2)
+                                    .Border(false)
+                                    .PaddingSpec("0 0 0 165px")
+                                    .Defaults(new { Margin = 2 })
+                                    .Layout(LayoutType.Table)
+                                    .Items(
+                                        X.Checkbox().ItemID("chShowLogo"),
+                                        X.Label("نمایش آرم بانک در فیش")),   
+                                X.FieldSet()
+                                    .Border(true)
+                                    .ColSpan(4)
+                                    .ID("fieldsetD")
+                                    .Title("مربوط به اداره دارایی")
+                                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                                    .Defaults(new { Margin = 2 })
+                                    .Items(
+                                        X.Label("شمـاره پرونده(TFN):").ItemID("lblSh_Parvande"),
+                                        X.TextField()
+                                            .ItemID("txtSh_Parvande")
+                                            .MaxLength(50)
+                                            .PaddingSpec("0 0 0 80px")
+                                            .EnforceMaxLength(true)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا شماره پرونده را وارد کنید."),
+                                        X.Label("شماره اقتصادی(TIN):").ItemID("lblCodeEghtesadi"),
+                                        X.TextField()
+                                            .ItemID("txtCodeEghtesadi")
+                                            .MaxLength(250)
+                                            .EnforceMaxLength(true)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا شماره اقتصادی را وارد کنید."),
+                                        X.Label("نام:").ItemID("lblName"),
+                                        X.TextField()
+                                            .ItemID("txtName")
+                                            .Icon(Icon.UserAdd)
+                                            .FieldStyle("padding-right:6px;")
+                                            .AllowBlank(false)
+                                            .ReadOnly(true)
+                                            .DirectEvents(li =>
+                                            {
+                                                li.SpecialKey.Url = Url.Action("Index", "SearchPrsPersonalInfo", new { Area = "Personeli" });
+                                                li.SpecialKey.ExtraParams.Add(new Parameter("OrganId", "App.SettingForm.queryById('CboOrgan').getValue()", ParameterMode.Raw));
+                                                li.SpecialKey.ExtraParams.Add(new Parameter("State", "2", ParameterMode.Raw));
+                                                li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                                li.IconClick.Url = Url.Action("Index", "SearchPrsPersonalInfo", new { Area = "Personeli"});
+                                                li.IconClick.ExtraParams.Add(new Parameter("OrganId", "App.SettingForm.queryById('CboOrgan').getValue()", ParameterMode.Raw));
+                                                li.IconClick.ExtraParams.Add(new Parameter("State", "2", ParameterMode.Raw));
+                                            })
+                                            .Listeners(l =>l.AfterRender.Handler = "App.SettingForm.queryById('txtName').icon.dom.classList.add('custom-SettingFormicon');")
+                                            .BlankText("لطفا نام صاحب امضا را وارد کنید."),
+                                        X.Label("نـــام خانــــــــوادگی:").ItemID("lblFamily"),
+                                        X.TextField()
+                                            .ItemID("txtFamily")
+                                            .ReadOnly(true)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا نام خانوادگی صاحب امضا را وارد کنید."),
+                                        X.Label("کـــد مـــلی:").ItemID("lblCodeMeli"),
+                                        X.TextField()
+                                            .ItemID("txtCodeMeli")
+                                            .ReadOnly(true)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا کد ملی صاحب امضا را وارد کنید."),
+                                        X.Label("سمت:").ItemID("lblSemat"),
+                                        X.TextField()
+                                            .ItemID("txtSemat")
+                                            .ReadOnly(true)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا سمت صاحب امضا را وارد کنید.")
+                                    ),
+                                X.FieldSet()
+                                    .Border(true)
+                                    .ColSpan(4)
+                                    .ID("fieldsetB")
+                                    .Title("مربوط به سازمان بازنشستگی")
+                                    .PaddingSpec("0 0 0 40px")
+                                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                                    .Defaults(new { Margin = 2 })
+                                    .Items(
+                                        X.Label("شماره حساب:").ItemID("lblB_ShHesab"),
+                                        X.TextField()
+                                            .ItemID("txtB_ShHesab")
+                                            .MaxLength(20)
+                                            .PaddingSpec("0 0 0 120px")
+                                            .EnforceMaxLength(true)
+                                            .AllowBlank(false)
+                                            .FieldStyle("padding-right:6px;")    
+                                            .BlankText("لطفا شماره حساب را وارد کنید.")
+                                            .ReadOnly(true)
+                                            .IconCls("ShomareHesab")
+                                            .Listeners(l=>l.AfterRender.Handler=l.AfterRender.Handler = "App.SettingForm.queryById('txtB_ShHesab').icon.dom.classList.add('custom-SettingFormicon');")
+                                            .DirectEvents(li =>
+                                            {
+                                                li.SpecialKey.Url = "/Comon/SearchShomareHesab/Index?State=5&AshkhasId=";
+                                                li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                                li.IconClick.Url = "/Comon/SearchShomareHesab/Index?State=5&AshkhasId=";
+                                            }),
+                                        X.Label("بانک:").ItemID("lblBankB"),
+                                        X.TextField()
+                                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                                            .ItemID("CboB_Bank")
+                                            .ReadOnly(true)
+                                            //.TypeAhead(true)
+                                            //.Editable(false)
+                                            .AllowBlank(false)
+                                            //.PaddingSpec("0 0 0 60px")                                        
+                                            .BlankText("لطفا بانک را انتخاب کنید.")
+                                            .DirectEvents(li =>
+                                            {
+                                                li.SpecialKey.Url = "/Comon/SearchShomareHesab/Index?State=5&AshkhasId=";
+                                                li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                                li.IconClick.Url = "/Comon/SearchShomareHesab/Index?State=5&AshkhasId=";
+                                            }),
+                                        X.Label("شعـــبـه:").ItemID("lblB_ShobeName"),
+                                        X.TextField()
+                                            .ItemID("txtB_ShobeName")
+                                            .MaxLength(250)
+                                            .EnforceMaxLength(true)
+                                            .ReadOnly(true)
+                                            .AllowBlank(false)
+                                            .PaddingSpec("0 0 0 120px")
+                                            .DirectEvents(li =>
+                                            {
+                                                li.SpecialKey.Url = "/Comon/SearchShomareHesab/Index?State=5&AshkhasId=";
+                                                li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                                li.IconClick.Url = "/Comon/SearchShomareHesab/Index?State=5&AshkhasId=";
+                                            })
+                                            .BlankText("لطفا نام شعبه را وارد کنید."),
+                                        X.Label("کد شناسایی:").ItemID("lblCodeShenasaee"),
+                                        X.TextField()
+                                            .ItemID("txtCodeShenasaee")
+                                            .MaxLength(50)
+                                            //.PaddingSpec("0 0 0 120px")
+                                            .EnforceMaxLength(true)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا کد شناسایی را وارد کنید.")
+                                    )
+                            )
+                        )
+            )
+    )
+)
+
+<script type="text/javascript">
+    function setdefaultValueSetting() {
+        App.SettingForm.queryById('CboOrgan').select(App.SettingForm.queryById('CboOrgan').store.getAt(0));
+    }
+    function loadSetting() {
+        if (App.SettingForm.queryById('CboOrgan').validate()) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/Setting/Details',
+                params: {
+                    OrganId: App.SettingForm.queryById('CboOrgan').getValue()
+                },
+                success: function (data) {
+                    var CboBank = App.SettingForm.queryById('CboBank');
+                    CboBank.setValue(data.NameBankHoghoogh);
+
+                    var txtShobeName = App.SettingForm.queryById('txtShobeName');
+                    txtShobeName.setValue(data.H_NameShobe);
+
+                    var CboBankP = App.SettingForm.queryById('CboBankP');
+                    CboBankP.setValue(data.fldP_BankFixId);
+                    App.SettingForm.queryById('cboShobeNameP').getStore().load();
+                    var cboShobeNameP = App.SettingForm.queryById('cboShobeNameP');
+                    cboShobeNameP.setValue(data.fldP_ShobeId);
+
+                    var txtShobeCode = App.SettingForm.queryById('txtShobeCode');
+                    txtShobeCode.setValue(data.H_CodeShobe);
+
+                    var txtOrganCode = App.SettingForm.queryById('txtOrganCode');
+                    txtOrganCode.setValue(data.H_CodeOrgan);
+
+                    var txtSh_Check = App.SettingForm.queryById('txtSh_Check');
+                    txtSh_Check.setValue(data.Sh_HesabCheck);
+
+                    var txtCodeOrganP = App.SettingForm.queryById('txtCodeOrganP');
+                    txtCodeOrganP.setValue(data.CodeOrganPasAndaz);
+
+                    var txtCodeDastgah = App.SettingForm.queryById('txtCodeDastgah');
+                    txtCodeDastgah.setValue(data.CodeDastgah);
+
+                    var txtName = App.SettingForm.queryById('txtName');
+                    txtName.setValue(data.fldName);
+
+                    var txtFamily = App.SettingForm.queryById('txtFamily');
+                    txtFamily.setValue(data.Family);
+
+                    var txtCodeMeli = App.SettingForm.queryById('txtCodeMeli');
+                    txtCodeMeli.setValue(data.Codemeli);
+
+                    var txtSemat = App.SettingForm.queryById('txtSemat');
+                    txtSemat.setValue(data.PostOrganName);
+
+                    var txtSh_Parvande = App.SettingForm.queryById('txtSh_Parvande');
+                    txtSh_Parvande.setValue(data.CodeParvande);
+
+                    var txtCodeEghtesadi = App.SettingForm.queryById('txtCodeEghtesadi');
+                    txtCodeEghtesadi.setValue(data.CodeEghtesadi);
+
+                    var CboB_Bank = App.SettingForm.queryById('CboB_Bank');
+                    CboB_Bank.setValue(data.BankName);
+
+                    var txtCodeShenasaee = App.SettingForm.queryById('txtCodeShenasaee');
+                    txtCodeShenasaee.setValue(data.B_CodeShenasaee);
+
+                    var txtB_ShHesab = App.SettingForm.queryById('txtB_ShHesab');
+                    txtB_ShHesab.setValue(data.B_ShomareHesab);
+
+                    var txtB_ShobeName = App.SettingForm.queryById('txtB_ShobeName');
+                    txtB_ShobeName.setValue(data.B_NameShobe);
+
+                    var chShowLogo = App.SettingForm.queryById('chShowLogo');
+                    chShowLogo.setValue(data.ShowBankLogo);
+
+                    var fldIdSetting = App.SettingForm.queryById('fldIdSetting');
+                    fldIdSetting.setValue(data.Id);
+
+                    var H_BankFixId = App.SettingForm.queryById('H_BankFixId');
+                    H_BankFixId.setValue(data.H_BankFixId);
+
+
+                    var B_BankFixId = App.SettingForm.queryById('B_BankFixId');
+                    B_BankFixId.setValue(data.B_BankFixId);
+
+                    var B_ShHesabId = App.SettingForm.queryById('B_ShHesabId');
+                    B_ShHesabId.setValue(data.B_ShHesabId);
+
+                    var Sh_CheckId = App.SettingForm.queryById('Sh_CheckId');
+                    Sh_CheckId.setValue(data.Sh_CheckId);
+
+                    var fldPrs_PersonalId = App.SettingForm.queryById('fldPrs_PersonalId');
+                    fldPrs_PersonalId.setValue(data.Prs_PersonalId);
+
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+
+    function SaveSettingg() {
+        var fldIdSetting = App.SettingForm.queryById('fldIdSetting');
+        var B_ShHesabId = App.SettingForm.queryById('B_ShHesabId');
+        var Sh_CheckId = App.SettingForm.queryById('Sh_CheckId');
+        var B_BankFixId = App.SettingForm.queryById('B_BankFixId');
+        var H_BankFixId = App.SettingForm.queryById('H_BankFixId');
+        var CboBank = App.SettingForm.queryById('CboBank');
+        var txtShobeName = App.SettingForm.queryById('txtShobeName');
+        var CboBankP = App.SettingForm.queryById('CboBankP');
+        var cboShobeNameP = App.SettingForm.queryById('cboShobeNameP');
+        var txtShobeCode = App.SettingForm.queryById('txtShobeCode');
+        var txtOrganCode = App.SettingForm.queryById('txtOrganCode');
+        var chShowLogo = App.SettingForm.queryById('chShowLogo');
+        var txtCodeEghtesadi = App.SettingForm.queryById('txtCodeEghtesadi');
+        var fldPrs_PersonalId = App.SettingForm.queryById('fldPrs_PersonalId');
+        var txtSh_Parvande = App.SettingForm.queryById('txtSh_Parvande');
+        var txtCodeOrganP = App.SettingForm.queryById('txtCodeOrganP');
+        var txtSh_Check = App.SettingForm.queryById('txtSh_Check');
+        var CboB_Bank = App.SettingForm.queryById('CboB_Bank');
+        var txtB_ShobeName = App.SettingForm.queryById('txtB_ShobeName');
+        var txtB_ShHesab = App.SettingForm.queryById('txtB_ShHesab');
+        var txtCodeShenasaee = App.SettingForm.queryById('txtCodeShenasaee');
+        var txtCodeDastgah = App.SettingForm.queryById('txtCodeDastgah');
+        var CboOrgan = App.SettingForm.queryById('CboOrgan');
+
+        var er = false;
+        if (CboBank.validate() == false) {
+            er = true;
+        }
+        else if (txtShobeName.validate() == false) {
+            er = true;
+        }
+        if (CboBankP.validate() == false) {
+            er = true;
+        }
+        else if (cboShobeNameP.validate() == false) {
+            er = true;
+        }
+        else if (txtShobeCode.validate() == false) {
+            er = true;
+        }
+        else if (txtOrganCode.validate() == false) {
+            er = true;
+        }
+        else if (txtCodeEghtesadi.validate() == false) {
+            er = true;
+        }
+        else if (txtSh_Parvande.validate() == false) {
+            er = true;
+        }
+        else if (txtCodeOrganP.validate() == false) {
+            er = true;
+        }
+        else if (txtSh_Check.validate() == false) {
+            er = true;
+        }
+        else if (CboB_Bank.validate() == false) {
+            er = true;
+        }
+        else if (txtB_ShobeName.validate() == false) {
+            er = true;
+        }
+        else if (txtB_ShHesab.validate() == false) {
+            er = true;
+        }
+        else if (txtCodeShenasaee.validate() == false) {
+            er = true;
+        }
+        else if (txtCodeDastgah.validate() == false) {
+            er = true;
+        }
+        else if (CboOrgan.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        /*var showLogo = false;
+        if (chShowLogo.getValue() == 1)
+            showLogo = true;*/
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: "/PayRoll/Setting/Save",
+            params: {
+                fldId: fldIdSetting.getValue(),
+                fldB_ShomareHesabId: B_ShHesabId.getValue(),
+                fldSh_HesabCheckId: Sh_CheckId.getValue(),
+                fldH_BankFixId: H_BankFixId.getValue(),
+                fldH_NameShobe: txtShobeName.getValue(),
+                fldH_CodeOrgan: txtOrganCode.getValue(),
+                fldH_CodeShobe: txtShobeCode.getValue(),
+                fldShowBankLogo: chShowLogo.getValue(),
+                fldCodeEghtesadi: txtCodeEghtesadi.getValue(),
+                fldPrs_PersonalId: fldPrs_PersonalId.getValue(),
+                fldCodeParvande: txtSh_Parvande.getValue(),
+                fldCodeOrganPasAndaz: txtCodeOrganP.getValue(),
+                fldSh_HesabCheck: txtSh_Check.getValue(),
+                fldB_BankFixId: B_BankFixId.getValue(),
+                fldB_NameShobe: txtB_ShobeName.getValue(),
+                fldB_ShomareHesab: txtB_ShHesab.getValue(),
+                fldB_CodeShenasaee: txtCodeShenasaee.getValue(),
+                fldCodeDastgah: txtCodeDastgah.getValue(),
+                fldP_BankFixId: CboBankP.getValue(),
+                fldP_ShobeFixId: cboShobeNameP.getValue(),
+                fldOrganId: CboOrgan.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    /*function SearchPrsPerson() {
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/SearchPrsPersonalInfo/Index',
+            params: {
+                State: 2
+            }
+        });
+    }*/
+    function HelpSettingg() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Setting/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    var addKeyMapSettingForm = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var nextfld;
+                    var keyfield;
+                    if (Ext.Element.getActiveElement().name == "") {
+                        keyfield = App.SettingForm.queryById("chShowLogo");
+                    }
+                    else {
+                        keyfield = App.SettingForm.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    }
+
+                    if (keyfield.itemId == "txtCodeDastgah") {
+                        nextfld = App.SettingForm.queryById("chShowLogo");
+                        nextfld.focus();
+                        return;
+                    }
+                    else if (keyfield.itemId == "chShowLogo") {
+                        nextfld = App.SettingForm.queryById("txtSh_Parvande");                        
+                    }
+                    else if (keyfield.itemId == "txtSemat") {
+                        nextfld = App.SettingForm.queryById("txtB_ShHesab");
+                    }
+                    else if (keyfield.itemId == "txtCodeShenasaee") {
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

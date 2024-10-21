@@ -1,0 +1,293 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_TemplateCoding>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+
+@(Html.X().Window()
+    .Width(830)
+    .Modal(true)
+    .ID("SelectTemplate")
+    .Title("انتخاب الگو")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l => l.Render.Fn = "addKeyMapSelectTemplate")
+    .Resizable(false)
+    .Border(false)
+    .ButtonAlign(Alignment.Center)
+    .Layout(LayoutType.VBox)
+    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+    .Buttons(
+        X.Button()
+            .Text("کپی")
+            .Icon(Icon.PageCopy)
+            .Listeners(l => l.Click.Handler = "SaveDefaultCoding()"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Icon.DoorOut)
+            .OnClientClick("App.SelectTemplate.destroy()")
+    )
+    .Items(
+        X.FieldSet()
+            .Border(true)
+            .Title("انتخاب الگو")
+        //.Layout(LayoutType.VBox)
+        //.LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Right })
+            .Layout(LayoutType.Table)
+            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+            .Defaults(new { Margin = 2 })
+            .Items(
+                X.Label("نوع حسابداری:"),
+                X.ComboBox()
+                    .ItemID("CboAccountingType")
+                    .DisplayField("fldName")
+                    .ValueField("fldId")
+                    .TypeAhead(true)
+                    .Editable(false)
+                    .AutoFocus(true)
+                    .AllowBlank(false)
+                    .BlankText("لطفا نوع حسابداری را انتخاب کنید.")
+                    .QueryMode(DataLoadMode.Local)
+                    .ForceSelection(true)
+                    .TriggerAction(TriggerAction.All)
+                    .Listeners(l =>
+                    {
+                        l.Select.Handler = "LoadCboTemplateName()";
+                        l.AfterRender.Handler = "App.SelectTemplate.queryById('CboAccountingType').validate();";
+                    })
+                    .Store(X.Store()
+        //.Listeners(l => l.Load.Handler = "setDefaultCboAccountingType2()")
+                        .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" },
+                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" }
+                            )
+                        )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetAccountingType"))
+                            .Reader(X.JsonReader().Root("data"))
+                        )
+                    ),
+                X.Label("الگو:"),
+                X.ComboBox()
+                    .ItemID("CboTemplateName")
+                    .DisplayField("fldName")
+                    .ValueField("fldId")
+                    .TypeAhead(true)
+                    .Editable(false)
+                    .AllowBlank(false)
+                    .BlankText("لطفا الگو را انتخاب کنید.")
+                    .QueryMode(DataLoadMode.Local)
+                    .ForceSelection(true)
+                    .TriggerAction(TriggerAction.All)
+                    .Width(200)
+                    .Listeners(l =>
+                    {
+                        l.AfterRender.Handler = "App.SelectTemplate.queryById('CboTemplateName').validate();";
+                        l.Select.Handler = "loadTree()";
+                    })
+                    .Store(X.Store()
+                        .AutoLoad(false)
+                        .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                            )
+                        )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetTemplate"))
+                            .Reader(X.JsonReader().Root("data"))
+                        )
+                        .Parameters(ps => ps.Add(new StoreParameter("AccountingTypeId", "App.SelectTemplate.queryById('CboAccountingType').getValue()", ParameterMode.Raw)))
+                        .Parameters(ps => ps.Add(new StoreParameter("Year", ViewBag.Year, ParameterMode.Raw)))
+                    )
+            ),
+        X.TreePanel()
+            .ID("TreeTemplateCoding_DaramadCode")
+            .AutoScroll(true)
+            .Frame(true)
+            .Title("ساختار درختی الگوی کدینگ")
+            .Width(800)
+            .ColSpan(6)
+            .Margin(5)
+            .TitleAlign(TitleAlign.Right)
+            .UseArrows(true)
+            .Border(true)
+            .Listeners(l =>
+            {
+                l.Render.Handler = "App.TreeTemplateCoding_DaramadCode.setHeight(Ext.getBody().getViewSize().height-220);";
+                l.AfterItemCollapse.Fn = "reloadTreeTemplateCoding_DaramadCode";
+            })
+            .Store(
+                Html.X().TreeStore()
+                    .Model(
+                        Html.X().Model()
+                            .Fields(
+                                X.ModelField().Name(Model, m => m.fldCode).Type(ModelFieldType.String),
+                                X.ModelField().Name(Model, m => m.fldItemId).Type(ModelFieldType.String),
+                                X.ModelField().Name(Model, m => m.fldName).Type(ModelFieldType.String),
+                                X.ModelField().Name(Model, m => m.fldLevelsAccountTypId).Type(ModelFieldType.String),
+                                X.ModelField().Name(Model, m => m.fldMahiyatId).Type(ModelFieldType.String),
+                                X.ModelField().Name(Model, m => m.fldName_LevelsAccountingType).Type(ModelFieldType.String),
+                                X.ModelField().Name(Model, m => m.fldPCod).Type(ModelFieldType.String),
+                                X.ModelField().Name(Model, m => m.fldDesc).Type(ModelFieldType.String),
+                                X.ModelField().Name(Model, m => m.fldTypeHesabId).Type(ModelFieldType.String)
+                            )
+                    )
+                    .Proxy(
+                        Html.X().AjaxProxy().Url(Url.Action("LoadTreeTemplateCoding_DaramadCode"))
+                    )
+                    .Listeners(l => l.BeforeLoad.Fn = "TreeTemplateCoding_DaramadCode")
+            )
+            .ColumnModel(
+                X.TreeColumn().Text("عنوان").DataIndex("fldName").Wrap(true).Flex(9)
+            )
+            .Root(Html.X().Node().NodeID("0").AttributesObject(new { fldName = "ساختار درختی الگو" }))
+        )
+)
+<script type="text/javascript">
+    function GotoNextInput(){
+        $('input.TmpCode').on('keydown', function (e) {
+            if (e.which === 13) {
+                var inputs = Array.prototype.slice.call(
+                    document.querySelectorAll('input.TmpCode')
+                );
+                const currInput = document.activeElement;
+                const currInputIndex = inputs.indexOf(currInput);
+                const nextinputIndex =(currInputIndex + 1) % inputs.length;
+                const input = inputs[nextinputIndex];
+                input.focus();
+            }            
+        });
+    }
+
+    function loadTree() {
+        App.TreeTemplateCoding_DaramadCode.store.getProxy().extraParams = {
+            "TemplateId": App.SelectTemplate.queryById('CboTemplateName').getValue()
+        };
+        if (App.TreeTemplateCoding_DaramadCode.getRootNode().isExpanded() == true) {
+            App.TreeTemplateCoding_DaramadCode.store.load();
+            App.TreeTemplateCoding_DaramadCode.collapseAll();
+        }
+        else {
+            App.TreeTemplateCoding_DaramadCode.expandAll();
+        }
+    }
+
+    var reloadTreeTemplateCoding_DaramadCode = function (record, value, htmlrec) {
+        if (value == 0) {            
+            App.TreeTemplateCoding_DaramadCode.expandAll();
+        }
+    };
+
+    var TreeTemplateCoding_DaramadCode = function (store, operation, eOpts) {       
+            operation.params.nod = operation.node.getId();
+            operation.params.HeaderId = '@ViewBag.HeaderId';        
+    };
+
+    function LoadCboTemplateName() {
+        if (App.SelectTemplate.queryById('CboAccountingType').validate()) {
+            App.SelectTemplate.queryById('CboTemplateName').store.load();
+        }
+    }
+
+    function SaveDefaultCoding() {
+        var CboAccountingType = App.SelectTemplate.queryById('CboAccountingType');
+        var CboTemplateName = App.SelectTemplate.queryById('CboTemplateName');
+        var CodingArray=new Array();
+        var er = false;
+
+        if (CboAccountingType.validate() == false) {
+            er = true;
+        }
+        if (CboTemplateName.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        var inputs = Array.prototype.slice.call(
+            document.querySelectorAll('input.TmpCode')
+        );
+
+        inputs.forEach(function (el) {
+            /*if (el.value != "") {*/
+                CodingArray.push({
+                    "fldDaramadCode": el.value,
+                    "fldTitle": el.id
+                });
+            /*}*/
+        });
+
+        var data = {
+            HeaderId: '@ViewBag.HeaderId',
+            TemplateNameId: CboTemplateName.getValue(),
+            AccountTypeId: CboAccountingType.getValue(),
+            details: CodingArray
+        };
+        Ext.net.Mask.show({ msg: 'در حال کپی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Accounting/Coding/CopyTemplate',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (result) {
+                var ic = Ext.MessageBox.INFO;
+                if (result.Er) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+            },
+            failure: function (result) {
+                alert("خطا");
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    var firsttt = 0;
+    var addKeyMapSelectTemplate = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9],
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    if (Ext.Element.getActiveElement().name == "") {
+                        if (firsttt == 0) {
+                            firsttt = 1;
+                            GotoNextInput();
+                        }
+                    }
+                    else {
+                        var keyfield = App.SelectTemplate.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        var nextfld;
+                        if (keyfield.itemId == "CboTemplateName") {
+                            var inputs = Array.prototype.slice.call(
+                                document.querySelectorAll('input.TmpCode')
+                            );
+                            inputs[0].focus();
+                        }
+                        else if (keyfield.itemId == "CboAccountingType") {
+                            nextfld = App.SelectTemplate.queryById("CboTemplateName");
+                            nextfld.focus();
+                            nextfld.selectText();
+                        }
+                    }
+                }
+            }]
+        });
+    };
+</script>

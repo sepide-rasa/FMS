@@ -1,0 +1,309 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_PayPersonalInfo>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+
+<br />
+@(Html.X().Panel()
+    .ID("PayPersonalInfo")
+    .Title("مشخصات پرسنل")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Listeners(l => l.AfterRender.Handler = "App.PayPersonalInfo.setHeight(App.PayWin.getHeight() - 170);")
+    .Layout(LayoutType.Fit)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.Fit)
+            .Height(270)
+            .AutoScroll(true)
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.GridPanel()
+                    .TopBar(
+                        Html.X().Toolbar()
+                        .Items(
+                            X.ComboBox()
+                                .ItemID("CboOrgan")
+                                .TypeAhead(true)
+                                .Editable(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .BlankText("لطفا سازمان را انتخاب کنید.")
+                                .Listeners(l => l.Change.Handler = "App.PayPersonalInfo.queryById('PayPersonalInfoGrid').store.load();")
+                                .AllowBlank(false)
+                                .ForceSelection(true)
+                                .DisplayField("fldTitle")
+                                .ValueField("fldId")
+                                .EmptyText("سازمان ...")
+                                .Width(250)
+                                .Store(X.Store()
+                                    .Model(X.Model()
+                                        .IDProperty("fldId")
+                                        .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetOrgan"))
+                                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                                    .Listeners(l => l.Load.Handler = "setdefaultValuePayPersonalInfo()")
+                                    ),
+                            X.Button().Text("جدید").Icon(Ext.Net.Icon.Add).Listeners(l => { l.Click.Handler = "NewPayPersonalInfo();"; }),
+                            X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "EditPayPersonalInfo();"; }),
+                            X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeletePayPersonalInfo();"; }),
+                            X.Button().Text("تغییر وضعیت").Icon(Ext.Net.Icon.ArrowRedo).Listeners(Li => Li.Click.Handler = "ChangeStatusPay()"),
+                            X.Button().Text("شماره حساب ها").Icon(Ext.Net.Icon.MoneyAdd).Listeners(Li => Li.Click.Handler = "ShomareHesabs()"),
+                            X.Button().Text("شماره حساب پس انداز").ItemID("btnPasandaz").Icon(Ext.Net.Icon.MoneyAdd).Listeners(Li => Li.Click.Handler = "ShomareHesabPasandaz()"),
+                            X.Button().Text("خروجی اکسل").Icon(Ext.Net.Icon.BookAdd)
+                    .DirectEvents(de =>
+                            {
+                                de.Click.Url = "/PayRoll/PayPersonalInfo/ExcelWin";
+                                de.Click.ExtraParams.Add(new Parameter("OrganId", "App.PayPersonalInfo.queryById('CboOrgan').getValue()", ParameterMode.Raw));
+                                de.Click.Before = "Ext.net.Mask.show({ msg : 'در حال بارگذاری...' });";
+                                de.Click.Success = "Ext.net.Mask.hide();";
+                            }),
+                                X.Button().Text("خروجی اکسل(آیتم های مشمول بیمه و مالیات)").Icon(Ext.Net.Icon.PageExcel).Listeners(l => l.Click.Handler = "ExcelBime()")
+                                , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                                    .Listeners(l => { l.Click.Handler = "HelpPayPersonal();"; })   
+                        )
+                        )
+                    .ItemID("PayPersonalInfoGrid")
+                    .BottomBar(X.PagingToolbar())
+                    .Height(190)
+                    .Listeners(l=>l.ItemClick.Handler="CheckPasandaz();")
+                    .Store(
+                        X.StoreForModel()
+                            .AutoLoad(false)
+                            .Listeners(l => l.DataChanged.Handler = "App.PayPersonalInfo.queryById('PayPersonalInfoGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                    )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                            .Parameters(ps => ps.Add(new StoreParameter("OrganId", "App.PayPersonalInfo.queryById('CboOrgan').getValue()", ParameterMode.Raw)))
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                            Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldEmployeeId).Text("کارمند").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldPrs_PersonalInfoId).Text("کد پرسنلی").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldName_Father).Text("نام و نام خانوادگی").Flex(4),
+                                Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کد ملی").Flex(4),
+                                Html.X().Column().DataIndex(Model, m => m.fldSh_Personali).Text("شماره پرسنلی").Flex(4),
+                                Html.X().Column().DataIndex(Model, m => m.fldStatusTitle).Text("وضعیت").Flex(4),
+                                Html.X().Column().DataIndex(Model, m => m.fldNoeEstekhdamTitle).Text("نوع استخدام").Flex(4),
+                                Html.X().Column().DataIndex(Model, m => m.fldNoeEstekhdamId).Text("نوع استخدام").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldShomareBime).Text("شماره بیمه").Flex(10)
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+            )
+        )
+)
+)
+<script>
+    function setdefaultValuePayPersonalInfo() {
+        App.PayPersonalInfo.queryById('CboOrgan').select(App.PayPersonalInfo.queryById('CboOrgan').store.getAt(0));
+    }
+    function HelpPayPersonal() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/PayPersonalInfo/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function  ExcelBime() { 
+        var SelectedRow = App.PayPersonalInfo.queryById('PayPersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            window.location.href = '@Url.Content("~/PayRoll/PayPersonalInfo/ExcelBime")' + '?PersonId=' + SelectedRow.data.fldPrs_PersonalInfoId;
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    App.PayWin.addListener('resize', function () {
+        var grid = App.PayPersonalInfo.queryById('PayPersonalInfoGrid');
+        App.PayPersonalInfo.setSize(App.PayWin.getWidth(), App.PayWin.getHeight() - 170);
+    });
+    function CheckPasandaz() {
+        var btnPasandaz = App.PayPersonalInfo.queryById('btnPasandaz');
+        var SelectedRow = App.PayPersonalInfo.queryById('PayPersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow.data.fldPasAndaz)
+            btnPasandaz.setDisabled(false);
+        else
+            btnPasandaz.setDisabled(true);
+    }
+    function ChangeStatusPay() {
+        var SelectedRow = App.PayPersonalInfo.queryById('PayPersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/ChangeStatus',
+                params: {
+                    id: SelectedRow.data.fldId,
+                    State: 2,
+                    OrganId: App.PayPersonalInfo.queryById('CboOrgan').getValue()
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ShomareHesabs() {
+        var SelectedRow = App.PayPersonalInfo.queryById('PayPersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/PayPersonalInfo/ShomareHesabsWin',
+                params: {
+                    id: SelectedRow.data.fldId,
+                    OrganId: App.PayPersonalInfo.queryById('CboOrgan').getValue()
+                }
+            });
+            Ext.net.Mask.hide();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    } 
+    function ShomareHesabPasandaz() {
+        var SelectedRow = App.PayPersonalInfo.queryById('PayPersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/PayPersonalInfo/ShomareHesabPasandazWin',
+                params: {
+                    id: SelectedRow.data.fldEmployeeId,
+                    OrganId: App.PayPersonalInfo.queryById('CboOrgan').getValue()
+                }
+            });
+            Ext.net.Mask.hide();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function NewPayPersonalInfo() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/PayPersonalInfo/New',
+            params: {
+                Id: 0,
+                OrganId: App.PayPersonalInfo.queryById('CboOrgan').getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function EditPayPersonalInfo() {
+        var SelectedRow = App.PayPersonalInfo.queryById('PayPersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/PayPersonalInfo/New',
+                params: {
+                    Id: SelectedRow.data.fldId,
+                    OrganId: App.PayPersonalInfo.queryById('CboOrgan').getValue()
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DeletePayPersonalInfo() {
+        var SelectedRow = App.PayPersonalInfo.queryById('PayPersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/PayRoll/PayPersonalInfo/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId,
+                                OrganId: App.PayPersonalInfo.queryById('CboOrgan').getValue()
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon:ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.PayPersonalInfo.queryById('PayPersonalInfoGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

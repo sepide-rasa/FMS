@@ -1,0 +1,57 @@
+﻿@using Ext.Net.MVC;
+@{
+    NewFMS.WCF_Daramad.DaramadService servic = new NewFMS.WCF_Daramad.DaramadService();
+    NewFMS.WCF_Common.CommonService servic_Com = new NewFMS.WCF_Common.CommonService();
+    NewFMS.WCF_Common.ClsError Err_Com = new NewFMS.WCF_Common.ClsError();
+    string IP = System.Web.HttpContext.Current.Request.ServerVariables["REMOTE_HOST"];
+    NewFMS.WCF_Daramad.ClsError Err = new NewFMS.WCF_Daramad.ClsError();
+    int fishid = 0, ElamAvarezId = 0;
+    fishid = Convert.ToInt32(ViewBag.FishId);
+    ElamAvarezId = Convert.ToInt32(ViewBag.ElamAvarezId);
+    var data = servic.GetAshkhas_Fish(ElamAvarezId, IP, out Err).Where(k => k.fldId == fishid).FirstOrDefault();
+    var pardakht = servic.GetPardakhtFishWithFilter("fldFishId",fishid.ToString(),1, IP, out Err).FirstOrDefault();
+    string Pardakhtsode = "0";
+    if (data.fldTarikhPardakht != "")
+    {        
+        Pardakhtsode = "1";
+        if (pardakht.fldNahvePardakhtId==9 || servic_Com.Permission(846, Convert.ToInt32(Session["OrganId"]), Session["Username"].ToString(), Session["Password"].ToString(), out Err_Com))
+       { 
+            Pardakhtsode = "0";
+        }
+    }
+}
+@(
+    //if(Pardakhtsode=="0"){
+        Html.X().Window()
+           .ID("PrintHokm")
+           .Modal(true)
+           .Width(925)
+           .Height(500)
+           .Title("پیش نمایش")
+           .AutoScroll(false)
+           .Closable(true)
+           .Maximized(true)
+           .CloseAction(Ext.Net.CloseAction.Destroy).Listeners(l => l.AfterRender.Handler = "LoadReport();")
+               .Html("<div id='prt' style='style='width: 100%;height: 100%;'></div>")
+//}
+  //  else
+    //{
+       //Html.X().Hidden().Listeners(l=>l.AfterRender.Handler="msg()")
+    //}
+)
+<script>
+    function LoadReport() {
+        if ("@Pardakhtsode" == "0") {
+            $('#prt').html("<center><object class='se-pre-con' style='width: 100%;height: 100%;border: 1px solid #ccc;' type='application/pdf' data='/AnnouncementComplications_Fish/GeneratePDFFish?FishId=" + @ViewBag.FishId + "&ElamAvarezId=" + @ViewBag.ElamAvarezId + "'></object></center>");
+            var a = $('object');
+            var h = App.PrintHokm.height;
+            a.height(h - 35);
+        }
+        else
+        {
+            $('#prt').html("<center style='color:red; padding-top: 50px;'>کاربر گرامی؛ بدلیل اینکه فیش مورد نظر پرداخت شده است امکان چاپ وجود ندارد.</center>");
+        }
+    }
+
+</script>
+

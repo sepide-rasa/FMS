@@ -1,0 +1,689 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_DocumentRecord_Header>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+@{
+    var X = Html.X();
+}
+<script>
+    var LinktoMain_Khazane = function (value, record) {
+        if (value == 0) { return '' };
+        if (record.record.data.fldModuleErsalId == 10)
+            return value;
+        var templateDoc = '<a href="#" onclick={0}>{1}</a>';
+        var fldId = String(record.record.data.fldPId);
+        var fldModuleErsalId = String(record.record.data.fldModuleErsalId);
+        var s = "GotoShowDocument_Khazane(" + fldId +","+fldModuleErsalId+ ","+value+");";       
+        return Ext.String.format(templateDoc, s,value);
+    };
+
+    var SetEmptyStatus = function (value, record) {
+        if (record.record.data.fldModuleErsalId ==4)
+            return "";
+        return value;
+    };
+/*var EditOrNot = function (value, record) {
+        if (value == 1 && record.record.data.fldAccept == 1) {
+            var template = "<img src='/Content/icons/Accounting/mini/قفل بسته.png' title='غیرقابل ویرایش' style='width:17px;height:17px;' />";
+            return template;
+        }
+        else {
+            var template = "<img src='/Content/icons/Accounting/mini/قفل باز.png' title='قابل ویرایش' style='width:17px;height:17px;' />";
+            return template;
+        }
+    };*/
+</script>
+<style>
+    .Coloring .x-grid-cell, .x-grid-rowwrap-div{
+        background-color:#F7D2AC !important;
+    }
+    .Coloring2 .x-grid-cell, .x-grid-rowwrap-div{
+        background-color:#FA9F96 !important;
+    }
+    #DocRegister_HeaderKhazaneGrid .x-column-header-text {
+        white-space: pre-wrap;
+        height: 30px !important;
+    }
+</style>
+@(Html.X().Panel()
+    .ID("DocRegister_HeaderKhazane")
+    .Title("ثبت سند")
+    .Closable(true)
+    .Listeners(li => li.AfterRender.Handler = "DocRegister_HeaderKhazaneSetSize();")
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.GridPanel()
+            .ID("DocRegister_HeaderKhazaneGrid")
+            .BottomBar(X.PagingToolbar())
+            .Listeners(l => l.Select.Handler = "CheckDocStatus_Khazane()")
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(
+                        X.Button()
+                            .Text("جدید")
+                            .Icon(Ext.Net.Icon.Add)
+                            .Listeners(l => l.Click.Handler = "NewDocRegister_Khazane();"),
+                        X.Button()
+                            .Text("ویرایش")
+                            .Icon(Ext.Net.Icon.Pencil)
+                            .ItemID("btnEdit")
+                            .Listeners(l => l.Click.Handler = "EditDocRegister_Khazane();"),
+                        X.Button()
+                            .Text("حذف")
+                            .Icon(Ext.Net.Icon.Delete)
+                            .ItemID("btnDelete")
+                            .Listeners(l => l.Click.Handler = "DeleteDocRegister_Khazane();"),
+                            X.SplitButton()
+                                .Text("چاپ سند")
+                                .Icon(Ext.Net.Icon.Printer)
+                                .ItemID("btnPrint")
+                                .Menu(
+                                    X.Menu()
+                                        .Items(
+                                            X.MenuItem()
+                                                .Text("افقی")
+                                                .Icon(Ext.Net.Icon.PageLandscape)
+                                                    .Listeners(l => l.Click.Handler = "PrintDocRegister_Khazane(1)"),
+                                            X.MenuItem()
+                                                .Text("عمودی")
+                                                .Icon(Ext.Net.Icon.PagePortrait)
+                                                    .Listeners(l => l.Click.Handler = "PrintDocRegister_Khazane(2)")
+                                        )
+                                ),
+                        X.Button()
+                            .Text("چاپ گروهی اسناد")
+                            .Icon(Ext.Net.Icon.Printer)
+                            .ItemID("btnPrint_Group")
+                            .Listeners(l => l.Click.Handler = "PrintDocRegister_GroupKhazane();"),
+                        X.Button()
+                            .Text("نمای کلی")
+                            .Icon(Ext.Net.Icon.ApplicationViewList)
+                                .Listeners(l => l.Click.Handler = "GotoGeneralView_Khazane();"),
+                        X.Button()
+                            .Text("مرتب سازی اسناد")
+                            .Icon(Ext.Net.Icon.TableSort)
+                            .Listeners(l => l.Click.Handler = "SortDocs_Khazane();"),
+                        X.Button()
+                            .Text("تأیید وارسال")
+                            .Icon(Ext.Net.Icon.ArrowUp)
+                            .ItemID("btnSend")
+                            .Listeners(l => l.Click.Handler = "SendtoAccounting();"),
+                        X.Button()
+                            .Text("بایگانی دیجیتال")
+                            .Icon(Ext.Net.Icon.FolderBookmark)
+                            .ItemID("btnArchive")
+                            .Listeners(l => l.Click.Handler = "KhazaneArchive();")
+                    )
+            )
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => {
+                        l.DataChanged.Handler = "App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').selModel.refresh();";
+                        l.Load.Handler=l.Load.Handler = "enableAllButtons_Khazane()";
+                    })
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                        .ExtraParams(l => l.Add(new { Year = @ViewBag.Year }))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+            )
+            .ViewConfig(
+                X.GridView()
+                    .GetRowClass(l => l.Fn = "SetColorRow_Khazane")
+                    .LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .Plugins(X.FilterHeader().Remote(true))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                //Html.X().Column().DataIndex(Model, m => m.fldType).Filterable(false).Text(" ").Renderer("EditOrNot").Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldDocumentNum).Text("شماره سند").Flex(2).Renderer("if(value==0){return ''}return value;"),
+                Html.X().Column().DataIndex(Model, m => m.fldAtfNum).Text("شماره عطف").Flex(2).Renderer("if(value==0){return ''}return value;"),
+                Html.X().Column().DataIndex(Model, m => m.ShomareRoozane).Text("شماره روزانه").Flex(2).Renderer("if(value==0){return ''}return value;"),
+                Html.X().Column().DataIndex(Model, m => m.fldArchiveNum).Text("شماره بایگانی").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldShomareFaree).Text("شماره فرعی").Flex(2).Renderer("if(value==0){return ''}return value;"),
+                Html.X().Column().DataIndex(Model, m => m.fldNameModule).Text("ماژول مرجع").Flex(2).Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldMainDocNum).Text("شماره سند در ماژول مرجع").Flex(3).Wrap(true).Renderer("LinktoMain_Khazane"),
+                Html.X().Column().DataIndex(Model, m => m.fldTypeSanadName).Text("نوع سند").Flex(2).Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldTypeSanadName_Pid).Text("وضعیت سند").Flex(2).Renderer("SetEmptyStatus").Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldTarikhDocument).Text("تاریخ سند").Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldDescriptionDocu).Text("شرح سند").Flex(10).Wrap(true)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+        )
+)
+<script type="text/javascript">
+
+    function GotoGeneralView_Khazane() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DocRegistration/GeneralView',
+            params: {
+                Year: '@ViewBag.Year',
+                ModuleId:10
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function GotoShowDocument_Khazane(fldId, fldModuleErsalId,FileId) {
+        if (fldModuleErsalId == 5) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/AnnouncementComplications_Fish/Print',
+                params: {
+                    FishId: FileId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else if (fldModuleErsalId ==12) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/instalments/PrintCheck',
+                params: {
+                    OrganId: '@ViewBag.OrganId',
+                    CheckId:FileId,
+                    FiscalYearId: '@ViewBag.FiscalYearId'
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/DocRegistration/Document',
+                params: {
+                    DocHeaderId: fldId,
+                    Year: '@ViewBag.Year',
+                    ModuleId: fldModuleErsalId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+
+    function SortDocs_Khazane() {
+        Ext.MessageBox.show({
+            title: "هشدار",
+            msg: "آیا جهت مرتب سازی اسناد مطمئن هستید؟",
+            icon: Ext.MessageBox.WARNING,
+            buttons: Ext.MessageBox.YESNO,
+            fn: function (btn) {
+                if (btn == 'yes') {
+                    Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Accounting/DocRegistration/SortDocs',
+                        params: {
+                            Year: '@ViewBag.Year',
+                            ModuleId:10
+                        },
+                        success: function (data) {
+                            App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').store.load();
+                            var ic = Ext.MessageBox.INFO;
+                            if (data.Er == 1)
+                                ic = Ext.MessageBox.ERROR;
+                            Ext.MessageBox.show({
+                                title: data.MsgTitle,
+                                msg: data.Msg,
+                                icon: ic,
+                                buttons: Ext.MessageBox.OK
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    function DocRegister_HeaderKhazaneSetSize() {
+        App.DocRegister_HeaderKhazane.setWidth(App.KhazanedariWin.getWidth());
+        App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').setHeight(App.KhazanedariWin.getHeight() - 170);
+    }
+
+    var SetColorRow_Khazane = function (record, rowIndex, rowParams, store) {        
+        if (record.data.fldTypeSanadName_Pid == "ارسال شده") {
+            return "Coloring2";
+        }
+        else if (record.data.fldModuleErsalId != 10) {
+            return "Coloring";
+        }
+    };
+
+    function SendtoAccounting() {        
+        var SelectedRow = App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا جهت تأیید و ارسال مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        if ('@ViewBag.Flag' == 1) {
+                            Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Khazanedari/RegisterDocs/GetRelatedDocs',
+                                params: {
+                                    Document_HeaderId: SelectedRow.data.fldId
+                                },
+                                success: function (data) {
+                                    if (data.RelatedDocIds == "") {
+                                        Ext.net.DirectMethod.request({
+                                            url: '/Khazanedari/RegisterDocs/SendToModule',
+                                            params: {
+                                                DocId: SelectedRow.data.fldId,
+                                                fldModuleErsalId: 10,
+                                                fldModuleSaveId: 4,
+                                                DocDate: ""
+                                            },
+                                            success: function (data) {
+                                                var ic = Ext.MessageBox.INFO;
+                                                if (data.Er == 1)
+                                                    ic = Ext.MessageBox.ERROR;
+                                                Ext.MessageBox.show({
+                                                    title: data.MsgTitle,
+                                                    msg: data.Msg,
+                                                    icon: ic,
+                                                    buttons: Ext.MessageBox.OK
+                                                });
+                                                Ext.net.Mask.hide();
+                                                App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').store.load();
+                                                if (App.DocRegister_Header != undefined)
+                                                    App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.load();
+                                            }
+                                        });
+                                    }
+                                    else {
+                                        Ext.net.Mask.hide();
+                                        Ext.MessageBox.show({
+                                            title: "هشدار",
+                                            msg: "آیا متمایلید سندهای مرتبط با سند انتخاب شده نیز ارسال گردند؟",
+                                            icon: Ext.MessageBox.WARNING,
+                                            buttons: Ext.MessageBox.YESNO,
+                                            fn: function (btn) {
+                                                if (btn == 'yes') {
+                                                    Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                                    Ext.net.DirectMethod.request({
+                                                        url: '/Khazanedari/RegisterDocs/SendToModule',
+                                                        params: {
+                                                            DocId: data.RelatedDocIds +","+SelectedRow.data.fldId,
+                                                            fldModuleErsalId: 10,
+                                                            fldModuleSaveId: 4,
+                                                            DocDate: ""
+                                                        },
+                                                        success: function (data) {
+                                                            var ic = Ext.MessageBox.INFO;
+                                                            if (data.Er == 1)
+                                                                ic = Ext.MessageBox.ERROR;
+                                                            Ext.MessageBox.show({
+                                                                title: data.MsgTitle,
+                                                                msg: data.Msg,
+                                                                icon: ic,
+                                                                buttons: Ext.MessageBox.OK
+                                                            });
+                                                            Ext.net.Mask.hide();
+                                                            App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').store.load();
+                                                            if (App.DocRegister_Header != undefined)
+                                                                App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.load();
+                                                        }
+                                                    });
+                                                }
+                                                else {
+                                                    Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                                    Ext.net.DirectMethod.request({
+                                                        url: '/Khazanedari/RegisterDocs/SendToModule',
+                                                        params: {
+                                                            DocId: SelectedRow.data.fldId,
+                                                            fldModuleErsalId: 10,
+                                                            fldModuleSaveId: 4,
+                                                            DocDate: ""
+                                                        },
+                                                        success: function (data) {
+                                                            var ic = Ext.MessageBox.INFO;
+                                                            if (data.Er == 1)
+                                                                ic = Ext.MessageBox.ERROR;
+                                                            Ext.MessageBox.show({
+                                                                title: data.MsgTitle,
+                                                                msg: data.Msg,
+                                                                icon: ic,
+                                                                buttons: Ext.MessageBox.OK
+                                                            });
+                                                            Ext.net.Mask.hide();
+                                                            App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').store.load();
+                                                            if (App.DocRegister_Header != undefined)
+                                                                App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.load();
+                                                        }
+                                                    });
+                                                }
+                                            }
+                                        });                                        
+                                    }
+                                }
+                            });                            
+                        }
+                        else {
+                            Ext.net.Mask.show({ msg: 'در حال بارگزاری...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Accounting/DocRegistration/DocDate',
+                                params: {
+                                    DocId: SelectedRow.data.fldId,
+                                    fldModuleErsalId: 10,
+                                    fldModuleSaveId: 4,
+                                    State: 3,
+                                    Year: '@ViewBag.Year'
+                                },
+                                success: function () {
+                                    Ext.net.Mask.hide();
+                                }
+                            });
+                        }
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function enableAllButtons_Khazane() {
+        App.DocRegister_HeaderKhazane.queryById('btnEdit').enable();
+        App.DocRegister_HeaderKhazane.queryById('btnDelete').enable();
+        App.DocRegister_HeaderKhazane.queryById('btnSend').enable();
+        App.DocRegister_HeaderKhazane.queryById('btnPrint').enable();
+    }
+
+    function CheckDocStatus_Khazane() {
+        var SelectedRow = App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').selModel.getLastSelected();       
+        if (SelectedRow.data.fldTypeSanad == 3) {/*سند اصلاحیه*/
+            App.DocRegister_HeaderKhazane.queryById('btnEdit').disable();
+            App.DocRegister_HeaderKhazane.queryById('btnDelete').disable();
+            App.DocRegister_HeaderKhazane.queryById('btnSend').disable();
+        }
+        else if (SelectedRow.data.fldModuleErsalId != 10) {
+            if (SelectedRow.data.fldTypeSanadName_Pid.includes("ارسال شده")) {
+                App.DocRegister_HeaderKhazane.queryById('btnEdit').disable();
+                App.DocRegister_HeaderKhazane.queryById('btnDelete').disable();
+                App.DocRegister_HeaderKhazane.queryById('btnSend').disable();
+            }
+            else if (SelectedRow.data.fldIsMap==1) {/*اگر سورس آیدی فیش یا چک توی جدول مپ بود*/
+                App.DocRegister_HeaderKhazane.queryById('btnEdit').disable();
+                App.DocRegister_HeaderKhazane.queryById('btnDelete').disable();
+                App.DocRegister_HeaderKhazane.queryById('btnSend').enable();
+            }   
+            else {
+                App.DocRegister_HeaderKhazane.queryById('btnEdit').disable();
+                App.DocRegister_HeaderKhazane.queryById('btnSend').enable();
+                App.DocRegister_HeaderKhazane.queryById('btnDelete').enable();
+            }
+        }
+        else {
+            Ext.net.DirectMethod.request({
+                url: '/Khazanedari/RegisterDocs/CheckStatus',
+                params: {
+                    DocId: SelectedRow.data.fldId,
+                    ModuleId: 10,
+                    Year: '@ViewBag.Year',
+                    fldPid: SelectedRow.data.fldPId
+                },
+                success: function (data) {                    
+                    if (SelectedRow.data.fldTypeSanadName_Pid.includes("مرجوع شده") && data.Status == false) {
+                        App.DocRegister_HeaderKhazane.queryById('btnEdit').disable();
+                        App.DocRegister_HeaderKhazane.queryById('btnDelete').disable();
+                        App.DocRegister_HeaderKhazane.queryById('btnSend').disable();
+                    }                    
+                    else if (data.Status) {/*سند اصلاحیه ثبت شده*/
+                        if (SelectedRow.data.fldFlag == 1) {/*آیدی دیتیل سند توی جدول مپ هست*/
+                            App.DocRegister_HeaderKhazane.queryById('btnEdit').disable();
+                            App.DocRegister_HeaderKhazane.queryById('btnDelete').enable();
+                            App.DocRegister_HeaderKhazane.queryById('btnSend').enable();
+                        }
+                        else {
+                            if (SelectedRow.data.fldEdit == 2) {/*سند اتومات ثبت شده*/
+                                App.DocRegister_HeaderKhazane.queryById('btnEdit').disable();
+                            }
+                            else {
+                                App.DocRegister_HeaderKhazane.queryById('btnEdit').enable();
+                            }
+                            App.DocRegister_HeaderKhazane.queryById('btnDelete').enable();
+                            App.DocRegister_HeaderKhazane.queryById('btnSend').enable();
+                        }
+                    }
+                    else {                        
+                        App.DocRegister_HeaderKhazane.queryById('btnEdit').disable();
+                        App.DocRegister_HeaderKhazane.queryById('btnDelete').disable();
+                        App.DocRegister_HeaderKhazane.queryById('btnSend').disable();                        
+                    }
+
+                    if (SelectedRow.data.fldType == 2) {
+                        App.DocRegister_HeaderKhazane.queryById('btnPrint').disable();
+                    }
+                    else {
+                        App.DocRegister_HeaderKhazane.queryById('btnPrint').enable();
+                    }
+                }
+            });
+        }
+    }
+
+    function PrintDocRegister_Khazane(Type) {
+        var SelectedRow = App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldType != 2) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Accounting/DocRegistration/PrintDocument',
+                    params: {
+                        DocHeaderId: SelectedRow.data.fldId,
+                        ModuleId:10,
+                        Type: Type,
+                        Year: '@ViewBag.Year'
+                    },
+                    success: function (data) {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function PrintDocRegister_GroupKhazane() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DocRegistration/PrintDocument_Group',
+            params: {
+                containerId: "FirstTabKhazanedari",
+                Year: '@ViewBag.Year',
+                ModuleId:10
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function DeleteDocRegister_Khazane() {
+        var SelectedRow = App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {            
+            Ext.net.DirectMethod.request({
+                url: '/Khazanedari/RegisterDocs/CheckDelAllowed',
+                params: {
+                    DocId: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    if(data.Status){
+                        Ext.MessageBox.show({
+                            title: "هشدار",
+                            msg: "آیا برای حذف مطمئن هستید؟",
+                            icon: Ext.MessageBox.WARNING,
+                            buttons: Ext.MessageBox.YESNO,
+                            fn: function (btn) {
+                                if (btn == 'yes') {                                    
+                                    Ext.net.DirectMethod.request({
+                                        url: '/Accounting/DocRegistration/DeleteHeader',
+                                        params: {
+                                            Id: SelectedRow.data.fldId,
+                                            Year: SelectedRow.data.fldYear,
+                                            ModuleId: 10,
+                                            fldModuleErsalId: SelectedRow.data.fldModuleErsalId
+                                        },
+                                        success: function (data) {
+                                            var ic = Ext.MessageBox.INFO;
+                                            if (data.Er == 1)
+                                                ic = Ext.MessageBox.ERROR;
+                                            Ext.MessageBox.show({
+                                                title: data.MsgTitle,
+                                                msg: data.Msg,
+                                                icon: ic,
+                                                buttons: Ext.MessageBox.OK
+                                            });
+                                            if (data.Er != 1) {
+                                                App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').store.load();
+                                            }
+                                            Ext.net.Mask.hide();
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
+                    else{
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "سند انتخاب شده به حسابداری ارسال شده وامکان حذف ندارد.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }        
+    }
+
+    function EditDocRegister_Khazane() {
+        var SelectedRow = App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Khazanedari/RegisterDocs/New',
+                params: {
+                    HeaderId: SelectedRow.data.fldId,
+                    FiscalYearId: '@ViewBag.FiscalYearId',
+                    Year: '@ViewBag.Year'
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function NewDocRegister_Khazane() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Khazanedari/RegisterDocs/New',
+            params: {
+                HeaderId: 0,
+                FiscalYearId: '@ViewBag.FiscalYearId',
+                Year: '@ViewBag.Year'
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function KhazaneArchive() {
+        var SelectedRow = App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldType == 1) {
+                if (SelectedRow.data.fldModuleErsalId == 10) {
+                    Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Accounting/DocRegistration/Archive',
+                        params: {
+                            HeaderId: SelectedRow.data.fldId
+                        },
+                        success: function () {
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "امکان ثبت فایل برای اسناد دریافتی از دیگر ماژولها وجود ندارد.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "امکان ثبت فایل برای یادداشت وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

@@ -1,0 +1,328 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_PcPosInfo>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+    .ID("PcPosInfo")
+    .Listeners(li =>{
+        li.AfterRender.Handler = "PcPosInfoSetSize();";
+        li.Render.Fn = "addKeyMapPcPosInfo"; 
+    })
+    .Title("تعیین شرکت PSP")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .ButtonAlign(Alignment.Center)
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Icon.Disk)
+                    .Listeners(li => li.Click.Handler = "SavePcPosInfo()"),
+                X.Button()
+                    .Text("ویرایش")
+                    .Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(Li => Li.Click.Handler = "LoadPcPosInfo()"),
+                X.Button()
+                    .Text("حذف")
+                    .Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l =>l.Click.Handler = "DeletePcPosInfo()"),
+                X.Button()
+                    .Text("راهنما")
+                    .Icon(Ext.Net.Icon.Help)
+                    .Listeners(l => { l.Click.Handler = "HelpPcPosInfo();"; }),
+
+                Html.X().Button()
+                    .Text("خروج")
+                    .Icon(Icon.DoorOut)
+                    .OnClientClick("App.PcPosInfo.destroy()")
+            )
+            .Items(
+                X.Hidden().ItemID("fldId"),
+                X.FieldSet()
+                    .Border(false)
+                    .Layout(LayoutType.Table)
+                    .PaddingSpec("10px 0 0 0")
+                    .Defaults(new { margin=2})
+                    .LayoutConfig(new TableLayoutConfig{Columns=4})
+                    .Items(
+                        X.Hidden().ItemID("SazmanId"),
+                        X.Label("سازمان:"),
+                        X.TextField()
+                            .ItemID("txtSazman")
+                            .FieldStyle("background-image:none;background-color:#dfe8f6")
+                            .ReadOnly(true),
+                        X.Label("شرکت PSP:"),
+                        X.ComboBox()
+                            .ItemID("CboBank")
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا شرکت PSP را انتخاب کنید.")
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .Width(250)
+                            .ValueField("fldId")
+                            .EmptyText("شرکت PSP ...")
+                            .Listeners(l => l.AfterRender.Handler = "App.PcPosInfo.queryById('CboBank').validate();")
+                            .AutoFocus(true)
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                            )
+                                    )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetPSPModel"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                    ),
+                    X.Label("توضیحات:"),
+                    X.TextField()
+                        .ColSpan(3)
+                        .Width(465)
+                        .ItemID("txtDesc")
+                    )
+                /*X.FieldSet()
+                    .Border(true)
+                    .Title("ساختار درختی سازمان")
+                    .ItemID("FieldsetOrgan")
+                    .Layout(LayoutType.Fit)
+                    .Items(
+                        X.TreePanel()
+                            .ID("OrganTreePcPosInfo")
+                            .AutoScroll(true)
+                            .UseArrows(true)
+                            .Border(false)
+                            .Store(
+                                Html.X().TreeStore()
+                                    .Proxy(
+                                        Html.X().AjaxProxy()
+                                            .Url(Url.Action("NodeLoadGroup"))
+                                        )
+                                     .Listeners(l => l.BeforeLoad.Fn = "GetParamTreeOrgan")
+                            )
+                            .Root(Html.X().Node().NodeID("0").Text("سازمان ها").Expanded(true))
+                         )*/
+            ),
+            X.GridPanel()
+                .AutoScroll(true)
+                .ItemID("PcPosInfoGrid")
+                .BottomBar(X.PagingToolbar())
+                .Store(
+                    X.StoreForModel()
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+
+                    )
+                    .PageSize(10)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                    .Listeners(l => l.DataChanged.Handler = "App.PcPosInfo.queryById('PcPosInfoGrid').selModel.refresh();")
+                )
+                .View(
+                    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                .Plugins(X.FilterHeader().Remote(true))
+                .ColumnModel(
+                    Html.X().RowNumbererColumn(),
+                    Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.fldPspId).Text("کد شرکت PSP").Hidden(true).Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.fldOrganId).Text("کد سازمان").Hidden(true).Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.fldPspName).Text("نام شرکت PSP").Flex(4),
+                    Html.X().Column().DataIndex(Model, m => m.fldOrganName).Text("نام سازمان").Flex(7),
+                    Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(8)
+                )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+                )
+    )
+)
+<script type="text/javascript">
+
+    /*var GetParamTreeOrgan = function (store, operation, eOpts) {
+        var nodeId = operation.node.getId();
+        operation.params.nod = nodeId;
+    };*/
+
+    function PcPosInfoSetSize() {
+        App.PcPosInfo.setWidth(App.DaramadWin.getWidth());
+        /*App.PcPosInfo.queryById("FieldsetOrgan").setSize(App.DaramadWin.getWidth() - 900, App.DaramadWin.getHeight() - 500);*/
+        App.PcPosInfo.queryById('PcPosInfoGrid').setHeight(App.DaramadWin.getHeight() - 275);
+        App.PcPosInfo.queryById('SazmanId').setValue('@ViewBag.OrganId');
+        App.PcPosInfo.queryById('txtSazman').setValue('@ViewBag.OrganName');
+    }
+
+    function SavePcPosInfo() {
+        var Id = App.PcPosInfo.queryById('fldId');
+        var CboBank = App.PcPosInfo.queryById("CboBank");
+        var txtDesc = App.PcPosInfo.queryById("txtDesc");
+        var SazmanId = App.PcPosInfo.queryById("SazmanId");
+        /*var SelectedRow = App.OrganTreePcPosInfo.getSelectionModel().getLastSelected(); */
+
+        var er = false;
+        if (CboBank.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/PcPosInfo/Save',
+            params: {
+                fldId: Id.getValue(),
+                fldPspId: CboBank.getValue(),
+                fldOrganId: SazmanId.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+                if (data.Er != 1) {
+                    App.PcPosInfo.queryById('PcPosInfoGrid').store.load();
+                    ClearPcPosInfo();
+                }
+            }
+        });
+    }
+    function HelpPcPosInfo() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/PcPosInfo/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function LoadPcPosInfo() {
+        var Row=App.PcPosInfo.queryById('PcPosInfoGrid').getSelectionModel().getLastSelected();
+        if (Row != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/PcPosInfo/Details',
+                params: {
+                    Id: Row.data.fldId
+                },
+                success: function (data) {
+                    App.PcPosInfo.queryById('fldId').setValue(data.fldId);
+                    App.PcPosInfo.queryById("CboBank").setValue(data.fldPspId);
+                    App.PcPosInfo.queryById("txtDesc").setValue(data.fldDesc);
+                    /*var record = App.OrganTreePcPosInfo.getStore().getNodeById(data.fldOrganId);
+                    App.OrganTreePcPosInfo.getSelectionModel().select(record);*/
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DeletePcPosInfo() {
+        var Row = App.PcPosInfo.queryById('PcPosInfoGrid').getSelectionModel().getLastSelected();
+        if (Row != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/PcPosInfo/Delete',
+                            params: {
+                                Id: Row.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1) {
+                                    ic = Ext.MessageBox.ERROR;
+                                }
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                if (data.Er != 1) {
+                                    if (App.PcPosInfo.queryById('fldId').getValue() == Row.data.fldId) {
+                                        ClearPcPosInfo();
+                                    }
+                                    App.PcPosInfo.queryById('PcPosInfoGrid').store.load();                                    
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearPcPosInfo() {
+        App.PcPosInfo.queryById('fldId').setValue(0);
+        App.PcPosInfo.queryById("CboBank").setValue("");
+        App.PcPosInfo.queryById('txtDesc').setValue("");
+        /*App.OrganTreePcPosInfo.getSelectionModel().clearSelections();
+        App.OrganTreePcPosInfo.getView().refresh();*/
+    }
+   
+    var addKeyMapPcPosInfo = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.PcPosInfo.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

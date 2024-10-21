@@ -1,0 +1,160 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(li => li.AfterRender.Handler = "LoadNezamVazife();")
+    .Width(560)
+    .Title("ثبت وضعیت نظام وظیفه")
+                    .ID("NewNezamVazife")
+                    .Resizable(false)
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+
+        .DefaultButton("btn")
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+               .Buttons(X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ToolTip("کلید میانبر F8")
+                           .Listeners(l =>
+                           {
+                               l.Click.Handler = "SaveNezamVazife();";
+
+                           })
+                           .ItemID("btnSave")
+                            ,
+                            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                                                .OnClientClick("App.NewNezamVazife.destroy();"))
+
+
+                .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                    .Defaults(new { Margin = 10 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                     X.TextField()
+                    .ItemID("txtTitle")
+                    .FieldLabel("عنوان")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                    .AutoFocus(true)
+                    , X.TextArea()
+                    .ItemID("txtDesc")
+                    .FieldLabel("توضیحات")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(160).ColSpan(3)
+
+                    //, X.Image().ItemID("Image").ImageUrl("~/Content/Blank.jpg").Width(90).Height(110).Border(true)
+        //.Align(System.Web.UI.WebControls.ImageAlign.Middle)
+
+
+                    //, X.Image().ItemID("ImageSign").ImageUrl("~/Content/Blank.jpg").Width(90).Height(110).Border(true)
+        //.Align(System.Web.UI.WebControls.ImageAlign.Middle)
+
+
+                        )
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+)
+        )
+)
+@(Html.X().KeyMap()
+                  .ID("NewNezamVazifeMap")
+                             .Target("={App.NewNezamVazife.getTargetEl()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("if(App.BasicInfTab.activeTab.id=='NezamVazife')SaveNezamVazife();")
+                );
+
+            }))
+
+
+
+<script type="text/javascript">
+    function LoadNezamVazife() {
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/NezamVazife/Details',
+                params: {
+                    id: '@ViewBag.Id'
+                },
+                success: function (data) {
+
+                    var txtTitle = App.NewNezamVazife.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var txtDesc = App.NewNezamVazife.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.NewNezamVazife.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                }
+            });
+        }
+    }
+
+    function SaveNezamVazife() {
+
+        var txtTitle = App.NewNezamVazife.queryById('txtTitle');
+        var txtDesc = App.NewNezamVazife.queryById('txtDesc');
+        var fldId = App.NewNezamVazife.queryById('fldId');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/NezamVazife/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldTitle: txtTitle.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.NezamVazife.queryById('GridNezamVazife').store.load();
+                if (data.Err == 0)
+                    ClearNezamVazife();
+            }
+
+        });
+    }
+    function ClearNezamVazife() {
+        App.NewNezamVazife.queryById('fldId').setValue(0);
+        App.NewNezamVazife.queryById('txtTitle').setValue("");
+        App.NewNezamVazife.queryById('txtDesc').setValue("");
+    }
+    function EnterNext() {
+        var keyfield = App.NewNezamVazife.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+
+    }
+</script>

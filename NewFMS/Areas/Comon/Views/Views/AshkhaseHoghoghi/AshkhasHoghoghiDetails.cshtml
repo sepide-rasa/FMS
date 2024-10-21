@@ -1,0 +1,291 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+<style>
+    td {
+        text-align: left;
+    }
+
+   /* .x-rtl .x-textfield-icon {
+        margin-right: 120px;
+    }
+
+    .x-rtl .x-textfield-icon-input {
+        padding-right: 3px;
+    }*/
+
+    #fieldsetfile legend {
+        text-align: right;
+        font-family: Tahoma !important;
+    }
+    .lblDaraei
+    {
+        color:red;
+    }
+</style>
+
+@(Html.X().Window()
+    .Listeners(l=>l.AfterRender.Handler="LoadAshkhaseHoghoghiDetails();")
+    .Closable(true)
+    .Listeners(l => l.BeforeRender.Handler = "hidelblHoghoghi();")
+    .CloseAction(CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Modal(true)
+    .Width(700)
+    .ID("NewAshkhasHoghoghiDetail")
+    .Title("ثبت اطلاعات تکمیلی")
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        Html.X().Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveAshkhaseHoghoghiDetails()"),
+        Html.X().Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => l.Click.Handler = "App.NewAshkhasHoghoghiDetail.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.PaddingSpec("4px 0 4px 0")
+            .Items(
+                Html.X().FieldSet()
+                    .Border(true)
+                    .Defaults(new { Margin = 2 })
+                    .Title("اطلاعات شخص حقوقی")
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                    .Items(
+                        X.Hidden()
+                            .ItemID("fldId"),
+                        X.Hidden()
+                            .ItemID("HoghoghiId"),
+                        X.FieldSet()
+                        .Layout(LayoutType.VBox)
+                        .Border(false)
+                        .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                        .ItemID("lblDaraei")
+                        .Items(
+                        X.Label("کاربر گرامی؛ برای چاپ گزارش فرم دارایی، میبایست اطلاعات تکمیلی مربوطه را وارد نمائید. ")
+                        .Cls("lblDaraei")
+                        )
+                        .ColSpan(6),
+                        X.Label("نام:"),
+                        X.TextField()
+                        .ItemID("txtname")
+                        .AllowBlank(false)
+                        .BlankText("لطفا نام را وارد کنید."),
+                            X.Label("").ItemID("lblNationalCode"),
+                        X.TextField()
+                            .ItemID("txtNationalCode"),
+                       
+                            X.Label("شماره ثبت:"),
+                        X.TextField()
+                            .ItemID("txtShomareSabt"),
+                        X.Label("کداقتصادی:"),
+                        X.TextField()
+                            .ItemID("txtCodeEghtesadi")
+                            .AllowBlank(true)
+                            .MaxLength(20)
+                            .MaskRe("[0-9]")
+                            .EnforceMaxLength(true)
+                            .BlankText("لطفا کداقتصادی را وارد کنید."),
+ 
+                        X.Label("کد پستی:"),
+                        X.TextField()
+                            .ItemID("txtCodePosti")
+                            .AllowBlank(true)
+                            .MinLength(10)
+                            .MaxLength(10)
+                            .EnforceMaxLength(true)
+                            .MaskRe("[0-9]")
+                            .BlankText("لطفا کد پستی را وارد کنید."),
+
+                            X.Label("شماره تلفن:"),
+                            X.TextField()
+                                .ItemID("txtPhone")
+                                .AllowBlank(true)
+                                .MinLength(11)
+                                .MaxLength(11)
+                                .EmptyText("02111111111")
+                                .EnforceMaxLength(true)
+                                    .MaskRe("[0-9]")
+                                .BlankText("لطفا شماره تلفن را وارد کنید."),
+
+                        X.Label("آدرس:"),
+                        X.TextArea()
+                            .ItemID("txtAddress")
+                            .AllowBlank(true)
+                            .BlankText("لطفا آدرس را وارد کنید."),
+                        X.Label("توضیحات:"),
+                        X.TextArea()
+                            .ItemID("txtDesc")
+                            .AllowBlank(true)
+        // .Width(410)
+        //   .ColSpan(3)
+                           
+            )
+            )
+    )
+)
+
+
+
+
+<script type="text/javascript">
+    var MojazUserImage = 0;
+    var sizeeUserImage = 0;
+    var EndUploadUserImage = false;
+    function hidelblHoghoghi() {
+        if ('@ViewBag.flag' == "1") {
+            App.NewAshkhasHoghoghiDetail.queryById('lblDaraei').show();
+        }
+        else {
+            App.NewAshkhasHoghoghiDetail.queryById('lblDaraei').hide();
+        }
+    }
+
+    function LoadAshkhaseHoghoghiDetails() {
+        
+        if ('@ViewBag.TypeShakhs' == 0)
+            App.NewAshkhasHoghoghiDetail.queryById('lblNationalCode').setText("شناسه ملی:");
+        else
+            App.NewAshkhasHoghoghiDetail.queryById('lblNationalCode').setText("کد فراگیر:");
+        
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/AshkhaseHoghoghi/DetailsAshkhaseHoghoghiDetail',
+            params: {
+                HoghoghiId: '@ViewBag.Id'
+            },
+            success: function (data) {
+                var HoghoghiId = App.NewAshkhasHoghoghiDetail.queryById('HoghoghiId');
+                HoghoghiId.setValue(data.fldAshkhaseHoghoghiId);
+                var txtname = App.NewAshkhasHoghoghiDetail.queryById('txtname');
+                txtname.setValue(data.fldName).setReadOnly(true);
+                txtname.setFieldStyle("background-image:none;background-color:#dfe8f6");
+                var txtShomareSabt = App.NewAshkhasHoghoghiDetail.queryById('txtShomareSabt');
+                txtShomareSabt.setValue(data.fldShomareSabt).setReadOnly(true);
+                txtShomareSabt.setFieldStyle("background-image:none;background-color:#dfe8f6");
+                var txtNationalCode = App.NewAshkhasHoghoghiDetail.queryById('txtNationalCode');
+                txtNationalCode.setValue(data.fldShenaseMelli).setReadOnly(true);
+                txtNationalCode.setFieldStyle("background-image:none;background-color:#dfe8f6");
+                var txtCodeEghtesadi = App.NewAshkhasHoghoghiDetail.queryById('txtCodeEghtesadi');
+                txtCodeEghtesadi.setValue(data.fldCodEghtesadi);
+                var txtAddress = App.NewAshkhasHoghoghiDetail.queryById('txtAddress');
+                txtAddress.setValue(data.fldAddress);
+                var txtCodePosti = App.NewAshkhasHoghoghiDetail.queryById('txtCodePosti');
+                txtCodePosti.setValue(data.fldCodePosti);
+                var txtPhone = App.NewAshkhasHoghoghiDetail.queryById('txtPhone');
+                txtPhone.setValue(data.fldShomareTelephone);
+                var txtDesc = App.NewAshkhasHoghoghiDetail.queryById('txtDesc');
+                txtDesc.setValue(data.fldDesc);
+                var Id = App.NewAshkhasHoghoghiDetail.queryById('fldId');
+                Id.setValue(data.fldId);
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SaveAshkhaseHoghoghiDetails() {
+        var txtname = App.NewAshkhasHoghoghiDetail.queryById('txtname');
+        var txtShomareSabt = App.NewAshkhasHoghoghiDetail.queryById('txtShomareSabt');
+        var txtNationalCode = App.NewAshkhasHoghoghiDetail.queryById('txtNationalCode');
+        var txtCodeEghtesadi = App.NewAshkhasHoghoghiDetail.queryById("txtCodeEghtesadi");
+        var txtCodePosti = App.NewAshkhasHoghoghiDetail.queryById('txtCodePosti');
+        var txtAddress = App.NewAshkhasHoghoghiDetail.queryById('txtAddress');
+        var txtPhone = App.NewAshkhasHoghoghiDetail.queryById('txtPhone');
+        var txtDesc = App.NewAshkhasHoghoghiDetail.queryById('txtDesc');
+        var HoghoghiId = App.NewAshkhasHoghoghiDetail.queryById('HoghoghiId');
+        var Id = App.NewAshkhasHoghoghiDetail.queryById('fldId');
+
+        var er = false;
+
+        if (txtCodeEghtesadi.validate() == false) {
+            er = true;
+        }
+        if (txtCodePosti.validate() == false) {
+            er = true;
+        }
+        if (txtPhone.validate() == false) {
+            er = true;
+        }
+        if (txtNationalCode.validate() == false) {
+            er = true;
+        }
+
+        if (er == true) {
+            return;
+        }
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+
+        Ext.net.DirectMethod.request({
+            url: '/Comon/AshkhaseHoghoghi/SaveAshkhaseHoghoghiDetail',
+            params: {
+                fldId: Id.getValue(),
+                fldName: txtname.getValue(),
+                fldShomareSabt: txtShomareSabt.getValue(),
+                fldShenaseMelli: txtNationalCode.getValue(),
+                fldAshkhaseHoghoghiId: HoghoghiId.getValue(),
+                fldCodEghtesadi: txtCodeEghtesadi.getValue(),
+                fldCodePosti: txtCodePosti.getValue(),
+                fldShomareTelephone: txtPhone.getValue(),
+                fldAddress: txtAddress.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+
+                }
+               
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == 'ok') {
+                            if (data.Er != 1) {
+                                if ('@ViewBag.flag' == "1") {
+                                    Ext.net.DirectMethod.request({
+                                        url: '/Daramad/AnnouncementComplications_Fish/PrintDaraei',
+                                        params: {
+                                            FishId: '@ViewBag.FishId',
+                                            ElamAvarezId: '@ViewBag.ElamAvarezId'
+                                        },
+                                        success: function () {
+                                            Ext.net.Mask.hide();
+                                        }
+                                    });
+                                }
+                                App.NewAshkhasHoghoghiDetail.destroy();
+                            }
+                        }
+                    }
+                });
+
+                Ext.net.Mask.hide();
+            }
+
+        });
+    }
+
+
+
+    function EnterNext() {
+        var keyfield = App.NewAshkhasHoghoghiDetail.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+
+        nextfld = keyfield.nextSibling().nextSibling();
+
+        nextfld.focus();
+        nextfld.selectText();
+    }
+</script>

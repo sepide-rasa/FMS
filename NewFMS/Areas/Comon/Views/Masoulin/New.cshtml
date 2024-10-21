@@ -1,0 +1,370 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_Masoulin_Detail>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window()
+    .Modal(true)
+    .Listeners(li => li.AfterRender.Handler = "LoadMasoulin();")
+    .Width(350)
+ //   .Height(300)
+    .Resizable(false)
+    .Title("ثبت مسئولین جدید")
+    .ID("NewMasoulin")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel()
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Border(false)
+            .KeyMap(Html.X().KeyMap()
+                .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+                .Binding(b =>
+                {
+                    b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                    .Handler("SaveMasoulin(); ")
+                    );
+
+                }))
+            .DefaultButton("btn")
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                    .ToolTip("کلید میانبر F8")
+                    .Listeners(l =>l.Click.Handler = "SaveMasoulin();")
+                    .ItemID("btnSave"),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .ToolTip("کلید میانبر Esc")
+                    .OnClientClick("App.NewMasoulin.destroy();")
+                    )   
+            .Items(
+                X.Panel()
+                    .ItemID("Panel")
+                    .Layout(Ext.Net.LayoutType.Table)
+                    .Border(false)
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                            X.Label("تاریخ اجرا:"),
+                        X.PDateField()
+                            .ItemID("txtTarikhEjra")
+                            //.FieldLabel("تاریخ اجرا")
+                            .MaskRe("[/0-9//]")
+                            .Width(250)
+                            .MaxLength(10)
+                            .EnforceMaxLength(true)
+                            .AutoFocus(true)
+                            .MsgTarget(Ext.Net.MessageTarget.Side)
+                            .AllowBlank(false)
+                            .Editable(false)
+                            .Listeners(l => l.Select.Handler = "LoadMasoulinDetail();")
+                            .BlankText("لطفا تاریخ اجرا را وارد کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Top),
+                             X.Label("ماژول:"),
+                        X.ComboBox()
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                         //   .FieldLabel("ماژول")
+                            .ItemID("CboModule_Org")
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .QueryMode(DataLoadMode.Local)
+                            .BlankText("لطفا ماژول را انتخاب کنید.")
+                            .TriggerAction(TriggerAction.All)
+                            .Listeners(l => l.Select.Handler = "LoadMasoulinDetail();")
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("...")
+                            .Width(250)
+//.SelectedItems(new { Value = "1" })
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                        )
+                                    )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetModule_Org"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+//.Listeners(li => li.DataChanged.Handler = "LoadModule_Org();")
+                                )
+                            .AllowBlank(false)
+                            /*,
+                        X.Panel()
+                            .Border(false)
+                            .Width(400)
+                            .Height(132)
+                            .Layout(LayoutType.Fit)
+                            .ColSpan(2)
+                            .Items(
+                                X.GridPanel()
+                                    .AutoScroll(true)
+                                    .ID("GridItem")
+                                    .ColumnWidth(0.6)
+                                    .Store(
+                                        X.StoreForModel())
+                                    .View(
+                                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+                                    
+                                    .ColumnModel(
+                                                Html.X().Column().DataIndex(Model, m => m.fldMasuolinId).Text("کد header").Hidden(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldOrderId).Text("ردیف").RTL(true).Flex(1),
+                                        Html.X().Column().DataIndex(Model, m => m.fldOrganId).Text("کد سازمان").Hidden(true).Hideable(false),
+                                        //Html.X().Column().DataIndex(Model, m => m.fldEmployeeId).Text("کد کارمند").Hidden(true).Hideable(false),
+                                        Html.X().Column().DataIndex(Model, m => m.fldNameEmployee).Text("نام ونام خانوادگی(Ins)").Flex(4)
+                                            .Editor(Html.X().TextField()
+                                                    .ItemID("txtName").ReadOnly(true)
+                                                  //  .Icon(Ext.Net.Icon.Add)
+                                                .Listeners(li =>
+                                                {
+                                                   // li.Focus.Handler = "ReadOnly();";
+                                                   // li.IconClick.Handler = "SearchEmployee(45);";
+                                                    li.SpecialKey.Handler = "SearchEmployee(e.getKey());";
+                                                })
+                                        ),
+                                        Html.X().Column().DataIndex(Model, m => m.fldNameOrgan).Text("پست سازمانی(Ins)").Flex(4)
+                                            .Editor(Html.X().TextField()
+                                                .ItemID("txtOrgan")
+                                               //     .Icon(Ext.Net.Icon.Add)
+                                               .ReadOnly(true)
+                                                .Listeners(li =>
+                                                {
+                                                    //li.Focus.Handler = "ReadOnly();";
+                                                    //li.IconClick.Handler = "SearchOrganization(45);";
+                                                    li.SpecialKey.Handler = "SearchOrganization(e.getKey());";
+                                                })
+                                                ))
+                                    .Plugins(
+                                        Html.X().CellEditing().ClicksToEdit(1)
+                                        )
+                                    .SelectionModel(
+                                        Html.X().RowSelectionModel()
+                                            .Mode(Ext.Net.SelectionMode.Single)
+                            )
+            )*/
+        )
+    ))
+    )
+
+<script type="text/javascript">
+    var Mode;
+    function ReadOnly() {
+        /*if (App.NewMasuolin.queryById('GridItem').selModel.getLastSelected().data.fldOrderId == 1) {
+            App.NewMasuolin.queryById('txtName').setReadOnly(true);
+        }
+        else*/
+        App.NewMasoulin.queryById('txtName').setReadOnly(true);
+        App.NewMasoulin.queryById('txtOrgan').setReadOnly(true);
+    }
+
+    function SearchEmployee(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/comon/SearchEmployee/Index',
+                params: {
+                    State: 2
+                }
+            });
+        }
+        if (Code == 46) {
+            var SelectedRow = App.NewMasoulin.queryById("GridItem").getSelectionModel().getLastSelected();
+            if (SelectedRow != null) {
+                App.NewMasoulin.queryById("GridItem").store.remove(SelectedRow);
+                grid.getView.refresh();
+            }
+        }
+    }
+
+    function LoadMasoulinDetail() {
+        var fldTarikhEjra=App.NewMasoulin.queryById('txtTarikhEjra').getRawValue();
+        var fldModule_OrganId = App.NewMasoulin.queryById('CboModule_Org').getValue();
+
+        if (fldTarikhEjra == "" || fldModule_OrganId == null)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Masoulin/CheckHaveMasoulin',
+            params: {
+                Module_OrganId: fldModule_OrganId,
+                TarikhEjra: fldTarikhEjra
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                /*App.NewMasoulin.queryById('GridItem').getStore().loadData(data.ListMasoulin);*/
+                Mode = data.Mode;
+                if (data.Mode == "Edit") {
+                    ClearMasoulin();
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "اطلاعات وارد شده تکراری است.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+        });
+    }
+
+    function SearchOrganization(Code) {
+        var CboModule_Org = App.NewMasoulin.queryById('CboModule_Org');
+        if (CboModule_Org.validate() == false) {
+            alert("لطفا ابتدا ماژول را انتخاب کنید");
+            return;
+        }
+        else if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/comon/SearchOrganization/Index',
+                params: {
+                    State: 4,
+                    Id: CboModule_Org.getValue()
+                }
+            });
+        }
+    }
+
+    function LoadMasoulin() {
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/Comon/Masoulin/Details',
+                params: {
+                    Id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    var txtTarikhEjra = App.NewMasoulin.queryById('txtTarikhEjra');
+                    txtTarikhEjra.setValue(data.fldTarikhEjra);
+                    var CboModule_Org = App.NewMasoulin.queryById('CboModule_Org');
+                    CboModule_Org.setRawValue(data.fldTitleModule);
+                    CboModule_Org.setValue(String(data.fldModule_OrganId));
+                }
+            });
+        }
+    }
+
+
+    function ReloadDetail(ID) {
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Masoulin/ReloadDetail',
+            params: {
+                HeaderId: ID
+            },
+            success: function (data) {
+                App.NewMasoulin.queryById('GridItem').getStore().loadData(data);
+            }
+        });
+    }
+
+    function SaveMasoulin() {
+        var txtTarikhEjra = App.NewMasoulin.queryById('txtTarikhEjra');
+        var CboModule_Org = App.NewMasoulin.queryById('CboModule_Org');
+
+        var er = false;
+
+        if (txtTarikhEjra.validate() == false) {
+            er = true;
+        }
+
+        if (CboModule_Org.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        /*  if (data.Mode == "Edit") {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "اطلاعات وارد شده تکراری است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+
+        var HeaderId = 0;
+        var Masoulin_DetailList = new Array();
+        var Grid = App.NewMasoulin.queryById('GridItem');
+        for (var i = 0; i < Grid.selModel.store.count() ; i++) {
+
+            row = Grid.selModel.store.data.items[i];
+
+            if (row.data.fldEmployeeId != 0 && row.data.fldOrganId != 0) {
+                HeaderId = row.data.fldMasuolinId;
+                EmployeeId = row.data.fldEmployeeId;
+                OrganId = row.data.fldOrganId;
+                Masoulin_DetailList.push({
+                    'fldEmployeeId': EmployeeId,
+                    'fldOrganId': OrganId,
+                });
+            }            
+        }*/
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Masoulin/Save',
+            params: {
+                fldTarikhEjra: txtTarikhEjra.rawValue,
+                fldModule_OrganId: CboModule_Org.getValue(),
+                fldId: '@ViewBag.Id'
+
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+
+                ClearMasoulin();
+                App.Masoulin.queryById('GridHeader').store.load();
+                App.Masoulin.queryById('GridDetail').store.load();
+                Ext.net.Mask.hide();
+            }
+
+        });
+
+       
+    }
+
+    function ClearMasoulin() {
+        App.NewMasoulin.queryById('txtTarikhEjra').setValue("");
+        App.NewMasoulin.queryById('CboModule_Org').setValue("");
+        /*ReloadItem(0);*/
+    }
+
+    function EnterNext() {
+        var keyfield = App.NewMasuolin.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling().nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+
+    }
+
+
+    /*store.on('load', function (store) {
+        var records = new Array();
+        for (var i = 10 - store.getCount() ; i > 0; i--) {
+            records.push(new store.recordType(you might need to provide default data here))
+        }
+        store.add(records);
+    })*/
+
+</script>

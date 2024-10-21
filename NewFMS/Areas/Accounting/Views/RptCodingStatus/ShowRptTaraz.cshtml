@@ -1,0 +1,158 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_RptCodingStatus>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<script>
+    var templateDetail = '<a href="#" onclick={0} >{1}</a>';
+
+    var DetailCo = function (value, record) {
+        var fldId = String(record.record.data.fldId);        
+        var s = 'GotoCodingTurnover(' + fldId + "," + '@ViewBag.SourceId' + "," + '@ViewBag.CaseTypeId' + ");";
+        return Ext.String.format(templateDetail, s, value);
+    };
+
+    var DetailCo2 = function (value, record) {
+        var fldId = String(record.record.data.fldId);
+        var fldSourceId = String(record.record.data.fldSourceId);
+        if (fldSourceId == "0")
+            fldSourceId = "-1";
+        var fldCaseTypeId = record.record.data.fldCaseTypeId;
+        var s = "GotoCodingTurnover(" + fldId + "," + fldSourceId + "," + fldCaseTypeId + ");";
+        return Ext.String.format(templateDetail, s, value);
+    };
+
+    var Parantez = function (value, record) {
+        if (record.record.data.fldNoe_Mahiyat!= 1)
+            sss = value.toLocaleString();
+        else
+            sss = "("+value.toLocaleString()+")";
+        return sss;
+    };
+
+</script>
+<style>
+    .minus div{
+        direction:ltr;
+    }
+</style>
+@(Html.X().Panel()
+    .ID("ShowRemain")
+    .Title("نمایش مانده حساب")
+    .Listeners(li => li.AfterRender.Handler = "ShowRemainSetSize();")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Layout(LayoutType.Fit)
+    .Items(
+        X.GridPanel()
+            .ItemID("RemainGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.ShowRemain.queryById('RemainGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("ReadRemain"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                        .ExtraParams(l => l.Add(new { SourceId = ViewBag.SourceId }))
+                        .ExtraParams(l => l.Add(new { CodingDetail = ViewBag.CodingDetail }))
+                        .ExtraParams(l => l.Add(new { CaseTypeId = ViewBag.CaseTypeId }))
+                        .ExtraParams(l => l.Add(new { flag = ViewBag.flag }))
+                        .ExtraParams(l => l.Add(new { Year = ViewBag.Year }))
+                        .ExtraParams(l => l.Add(new { TypeSanad = ViewBag.TypeSanad }))
+                        .ExtraParams(l => l.Add(new { Type = 1 }))                        
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(false)
+                    .RemotePaging(false)
+            )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .Plugins(
+                X.RowExpander()
+                    .Listeners(l => l.BeforeExpand.Fn = "loadRemainGrid_Parvande")
+                    .Component(
+                        X.GridPanel()
+                            .AutoScroll(true)
+                            .Border(true)
+                            .Height(150)
+                            .ItemID("RemainGrid_Parvande")
+                            .Store(
+                                X.StoreForModel()
+                                    .AutoLoad(false)
+                                    .Proxy(Html.X().AjaxProxy()
+                                        .Url(Url.Action("ReadRemain"))
+                                        .Reader(Html.X().JsonReader().Root("data"))
+                                )
+                                .PageSize(1000)
+                                .RemoteFilter(false)
+                                .RemotePaging(false)
+                            )
+                            .ViewConfig(
+                                X.GridView()
+                                    .LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان حساب").Wrap(true).Flex(2).Renderer("DetailCo2"),
+                        Html.X().Column().DataIndex(Model, m => m.fldParentTitle).Text("عنوان کامل حساب").Wrap(true).Flex(5),
+                        Html.X().Column().DataIndex(Model, m => m.fldParvande).Text("پرونده").Wrap(true).Flex(5),
+                            Html.X().Column().DataIndex(Model, m => m.fldTypeName).Text("تشخیص").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldMande).Text("مانده حساب").Flex(2).TdCls("minus").Renderer("Parantez")
+                            )
+                            .SelectionModel(
+                                Html.X().RowSelectionModel()
+                                    .Mode(Ext.Net.SelectionMode.Single)
+                            )
+                    )
+            )
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان حساب").Wrap(true).Flex(2).Renderer("DetailCo"),
+                Html.X().Column().DataIndex(Model, m => m.fldParentTitle).Text("عنوان کامل حساب").Wrap(true).Flex(5),
+                    Html.X().Column().DataIndex(Model, m => m.fldTypeName).Text("تشخیص").Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.fldMande).Text("مانده حساب").Flex(2).TdCls("minus").Renderer("Parantez")
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+    )
+)
+<script type="text/javascript">
+    function ShowRemainSetSize() {
+        App.ShowRemain.setHeight(App.AccountingWin.getHeight() - 180);
+    }
+
+    var loadRemainGrid_Parvande = function (rowExpanderr, record) {
+        rowExpanderr.component.getStore().getProxy().setExtraParam("SourceId", '@ViewBag.SourceId');
+        rowExpanderr.component.getStore().getProxy().setExtraParam("CodingDetail", record.data.fldId);
+        rowExpanderr.component.getStore().getProxy().setExtraParam("CaseTypeId", '@ViewBag.CaseTypeId');
+        rowExpanderr.component.getStore().getProxy().setExtraParam("flag", '@ViewBag.flag');
+        rowExpanderr.component.getStore().getProxy().setExtraParam("Year", '@ViewBag.Year');
+        rowExpanderr.component.getStore().getProxy().setExtraParam("TypeSanad", '@ViewBag.TypeSanad');
+        rowExpanderr.component.getStore().getProxy().setExtraParam("Type", 2);
+        rowExpanderr.component.getStore().load();
+    };
+
+    function GotoCodingTurnover(fldId, fldSourceId, fldCaseTypeId, fldTitle) {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/RptCodingStatus/WinCodingTurnover',
+            params: {
+                SourceId: fldSourceId,
+                CaseTypeId: fldCaseTypeId,
+                CodingDetail: fldId,
+                Year: '@ViewBag.Year',
+                TypeSanad: '@ViewBag.TypeSanad'
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+</script>

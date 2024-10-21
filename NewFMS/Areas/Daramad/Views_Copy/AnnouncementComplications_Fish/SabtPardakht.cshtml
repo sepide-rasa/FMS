@@ -1,0 +1,228 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<style>
+    .custom-IncomeIc {
+        margin-right: 124px !important;
+    }
+</style>
+
+@(Html.X().Window()
+    .Closable(true)
+    //.Listeners(l => l.AfterRender.Handler = "setDefaultPardakht()")
+    .CloseAction(CloseAction.Destroy)
+    .Title("ثبت پرداخت")
+    .Layout(LayoutType.Fit)
+    .ID("SabtPardakht")
+    .Modal(true)
+    .Width(500)
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        Html.X().Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveSabtPardakht()"),
+        Html.X().Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => l.Click.Handler = "App.SabtPardakht.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            //.PaddingSpec("4px 12px 4px 12px")
+            .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .Title("اطلاعات پرداخت")
+                    //.Height(185)
+        //.PaddingSpec("0 7px 7px 7px")
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Hidden()
+                        .ItemID("fldId"),
+                        X.Label("مبلغ فیش:"),
+                        X.TextField()
+                            .ItemID("txtMablagh")
+                            .AllowBlank(true)
+                            .RTL(false)
+                            //.Listeners(l => l.Change.Handler = " App.SabtPardakht.queryById(txtMablagh).setValue(accounting.formatNumber(App.SabtPardakht.queryById(txtMablagh).getValue()));")
+                            .ReadOnly(true)
+                            ,X.Label("نحوه پرداخت:"),
+                        X.ComboBox()
+                            .ItemID("CboPardakht")
+                            .TypeAhead(true)
+                            .BlankText("لطفا نحوه پرداخت را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .AllowBlank(false)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .Editable(true)
+                            .Listeners(l => l.Select.Handler = "BlurTarikhPardakht()")
+                            .EmptyText("نحوه پرداخت ...")
+                            .Store(X.Store()
+                                    .Listeners(l => l.Load.Handler = "loadPardakht()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                    )
+                                .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetTypePardakht"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                    )
+                            ),
+                        X.Label().Text("تاریخ پرداخت:")
+                        , X.PDateField()
+                        .ItemID("txtTarikh")
+                        .Editable(false)
+                        .AllowBlank(false)
+                        .RTL(false)
+                        .BlankText("لطفا تاریخ پرداخت را وارد کنید.")
+                        .Listeners(l => l.Change.Handler = "BlurTarikhPardakht()")
+                        .LabelAlign(Ext.Net.LabelAlign.Right),
+                        X.Label().Text("تاریخ واریز:")
+                        , X.PDateField()
+                        .ItemID("txtTarikhVariz")
+                        .Editable(false)
+                        .AllowBlank(false)
+                        .RTL(false)
+                        .Listeners(l => l.Change.Handler = "setTarikhVariz()")
+                        .BlankText("لطفا تاریخ واریز را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Right)
+                        , X.Label("توضیحات:"),
+                        X.TextField()
+                            .ItemID("txtDesc")
+                            .Width(365)
+                            .ColSpan(3)
+                            
+                        )
+            )
+    )
+)
+
+<script type="text/javascript">
+    function setTarikhVariz() {
+        var txtTarikh = App.SabtPardakht.queryById('txtTarikh');
+        var txtTarikhVariz = App.SabtPardakht.queryById('txtTarikhVariz');
+        txtTarikhVariz.setMinValue(txtTarikh.getValue());
+        txtTarikhVariz.minText = "تاریخ واریز نباید قبل از تاریخ پرداخت باشد.";
+    }
+    function BlurTarikhPardakht() {
+        var txtTarikh=App.SabtPardakht.queryById('txtTarikh');
+        var txtTarikhVariz=App.SabtPardakht.queryById('txtTarikhVariz');
+        var CboPardakht = App.SabtPardakht.queryById('CboPardakht');
+        if(CboPardakht.getValue()=="9" || CboPardakht.getValue()=="10")
+        {
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/AnnouncementComplications_Fish/GetTarikh',
+                params: {
+                    Tarikh: txtTarikh.rawValue
+                },
+                success: function (data) {
+                    txtTarikhVariz.setValue(data.date);
+                }
+            });
+           
+        }
+        else
+        {
+            txtTarikhVariz.setValue(txtTarikh.getValue());
+        }
+    }
+    function setDefaultPardakht() {
+        var Id = App.SabtPardakht.queryById('CboPardakht');
+        App.SabtPardakht.queryById('CboPardakht').setValue("2");
+        App.SabtPardakht.queryById('txtTarikh').setValue('@ViewBag.Tarikh');
+        App.SabtPardakht.queryById('txtTarikhVariz').setValue('@ViewBag.Tarikh');
+        App.SabtPardakht.queryById('txtMablagh').setValue(accounting.formatNumber('@ViewBag.Mablagh'));
+    }
+    function loadPardakht() {
+        var fldId = App.SabtPardakht.queryById('fldId');
+        var txtMablagh = App.SabtPardakht.queryById('txtMablagh');
+        var txtTarikh = App.SabtPardakht.queryById('txtTarikh');
+        var txtTarikhVariz = App.SabtPardakht.queryById('txtTarikhVariz');
+        var CboPardakht = App.SabtPardakht.queryById('CboPardakht');
+        var txtDesc = App.SabtPardakht.queryById('txtDesc');
+        txtMablagh.setValue(accounting.formatNumber('@ViewBag.Mablagh'));
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/AnnouncementComplications_Fish/Details',
+            params: {
+                FishId:'@ViewBag.FishId'
+            },
+            success: function (data) {
+                fldId.setValue(data.fldId);
+                txtTarikh.setValue(data.fldTarikh);
+                txtTarikhVariz.setValue(data.fldTarikhVariz);
+                CboPardakht.setValue(data.fldNahvePardakhtId);
+                txtDesc.setValue(data.fldDesc);
+                Ext.net.Mask.hide();
+                if (data.fldId == 0) {
+                    /*txtTarikh.validate();
+                    CboPardakht.validate();*/
+                    setDefaultPardakht();
+                }
+            }
+        });
+    }
+
+    function SaveSabtPardakht() {
+        var fldId = App.SabtPardakht.queryById('fldId');
+        var txtMablagh = App.SabtPardakht.queryById('txtMablagh');
+        var txtTarikh = App.SabtPardakht.queryById('txtTarikh');
+        var txtTarikhVariz = App.SabtPardakht.queryById('txtTarikhVariz');
+        var CboPardakht = App.SabtPardakht.queryById('CboPardakht');
+        var txtDesc = App.SabtPardakht.queryById('txtDesc');
+        var er = false;
+        if (txtTarikh.validate() == false) {
+            er = true;
+        }
+        if (CboPardakht.validate() == false) {
+            er = true;
+        }
+
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/AnnouncementComplications_Fish/SavePardakht',
+            params: {
+                fldId:fldId.getValue(),
+                fldFishId: '@ViewBag.FishId',
+                fldTarikh: txtTarikh.rawValue,
+                fldTarikhVariz: txtTarikhVariz.rawValue,
+                fldNahvePardakhtId: CboPardakht.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+
+                App.AnnouncementComplication_Fish.queryById('FishGrid').store.load();
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+
+</script>

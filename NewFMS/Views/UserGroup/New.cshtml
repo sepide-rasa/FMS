@@ -1,0 +1,154 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(li => li.AfterRender.Handler = "LoadUserGroup();")
+    .Width(230)
+        .Resizable(false)
+    .Title("ثبت گروه کاربری")
+         .ID("NewUserGroup")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+        .BodyStyle("direction:rtl;")
+        .DefaultButton("btn")
+        .TitleAlign(Ext.Net.TitleAlign.Right)
+               .Buttons(X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ToolTip("کلید میانبر F8")
+                           .Listeners(l =>
+                           {
+                               l.Click.Handler = "SaveUserGroup();";
+
+                           })
+                           .ItemID("btnSave")
+                            ,
+                            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                                        .OnClientClick("App.NewUserGroup.destroy();"))
+
+
+                .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 1 })
+                .Items(
+                X.Hidden().ItemID("fldId"),
+                    X.TextField()
+                    .ItemID("txtTitle")
+                    .FieldLabel("عنوان")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AutoFocus(true)
+                   , X.TextArea()
+                    .ItemID("txtDesc")
+                    .FieldLabel("توضیحات")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(160)
+
+                        )
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+)
+        )
+)
+@(Html.X().KeyMap()
+              .ID("NewUserGroupMap")
+                         .Target("={App.NewUserGroup.getTargetEl()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("if(App.BasicInfTab.activeTab.id=='UserGroup')SaveUserGroup();")
+                );
+
+            }))
+
+<script type="text/javascript">
+    function LoadUserGroup() {
+        ReplaceArabic();
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/UserGroup/Details',
+                params: {
+                    id: '@ViewBag.Id'
+                },
+                success: function (Result) {
+                    var txtTitle = App.NewUserGroup.queryById('txtTitle');
+                    txtTitle.setValue(Result.fldTitle);
+                    var txtDesc = App.NewUserGroup.queryById('txtDesc');
+                    txtDesc.setValue(Result.fldDesc);
+                    var Id = App.NewUserGroup.queryById('fldId');
+                    Id.setValue(Result.fldId);
+
+                }
+            });
+        }
+    }
+
+    function SaveUserGroup() {
+
+        var txtTitle = App.NewUserGroup.queryById('txtTitle');
+        var txtDesc = App.NewUserGroup.queryById('txtDesc');
+        var Id = App.NewUserGroup.queryById('fldId');
+        var er = false;
+
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+
+
+        if (er == true)
+            return;
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/UserGroup/Save',
+            params: {
+                fldId: Id.getValue(),
+                fldTitle: txtTitle.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.flag == false)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon:ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+                App.UserGroup.queryById('Grid').store.load();
+
+                if (data.flag == true)
+                    ClearUserGroup();
+            }
+
+        });
+    }
+    function ClearUserGroup() {
+        App.NewUserGroup.queryById('txtTitle').setValue("");
+        App.NewUserGroup.queryById('txtDesc').setValue("");
+        App.NewUserGroup.queryById('fldId').setValue(0);
+
+    }
+    function EnterNext() {
+        var keyfield = App.NewUserGroup.queryById(Ext.getCmp((Ext.Element.getActiveElement()).title).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+
+    }
+</script>

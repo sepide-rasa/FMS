@@ -1,0 +1,823 @@
+﻿@model IEnumerable<NewFMS.WCF_Weigh.OBJ_Remittance_Details>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+
+<style>
+    #fieldsetRe legend{
+        text-align:right !important;
+    }
+    .custom-Remittance_Detailsicon {
+        margin-right: 253px !important;
+    }
+
+    .custom-Remittance_Detailsicon2 {
+        margin-right: 268px !important;
+    }
+
+    .custom-Remittance_Detailsicon3 {
+        margin-right: 575px !important;
+    }
+
+    .custom-Remittance_Detailsicon4 {
+        margin-right: 125px !important;
+    }
+
+    .custom-Remittance_Detailsicon5 {
+        margin-right: 142px !important;
+    }
+</style>
+
+@(Html.X().Window()
+    .Modal(true)
+    .ID("Remittance_Details")
+    .Title("ثبت حواله جدید")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l =>
+    {
+        l.Render.Fn = "addKeyMapRemittance_Details";
+        l.AfterRender.Handler = "App.Remittance_Details.setWidth(Ext.getBody().getViewSize().width - 100);/*LoadRemittance_Details()*/";
+    })
+        //.Resizable(false)
+    .Border(false)
+    .Layout(LayoutType.Fit)
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("ثبت")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveRemittance_Details();"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.Remittance_Details.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet()
+                    .Title("مشخصات حواله")
+                    .Border(true)
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 11 })
+                    .Items(
+                        X.Hidden()
+                        .ItemID("fldHeaderId"),
+                        X.Hidden()
+                            .ItemID("AshkhasId"),
+                                 X.Hidden()
+                                .ItemID("ReceiverId"),
+                                X.Label("نوع حواله:"),
+                            X.ComboBox()
+                                    .ItemID("CboType").AutoFocus(true)
+                                .Editable(false)
+                                    .TypeAhead(true).Width(100)
+                                .AllowBlank(false)
+                                .BlankText("لطفا نوع حواله را انتخاب کنید.")
+                                .Listeners(l => l.Select.Handler = "showHideOrgan()")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .SelectedItems(new { value = "2" })
+                                .Items(
+                                    new ListItem("امانی", "1"),
+                                    new ListItem("پیمانکاری", "2")
+                                ),
+                                 X.Label().Text("عنوان پروژه:")
+                                    , X.TextField()
+                                                .ItemID("txtTitle").MaxLength(200).EnforceMaxLength(true).ColSpan(3)
+                                        .AllowBlank(false).Width(335)
+        // .MaskRe("[آ-ی, ,_,-]")
+                                         .BlankText("لطفا عنوان حواله را وارد کنید."),
+                        
+                                    
+                                
+                        X.Label("واحد سازمانی:").ItemID("lblChartOrgan"),
+                        X.ComboBox()
+                            .ItemID("CboChartOrgan")
+                                .TypeAhead(true).ColSpan(2)                                 
+                            .Editable(true)
+                            .Width(200)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا سازمان را انتخاب کنید.")
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("Name")
+                            .ValueField("ID")
+                            .EmptyText("سازمان ...")
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("ID")
+                                    .Fields(
+                                        new ModelField("ID", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("Name", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetChart"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                                .Listeners(l => l.Load.Handler = "setdefaultValueChartOrgan()")
+                            ),
+                        X.Label("شخص:").ItemID("lblShakhs"),
+                        X.TextField()
+                            .ItemID("txtShakhs").ColSpan(2)
+                        .Icon(Icon.UserAdd)
+                        .AllowBlank(false)
+                        .Width(200)
+                        .ReadOnly(true)
+                                .Listeners(l =>
+                            {
+                                l.SpecialKey.Handler = "SelectShakhs(e.getKey());";
+                                l.IconClick.Handler = "SelectShakhs(45)";
+                            }),
+                         X.Label().Text("وضعیت حواله:")
+                        , X.ComboBox()
+                            .ItemID("CboStatus")
+                            .LabelAlign(Ext.Net.LabelAlign.Right)
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .BlankText("لطفا وضعیت حواله را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .EmptyText("وضعیت")
+                            .Width(100)
+                            .Items(
+                                new ListItem("فعال", "1"),
+                                new ListItem("غیر فعال", "0")
+                                )
+                            .SelectedItems(new { Value = "1" }),        
+                        X.Label("تاریخ شروع:"),
+                        X.PDateField()
+                            .ItemID("txtStartDate")
+                            .AllowBlank(false)
+                            .Editable(true)
+                            .MaskRe("/[0-9 /]/")
+                                .Listeners(l => l.Focus.Handler = "ChangeStartSDate ();")
+                            .BlankText("لطفا تاریخ شروع را وارد کنید.")
+                            .MaxLength(10)
+                            .Width(100)
+                            .EnforceMaxLength(true),
+                             X.Label("تاریخ پایان:"),
+                        X.PDateField()
+                            .ItemID("txtEndDate")
+                            .AllowBlank(false)
+                            .Editable(true)
+                            .MaskRe("/[0-9 /]/")
+                                .Listeners(l => l.Focus.Handler = "ChangeEndSDate ();")
+                            .BlankText("لطفا تاریخ پایان را وارد کنید.")
+                            .MaxLength(10)
+                            .Width(100)
+                            .EnforceMaxLength(true),
+                                X.Label("تحویل گیرنده:"),
+                            X.TextField()
+                            .ItemID("txtTahvilGirande")
+                            .Icon(Icon.UserAdd)
+                            .AllowBlank(false)
+                            //.Width(200)
+                            .ReadOnly(true)
+                                    .Listeners(l =>
+                                {
+                                    l.SpecialKey.Handler = "SelectReceiver(e.getKey());";
+                                    l.IconClick.Handler = "SelectReceiver(45)";
+                                }),
+                        X.Label("توضیحات:"),
+                        X.TextField()
+                            .ItemID("txtDesc")
+                            .AllowBlank(true)
+                            .ColSpan(4)
+                            .Width(380),
+                        X.FieldSet()
+                            .Border(true)
+                            .ColSpan(6)
+                            .Title("انتخاب فایل(حداکثر حجم مجاز: 5MB)")
+                            .ID("fieldsetRe")
+                            .Layout(LayoutType.HBox)
+                            .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Middle })
+                            .Items(
+                                X.FormPanel()
+                                    .Border(false)
+                                    .Layout(LayoutType.HBox)
+                                    .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Middle })
+                                    .Items(
+                                        X.FileUploadField()
+                                            .MarginSpec("0 10px 10px 0")
+                                            .Icon(Ext.Net.Icon.DiskUpload)
+                                            .ButtonOnly(true)
+                                            .ButtonText("انتخاب فایل")
+                                            .DirectEvents(l =>
+                                            {
+                                                l.Change.Action = "Upload";
+                                                l.Change.Delay = 1000;
+                                                l.Change.Before = "if(GotoServerRe==false){return false;}";
+                                                l.Change.Success = "hideprogressRe";
+                                            })
+                                            .Listeners(l => l.Change.Fn = "showFileRe"),
+                                        X.Container()
+                                            .Content(@<div id="fi-button-msgRe" style="word-wrap:break-word;word-break:normal;white-space:normal; width:350px;height:auto;text-align:right;"><b>فایل انتخاب شده:</b></div>)
+                                        )
+                            )
+                           
+                    ),
+                X.GridPanel()
+                    .Listeners(l =>
+                    {
+                        l.ViewReady.Handler = "ShowHeaderCheckbox()";
+                        l.AfterRender.Handler = "App.Remittance_Details.queryById('Remittance_DetailsGrid').setSize(Ext.getBody().getViewSize().width - 120,Ext.getBody().getViewSize().height - 200);";
+                    })
+                    .ItemID("Remittance_DetailsGrid")
+                    .Frame(true)
+                    .Title("آیتم های حواله")
+                    .Features(Html.X().Summary().ID("summaryDocuments").Dock(SummaryDock.Bottom))
+                              
+                    .Store(
+                        X.StoreForModel()
+                            .AutoLoad(false)
+                            .Listeners(l => l.DataChanged.Handler = "App.Remittance_Details.queryById('Remittance_DetailsGrid').selModel.refresh();")
+                            .Listeners(li => li.Load.Handler = "LoadRemittance_Details();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("ReadRemittance_Details"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            //.Parameters(ps => ps.Add(new StoreParameter("HeaderId", ViewBag.HeaderId, ParameterMode.Raw)))
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                   
+       // .Plugins(Html.X().CellEditing()/*.ClicksToEdit(1).Listeners(l => l.Edit.Fn = "nextcellRowRemittance_Details")*/)
+                    .BottomBar(X.PagingToolbar())
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldRemittanceId).Text("کد هدر").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldKalaId).Text("کد کالا").Hidden(true).Flex(1),
+                       // Html.X().Column().DataIndex(Model, m => m.fldTitleHeader).Text("عنوان حواله").Flex(5),
+                        Html.X().Column().DataIndex(Model, m => m.fldKalaName).Text("نام کالا").Flex(5),
+                            Html.X().ComponentColumn().ID("ColCrlLim").DataIndex(Model, m => m.fldControlLimit)
+                                //.Listeners(l =>
+                                //{
+                                
+                                //    //l.Edit.Fn = "loadCboCostCenter";
+                                //})
+                            .Flex(2).Editor(true).Sortable(false).Text("محدودیت کنترلی")
+                            .Component(
+                                X.ComboBox()
+                                    .ItemID("CboCrlLim")
+                                    .TypeAhead(true)
+                                    .Editable(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .AllowBlank(true)
+                                    .BlankText("لطفا محدودیت را انتخاب کنید.")
+                                    .TriggerAction(TriggerAction.All)
+                                    .EnableKeyEvents(true)
+                                    .ForceSelection(true)
+                                    
+                                    .FieldStyle("padding-right:5px;")
+                                    .Listeners(l =>
+                                    {
+                                        l.KeyDown.Fn = "GotoNextField";
+                                        //l.Change.Fn = "loadCboCostCenter";
+                                    })
+                                    .EmptyText("محدودیت کنترلی...")
+                                    .Items(
+                                        new ListItem("فعال", true),
+                                    new ListItem("غیر فعال", false)
+                                    )
+                                .SelectedItems(new { Value = true })
+                            ),
+                        
+                            Html.X().ComponentColumn().ID("ColMaxTon").DataIndex(Model, m => m.fldMaxTon)//.SummaryType(SummaryType.Sum)
+                            //.SummaryRenderer(new Renderer { Handler = "sumColMaxTon" })
+                            .Flex(2).Editor(true).Sortable(false).Text("حداکثر به کیلوگرم")
+                            .Component(
+                                Html.X().TextField().ItemID("txtMaxTon").MaskRe("[0-9]").EnableKeyEvents(true)
+                                .Listeners(l =>
+                                {
+                                   l.KeyDown.Fn = "GotoNextField2";
+                                })
+                            ),
+                            Html.X().ComponentColumn().ID("ColDescription").DataIndex(Model, m => m.fldDesc)
+                                    .Flex(5).Editor(true).Sortable(false).Text("توضیحات")
+                            .Component(
+                                Html.X().TextField()
+                                .ItemID("txtDescription")//.FieldStyle("padding-right:5px;")
+                                .EnableKeyEvents(true).Listeners(l =>
+                                {
+                                    l.KeyDown.Fn = "GotoNextField3";
+                                    l.Focus.Fn = "resetValuee";
+                                })
+                            )
+                    )
+                        .SelectionModel(
+                            Html.X().CheckboxSelectionModel().CheckOnly(true)
+                                .Mode(Ext.Net.SelectionMode.Multi)
+                                .Listeners(l=>l.BeforeDeselect.Fn="PreventUnchecked")
+                        )
+            )
+        )
+)
+<script type="text/javascript">
+    var GotoServerRe = false;
+    var EndUploadRe = false;
+    var Check = setInterval(CheckEndRe, 500);
+    var FileId_Re = null;
+    
+
+    function PreventUnchecked(model,rec,index)
+    {
+        if (rec.data.fldExistsVazn == 1)
+            return false;
+    }
+
+    var hideprogressRe = function (Responsdtxt, ResponseObj) {
+        if (ResponseObj.IsValid == true) {
+            EndUploadRe = true;
+        }
+        else {
+            var el = Ext.get('fi-button-msgRe');
+            GotoServerRe = false;
+            clearInterval(CheckEndRe);
+            EndUploadRe = false;
+            el.update('<b>فایل انتخاب شده:</b> ');
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: ResponseObj.Message,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    };
+
+    function CheckEndRe() {
+        if (EndUploadRe == true) {
+            Ext.MessageBox.hide();
+            GotoServerRe = false;
+            Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+            clearInterval(CheckEndRe);
+            EndUploadRe = false;
+            DeletedFileRe = false;
+        }
+    }
+
+    var showFileRe = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msgRe');
+        if (v) {
+            showProgressBar();
+            if (v.split('.').pop().toLowerCase() == "jpg" || v.split('.').pop().toLowerCase() == "jpeg" || v.split('.').pop().toLowerCase() == "png"
+                || v.split('.').pop().toLowerCase() == "tif" || v.split('.').pop().toLowerCase() == "tiff" || v.split('.').pop().toLowerCase() == "gif"
+                || v.split('.').pop().toLowerCase() == "bmp" || v.split('.').pop().toLowerCase() == "doc" || v.split('.').pop().toLowerCase() == "docx") {
+                if (document.getElementById(id).files[0].size <= 5242880) {
+                    GotoServerRe = true;
+                    el.update('<b>فایل انتخاب شده: ' + v + '</b>' + "&nbsp;&nbsp;" + '<img title="حذف فایل" src="/Content/cancel.png" style="width:15px;height:15px;margin-bottom: -4px;" onclick="javascript:DeleteFileRe()" />');
+                }
+                else {
+                    clearInterval(CheckEndRe);
+                    el.update('<b>فایل انتخاب شده:</b>');
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "حجم فایل انتخاب شده غیرمجاز است.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                } else {
+                    el.highlight();
+                }
+            }
+            else {
+                clearInterval(CheckEndRe);
+                el.update('<b>فایل انتخاب شده:</b>');
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "فایل انتخاب شده غیرمجاز است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+    };
+
+    function showProgressBar() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+    var DeletedFileRe = false;
+
+    function DeleteFileRe() {
+        Ext.get('fi-button-msgRe').update('<b>فایل انتخاب شده:</b> ');
+        DeletedFileRe = true;
+    }
+    function ChangeStartSDate() {
+        var txtStartDate = App.Remittance_Details.queryById('txtStartDate');
+        var txtEndDate = App.Remittance_Details.queryById('txtEndDate');
+        txtStartDate.setMaxValue(txtEndDate.rawValue);
+        txtStartDate.maxText = "تاریخ شروع باید قبل از تاریخ پایان " + txtEndDate.rawValue + "باشد";
+
+    }
+    function showHideOrgan() {
+        if (App.Remittance_Details.queryById('CboType').getValue() == 1) {/*امانی*/
+            App.Remittance_Details.queryById('txtShakhs').hide();
+            App.Remittance_Details.queryById('lblShakhs').hide();
+            App.Remittance_Details.queryById('CboChartOrgan').show();
+            App.Remittance_Details.queryById('lblChartOrgan').show();
+        }
+        else {
+            App.Remittance_Details.queryById('txtShakhs').show();
+            App.Remittance_Details.queryById('lblShakhs').show();
+            App.Remittance_Details.queryById('CboChartOrgan').hide();
+            App.Remittance_Details.queryById('lblChartOrgan').hide();
+        }
+    }
+
+    function setdefaultValueChartOrgan() {
+        App.Remittance_Details.queryById('CboChartOrgan').select(App.Remittance_Details.queryById('CboChartOrgan').store.getAt(0));
+    }
+
+    function ChangeEndSDate() {
+       
+        var txtStartDate = App.Remittance_Details.queryById('txtStartDate');
+        var txtEndDate = App.Remittance_Details.queryById('txtEndDate');
+        txtEndDate.setMinValue(txtStartDate.rawValue);
+        txtEndDate.minText = "تاریخ پایان باید بعد از تاریخ شروع " + txtStartDate.rawValue + "باشد";
+
+    }
+
+
+    function ShowHeaderCheckbox() {
+        App.Remittance_Details.queryById("Remittance_DetailsGrid").headerCt.child().container.dom.style.marginRight = "18px";
+        App.Remittance_Details.queryById('Remittance_DetailsGrid').getStore().getProxy().setExtraParam("HeaderId", '@ViewBag.HeaderId');
+        App.Remittance_Details.queryById('Remittance_DetailsGrid').store.load();
+    }
+
+    function SelectShakhs(key) {
+        if (key == 45) {
+            App.Remittance_Details.body.mask("در حال بارگذاری");
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/SearchAshkhas/Index',
+                params: {
+                    State: 11,
+                    rowIdx: 0
+                },
+                success: function () {
+                    App.Remittance_Details.body.mask().hide();
+                }
+            });
+        }
+    }
+
+    function SelectReceiver(key) {
+        if (key == 45) {
+            App.Remittance_Details.body.mask("در حال بارگذاری");
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/SearchAshkhas/Index',
+                params: {
+                    State: 14,
+                    rowIdx: 0
+                },
+                success: function () {
+                    App.Remittance_Details.body.mask().hide();
+                }
+            });
+        }
+    }
+;
+
+    var resetValuee = function (Fieldd, Eventt) {
+        if (App.ColCrlLim.getComponent(App.Remittance_Details.queryById("Remittance_DetailsGrid").store.indexOf(Fieldd.record)).value == null) {
+            if (App.ColCrlLim.getComponent(App.Remittance_Details.queryById("Remittance_DetailsGrid").store.indexOf(Fieldd.record)).getPicker().highlightedItem == undefined) {
+                App.ColCrlLim.getComponent(App.Remittance_Details.queryById("Remittance_DetailsGrid").store.indexOf(Fieldd.record)).reset();
+                /*App.ColCrlLim.getComponent(App.Remittance_Details.queryById("Remittance_DetailsGrid").store.indexOf(Fieldd.record)).validate();*/
+            }
+        }
+    };
+
+    function GotoNextField(Fieldd, Eventt) {
+        if (Eventt.keyCode == 13) {
+            App.ColMaxTon.getComponent(App.Remittance_Details.queryById("Remittance_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).focus();
+            
+        }
+    }
+
+    function GotoNextField2(Fieldd, Eventt) {
+        if (Eventt.keyCode == 13) {
+
+            App.ColDescription.getComponent(App.Remittance_Details.queryById("Remittance_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).focus();
+        }
+    }
+    var f; var e;
+    function GotoNextField3(Fieldd, Eventt) {
+        if (Eventt.keyCode == 13) {
+            
+            App.ColCrlLim.getComponent((App.Remittance_Details.queryById("Remittance_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/) + 1).focus();
+            f = Fieldd;
+            e = Eventt;
+            
+        }
+    }
+
+    function LoadRemittance_Details() {
+        if ('@ViewBag.HeaderId' != "0") {
+            Ext.net.Mask.show({ msg: 'در حال بارگزاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Remittance/Details',
+                params: {
+                    HeaderId: '@ViewBag.HeaderId'
+                },
+                success: function (data) {
+                    
+                    App.Remittance_Details.queryById("fldHeaderId").setValue(data.fldId);
+                    App.Remittance_Details.queryById("CboStatus").setValue(data.fldStatus);                    
+                    FileId_Re = data.FileId;
+                    if (data.fldAshkhasiId != null) {
+                        App.Remittance_Details.queryById('CboChartOrgan').hide();
+                        App.Remittance_Details.queryById('lblChartOrgan').hide();
+                        App.Remittance_Details.queryById("CboType").setValue("2");
+                        App.Remittance_Details.queryById("txtShakhs").setValue(data.fldFamilyName);
+                        App.Remittance_Details.queryById("AshkhasId").setValue(data.fldAshkhasiId);
+                    }
+                    else {
+                        App.Remittance_Details.queryById('CboChartOrgan').show();
+                        App.Remittance_Details.queryById('lblChartOrgan').show();
+                        App.Remittance_Details.queryById('txtShakhs').hide();
+                        App.Remittance_Details.queryById('lblShakhs').hide();
+                        App.Remittance_Details.queryById("CboType").setValue("1");
+                        App.Remittance_Details.queryById("CboChartOrgan").setValue(data.fldChartOrganEjraeeId);
+                    }
+                    App.Remittance_Details.queryById("txtTahvilGirande").setValue(data.fldNameTahvilGirande);
+                    App.Remittance_Details.queryById("ReceiverId").setValue(data.fldEmployId);
+                    App.Remittance_Details.queryById("txtEndDate").setValue(data.fldEndDate);
+                    App.Remittance_Details.queryById("txtDesc").setValue(data.fldDesc); 
+                    App.Remittance_Details.queryById("txtStartDate").setRawValue(data.fldStartDate);
+                    App.Remittance_Details.queryById("txtTitle").setRawValue(data.fldTitle);
+                   /* App.Remittance_Details.queryById("Remittance_DetailsGrid").store.load();*/
+                    for (var i = 0; i < data.CheckID.length; i++) {
+                        var index = App.Remittance_Details.queryById('Remittance_DetailsGrid').getStore().findExact("fldId", parseInt(data.CheckID[i]));
+                        App.Remittance_Details.queryById('Remittance_DetailsGrid').getSelectionModel().select(index, true);
+                    }
+                    App.Remittance_Details.queryById("CboType").focus();
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            App.Remittance_Details.queryById("txtTitle").validate();
+            App.Remittance_Details.queryById("txtShakhs").validate();
+            App.Remittance_Details.queryById("txtStartDate").setRawValue('@ViewBag.CurrentDate');
+            App.Remittance_Details.queryById("txtEndDate").setRawValue('@ViewBag.CurrentDate');
+            App.Remittance_Details.queryById("txtTahvilGirande").validate();
+            App.Remittance_Details.queryById('CboChartOrgan').hide();
+            App.Remittance_Details.queryById('lblChartOrgan').hide();
+           /* App.Remittance_Details.queryById("Remittance_DetailsGrid").store.load();*/
+        }
+        
+    }
+
+   
+    
+  
+
+    function SaveRemittance_Details() {
+        var txtTitle = App.Remittance_Details.queryById("txtTitle");
+        var fldHeaderId = App.Remittance_Details.queryById('fldHeaderId');
+        var txtShakhs = App.Remittance_Details.queryById('txtShakhs');
+        var AshkhasId = App.Remittance_Details.queryById('AshkhasId');
+        var ReceiverId = App.Remittance_Details.queryById('ReceiverId');
+        var CboStatus = App.Remittance_Details.queryById('CboStatus');
+        var txtEndDate = App.Remittance_Details.queryById('txtEndDate');
+        var txtStartDate = App.Remittance_Details.queryById('txtStartDate');
+        var CboChartOrgan = App.Remittance_Details.queryById('CboChartOrgan');
+        var txtTahvilGirande = App.Remittance_Details.queryById('txtTahvilGirande');
+        var CboType = App.Remittance_Details.queryById("CboType");
+        var txtDesc = App.Remittance_Details.queryById('txtDesc');
+        var Remittance_DetailsGrid = App.Remittance_Details.queryById('Remittance_DetailsGrid');
+        var summaryRec = App.Remittance_Details.queryById("Remittance_DetailsGrid").getView().getFeature("summaryDocuments").summaryRecord;
+        var IdShakhs = null;
+        var IdChartOrgan = null;
+        var Remittance_DetailsArray = new Array();
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (CboType.validate() == false) {
+            er = true;
+        }
+        
+        if (CboType.getValue() == 1) {
+            if (CboChartOrgan.validate() == false)
+                er = true;
+            else
+                IdChartOrgan = CboChartOrgan.getValue();
+        }           
+        else if (CboType.getValue() == 2) {
+            if(txtShakhs.validate() == false)
+                er = true;
+            else
+                IdShakhs = AshkhasId.getValue();
+        }  
+        if (CboStatus.validate() == false) {
+            er = true;
+        }
+        if (txtStartDate.validate() == false) {
+            er = true;
+        }
+        if (txtEndDate.validate() == false) {
+            er = true;
+        }
+        if (txtTahvilGirande.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+        var SelectedRow = Remittance_DetailsGrid.getSelectionModel().getSelection();
+        if (SelectedRow.length == 0)
+        {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا آیتم های حواله را وارد کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+        for (var i = 0; i < SelectedRow.length ; i++) {
+          
+            {
+                if (SelectedRow[i].data.fldControlLimit == null) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا محدودیت کنترلی را وارد کنید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    return;
+                }
+
+                else if (SelectedRow[i].data.fldMaxTon == "" || SelectedRow[i].data.fldMaxTon ==null) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا مقدار حداکثر به تن را وارد کنید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    return;
+                }
+                if (App.ColDescription.getComponent(i).getValue() == null) {
+                    App.ColDescription.getComponent(i).setValue("");
+                }
+
+                else {
+                    Remittance_DetailsArray.push({
+                       /* fldControlLimit: App.ColCrlLim.getComponent(i).getValue(),
+                        fldDesc: App.ColDescription.getComponent(i).getValue(),
+                        fldMaxTon: App.ColMaxTon.getComponent(i).getValue(),*/
+                        fldControlLimit: SelectedRow[i].data.fldControlLimit,
+                        fldDesc: SelectedRow[i].data.fldDesc,
+                        fldMaxTon: SelectedRow[i].data.fldMaxTon,
+                        fldKalaId: SelectedRow[i].data.fldKalaId
+                    });
+                }
+            }
+        }
+        var Status = false;
+        if (CboStatus.getValue() == "1")
+            Status = true;
+
+
+        var data = {
+            IsDeleted: DeletedFileRe,
+            fldFileId:FileId_Re,
+            fldId: fldHeaderId.getValue(),
+            fldAshkhasiId: IdShakhs,
+            fldChartOrganEjraeeId:IdChartOrgan,
+            fldEmployId:ReceiverId.getValue(),
+            fldTitle:txtTitle.getValue(),
+            fldStatus: Status,
+            fldDesc: txtDesc.getValue(),
+            fldStartDate: txtStartDate.getRawValue(),
+            fldEndDate: txtEndDate.getRawValue(),
+            Remittance_DetailsArray: Remittance_DetailsArray
+        };
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Weigh/Remittance/Save',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (result) {
+                var ic = Ext.MessageBox.INFO;
+                if (result.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    closable:false,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == "ok" && result.Er != 1) {
+                            clearRemittance();
+                        }
+                    }
+                });
+                Ext.net.Mask.hide();
+                if (result.Er != 1) {
+                    App.Remittance_Details.queryById('Remittance_DetailsGrid').getStore().getProxy().setExtraParam("HeaderId", 0);
+                    App.Remittance_Details.queryById('Remittance_DetailsGrid').store.load();
+                    App.Remittance_Header.queryById('Remittance_HeaderGrid').store.load();
+                }
+            },
+            failure: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function clearRemittance() {
+        
+        App.Remittance_Details.queryById('fldHeaderId').setValue(0);
+        App.Remittance_Details.queryById('AshkhasId').setValue(0);
+        App.Remittance_Details.queryById('CboStatus').setValue("1");
+        App.Remittance_Details.queryById('txtShakhs').setValue("");
+        App.Remittance_Details.queryById('ReceiverId').setValue(0);
+        App.Remittance_Details.queryById('txtTahvilGirande').setValue("");
+        App.Remittance_Details.queryById('txtTitle').setValue("");
+        App.Remittance_Details.queryById('txtStartDate').setValue('@ViewBag.CurrentDate');
+        App.Remittance_Details.queryById('txtEndDate').setValue('@ViewBag.CurrentDate');
+        App.Remittance_Details.queryById('txtDesc').setValue("");
+        App.Remittance_Details.queryById('CboType').focus();
+        Ext.get('fi-button-msgRe').update('<b>فایل انتخاب شده:</b> ');
+        DeletedFileRe = false;
+
+        
+    }
+
+    var addKeyMapRemittance_Details = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.Remittance_Details.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtTitle") {
+                        if (App.Remittance_Details.queryById("CboType").getValue() == "2") {
+                            nextfld = App.Remittance_Details.queryById("txtShakhs");
+                        }
+                        else {
+                            nextfld = App.Remittance_Details.queryById("CboChartOrgan");
+                        }
+                    }
+                    else if (keyfield.itemId == "CboChartOrgan") {
+                        nextfld = App.Remittance_Details.queryById("CboStatus");
+                    }
+                        
+                    else if (keyfield.itemId == "txtDesc") {
+                        App.ColCrlLim.getComponent(0).focus();
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

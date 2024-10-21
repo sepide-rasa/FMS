@@ -1,0 +1,373 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_PspModel>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("SabtPSPModel")
+        .Title("ثبت مدل شرکت PSP")
+                             .Listeners(li => { li.AfterRender.Handler = "ModelPSPSetSize();"; ; li.Render.Fn = "addKeyMapSabtPSPModel"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveModelPSP")
+                .Listeners(l => { l.Click.Handler = "SaveModelPSP();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadModelPSP();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteModelPSP();"; })
+                , X.Button().Text("شماره حساب ها").Icon(Ext.Net.Icon.ApplicationViewDetail).ItemID("btnHesab")
+            .Listeners(l => { l.Click.Handler = "ShomareHesabModelPSP();"; })
+            ,   X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                .Listeners(l => { l.Click.Handler = "HelpModelPSP();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.SabtPSPModel.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.FormPanel().Border(false)
+            .Layout(LayoutType.VBox)
+                     .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .Items(
+                 X.FieldSet().Border(false).Items(
+                X.FieldSet().Border(true).Title("اطلاعات مدل PSP")
+                         .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .Items(
+                        X.FieldSet().Border(false)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                       X.Label("شرکت PSP:"),
+                        X.ComboBox()
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+        //.FieldLabel("استان")
+                        .ItemID("CboPSP")
+                        .TypeAhead(true)
+                        .Editable(true)
+                        .QueryMode(DataLoadMode.Local)
+                        .BlankText("لطفا شرکت PSP را انتخاب کنید.")
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                        .ValueField("fldId")
+                        .EmptyText("شرکت PSP ...")
+                            .Width(180)
+        //.SelectedItems(new { Value = "1" })
+                        .Store(X.Store()
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                )
+                                    )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetPSP"))
+                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                             .Listeners(l => l.Load.Handler = "setdefaultValueBank()")
+                                )
+                            .AllowBlank(false)
+                        .AutoFocus(true),
+                        X.Label("مدل PSP:"),
+                               X.TextField().Width(200)
+                        .ItemID("txtModel")
+                            //.MaskRe("[0-9,آ-ی,., ,_,-]")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                    .AllowBlank(false)
+                    .BlankText("لطفا مدل PSP را وارد کنید."),
+                              X.Label("نوع:").ItemID("LblCboMultiHesab"),
+                                X.ComboBox().Width(180)
+                                    .ItemID("CboMultiHesab")
+                                    .AllowBlank(false)
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا نوع را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .EmptyText("...")
+                           //     .SelectedItems(new { Value = "1" })
+                                .Items(
+                                    new ListItem("تک حسابی", "0"),
+                                    new ListItem("چند حسابی", "1")
+                                    )
+                   , X.Label("توضیحات:"),
+                            X.TextField()
+                    .ItemID("txtDesc")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Width(200)//.ColSpan(4)
+                        )
+                        )
+                        
+)
+                )
+            ),
+            X.GridPanel()
+            .ItemID("PSPModelGrid")
+                .Listeners(l => l.ItemClick.Handler = "CheckBtnHesab();")
+                .BottomBar(X.PagingToolbar())
+                .Store(
+                                X.StoreForModel()
+                                                .Listeners(l => l.DataChanged.Handler = "App.SabtPSPModel.queryById('PSPModelGrid').selModel.refresh();")
+                                .Proxy(Html.X().AjaxProxy()
+                                    .Url(Url.Action("Read"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                                )
+                                .PageSize(20)
+                                .RemoteFilter(true)
+                                .RemotePaging(true)
+                            )
+                        .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                        .Plugins(X.FilterHeader().Remote(true))
+                         .Listeners(l =>
+                         {
+                             l.AfterRender.Handler = "var grid = App.SabtPSPModel.queryById('PSPModelGrid');grid.setHeight(App.DaramadWin.getHeight() - 305); ";
+
+                         })
+            .ColumnModel(
+                            Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldMultiHesab).Text("نوع").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("نام شرکت PSP").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldModel).Text("مدل PSP").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldMultiHesabName).Text("نوع").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(6)
+        )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+        )
+        )
+)
+<script type="text/javascript">
+
+    var ImageId = 0;
+
+    function CheckBtnHesab() {
+        var SelectedRow = App.SabtPSPModel.queryById('PSPModelGrid').selModel.getLastSelected();
+        var btnHesab = App.SabtPSPModel.queryById('btnHesab');
+        if (SelectedRow.data.fldMultiHesab==1)
+            btnHesab.enable(true);
+        else
+            btnHesab.disable(true);
+    }
+    function setdefaultValueBank() {
+        var CboPSP = App.SabtPSPModel.queryById('CboPSP');
+        CboPSP.select(CboPSP.store.getAt(0));
+    }
+
+    function ModelPSPSetSize() {
+        App.SabtPSPModel.setWidth(App.DaramadWin.getWidth());
+        var grid = App.SabtPSPModel.queryById('PSPModelGrid');
+        grid.setHeight(App.DaramadWin.getHeight() - 305);
+    }
+
+    var MojazSh = 0;
+    var sizeeSh = 0;
+    var EndUploadSh = false;
+
+   
+    function LoadModelPSP() {
+        var SelectedRow = App.SabtPSPModel.queryById('PSPModelGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/PSPModel/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var CboPSP = App.SabtPSPModel.queryById('CboPSP');
+                    CboPSP.setValue(data.fldPspId); 
+                    var txtModel = App.SabtPSPModel.queryById('txtModel');
+                    txtModel.setValue(data.fldModel);
+                    var CboMultiHesab = App.SabtPSPModel.queryById('CboMultiHesab');
+                    CboMultiHesab.setValue(data.fldMultiHesab);
+                    var txtDesc = App.SabtPSPModel.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtPSPModel.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveModelPSP() {
+        var txtModel = App.SabtPSPModel.queryById('txtModel');
+        var CboMultiHesab = App.SabtPSPModel.queryById('CboMultiHesab');
+        var CboPSP = App.SabtPSPModel.queryById('CboPSP');
+        var txtDesc = App.SabtPSPModel.queryById('txtDesc');
+        var fldId = App.SabtPSPModel.queryById('fldId');
+        var er = false;
+
+        if (txtModel.validate() == false) {
+            er = true;
+        }
+        if (CboMultiHesab.validate() == false) {
+            er = true;
+        }
+        if (CboPSP.validate() == false) {
+            er = true;
+        }
+       
+        if (er == true)
+            return;
+        var MultiHesab = false;
+        if (CboMultiHesab.getValue() == "1")
+            MultiHesab = true;
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: ' /Daramad/PSPModel/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldModel: txtModel.getValue(),
+                fldMultiHesab: MultiHesab,
+                fldPspId: CboPSP.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.SabtPSPModel.queryById('PSPModelGrid').store.load();
+                if (data.Err != 1)
+                    ClearModelPSP();
+            }
+
+        });
+    }
+    function HelpModelPSP() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/PSPModel/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function DeleteModelPSP() {
+        var SelectedRow = App.SabtPSPModel.queryById('PSPModelGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/PSPModel/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Err == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtPSPModel.queryById('PSPModelGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    
+    function ShomareHesabModelPSP() {
+        var SelectedRow = App.SabtPSPModel.queryById('PSPModelGrid').selModel.getLastSelected();
+            if (SelectedRow != null) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/PSPModel/ShomareHesab',
+                    params: {
+                        Id: SelectedRow.data.fldId
+                    },
+                    success: function (data) {
+                        Ext.net.Mask.hide();
+                    }
+                })
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+
+    function ClearModelPSP() {
+        App.SabtPSPModel.queryById('fldId').setValue(0);
+        App.SabtPSPModel.queryById('txtModel').setValue("");
+        App.SabtPSPModel.queryById('CboMultiHesab').setValue("0");
+        App.SabtPSPModel.queryById('CboPSP').setValue("");
+        App.SabtPSPModel.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapSabtPSPModel = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtPSPModel.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtPSPModel.queryById('btnSaveModelPSP');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

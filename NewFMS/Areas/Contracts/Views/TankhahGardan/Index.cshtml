@@ -1,0 +1,322 @@
+﻿@model IEnumerable<NewFMS.Areas.Contracts.Models.spr_tblTanKhahGardanSelect>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{ var X = Html.X();}
+
+<style>
+    .custom-pettyCashiericon{
+        margin-right: 224px!important;
+    }
+</style>
+@(Html.X().Panel()
+    .ID("pettyCashier")
+    .Title("تعریف تنخواه گردان")
+    .Listeners(li => { li.AfterRender.Handler = "pettyCashierSetSize();"; li.Render.Fn = "addKeyMappettyCashier"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l =>l.Click.Handler = "SavepettyCashier();"), 
+                X.Button()
+                    .Text("ویرایش")
+                    .Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l =>l.Click.Handler = "LoadpettyCashier();"),
+                X.Button()
+                    .Text("حذف")
+                    .Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l =>l.Click.Handler = "DeletepettyCashier();"),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.pettyCashier.destroy()")
+            )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Border(true)
+                            //.Title("نوع قرارداد")
+                            //.Height(100)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                            .Items(
+                                X.Hidden().ItemID("fldId"),
+                                X.Hidden().ItemID("EmployeeId"),
+                                //X.Label("سازمان:"),
+                                //X.ComboBox()
+                                //    .ItemID("CboOrgan")
+                                //    .TypeAhead(true)
+                                //    .AutoFocus(true)
+                                //    .Editable(true)
+                                //    .QueryMode(DataLoadMode.Local)
+                                //    .TriggerAction(TriggerAction.All)
+                                //    .BlankText("لطفا سازمان را انتخاب کنید.")
+                                //    //.Listeners(l => l.Change.Handler = "loadSetting();")
+                                //    .AllowBlank(false)
+                                //    .ForceSelection(true)
+                                //    .DisplayField("fldTitle")
+                                //    .ValueField("fldId")
+                                //    .EmptyText("سازمان ...")
+                                //    .Width(250)
+                                //    .Store(X.Store()
+                                //        .Model(X.Model()
+                                //            .IDProperty("fldId")
+                                //            .Fields(
+                                //                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                //                new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                //            )
+                                //        )
+                                //        .Proxy(X.AjaxProxy()
+                                //            .Url(Url.Action("GetOrgan"))
+                                //            .Reader(X.JsonReader().Root("data"))
+                                //        )
+                                //        //.Listeners(l => l.Load.Handler = "setdefaultValueSetting()")
+                                //    ),
+                                X.Label("نام شخص:"),
+                                X.TextField()
+                                    .ItemID("txtName")
+                                    .Icon(Icon.UserAdd)
+                                    .FieldStyle("padding-right:6px;")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا نام شخص را وارد کنید.")
+                                    .ReadOnly(true)
+                                    .Width(250)
+                                    .AutoFocus(true)
+                                    .DirectEvents(li =>
+                                    {
+                                        li.SpecialKey.Url = Url.Action("Index", "SearchEmployee", new { Area = "Comon" });
+                                        li.SpecialKey.ExtraParams.Add(new Parameter("State", "9", ParameterMode.Raw));
+                                        li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                        li.IconClick.Url = Url.Action("Index", "SearchEmployee", new { Area = "Comon" });
+                                        li.IconClick.ExtraParams.Add(new Parameter("State", "9", ParameterMode.Raw));
+                                    })
+                                    .Listeners(l => l.AfterRender.Handler = "App.pettyCashier.queryById('txtName').icon.dom.classList.add('custom-pettyCashiericon');"),
+                                X.Label("توضیحات:"),
+                                X.TextField()
+                                    .ItemID("txtDesc")
+                                    .Width(430)
+                                    .AllowBlank(true)
+                            )
+                    )
+            ),
+        X.GridPanel()
+            .ItemID("pettyCashierGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.pettyCashier.queryById('pettyCashierGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(false)
+                    .RemotePaging(false)
+            )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .Plugins(X.FilterHeader().Remote(false))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                Html.X().Column().DataIndex(Model, m => m.fldName_Family).Text("نام و نام خانوادگی").Wrap(true).Flex(4),
+                Html.X().Column().DataIndex(Model, m => m.fldStatusName).Text("وضعیت").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(7).Wrap(true),
+                Html.X().ImageCommandColumn().Listeners(l => l.Command.Fn = "ChangeStatusCmdAction").Flex(2)
+                    .Commands(Html.X().ImageCommand().CommandName("ChangeStatusCmd").Icon(Ext.Net.Icon.ArrowUndo).ToolTip(tt => tt.Text = "تغییر وضعیت"))
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+    )
+)
+<script type="text/javascript">
+
+    function pettyCashierSetSize() {
+        App.pettyCashier.queryById('pettyCashierGrid').setHeight(App.ContractWin.getHeight() - 240);
+    }
+
+    function ChangeStatusCmdAction(grid, command, record, row) {
+        if (command == 'ChangeStatusCmd') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Contracts/TankhahGardan/ChangeStatus',
+                params: {
+                    Id: record.data.fldId,
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+
+    function LoadpettyCashier() {
+        var SelectedRow = App.pettyCashier.queryById('pettyCashierGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/pettyCashier/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtName = App.pettyCashier.queryById('txtName');
+                    txtName.setValue(data.fldName_Family);
+                    var EmployeeId = App.pettyCashier.queryById('EmployeeId');
+                    EmployeeId.setValue(data.fldEmployeeId);
+                    var txtDesc = App.pettyCashier.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.pettyCashier.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SavepettyCashier() {
+        var txtName = App.pettyCashier.queryById('txtName');
+        var txtDesc = App.pettyCashier.queryById('txtDesc');
+        var fldId = App.pettyCashier.queryById('fldId');
+        var EmployeeId = App.pettyCashier.queryById('EmployeeId');
+        var er = false;
+
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/pettyCashier/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldEmployeeId: EmployeeId.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            App.pettyCashier.queryById('txName').focus();
+                        }
+                    }
+                });
+                App.pettyCashier.queryById('pettyCashierGrid').store.load();
+                if (data.Er != 1)
+                    ClearpettyCashier();
+            }
+        });
+    }
+
+    function DeletepettyCashier() {
+        var SelectedRow = App.pettyCashier.queryById('pettyCashierGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/pettyCashier/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.pettyCashier.queryById('pettyCashierGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearpettyCashier() {
+        App.pettyCashier.queryById('fldId').setValue(0);
+        App.pettyCashier.queryById('EmployeeId').setValue(0);
+        App.pettyCashier.queryById('txtName').setValue("");
+        App.pettyCashier.queryById('txtDesc').setValue("");
+    }
+
+    var addKeyMappettyCashier = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.pettyCashier.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        SavepettyCashier();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

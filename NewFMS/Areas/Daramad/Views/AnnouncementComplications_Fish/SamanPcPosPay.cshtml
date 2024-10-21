@@ -1,0 +1,159 @@
+﻿@using Ext.Net
+@using Ext.Net.MVC
+@{
+    var mablagh = ViewBag.GpPrice;
+    /*if (ViewBag.state == 2)
+    {
+        long SumMablagh = 0;
+        mablagh = mablagh.Replace(",0", "");
+        for (var i = 0; i < 10; i++)
+        {
+            if (k[i] != "0" && k[i] != "")
+            {
+                SumMablagh = SumMablagh + Convert.ToInt64(k[i]);
+            }
+        }
+        mablagh = SumMablagh;
+    }*/
+}
+
+@(Html.X()
+    .Window()
+    .Width(250)
+    .Height(150)
+    .CloseAction(CloseAction.Destroy)
+    .ID("SamanPcpos")
+    .Listeners(l => l.AfterRender.Handler = "loadPcPos();")
+    .Title("پرداخت توسط pcpos").Modal(true)
+    .Content(@<div>
+        <br />
+        <br />
+        <center>
+            <input type="text" id="saman_state" value="@ViewBag.state" style="display:none;" />
+            <input type="text" id="saman_fishid" value="@ViewBag.fishid" style="display:none;" />
+            <textarea id="txtAdd" rows="4" cols="50" style="display:none;"></textarea>
+            مبلغ: <span>@mablagh</span> ریال
+            <br />
+            <br />
+            <button style="font-family:Tahoma;font-size:12px;" class="btn btn-success pull-right" type="button" id="btnSendAmountPCStart">ارسال به دستگاه کارتخوان</button>
+        </center>
+    </div>
+        //.Items(
+        //    Html.X().Label().Text("مبلغ:"),
+        //        Html.X().Label().Text(mablagh),
+        //            Html.X().Button().Text("پرداخت").Listeners(l => l.Click.Handler = "SamanPay();"),
+        //        Html.X().Label().ID("SamanResult")
+        )
+)
+
+<script>
+
+    var state = '@ViewBag.state';
+    var GpPrice = '@ViewBag.GpPrice';
+    var organ = '@ViewBag.organ';
+    var serverMessage = '';
+    var authorization = '';
+    var ip = '@ViewBag.ip';
+    var mablagh = '@ViewBag.mablagh';
+    var PayTypeVal = '@ViewBag.PayTypeVal';
+    var radifVal = '@ViewBag.radifVal';
+    var AccNumVal = '@ViewBag.AccNumVal';
+    var PayMethodVal = '@ViewBag.PayMethodVal';
+    var ShenaseGhabz = '@ViewBag.ShGhabz';
+    var ShenasePardakht = '@ViewBag.ShPardakht';
+    var SumMablagh = '@ViewBag.mablagh';
+    loadPcPos = function () {
+        Ext.net.Mask.hide();
+
+        $('#txtAdd').val("<?xml version=\"1.0\" encoding=\"utf-16\"?>" + "\r\n" +
+                              "<List>" + "\r\n" +
+                              "<print>" + "\r\n" +
+                              "<item>" + organ + "</item>" + "\r\n" +
+                              "<value>" + mablagh + "</value>" + "\r\n" +
+                              "<alignment>0</alignment>" + "\r\n" +
+                              "<receiptype>0</receiptype>" + "\r\n" +
+                              "</print>" + "\r\n" +
+                              "<print>" + "\r\n" +
+                              "<item>" + organ + "</item>" + "\r\n" +
+                              "<value>" + mablagh + "</value>" + "\r\n" +
+                              "<alignment>0</alignment>" + "\r\n" +
+                              "<receipttype>1</receipttype>" + "\r\n" +
+                              "</print>" + "\r\n" +
+                               "</List>");
+
+        if (state == "2") {
+            SumMablagh = 0;
+            var k = mablagh.split(',');
+            var matn = "<?xml version=\"1.0\" encoding=\"utf-16\"?>" + "\r\n" +
+                              "<List>" + "\r\n";
+            for (var i = 0; i < 10; i++) {
+                if (k[i] != "0" && k[i] != "") {
+                    SumMablagh = SumMablagh + parseInt(k[i]);
+
+                    matn = matn + "<print>" + "\r\n" +
+                                  "<item>" + organ + "</item>" + "\r\n" +
+                                  "<value>" + k[i] + "</value>" + "\r\n" +
+                                  "<alignment>0</alignment>" + "\r\n" +
+                                  "<receiptype>0</receiptype>" + "\r\n" +
+                                  "</print>" + "\r\n" +
+                                  "<print>" + "\r\n" +
+                                  "<item>" + organ + "</item>" + "\r\n" +
+                                  "<value>" + k[i] + "</value>" + "\r\n" +
+                                  "<alignment>0</alignment>" + "\r\n" +
+                                  "<receipttype>1</receipttype>" + "\r\n" +
+                                  "</print>" + "\r\n";
+                }
+            }
+            matn = matn + "</List>";
+            $('#txtAdd').val(matn);
+        }
+
+        $.connection.hub.start().done(function initialize() {
+            console.server.Reset();
+            $('#btnSendAmountPCStart').click(function () {
+                App.SamanPcpos.body.mask('در حال اتصال به کارتخوان...');
+                /*Ext.net.Mask.show({ msg: 'در حال اتصال به کارتخوان...' });*/
+                serverMessage = '';
+                console.server.Initial('1', ip, '', '0', '0', '0');
+                var delayInMilliseconds = 1000;
+                setTimeout(function () {
+                    /*if (serverMessage == '0') {*/
+                    if (PayMethodVal == "0") {/*خرید*/
+                        if (PayTypeVal == '0') {
+                            if (state == 2)
+                                mablagh = GpPrice;
+                            console.server.SendAmount1Step(mablagh, null, $("#txtAdd").val(), $("#txtAdd").val());
+                        }
+                        else {
+                            var Amounts = '';
+                            if (state == 1) {
+                                for (var i = 1; i < parseInt(AccNumVal) + 1; i++) {
+                                    if (i == parseInt(radifVal)) {
+                                        Amounts = Amounts + mablagh + ",";
+                                    }
+                                    else {
+                                        Amounts = Amounts + "0" + ",";
+                                    }
+                                }
+                                Amounts = Amounts.slice(0, -1);
+
+                            }
+                            else if (state == 2)
+                                Amounts = mablagh.slice(0, -1);
+
+                            console.server.SendAmount1Step(SumMablagh, Amounts, $("#txtAdd").val(), $("#txtAdd").val());
+                        }
+                    }
+                    else if (PayMethodVal == "1") {/*پرداخت با شناسه قبض و پرداخت*/
+                        console.server.Bill(ShenaseGhabz, ShenasePardakht, $("#txtAdd").val(), '');
+                    }
+                    $('#result').html('please swipe card...');
+                    /*} else {
+                            $('#result').html('error in initialization');
+                            console.server.Reset();
+                        }*/
+                }, delayInMilliseconds);
+            });
+        });
+    };
+</script>

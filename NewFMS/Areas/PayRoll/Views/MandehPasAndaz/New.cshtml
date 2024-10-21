@@ -1,0 +1,189 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window()
+    .Modal(true)
+    .Listeners(li => li.AfterRender.Handler = "LoadPasAndaz();")
+    .Width(270)
+        //   .Height(300)
+    .Resizable(false)
+    .Title("ثبت مانده پس انداز جدید")
+    .ID("NewPasAndaz")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel()
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Border(false)
+            .KeyMap(Html.X().KeyMap()
+                .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+                .Binding(b =>
+                {
+                    b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                    .Handler("checkSavePasAndaz(); ")
+                    );
+
+                }))
+            .DefaultButton("btn")
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+        //.ToolTip("کلید میانبر F8")
+                        .Listeners(l => l.Click.Handler = "checkSavePasAndaz();")
+                    .ItemID("btnSave"),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .ToolTip("کلید میانبر Esc")
+                    .OnClientClick("App.NewPasAndaz.destroy();")
+                    )
+            .Items(
+                X.FieldSet()
+                        .ItemID("Panel").Title("اطلاعات افراد")
+                    .Layout(Ext.Net.LayoutType.Table)
+                    .Border(true)
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                    .Defaults(new { Margin = 2 })
+                        .Items(
+                            X.Hidden().ItemID("fldId"),
+                            X.Hidden().ItemID("fldPersonalId")
+                , X.Label("تاریخ ثبت:")
+                , X.PDateField()
+                .AutoFocus(true)
+                .ItemID("txtTarikhSabt")
+                .MaskRe("/[0-9 /]/")
+                .MaxLength(10)
+                .EnforceMaxLength(true)
+                .AllowBlank(false)
+                .BlankText("لطفا تاریخ ثبت را وارد کنید.")
+                , X.Label("مبلغ:")
+                , X.TextField()
+                .MaxLength(13)
+                .ItemID("txtMablagh")
+                .AllowBlank(false)
+                .BlankText("لطفا مبلغ را وارد کنید.")
+                .Listeners(l => { l.Change.Handler = "App.NewPasAndaz.queryById('txtMablagh').setValue(accounting.formatNumber(App.NewPasAndaz.queryById('txtMablagh').getValue()));CheckInt(App.NewPasAndaz.queryById('txtMablagh'));"; })
+
+        )
+    ))
+)
+
+<script type="text/javascript">
+    function LoadPasAndaz() {
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/MandehPasAndaz/Details',
+                params: {
+                    id: '@ViewBag.Id',
+                    OrganId:'@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    var txtTarikhSabt = App.NewPasAndaz.queryById('txtTarikhSabt');
+                    txtTarikhSabt.setValue(data.fldTarikhSabt);
+                    var txtMablagh = App.NewPasAndaz.queryById('txtMablagh');
+                    txtMablagh.setValue(data.FldMablagh);
+                    var fldPersonalId = App.NewPasAndaz.queryById('fldPersonalId');
+                    fldPersonalId.setValue(data.fldPersonalId);
+                    var Id = App.NewPasAndaz.queryById('fldId');
+                    Id.setValue(data.fldId);
+
+                }
+            });
+        }
+        else {
+            var fldPersonalId = App.NewPasAndaz.queryById('fldPersonalId');
+            fldPersonalId.setValue('@ViewBag.PersonalId');
+        }
+    }
+    function checkSavePasAndaz() {
+        var SelectedRow = App.MandehPasAndaz.queryById('GridHeader').selModel.getLastSelected();
+        if (SelectedRow.data.fldStatusId == 1) {
+            SavePasAndaz();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "وضعیت فرد مورد نظر " + SelectedRow.data.fldStatusTitle + " است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SavePasAndaz() {
+        var txtTarikhSabt = App.NewPasAndaz.queryById('txtTarikhSabt');
+        var txtMablagh = App.NewPasAndaz.queryById('txtMablagh');
+        var Id = App.NewPasAndaz.queryById('fldId');
+        var PersonalId = App.NewPasAndaz.queryById('fldPersonalId');
+
+        var er = false;
+
+        if (txtTarikhSabt.validate() == false) {
+            er = true;
+        }
+        if (txtMablagh.validate() == false) {
+            er = true;
+        }
+
+
+        if (er == true)
+            return;
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/MandehPasAndaz/Save',
+            params: {
+                fldId: Id.getValue(),
+                fldTarikhSabt: txtTarikhSabt.rawValue,
+                FldMablagh: txtMablagh.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                fldPersonalId: PersonalId.getValue(),
+                OrganId: '@ViewBag.OrganId'
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                ClearPasAndaz();
+                ReloadGridDetailPasAndaz();
+               /* App.MandehPasAndaz.queryById('GridHeader').store.load();
+                App.MandehPasAndaz.queryById('GridDetail').getStore().loadData("");*/
+
+            }
+
+        });
+    }
+    function ClearPasAndaz() {
+        App.NewPasAndaz.queryById('txtTarikhSabt').setValue("");
+        App.NewPasAndaz.queryById('txtMablagh').setValue("");
+        App.NewPasAndaz.queryById('fldPersonalId').setValue(0);
+        App.NewPasAndaz.queryById('fldId').setValue(0);
+    }
+
+    function EnterNext() {
+        var keyfield = App.NewPasAndaz.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtMablagh") {
+            nextfld = App.NewPasAndaz.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+    }
+
+
+</script>

@@ -1,0 +1,108 @@
+﻿@model IEnumerable<NewFMS.WCF_Common_Pay.OBJ_Items_Estekhdam>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net.Utilities
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+
+
+
+@(X.Window().Title("سال مالی").Modal(true).Border(false)
+        .ID("WinSalMali")
+    .Closable(false)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+          .Width(250)
+          .Layout(LayoutType.VBox)
+              .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+             .ButtonAlign(Alignment.Center)
+
+        .DefaultButton("btn")
+
+             .Buttons(
+                X.Button().Text("انتخاب").IconCls("Select")
+                .Listeners(l =>
+                {
+                    l.Click.Handler = "SetSession();";
+
+                })
+
+                )
+    .Items(
+                X.Panel().ItemID("Panel")
+            .Border(false)
+                .Layout(LayoutType.Table)
+                .Width(240)
+                .Padding(5)
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                .Defaults(new { Margin = 2 })
+            .Items(
+                          Html.X().Label("سال مالی:"),
+                Html.X().ComboBox()
+                .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .ItemID("CboYear")
+                    .DisplayField("fldYear")
+                    .ValueField("fldYear")
+
+                    .TypeAhead(true)
+                    .Editable(false)
+                    .AllowBlank(false)
+                    .BlankText("لطفا سال را انتخاب کنید.")
+                    .QueryMode(DataLoadMode.Local)
+                    .ForceSelection(true)
+                    .TriggerAction(TriggerAction.All)
+                        .Store(X.Store().Listeners(l => l.Load.Handler = "SetDefultYearMali();")
+                    .Model(X.Model()
+                    .IDProperty("fldYear")
+                        .Fields(
+                            new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" }
+                        )
+                    )
+                        .Proxy(X.AjaxProxy()
+                        .Url(Url.Action("GetSal"))
+                        .Reader(X.JsonReader().Root("data"))
+                                )
+                    )
+        )
+
+
+    )
+)
+
+<script type="text/javascript">
+    function SetDefultYearMali() {
+        var CboYear = App.WinSalMali.queryById('CboYear');
+        CboYear.setValue('@ViewBag.Year');
+    }
+    function SetSession() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        var er = false;
+        var CboYear = App.WinSalMali.queryById('CboYear');
+        if (CboYear.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+        Ext.net.DirectMethod.request({
+            url: '/Home/SetSessionYear',
+            params: {
+                Year: CboYear.getValue()
+            },
+            success: function (data) {
+                App.WinSalMali.destroy();
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+
+
+</script>

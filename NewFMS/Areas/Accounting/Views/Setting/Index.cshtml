@@ -1,0 +1,392 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_GeneralSetting>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .addicon {
+        margin-right: 123px !important;
+    }
+
+    .addicon2 {
+        margin-right: 104px !important;
+    }
+</style>
+<script>
+    var ShowValueAccounting = function (value, metadata) {
+        if (metadata.record.data.fldTitleCombo != "") {
+            return metadata.record.data.fldTitleCombo;
+        }
+        return value;
+    };
+</script>
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+<br />
+@(Html.X().Panel()
+    .ID("AccountingSetting")
+    .Title("ثبت تنظیمات")
+    .Closable(true)
+    .Listeners(li => { li.AfterRender.Handler = "AccountingSettingSetSize();"; li.Render.Fn = "addKeyMapAccountingSetting"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(
+                X.Label()),
+                X.Panel()
+                    .Border(false)
+                    .Buttons(
+                        X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => { l.Click.Handler = "SaveAccountingSetting();"; }),
+                        X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "LoadAccountingSetting();"; }),
+                        X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteAccountingSetting();"; }),
+                        X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.AccountingSetting.destroy()")
+                    )
+                    .ButtonAlign(Ext.Net.Alignment.Center)
+                    .Items(
+                        X.Panel()
+                            .Border(false)
+                            .Layout(LayoutType.VBox)
+                            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                            .Items(
+                                X.FieldSet()
+                                    .Title("تنظیمات")
+                                    .Border(true)
+                                    .Defaults(new { Margin = 2 })
+                                    .Layout(LayoutType.Table)
+                                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                                    .Items(
+                                        X.Hidden()
+                                            .ItemID("fldId").Value(0),
+                                        X.Label("عنوان:"),
+                                        X.TextField()
+                                            .ItemID("txtName")
+                                            .AllowBlank(false)
+                                            .MaxLength(200)
+                                            .EnforceMaxLength(true)
+                                            .BlankText("لطفا عنوان را وارد کنید.")
+                                            .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                                            .AutoFocus(true),
+                                        X.Label("مقدار:"),
+                                        X.ComboBox()
+                                            .ItemID("txtValue")
+                                            .Icon(Icon.Add)
+                                            .DisplayField("fldTtile")
+                                            .ValueField("fldValue")
+                                            .TypeAhead(true)
+                                            .Editable(true)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا مقدار را وارد کنید.")
+                                            .QueryMode(DataLoadMode.Local)
+                                            .HideTrigger(true)
+                                            //.ForceSelection(true)
+                                            .FieldStyle("padding-right:4px;")
+                                            .Listeners(l => {
+                                                l.AfterRender.Handler = "App.AccountingSetting.queryById('txtValue').icon.dom.classList.add('addicon');";
+                                                l.SpecialKey.Fn = "AddValueAccounting";
+                                                l.IconClick.Handler = "GotoAddValueAccounting()";
+                                            })
+                                            .MaxLength(200)
+                                            .EnforceMaxLength(true)
+                                            .TriggerAction(TriggerAction.All)
+                                            .Store(X.Store()
+                                                .Model(X.Model()
+                                                    .IDProperty("fldValue")
+                                                    .Fields(
+                                                        new ModelField("fldTtile", ModelFieldType.String) { Mapping = "fldTtile" },
+                                                        new ModelField("fldValue", ModelFieldType.String) { Mapping = "fldValue" },
+                                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" }                                                        
+                                                    )
+                                                )
+                                                    //.Proxy(X.AjaxProxy()
+                                                    //    .Url(Url.Action("GetModule_Organ"))
+                                                    //    .Reader(X.JsonReader().Root("data"))
+                                                    //)
+                                            ),
+                                        X.Label("توضیحات:"),
+                                        X.TextField()
+                                            .ItemID("txtDesc")
+                                            .Width(330)
+                                            .ColSpan(3)
+                                    )
+                        )
+                ),
+                X.GridPanel()
+                    .ItemID("AccountingSettingGrid")
+                    .BottomBar(X.PagingToolbar())
+                    .Store(
+                        X.StoreForModel()
+                            .Listeners(l => l.DataChanged.Handler = "App.AccountingSetting.queryById('AccountingSettingGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(false)
+                            .RemotePaging(false)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(false))
+                    .Listeners(l =>
+                    {
+                        l.AfterRender.Handler = "var grid = App.AccountingSetting.queryById('AccountingSettingGrid');grid.setHeight(App.AccountingWin.getHeight() - 260); ";
+                    })
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldValue).Text("مقدار").Flex(2).Renderer("ShowValueAccounting"),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+        )
+)
+<script type="text/javascript">
+    var comboboxArrayAccounting = new Array();
+    var AddValueAccounting = function (Fieldd, Eventt) {
+        if (Eventt.keyCode == 45) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/Setting/AddValue',
+                params: {
+                    SettingId: App.AccountingSetting.queryById('fldId').getValue()
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    };
+
+    function GotoAddValueAccounting() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/Setting/AddValue',
+            params: {
+                SettingId: App.AccountingSetting.queryById('fldId').getValue()
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function AccountingSettingSetSize() {
+        App.AccountingSetting.setWidth(App.AccountingWin.getWidth());
+        var grid = App.AccountingSetting.queryById('AccountingSettingGrid');
+        grid.setHeight(App.AccountingWin.getHeight() - 260);
+    }
+
+    function LoadAccountingSetting() {
+        var SelectedRow = App.AccountingSetting.queryById('AccountingSettingGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/Setting/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtName = App.AccountingSetting.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var txtDesc = App.AccountingSetting.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.AccountingSetting.queryById('fldId');
+                    fldId.setValue(data.fldId);
+
+                    var txtValue = App.AccountingSetting.queryById('txtValue');
+                    if (data.comboboxValues.length > 0) {
+                        txtValue.store.loadData(data.comboboxValues);
+                        txtValue.setHideTrigger(false);
+                        App.AccountingSetting.queryById("txtValue").forceSelection = true;
+                        txtValue.icon.dom.classList.remove('addicon');
+                        txtValue.icon.dom.classList.add('addicon2');
+                        txtValue.setValue(data.fldValue);
+                        comboboxArrayAccounting = data.comboboxValues;
+                    }
+                    else {
+                        txtValue.store.loadData("");
+                        txtValue.setHideTrigger(true);
+                        App.AccountingSetting.queryById("txtValue").forceSelection = false;
+                        txtValue.icon.dom.classList.remove('addicon2');
+                        txtValue.icon.dom.classList.add('addicon');
+                        txtValue.setValue(data.fldValue);
+                        comboboxArrayAccounting = new Array();
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                Name: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveAccountingSetting() {
+        var txtName = App.AccountingSetting.queryById('txtName');
+        var txtValue = App.AccountingSetting.queryById('txtValue');
+        var txtDesc = App.AccountingSetting.queryById('txtDesc');
+        var fldId = App.AccountingSetting.queryById('fldId');
+        var er = false;
+
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (txtValue.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+        else {
+            var data = {
+                fldId: fldId.getValue(),
+                fldName: txtName.getValue(),
+                fldValue: txtValue.getValue(),
+                ComboBox: comboboxArrayAccounting,
+                fldDesc: txtDesc.getValue()
+            };
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            $.ajax({
+                type: "POST",
+                url: '/Accounting/Setting/Save',
+                datatype: "json",
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                success: function (result) {
+                    var ic = Ext.MessageBox.INFO;
+                    if (result.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: result.MsgTitle,
+                        msg: result.Msg,
+                        icon: ic,
+                        closable: false,
+                        buttons: Ext.MessageBox.OK,
+                        fn: function (btn) {
+                            if (btn == "ok") {
+                                App.AccountingSetting.queryById('txtName').focus();
+                            }
+                        }
+                    });
+                    Ext.net.Mask.hide();
+                    if (result.Err != 1) {
+                        App.AccountingSetting.queryById('AccountingSettingGrid').store.load();
+                        ClearAccountingSetting();
+                    }
+                },
+                failure: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }        
+    }
+
+    function DeleteAccountingSetting() {
+        var SelectedRow = App.AccountingSetting.queryById('AccountingSettingGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                Name: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Accounting/Setting/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    Name: data.MsgName,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.AccountingSetting.queryById('AccountingSettingGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                        ClearAccountingSetting();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                Name: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearAccountingSetting() {
+        App.AccountingSetting.queryById('fldId').setValue(0);
+        App.AccountingSetting.queryById('txtName').setValue("");
+        App.AccountingSetting.queryById('txtValue').setValue("");
+        App.AccountingSetting.queryById("txtValue").setHideTrigger(true);
+        App.AccountingSetting.queryById("txtValue").forceSelection = false;
+        App.AccountingSetting.queryById('txtValue').icon.dom.classList.add('addicon');
+        App.AccountingSetting.queryById('txtValue').icon.dom.classList.remove('addicon2');
+        App.AccountingSetting.queryById('txtDesc').setValue("");
+        comboboxArrayAccounting = new Array();
+    }
+
+    var addKeyMapAccountingSetting = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.AccountingSetting.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        SaveAccountingSetting();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

@@ -1,0 +1,329 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@{
+    var X = Html.X();
+}
+
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+
+
+@(Html.X().Window().Modal(true)
+.Width(600)
+.Height(250)
+    .Title("جدول مالیاتی جدید")
+        .ID("NewFiscal")
+                .Listeners(li => { li.AfterRender.Handler = "LoadFiscal();"; li.Render.Fn = "addKeyMapNewFiscal"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+        .DefaultButton("btn")
+          .TitleAlign(Ext.Net.TitleAlign.Center)
+          
+               .Buttons(X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ToolTip("کلید میانبر F8")
+                           .Listeners(l =>
+                           {
+                               l.Click.Handler = "SaveFiscal();";
+
+                           })
+                           .ItemID("btnSave")
+                            ,
+                            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                                .OnClientClick("App.NewFiscal.destroy()"))
+        //.KeyNav(X.KeyNav()
+        //    .Target("={document.body}")
+        //    .Enter(a => a.Handler = "alert('');EnterNext();")
+        //    )
+
+                .Items(
+                X.Panel().Border(false)
+                    .PaddingSpec("5 0 5 0")
+            .Items(
+                X.FieldSet().Border(true).Title("جدول مالیاتی")
+                .Defaults(new { Margin = 2})
+                
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                .Items(
+                X.Hidden().ItemID("fldId"),
+                   X.Label().Text("تاریخ اجرا:"),
+                   X.PDateField()
+                            .MaskRe("/[0-9 /]/")
+                            .MaxLength(10)
+                            .EnforceMaxLength(true)
+                    .ItemID("txtEffectiveDate")
+                    //.FieldLabel("تاریخ اجرا")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا تاریخ اجرا را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AutoFocus(true)
+        //.Listeners(li => {
+        //    li.SpecialKey.Handler = " if(e.getKey() == Ext.EventObject.ENTER) App.NewFiscal.queryById('txtDateOfIssue').focus(true);";
+        //})
+        //  .Listeners(li => { li.SpecialKey.Handler = "if(e.getKey() == Ext.EventObject.ENTER) e.keyCode=Ext.EventObject.TAB;"; })
+                        , X.Label().Text("تاریخ صدور:")
+        , X.PDateField()
+                        .ItemID("txtDateOfIssue")
+                        .MaskRe("/[0-9 /]/")
+                        .MaxLength(10)
+                        .EnforceMaxLength(true)
+                    //.FieldLabel("تاریخ صدور")
+                    //.LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا تاریخ صدور را وارد کنید.")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                             , X.Label().Text("از مبلغ:")
+                    , X.TextField()
+                    .ItemID("txtAmountFrom")
+                    //.FieldLabel("از مبلغ")
+                        //.Icon(Ext.Net.Icon.MoneyDollar)
+                        .Listeners(l => { l.Change.Handler = "CheckInt(App.NewFiscal.queryById('txtAmountFrom'));App.NewFiscal.queryById('txtAmountFrom').setValue(accounting.formatNumber(App.NewFiscal.queryById('txtAmountFrom').getValue()));"; })
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا مبلغ را وارد کنید.")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+        //  .Listeners(li => { li.SpecialKey.Handler = "if(e.getKey() == Ext.EventObject.ENTER) EnterNext();"; })
+                            , X.Label().Text("تا مبلغ:") 
+        , X.TextField()
+                    .ItemID("txtAmountTo")
+                        //.FieldLabel("تا مبلغ")
+                        //.Icon(Ext.Net.Icon.MoneyDollar)
+                            .Listeners(l => { l.Change.Handler = "CheckInt(App.NewFiscal.queryById('txtAmountTo'));App.NewFiscal.queryById('txtAmountTo').setValue(accounting.formatNumber(App.NewFiscal.queryById('txtAmountTo').getValue()));"; })
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا مبلغ را وارد کنید.")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                      , X.Label().Text("درصد مالیات کارگران:") 
+                   , X.TextField()
+                        .ItemID("txtPercentTaxOnWorkers")
+                        .Listeners(l => { l.Change.Handler = "CheckDarsad(App.NewFiscal.queryById('txtPercentTaxOnWorkers'))"; })
+                    //.FieldLabel("درصد مالیات کارگران").IconCls("darsad")
+                    .MaskRe("/[0-9-.]/")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا مالیات کارگران را وارد کنید.")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                   , X.Label().Text("درصد مالیات کارمندان:") 
+                   , X.TextField()
+                        .ItemID("txtTaxationOfEmployees")
+                        .Listeners(l => { l.Change.Handler = "CheckDarsad(App.NewFiscal.queryById('txtTaxationOfEmployees'))"; })
+                    //.FieldLabel("درصد مالیات کارمندان").IconCls("darsad")
+                    .MaskRe("/[0-9-.]/")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا مالیات کارمندان را وارد کنید.")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                     , X.Label().Text("مالیات ثابت:") 
+                   , X.TextField()
+                    .ItemID("txtTax")
+                    //.FieldLabel("مالیات ثابت").IconCls("maliat")
+                    .Listeners(l => { l.Change.Handler = "CheckInt(App.NewFiscal.queryById('txtTax'));App.NewFiscal.queryById('txtTax').setValue(accounting.formatNumber(App.NewFiscal.queryById('txtTax').getValue()));"; })
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا مالیات ثابت را وارد کنید.")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    
+                         , X.Label().Text("توضیحات:") 
+                   , X.TextArea()
+                    .ItemID("txtDesc")
+                    //.FieldLabel("توضیحات")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                
+                    
+
+                        )
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+        )
+)
+@(Html.X().KeyMap()
+            .ID("NewFiscalMap")
+            .Target("={App.NewFiscal.getTargetEl()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("if(App.HogTab.activeTab.id=='Fiscal')SaveFiscal(); ")
+                );
+
+            }))
+<script type="text/javascript">
+    function LoadFiscal() {
+
+        if ('@ViewBag.State' == '1') {
+            /*New with Exist Header*/
+            if ('@ViewBag.Id' != '0') {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Fiscal/HeaderDetails',
+                    params: {
+                        id: '@ViewBag.Id'
+                    },
+                    success: function (data) {
+                        var txtEffectiveDate = App.NewFiscal.queryById('txtEffectiveDate');
+                        txtEffectiveDate.setValue(data.fldEffectiveDate);
+                        var txtDateOfIssue = App.NewFiscal.queryById('txtDateOfIssue');
+                        txtDateOfIssue.setValue(data.fldDateOfIssue);
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+        else if ('@ViewBag.State' == '2') {
+            /*Edit*/
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Fiscal/Details',
+                params: {
+                    id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    var txtEffectiveDate = App.NewFiscal.queryById('txtEffectiveDate');
+                    txtEffectiveDate.setValue(data.fldEffectiveDate);
+                    App.NewFiscal.queryById('txtEffectiveDate').setReadOnly(true);
+                    var txtDateOfIssue = App.NewFiscal.queryById('txtDateOfIssue');
+                    txtDateOfIssue.setValue(data.fldDateOfIssue);
+                    App.NewFiscal.queryById('txtDateOfIssue').setReadOnly(true);
+                    var txtAmountFrom = App.NewFiscal.queryById('txtAmountFrom');
+                    txtAmountFrom.setValue(data.fldAmountFrom);
+                    var txtAmountTo = App.NewFiscal.queryById('txtAmountTo');
+                    txtAmountTo.setValue(data.fldAmountTo);
+                    var txtPercentTaxOnWorkers = App.NewFiscal.queryById('txtPercentTaxOnWorkers');
+                    txtPercentTaxOnWorkers.setValue(data.fldPercentTaxOnWorkers);
+                    var txtTaxationOfEmployees = App.NewFiscal.queryById('txtTaxationOfEmployees');
+                    txtTaxationOfEmployees.setValue(data.fldTaxationOfEmployees);
+                    var txtTax = App.NewFiscal.queryById('txtTax');
+                    txtTax.setValue(data.fldTax);
+                    var txtDesc = App.NewFiscal.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var Id = App.NewFiscal.queryById('fldId');
+                    Id.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+
+                }
+            });
+        }
+    }
+
+    function SaveFiscal() {
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        var txtEffectiveDate = App.NewFiscal.queryById('txtEffectiveDate');
+        var txtDateOfIssue = App.NewFiscal.queryById('txtDateOfIssue');
+        var txtAmountFrom = App.NewFiscal.queryById('txtAmountFrom');
+        var txtAmountTo = App.NewFiscal.queryById('txtAmountTo');
+        var txtPercentTaxOnWorkers = App.NewFiscal.queryById('txtPercentTaxOnWorkers');
+        var txtTaxationOfEmployees = App.NewFiscal.queryById('txtTaxationOfEmployees');
+        var txtTax = App.NewFiscal.queryById('txtTax');
+        var txtDesc = App.NewFiscal.queryById('txtDesc');
+        var Id = App.NewFiscal.queryById('fldId');
+        var er = false;
+
+
+        if (txtEffectiveDate.validate() == false) {
+            er = true;
+        }
+        if (txtDateOfIssue.validate() == false) {
+            er = true;
+        }
+        if (txtAmountFrom.validate() == false) {
+            er = true;
+        }
+        if (txtAmountTo.validate() == false) {
+            er = true;
+        }
+        if (txtPercentTaxOnWorkers.validate() == false) {
+            er = true;
+        }
+        if (txtTaxationOfEmployees.validate() == false) {
+            er = true;
+        }
+        if (txtTax.validate() == false) {
+            er = true;
+        }
+        
+        if (er == true)
+            return;
+
+        var azmablagh = txtAmountFrom.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', '');
+        var tamablagh = txtAmountTo.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', '');
+
+        if (parseInt(azmablagh) > parseInt(tamablagh)) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "از مبلغ نمیتواند بزرگتر از تا مبلغ باشد",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            Ext.net.Mask.hide();
+            return;
+        }
+
+        Ext.net.DirectMethod.request({
+            url: '/Fiscal/Save',
+            params: {
+                fldId: Id.getValue(),
+                fldEffectiveDate: txtEffectiveDate.rawValue,
+                fldDateOfIssue: txtDateOfIssue.rawValue,
+                fldAmountFrom: azmablagh,
+                fldAmountTo: tamablagh,
+                fldPercentTaxOnWorkers: txtPercentTaxOnWorkers.getValue(),
+                fldTaxationOfEmployees: txtTaxationOfEmployees.getValue(),
+                fldTax: txtTax.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                if ('@ViewBag.State' == '1')
+                    App.Fiscal.queryById('GridHeader').store.load();
+                else
+                    ReloadFiscal();
+                ClearFiscal();
+            }
+
+        });
+    }
+    function ClearFiscal() {
+        App.NewFiscal.queryById('txtAmountFrom').setValue("");
+        App.NewFiscal.queryById('txtAmountTo').setValue("");
+        App.NewFiscal.queryById('txtPercentTaxOnWorkers').setValue("");
+        App.NewFiscal.queryById('txtTaxationOfEmployees').setValue("");
+        App.NewFiscal.queryById('txtTax').setValue("");
+        App.NewFiscal.queryById('txtDesc').setValue("");
+        App.NewFiscal.queryById('fldId').setValue(0);
+    }
+    var addKeyMapNewFiscal = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NewFiscal.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld = keyfield.nextSibling().nextSibling();
+                    nextfld.selectText();
+                    nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

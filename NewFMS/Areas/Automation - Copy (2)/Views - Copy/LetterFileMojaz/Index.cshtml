@@ -1,0 +1,293 @@
+﻿@model IEnumerable<NewFMS.Models.spr_tblLetterFileMojazSelect>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("SabtLetterFileMojaz")
+            .Title("فرمت مجاز پیوست ها")
+                            .Listeners(li => { li.AfterRender.Handler = "LetterFileMojazSetSize();"; li.Render.Fn = "addKeyMapSabtLetterFileMojaz"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveLetterFileMojaz")
+                .Listeners(l => { l.Click.Handler = "SaveLetterFileMojaz();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadLetterFileMojaz();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteLetterFileMojaz();"; })
+                , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpLetterFileMojaz();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.SabtLetterFileMojaz.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("فرمت مجاز")
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                        X.Label("نوع:"),
+                     X.ComboBox()
+                                .ItemID("CboType")
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا نوع را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .AllowBlank(false)
+                                .Items(
+                                    new ListItem("نامه", "1"),
+                                    new ListItem("پیام", "2")
+                                    ),
+                            X.Label("فرمت فایل:"),
+                            X.ComboBox()
+                            .ItemID("CboFormatFile")
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                                .Width(195)
+                            .BlankText("لطفا فرمت فایل را انتخاب کنید.")
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("Name")
+                            .ValueField("ID")
+                            .EmptyText("فرمت فایل...")
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("ID")
+                                    .Fields(
+                                            new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                            new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                        )
+                                    )
+                            .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("GetFormatFile"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                    )
+                    , X.Label("توضیحات:"),
+                        X.TextField().ColSpan(4)
+                        .ItemID("txtDesc")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(400)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("LetterFileMojazGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                            .Listeners(l => l.DataChanged.Handler = "App.SabtLetterFileMojaz.queryById('LetterFileMojazGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtLetterFileMojaz.queryById('LetterFileMojazGrid');grid.setHeight(App.AutomationWin.getHeight() - 260); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldTypeName).Text("نوع").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldPassvand).Text("پسوند").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldSize).Text("سایز").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.Win.addListener('resize', function () {
+        App.State.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.State.queryById('StateGrid');
+        grid.setHeight(App.Win.getHeight()-260);
+    });*/
+    function HelpLetterFileMojaz() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/LetterFileMojaz/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function LetterFileMojazSetSize() {
+        App.SabtLetterFileMojaz.setWidth(App.AutomationWin.getWidth());
+        var grid = App.SabtLetterFileMojaz.queryById('LetterFileMojazGrid');
+        grid.setHeight(App.AutomationWin.getHeight() - 260);
+    }
+    function LoadLetterFileMojaz() {
+        var SelectedRow = App.SabtLetterFileMojaz.queryById('LetterFileMojazGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/LetterFileMojaz/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var CboType = App.SabtLetterFileMojaz.queryById('CboType');
+                    CboType.setValue(data.fldType);
+                    var CboFormatFile = App.SabtLetterFileMojaz.queryById('CboFormatFile');
+                    CboFormatFile.setValue(data.fldFormatFileId);
+                    var txtDescLetterFileMojaz = App.SabtLetterFileMojaz.queryById('txtDesc');
+                    txtDescLetterFileMojaz.setValue(data.fldDesc);
+                    var fldId = App.SabtLetterFileMojaz.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveLetterFileMojaz() {
+        var CboType = App.SabtLetterFileMojaz.queryById('CboType');
+        var CboFormatFile = App.SabtLetterFileMojaz.queryById('CboFormatFile');
+        var txtDesc = App.SabtLetterFileMojaz.queryById('txtDesc');
+        var fldId = App.SabtLetterFileMojaz.queryById('fldId');
+            var er = false;
+
+            if (CboFormatFile.validate() == false) {
+                er = true;
+            }
+            if (CboType.validate() == false) {
+                er = true;
+            }
+           
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/LetterFileMojaz/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldType: CboType.getValue(),
+                    fldFormatFileId: CboFormatFile.getValue(),
+                    fldDesc: txtDesc.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtLetterFileMojaz.queryById('LetterFileMojazGrid').store.load();
+                    if (data.Err != 1)
+                        ClearLetterFileMojaz();
+                }
+
+            });
+    }
+    function DeleteLetterFileMojaz() {
+        var SelectedRow = App.SabtLetterFileMojaz.queryById('LetterFileMojazGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Automation/LetterFileMojaz/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtLetterFileMojaz.queryById('LetterFileMojazGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearLetterFileMojaz() {
+        App.SabtLetterFileMojaz.queryById('fldId').setValue(0);
+        App.SabtLetterFileMojaz.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapSabtLetterFileMojaz = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtLetterFileMojaz.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtLetterFileMojaz.queryById('btnSaveLetterFileMojaz');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

@@ -1,0 +1,255 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Window().Modal(true)
+            .ID("SabtSodorCheck")
+            .Title("ثبت صدور چک").Width(600)
+                    //.Listeners(li => { li.AfterRender.Handler = "LoadSodorChek()";  })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+            .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveSodorChek")
+                    .Listeners(l => { l.Click.Handler = "SaveSodorChek();"; })
+                , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                            .OnClientClick("App.SabtSodorCheck.destroy();")
+            ).ButtonAlign(Ext.Net.Alignment.Center)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false)
+        .Items(
+                X.FormPanel().Border(false)
+                              .Layout(LayoutType.VBox)
+                                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                    X.FieldSet().Title("اطلاعات چک")
+                                .Border(true)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                        X.Hidden().ItemID("fldId"),
+                            X.Hidden().ItemID("AshkhasId"),
+                            X.Label().Text("تاریخ وصول:"),
+                            X.PDateField()
+                            .ItemID("txtTarikhVosol")
+                            .AllowBlank(false)
+                            .MaskRe("[0-9,/]").Width(110)
+                            .BlankText("لطفا تاریخ وصول را وارد کنید.")
+                            .Editable(false),
+                        X.Label("کد سریال چک:"),
+                            X.ComboBox()
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ItemID("CboSerialChek")
+                        .TypeAhead(true)
+                        .Editable(true)
+                        .QueryMode(DataLoadMode.Local)
+                        .BlankText("لطفا سریال چک را انتخاب کنید.")
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldSerial")
+                            .ValueField("fldSerial")
+                        .EmptyText("سریال چک ...")
+                            .Listeners(l => l.AfterRender.Handler = "loadCboSerialChek()")
+                                .Store(X.Store().Listeners(li => { li.Load.Handler = "LoadSodorChek()"; })
+                            .Model(X.Model()
+                                .IDProperty("fldSerial")
+                            .Fields(
+                                        new ModelField("fldSerial", ModelFieldType.String) { Mapping = "fldSerial" }
+                                    )
+                                        )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetSerialChek"))
+                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                        //.Parameters(ps => ps.Add(new StoreParameter("DasteChekId", @ViewBag.DasteChekId, ParameterMode.Raw)))
+                                        //    .Parameters(ps => ps.Add(new StoreParameter("Id", @ViewBag.Id, ParameterMode.Raw)))
+                                    )
+                            .AllowBlank(false).Width(110)
+                            ,
+                          X.Label("مبلغ:"),
+                            X.TextField().Width(110)
+                                            .ItemID("txtMablagh").Listeners(l => { l.Change.Handler = "App.SabtSodorCheck.queryById('txtMablagh').setValue(accounting.formatNumber(App.SabtSodorCheck.queryById('txtMablagh').getValue()));"; })
+                        .AllowBlank(false)
+                        .BlankText("لطفا مبلغ را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        ,
+                        X.FieldSet().ColSpan(6).MarginSpec("0 0 0 10px").Border(false)
+                            .Defaults(new { Margin = 2 })
+                        .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                        .Items(
+                            X.Label("در وجه:"),
+                            X.TextField()
+                            .ItemID("txtDarVajh").ReadOnly(true)
+                            .AllowBlank(false).Width(304)
+                            .BlankText("لطفا در وجه را وارد کنید.")
+                                .Icon(Icon.UserAdd)
+                                    .DirectEvents(li =>
+                                    {
+                                        li.SpecialKey.Url = "/Daramad/SearchAshkhas/Index?State=8";
+                                        li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                        li.IconClick.Url = "/Daramad/SearchAshkhas/Index?State=8";
+                                    })
+                        )
+                        
+                        ,
+                        X.FieldSet().ColSpan(6).MarginSpec("0 0 0 22px").Border(false)
+                            .Defaults(new { Margin = 2 })
+                        .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                        .Items(
+                        X.Label("بابت:"),
+                        X.TextField().Width(304)
+                        .ItemID("txtBabat")
+                        .AllowBlank(false)
+                        .BlankText("لطفا بابت را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        ,X.Label("نمایش بابت")
+                        ,X.Checkbox().ItemID("Babatflag")
+                        )
+                        ,
+                         X.FieldSet().ColSpan(6).MarginSpec("0 0 5px 0").Border(false)
+                            .Defaults(new { Margin = 2 })
+                        .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                        .Items(
+                        X.Label("توضیحات:"),
+                            X.TextField().Width(304)
+                        .ItemID("txtDesc")
+                        .AllowBlank(true)
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        )
+                )
+            )
+        )
+    )
+)
+<script type="text/javascript">
+    var FirstLoadCboSerialChek=0;
+    function LoadSodorChek() {
+        if ('@ViewBag.Id' != '0' && FirstLoadCboSerialChek==0) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Chek/SodorCheck/Details',
+                params: {
+                    Id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    var txtTarikhVosol = App.SabtSodorCheck.queryById('txtTarikhVosol');
+                    txtTarikhVosol.setValue(data.fldTarikhVosol);
+                    var CboSerialChek = App.SabtSodorCheck.queryById('CboSerialChek');
+                    CboSerialChek.setValue(data.fldCodeSerialCheck);
+                    var txtMablagh = App.SabtSodorCheck.queryById('txtMablagh');
+                    txtMablagh.setValue(data.fldMablagh);
+                    var txtDarVajh = App.SabtSodorCheck.queryById('txtDarVajh');
+                    txtDarVajh.setValue(data.fldDarVajh);
+                    var txtBabat = App.SabtSodorCheck.queryById('txtBabat');
+                    txtBabat.setValue(data.fldBabat);
+                    var Babatflag = App.SabtSodorCheck.queryById('Babatflag');
+                    Babatflag.setValue(data.fldBabatFlag);
+                    var txtDesc = App.SabtSodorCheck.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc); 
+                    var Id = App.SabtSodorCheck.queryById('fldId');
+                    Id.setValue(data.fldId);
+                    var AshkhasId = App.SabtSodorCheck.queryById('AshkhasId');
+                    AshkhasId.setValue(data.AshkhasId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            App.SabtSodorCheck.queryById('txtTarikhVosol').validate();
+            App.SabtSodorCheck.queryById('txtMablagh').validate();
+            App.SabtSodorCheck.queryById('txtDarVajh').validate();
+            App.SabtSodorCheck.queryById('txtBabat').validate();
+        }
+
+    }
+
+    function SaveSodorChek() {
+        
+        var txtTarikhVosol = App.SabtSodorCheck.queryById('txtTarikhVosol');
+        var CboSerialChek = App.SabtSodorCheck.queryById('CboSerialChek');
+        var txtMablagh = App.SabtSodorCheck.queryById('txtMablagh');
+        var txtDarVajh = App.SabtSodorCheck.queryById('txtDarVajh');
+        var txtBabat = App.SabtSodorCheck.queryById('txtBabat');
+        var Babatflag = App.SabtSodorCheck.queryById('Babatflag');
+        var txtDesc = App.SabtSodorCheck.queryById('txtDesc');
+        var Id = App.SabtSodorCheck.queryById('fldId');
+        var AshkhasId = App.SabtSodorCheck.queryById('AshkhasId');
+        var er = false;
+
+        if (txtTarikhVosol.validate() == false) {
+            er = true;
+        }
+        if (CboSerialChek.validate() == false) {
+            er = true;
+        }
+        if (txtMablagh.validate() == false) {
+            er = true;
+        }
+        if (txtDarVajh.validate() == false) {
+            er = true;
+        }
+        if (txtBabat.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+        App.SabtSodorCheck.body.mask("در حال ذخیره سازی");
+        /*Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });*/
+        Ext.net.DirectMethod.request({
+            url: '/Chek/SodorCheck/Save',
+            params: {
+                fldId: Id.getValue(),
+                fldIdDasteCheck: '@ViewBag.DasteChekId',
+                fldTarikhVosol: txtTarikhVosol.rawValue,
+                fldCodeSerialCheck: CboSerialChek.getValue(),
+                fldMablagh: txtMablagh.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                AshkhasId:AshkhasId.getValue(),
+                fldBabat: txtBabat.getValue(),
+                fldBabatFlag: Babatflag.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.SodorChek.queryById('GridDasteChek').store.load();
+                App.SodorChek.queryById('GridChek').store.load();
+                if (data.Err != 1)
+                    ClearSodorCheck();
+                App.SabtSodorCheck.body.mask().hide();
+                /*Ext.net.Mask.hide();*/
+            }
+
+        });
+    }
+    function loadCboSerialChek() {
+        App.SabtSodorCheck.queryById('CboSerialChek').getStore().getProxy().setExtraParam("DasteChekId", '@ViewBag.DasteChekId');
+        App.SabtSodorCheck.queryById('CboSerialChek').getStore().getProxy().setExtraParam("Id", '@ViewBag.Id');
+        App.SabtSodorCheck.queryById('CboSerialChek').store.load();
+    }
+
+    function ClearSodorCheck() {
+        FirstLoadCboSerialChek = 1;
+        App.SabtSodorCheck.queryById('fldId').setValue(0);
+        App.SabtSodorCheck.queryById('CboSerialChek').getStore().getProxy().setExtraParam("DasteChekId", '@ViewBag.DasteChekId');
+        App.SabtSodorCheck.queryById('CboSerialChek').getStore().getProxy().setExtraParam("Id", 0);
+        App.SabtSodorCheck.queryById('CboSerialChek').store.load();
+        App.SabtSodorCheck.queryById('txtTarikhVosol').setValue("");
+        App.SabtSodorCheck.queryById('txtMablagh').setValue("");
+        App.SabtSodorCheck.queryById('txtDarVajh').setValue("");
+        App.SabtSodorCheck.queryById('txtBabat').setValue("");
+        App.SabtSodorCheck.queryById('Babatflag').setValue("");
+        App.SabtSodorCheck.queryById('txtDesc').setValue("");
+        App.SabtSodorCheck.queryById('AshkhasId').setValue(0);
+    }
+</script>

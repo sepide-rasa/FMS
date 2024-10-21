@@ -1,0 +1,356 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_DigitalArchiveTreeStructure>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+<script src="~/Scripts/accounting.js"></script>
+<script src="~/Scripts/carousel.js"></script>
+
+
+@(X.Window()
+    .Title("ساختار درختی بایگانی دیجیتال")//.Listeners(l => l.BeforeRender.Handler = "setSize();")
+        .Border(false).Maximized(true)
+        //  .Width(500)
+               .Height(100)
+        .ID("DigitalArchiveTree")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .KeyMap(
+        Html.X().KeyMap()
+                .ID("DigitalArchiveTreeMap")
+            .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                    .Handler("SaveDigitalArchiveTree(); ")
+                );
+                b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F2).ToString())
+                    .Handler("EditDigitalArchiveTree(); ")
+                );
+                b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F9).ToString())
+                    .Handler("DeleteDigitalArchiveTree(); ")
+                );
+
+            }))
+    .Items(
+            X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Stretch })
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(
+                        X.Button()
+                            .Text("ذخیره")
+                            .Icon(Ext.Net.Icon.Add)
+                            .ToolTip("کلید میانبر F8")
+                                .Listeners(li => li.Click.Handler = "SaveDigitalArchiveTree();"),
+                        X.Button()
+                            .Text("ویرایش")
+                            .Icon(Ext.Net.Icon.Pencil)
+                            .ToolTip("کلید میانبر F2")
+                                .Listeners(Li => Li.Click.Handler = "EditDigitalArchiveTree();"),
+                        X.Button()
+                            .Text("حذف")
+                            .Icon(Ext.Net.Icon.Delete)
+                            .ToolTip("کلید میانبر F9")
+                                .Listeners(de => de.Click.Handler = "DeleteDigitalArchiveTree();")
+                       
+                            )
+
+                        )
+            .Items(
+                X.TabPanel()
+                        .ID("DigitalArchiveTreeTab")
+                    .Border(false)
+                    .Height(90)
+                    .Layout(LayoutType.Fit)
+                    .Items(
+                        X.Panel()
+                            .ItemID("Panel")
+                            .Layout(Ext.Net.LayoutType.Table)
+                            .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                            .Title("بایگانی دیجیتال")
+                            .Defaults(new { Margin = 10 })
+                            .Items(
+                                X.Hidden()
+                                    .ItemID("fldId"),
+                                X.Hidden()
+                                    .ItemID("fldFatherId"),
+                                X.TextField()
+                                    .ItemID("txtName")
+                                    .FieldLabel("نام")
+                                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا نام را وارد کنید.")
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .Width(300)
+                              , X.TextField()
+                             .ItemID("txtMadule")
+                             .FieldLabel("ماژول (Ins)")
+                                .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(false)
+                                    .ReadOnly(true)
+                                .BlankText("لطفا ماژول را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Listeners(l =>
+                                    {
+                                        l.SpecialKey.Handler = "SearchModule(e.getKey());";
+                                        l.IconClick.Handler = "Ext.net.DirectMethod.request({ url: '/Comon/SearchModule/Index?State=2'});";
+                                    }),
+                                X.Checkbox()
+                                    .ItemID("CheckedUplodFile")
+                                    .FieldLabel("امکان آپلود فایل")
+                                    .LabelAlign(Ext.Net.LabelAlign.Right)
+
+                    )
+                    ),
+                        X.Panel()
+                            .Border(false)
+                            .ID("pnlLow1")
+                            .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                            .AutoScroll(true)
+                            .Border(false)
+                            .Items(
+                                X.Panel()
+                                    .Border(false)
+        //.Height(200)
+                                    .ID("pnlTreeT1")
+                                    .AutoScroll(false)
+                                    .Width(280)
+                                    .Layout(LayoutType.Fit)
+                                    .Items(
+                                        X.TreePanel()
+                                            .ID("TreeTeacher1")
+                                                .AutoScroll(false)
+                                            .Frame(false)
+        //.Title("ساختار درختی بایگانی")
+                                            .ColSpan(2)
+                                            .UseArrows(true)
+                                            .Border(false)
+                                            .Expand(true)
+                                            .Listeners(a =>
+                                            {
+                                                a.ItemClick.Handler = "GetId(record)";
+                                                a.BeforeLoad.Fn = "nodeLoadTeacher";
+                                            })
+                                            .Root(
+                                                Html.X().Node()
+                                                    .NodeID("0")
+                                                            .Text("ساختار درختی بایگانی")))
+                                                )
+            )
+        )
+
+)
+<script type="text/javascript">
+    var NodeId = 0;
+    var drag = 0;
+    var id; var ModuleId = 0;
+    var newParentid;
+    var fldFatherId;
+    var fldId;
+    function SearchModule(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/Comon/SearchModule/Index',
+                params: {
+                    State: 2
+                }
+            });
+        }
+    }
+    var nodeLoadTeacher = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/DigitalArchiveTree/NodeLoad',
+            params: {
+                node: node.getId(),
+                ModuleId: ModuleId
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+        return false;
+    };
+
+    function Reload() {
+        App.TreeTeacher1.store.load();
+    };
+
+    function GetId(record) {
+        var txtMadule = App.DigitalArchiveTreeTab.activeTab.queryById('txtMadule');
+        NodeId = record.getId();
+       
+        Ext.net.DirectMethod.request({
+            url: '/Comon/DigitalArchiveTree/CheckPID',
+            params: {
+                id: NodeId
+            },
+            success: function (data) {
+                if (data.flag == true)
+                    txtMadule.disable(true);
+                else if (data.flag == false)
+                    txtMadule.enable(true);
+            }
+        });
+    }
+
+    function EditDigitalArchiveTree() {
+
+        if (NodeId != 0) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/DigitalArchiveTree/Details',
+                params: {
+                    id: NodeId
+                },
+                success: function (data) {
+                    var txtName = App.DigitalArchiveTreeTab.activeTab.queryById('txtName');
+                    txtName.setValue(data.fldNodeName);
+                    var CheckedUplodFile = App.DigitalArchiveTreeTab.activeTab.queryById('CheckedUplodFile');
+                    CheckedUplodFile.setValue(data.fldUplodFile);
+                    var FatherId = App.DigitalArchiveTreeTab.activeTab.queryById('fldFatherId');
+                    FatherId.setValue(data.fldPID);
+                    var txtMadule = App.DigitalArchiveTreeTab.activeTab.queryById('txtMadule');
+                    txtMadule.setValue(data.fldModuleName);
+                    txtMadule.enable(true);
+                    var Id = App.DigitalArchiveTreeTab.activeTab.queryById('fldId');
+                    Id.setValue(data.fldId);
+                    ModuleId = data.fldModuleId;
+                    Ext.net.Mask.hide();
+                }
+            });
+
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک مورد را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SaveDigitalArchiveTree() {
+
+        var Id = App.DigitalArchiveTreeTab.activeTab.queryById('fldId');
+        var CheckedUplodFile = App.DigitalArchiveTreeTab.activeTab.queryById('CheckedUplodFile');
+        var FatherId = App.DigitalArchiveTreeTab.activeTab.queryById('fldFatherId');
+        var txtName = App.DigitalArchiveTreeTab.activeTab.queryById('txtName');
+        var er = false;
+        if (Id.getValue() == '' || Id.getValue() == 0) {
+            fldFatherId = NodeId;
+            fldId = Id.getValue();
+        }
+        else {
+            fldFatherId = FatherId.getValue();
+            fldId = Id.getValue();
+        }
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (er)
+            return;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/DigitalArchiveTree/Save',
+            params: {
+                fldId: fldId,
+                fldPID: fldFatherId,
+                fldTitle: txtName.getValue(),
+                fldModuleId: ModuleId,
+                fldAttachFile: CheckedUplodFile.getValue()
+            },
+            success: function (data) {
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: Ext.MessageBox.INFO,
+                    buttons: Ext.MessageBox.OK
+                });
+                Reload(),
+               ClearDigitalArchiveTree();
+            }
+
+        });
+    }
+
+
+
+    function DeleteDigitalArchiveTree() {
+
+        if (NodeId != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/DigitalArchiveTree/Delete',
+                            params: {
+                                id: NodeId
+                            },
+                            success: function (data) {
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.INFO,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                Reload()
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک مورد را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearDigitalArchiveTree() {
+        App.DigitalArchiveTreeTab.activeTab.queryById('fldId').setValue(0);
+        App.DigitalArchiveTreeTab.activeTab.queryById("CheckedUplodFile").setValue(false);
+        App.DigitalArchiveTreeTab.activeTab.queryById("fldFatherId").setValue(0);
+        App.DigitalArchiveTreeTab.activeTab.queryById('txtMadule').setValue('');
+        App.DigitalArchiveTreeTab.activeTab.queryById('txtName').setValue('');
+        NodeId = 0;
+
+    }
+
+    function HelpTeacherArchive_Tree() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/TeacherArchive_Tree/Help',
+            params: {
+
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+
+</script>

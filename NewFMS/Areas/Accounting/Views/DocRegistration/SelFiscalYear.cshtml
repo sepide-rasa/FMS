@@ -1,0 +1,101 @@
+﻿@using Ext.Net.MVC
+@using Ext.Net;
+@using NewFMS.WCF_AnbarAmval
+
+@{
+    var X = Html.X();
+}
+@(Html.X().Window()
+    .ID("SelFiscalYear")
+    .Title("انتخاب سال مالی")
+    .Width(290)
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Modal(true)
+    .Layout(LayoutType.Fit)
+    .Border(false)
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("انتخاب")
+            .Icon(Ext.Net.Icon.ShapeSquareSelect)
+            .Listeners(l => l.Click.Handler = "GotoIndex();"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.SelFiscalYear.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet()
+                    .Border(false)
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                    .Items(                    
+                        X.Label("ســـال مالی:"),
+                        X.ComboBox()
+                            .ItemID("CboYear")
+                            .AutoFocus(true)
+                            .DisplayField("fldYear")
+                            .ValueField("fldId")
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا سال مالی را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .Store(X.Store()
+                                .Listeners(l => l.Load.Handler = "setDefaultCurrentYear()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" },
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetSal"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            )
+        
+                )
+            )
+    )
+)
+<script type="text/javascript">
+
+    function setDefaultCurrentYear() {
+        App.SelFiscalYear.queryById("CboYear").setValue(App.SelFiscalYear.queryById('CboYear').findRecordByDisplay(String('@ViewBag.CurrentYear')).data.fldId);
+    }
+
+    function GotoIndex() {
+        var CboYear = App.SelFiscalYear.queryById("CboYear");
+        if (CboYear.validate()) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            var url = "";
+            if ('@ViewBag.Status' == 1)
+                url = "/Accounting/DocRegistration/Index";
+            else
+                url = "/Accounting/DocRegistration/RptDaftarRoozname";
+            Ext.net.DirectMethod.request({
+                url: url,
+                params: {
+                    Year: CboYear.getDisplayValue(),
+                    FiscalYearId: CboYear.getValue(),
+                    containerId: "FirstTabAccounting"
+                },
+                success: function (data) {
+                    App.SelFiscalYear.hide();
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+</script>

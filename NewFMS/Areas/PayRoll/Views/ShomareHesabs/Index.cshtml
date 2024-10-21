@@ -1,0 +1,442 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_ShomareHesabs>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("ShomareHesabs")
+                .Title("ثبت شماره حساب پرسنل")
+                            .Listeners(li => { li.AfterRender.Handler = "ShomareHesabsSetSize();"; li.Render.Fn = "addKeyMapShomareHesabs"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            //X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+            //    .Listeners(l => { l.Click.Handler = "SaveShomareHesabs();"; })
+            X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                 .Listeners(l => { l.Click.Handler = "HelpShomareHesabs();"; }),
+             X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.ShomareHesabs.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("اطلاعات حساب")
+                .Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    
+                    X.Label("سازمان:"),
+                         X.ComboBox()
+                                .ItemID("CboOrgan")
+                                .TypeAhead(true)
+                                //.ColSpan(3)
+                                .AutoFocus(true)
+                                .Editable(true)
+                                     .QueryMode(DataLoadMode.Local)
+                                            .TriggerAction(TriggerAction.All)
+                                    .BlankText("لطفا سازمان را انتخاب کنید.")
+                                                //.Listeners(l => l.Change.Handler = "ChangeCboOrgan()")
+                                    .AllowBlank(false)
+                                .ForceSelection(true)
+                                    .DisplayField("fldTitle")
+                                .ValueField("fldId")
+                                    .EmptyText("سازمان ...")
+                                        .Listeners(l =>
+                                        {
+                                            l.Select.Handler = "ReloadHesab();";
+                                        })
+                                .Width(250)
+                                .Store(X.Store()
+                                .Model(X.Model()
+                                .IDProperty("fldId")
+                                    
+                                .Fields(
+                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                    new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                        )
+                                            )
+                                .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetOrgan"))
+                                .Reader(X.JsonReader().Root("data"))
+                                                )
+                            .Listeners(l => l.Load.Handler = "setdefaultValueShomareHesab()")
+                                        ),
+                    X.Label("نوع حساب:"),
+                    X.ComboBox()
+                    .ItemID("CboTypeHesab")//.Width(150)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Editable(false)
+                        .TypeAhead(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .Editable(true)
+                                .TriggerAction(TriggerAction.All)
+                                .DisplayField("Name")
+                                .ValueField("ID")
+                                .EmptyText("نوع حساب")
+                               .Store(X.Store()
+                                    .Model(X.Model()
+                                        .IDProperty("ID")
+                                        .Fields(
+                                        new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                        new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetTypeHesab"))
+                                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                                    )
+                            .Listeners(l =>
+                                {
+                                    l.Select.Handler = "ReloadHesab();";
+                                })
+                    
+                        , X.Label("بانک:"),
+                         X.ComboBox()//.Width(150)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .ItemID("CboBank")
+                    .TypeAhead(true)
+                    .Editable(true)
+                    .QueryMode(DataLoadMode.Local)
+                    .ForceSelection(true)
+                    .TriggerAction(TriggerAction.All)
+                        .DisplayField("fldTitle")
+                        .ValueField("fldId")
+                    .EmptyText("بانک")
+                    .Store(X.Store()
+                        .Model(X.Model()
+                                .IDProperty("fldId")
+                            .Fields(
+                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                            )
+                        )
+                        .Proxy(X.AjaxProxy()
+                                .Url(Url.Action("GetBank"))
+                            .Reader(X.JsonReader().Root("data"))
+                        )
+                    )
+                        .Listeners(l =>
+                        {
+                            l.Select.Handler = "ReloadHesab();";
+                        })                  
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("ShomareHesabsGrid")
+        .AutoScroll(true)
+            //.BottomBar(X.PagingToolbar())
+                                      .TopBar(
+                                    Html.X().Toolbar()
+                                    .Items(
+                                       X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                    .Listeners(l => { l.Click.Handler = "SaveShomareHesabs();"; }),
+             X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteShomareHesabs();"; }),
+                         X.Button().Text("چاپ").Icon(Ext.Net.Icon.Printer).ToolTip("چاپ")
+                            .Listeners(l =>
+                        {
+                            l.Click.Handler = "Print();";
+
+                        })
+                                    )
+                                )
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.ShomareHesabs.queryById('ShomareHesabsGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                //.Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20000)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                  //  .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.ShomareHesabs.queryById('ShomareHesabsGrid');grid.setHeight(App.PayWin.getHeight() - 260); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام و نام خانوادگی").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کد ملی").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldSh_Personali).Text("شماره پرسنلی").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldShomareHesab).Text("شماره حساب").Flex(3).Editor(Html.X().TextField().MaskRe("/[0-9]/").MaxLength(20).MinLength(8)),
+                        Html.X().Column().DataIndex(Model, m => m.fldShomareKart).Text("شماره کارت").Flex(3).Editor(Html.X().TextField().MaskRe("/[0-9]/").MaxLength(20).MinLength(16)),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("PersonalId").Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldShomareHesabId).Text("fldShomareHesabId").Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldShobeId).Text("fldShobeId").Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldShobeName).Text("fldShobeId").Hidden(true), 
+                        Html.X().ComponentColumn().Listeners(l => l.Bind.Fn="test")
+                    .Editor(false)
+                    .DataIndex("fldShobeId")
+                    .Flex(1)
+                    .Text("شعبه")
+                    .ID("ShobeId")
+                    .Component(Html.X().ComboBox().ItemID("sh")
+                        .DisplayField("fldTitle")
+                        .ValueField("fldId")
+                        .QueryMode(DataLoadMode.Local)
+                        .Store(X.Store()
+                            .Model(X.Model()
+                                    .IDProperty("fldId")
+                                .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                )
+                            )
+                            .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetShobe"))
+                                .Reader(X.JsonReader().Root("data"))
+                                    
+                            )
+                            .Parameters(ps => ps.Add(new StoreParameter("BankId", " App.ShomareHesabs.queryById('CboBank').getValue()", ParameterMode.Raw)))
+                        )
+                   
+                    )
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+         .Plugins(
+                        Html.X().CellEditing().ClicksToEdit(1)
+                    )
+    )
+)
+<script type="text/javascript">
+    var d;
+    function setdefaultValueShomareHesab() {
+        App.ShomareHesabs.queryById('CboOrgan').select(App.ShomareHesabs.queryById('CboOrgan').store.getAt(0));
+    }
+    /*App.PayWin.addListener('resize', function () {
+        App.ShomareHesabs.setWidth(App.PayWin.getWidth());
+    });
+    App.PayWin.addListener('resize', function () {
+        var grid = App.ShomareHesabs.queryById('ShomareHesabsGrid');
+        grid.setHeight(App.PayWin.getHeight()-260);
+    });*/
+    function HelpShomareHesabs() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/ShomareHesabs/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var test = function (a, b, c, d) {
+          /* b.setDisplayValue(c.data.fldName);*/
+        b.setValue(String(c.data.fldShobeId));
+    };
+    function ShomareHesabsSetSize() {
+        App.ShomareHesabs.setWidth(App.PayWin.getWidth());
+        var grid = App.ShomareHesabs.queryById('ShomareHesabsGrid');
+        grid.setHeight(App.PayWin.getHeight() - 260);
+    }
+    function ReloadHesab() {
+        var ClsHokmItems = new Array();
+        var Grid = App.ShomareHesabs.queryById('ShomareHesabsGrid');
+        var TypeHesabId = App.ShomareHesabs.queryById('CboTypeHesab').getValue();
+        var BankId = App.ShomareHesabs.queryById('CboBank').getValue();
+        var OrganId = App.ShomareHesabs.queryById('CboOrgan').getValue();
+
+        if (TypeHesabId != null && BankId != null && OrganId!=null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/ShomareHesabs/ReloadHesab?TypeHesabId=' + TypeHesabId + '&BankId=' + BankId + '&OrganId=' + OrganId,
+                success: function (result) {
+                    App.ShomareHesabs.queryById('ShomareHesabsGrid').getStore().loadData(result);
+                    Ext.net.Mask.hide();
+                }
+
+            });
+        }
+    }
+    function SaveShomareHesabs() {
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        var CboTypeHesab = App.ShomareHesabs.queryById('CboTypeHesab');
+        var CboBank = App.ShomareHesabs.queryById('CboBank');
+        var CboOrgan = App.ShomareHesabs.queryById('CboOrgan');
+
+        var ShomareHesabVal = new Array();
+        var ShomareHesab;
+        var ShomareKart;
+        var PersonalId;
+        var ShomareHesabId;
+        var ShobeId;
+        var SelectedRow = App.ShomareHesabs.queryById('ShomareHesabsGrid');
+        for (var i = 0; i < SelectedRow.selModel.store.count() ; i++) {
+            ShomareHesab = SelectedRow.selModel.store.data.items[i];
+            var ShomareH = ShomareHesab.data.fldShomareHesab;
+            var ShomareK = ShomareHesab.data.fldShomareKart;
+            var PersonalId = ShomareHesab.data.fldPersonalId;
+            var ShomareHId = ShomareHesab.data.fldId;
+            var fldName = ShomareHesab.data.fldName;
+            var ShobeId = App.ShobeId.getComponent(i).getValue();
+            if (ShomareH == "" && ShomareK != "") {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "ثبت شماره حساب " + fldName + " ضروری است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                return;
+                Ext.net.Mask.hide();
+            }
+
+            if (ShomareH != "")
+                ShomareHesabVal.push({
+                    'fldShomareHesab': ShomareH,
+                    'fldShomareKart': ShomareK,
+                    'fldPersonalId': PersonalId,
+                    'fldShomareHesabId': ShomareHId,
+                    'fldShobeId': ShobeId
+                });
+        }
+        var er = false;
+        if (er == true) {
+            return;
+            Ext.net.Mask.hide();
+        }
+        var TypeHesab = false;
+        if (CboTypeHesab.getValue() == "1")
+            TypeHesab = true;
+        var data = {
+            ShomareHesabVal: ShomareHesabVal,
+            TypeHesab: TypeHesab,
+            BankId: CboBank.getValue(),
+        fldHesabTypeId: CboTypeHesab.getValue(),
+        OrganId: CboOrgan.getValue()
+        };
+        $.ajax({
+            type: "POST",
+            url: '/PayRoll/ShomareHesabs/Save',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (result) {
+                var data = result;/* JSON.parse(result);*/
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                ReloadHesab();
+                Ext.net.Mask.hide();
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+        });
+
+    }
+    function Print() {
+        var TypeHesab = App.ShomareHesabs.queryById('CboTypeHesab').getValue();
+        var Bank = App.ShomareHesabs.queryById('CboBank').getValue();
+        var OrganId = App.ShomareHesabs.queryById('CboOrgan').getValue();
+
+        if (TypeHesab != null && Bank != null) {
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/ShomareHesabs/Print?BankId=' + Bank + '&TypeHesabId=' + TypeHesab + '&OrganId=' + OrganId
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "انتخاب نوع حساب و بانک ضروری است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteShomareHesabs() {
+        var SelectedRow = App.ShomareHesabs.queryById('ShomareHesabsGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/PayRoll/ShomareHesabs/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId,
+                                OrganId: App.ShomareHesabs.queryById('CboOrgan').getValue()
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                ReloadHesab();
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    var addKeyMapShomareHesabs = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.ShomareHesabs.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "CboBank") {
+                        nextfld = App.ShomareHesabs.queryById('CboTypeHesab');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

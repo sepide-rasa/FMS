@@ -1,0 +1,241 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_PSPModel_ShomareHesab>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<script src="~/Scripts/accounting.min.js"></script>
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X()
+    .Window()
+    .Modal(true)
+    //.Listeners(li =>
+    //{
+    //    li.AfterRender.Handler = "App.NewShomareHesabPSP.setWidth(App.DaramadWin.getWidth()-1236);";
+    //})
+        .Width(300)
+        .Title("لیست شماره حساب ها")
+    .ID("NewShomareHesabPSP")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .ButtonAlign(Ext.Net.Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveShomareHesabPSP();"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.NewShomareHesabPSP.destroy()"))
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.Fit)
+            //.LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Padding(5)
+            .Items(
+        X.GridPanel()
+        .Height(200)
+            .AutoScroll(true)
+         //   .Title("لیست شماره حساب ها")
+            .ItemID("GridShomareHesabPSP")
+            .Frame(true)
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(
+                        X.Button()
+                            .Text("اضافه")
+                            .Icon(Ext.Net.Icon.Add)
+                            .Listeners(li => li.Click.Handler = "AddShomareHesabCh();"),
+                        X.Button()
+                            .Text("حذف")
+                            .Icon(Ext.Net.Icon.Delete)
+                            .Listeners(li => li.Click.Handler = "DeleteShomareHesab();"),
+                        X.Button()
+                            .Icon(Icon.ArrowUp)
+                            .Handler("Swap(true)"),
+                        X.Button()
+                            .Icon(Icon.ArrowDown)
+                            .Handler("Swap(false)")
+                )
+                    )
+            //.Listeners(l =>
+            //{
+            //    l.AfterRender.Handler = "App.NewShomareHesabPSP.queryById('GridShomareHesabPSP').setSize(App.DaramadWin.getWidth() - 1280,App.DaramadWin.getHeight() - 510)";
+            //    //l.ViewReady.Handler = "LoadShomareHesabPSP()";
+            //})
+            .Store(
+                X.StoreForModel()
+                     .Proxy(Html.X().AjaxProxy()
+                                        .Url(Url.Action("ReadShomareHesabPSP"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                                                .ExtraParams(p => p.Add(new { PSPModelId = @ViewBag.PSPModelId }))
+                                )
+                    .PageSize(20000)
+                    .RemoteFilter(false)
+                    .RemotePaging(false)
+            )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .Plugins(Html.X().CellEditing().ClicksToEdit(1))
+            .ColumnModel(
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                            Html.X().Column().DataIndex(Model, m => m.fldShHesabId).Text("شماره حساب").Hidden(true).Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.fldOrder).Text("ترتیب").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldShomareHesab).Text("شماره حساب").Flex(8)
+                )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+                )
+        )
+    )
+)
+<script type="text/javascript">
+
+    function AddShomareHesabCh() {
+        App.NewShomareHesabPSP.body.mask("در حال بارگذاری");
+        Ext.net.DirectMethod.request({
+            url: '/Comon/SearchShomareHesab/IndexCheck?State=1',
+            success: function (data) {
+                App.NewShomareHesabPSP.body.mask().hide();
+            }
+        });
+    }
+
+    function DeleteShomareHesab() {
+        var sel = App.NewShomareHesabPSP.queryById("GridShomareHesabPSP").getSelectionModel().getLastSelected();
+        if (sel == null) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else {
+            App.NewShomareHesabPSP.queryById('GridShomareHesabPSP').store.remove(sel);
+            for (var i = 0; i < App.NewShomareHesabPSP.queryById("GridShomareHesabPSP").getStore().getCount() ; i++) {
+                App.NewShomareHesabPSP.queryById("GridShomareHesabPSP").selModel.store.data.items[i].set("fldOrder", i + 1);/*.data.fldOrder = i + 1;*/
+            }
+            App.NewShomareHesabPSP.queryById("GridShomareHesabPSP").getView().refresh();
+        }
+    }
+
+
+    function Swap(up) {
+        var grid = App.NewShomareHesabPSP.queryById("GridShomareHesabPSP");
+        var record = grid.getSelectionModel().getLastSelected();
+        var selectorder = record.data.fldOrder;
+        var rindex = grid.getStore().indexOf(record);
+        if (up == true) {
+            var row = grid.selModel.store.data.items[rindex - 1];
+        }
+        else {
+            var row = grid.selModel.store.data.items[rindex + 1];
+        }
+        rindex += up ? -1 : 1;
+        if (rindex < 0 || rindex >= grid.getStore().getCount()) {
+            return;
+        }
+        grid.getStore().remove(record);
+        grid.getStore().insert(rindex, record);
+        if (up == true) {
+            record.data.fldOrder = selectorder - 1;
+            row.data.fldOrder = selectorder;
+        }
+        else {
+            record.data.fldOrder = selectorder + 1;
+            row.data.fldOrder = selectorder;
+        }
+        grid.getSelectionModel().select(rindex, true);
+        grid.getView().refresh();
+    }
+    
+    function SaveShomareHesabPSP() {
+
+        var ShomareHesabPSPArray = new Array();
+        for (var i = 0; i < App.NewShomareHesabPSP.queryById("GridShomareHesabPSP").store.data.items.length; i++) {
+            ShomareHesabPSPArray.push({
+                "fldShHesabId": App.NewShomareHesabPSP.queryById("GridShomareHesabPSP").store.data.items[i].data.fldShHesabId,
+                "fldOrder": App.NewShomareHesabPSP.queryById("GridShomareHesabPSP").store.data.items[i].data.fldOrder,
+                "fldPSPModelId": '@ViewBag.PSPModelId'
+            });
+        }
+
+
+        if (ShomareHesabPSPArray.length == 0) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا شماره حساب ها را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else {
+            var data1 = {
+                fldPSPModelId: '@ViewBag.PSPModelId',
+                ShHesabs: ShomareHesabPSPArray
+            };
+            App.NewShomareHesabPSP.body.mask("در حال ذخیره سازی");
+            $.ajax({
+                type: "POST",
+                url: '/Daramad/PSPModel/SaveShomareHesabPSP',
+                datatype: "json",
+                data: JSON.stringify(data1),
+                contentType: "application/json; charset=utf-8",
+                success: function (data) {
+                    result = data;/*JSON.parse(data);*/
+                    var ic = Ext.MessageBox.INFO;
+                    if (result.Er == 1) {
+                        ic = Ext.MessageBox.ERROR;
+                    }
+                    Ext.MessageBox.show({
+                        title: result.MsgTitle,
+                        msg: result.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                   /* if (result.Er != 1) {
+                        ClearShomareHesabPSP();
+                    }*/
+                    App.NewShomareHesabPSP.queryById('GridShomareHesabPSP').getStore().load();
+                    App.NewShomareHesabPSP.body.mask().hide();
+                    /*App.SearchBelak.body.mask().hide();*/
+                },
+                failure: function (data) {
+                    alert(data.data);
+                }
+            });
+        }
+    }
+
+    function ClearShomareHesabPSP() {
+        App.NewShomareHesabPSP.queryById('txtNameShomareHesabPSP').setValue("");
+        App.NewShomareHesabPSP.queryById('txtLengthShomareHesabPSP').setValue("");
+        App.NewShomareHesabPSP.queryById('fldShomareHesabPSPId').setValue(0);
+        App.NewShomareHesabPSP.queryById('GridShomareHesabPSP').store.loadData("");
+    }
+
+</script>

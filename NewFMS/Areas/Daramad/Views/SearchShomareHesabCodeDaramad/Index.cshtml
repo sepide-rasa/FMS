@@ -1,0 +1,230 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_ShomareHesabCodeDaramad>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+    var oo = (Session["OrganId"]).ToString();
+}
+@(Html.X().Window().Modal(true)
+            .Width(700).Height(360)
+            .Title("پارامترهای کدهای درآمد")
+            .ID("SearchShHesabCodeDaramad")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Items(
+                X.Panel().Border(false)
+                .Border(false)
+                .AutoScroll(true)
+                .Items(
+
+                        X.GridPanel().AutoScroll(true).Border(false)
+                        .TopBar(
+                            Html.X().Toolbar()
+                            .Items(
+                               X.Label("سازمان:"),
+                            X.ComboBox()
+                                    .ItemID("CboOrgan")
+                                    .Width(300)
+                                .TypeAhead(true)
+                                .Editable(true)
+                                .QueryMode(DataLoadMode.Local)
+                                    .BlankText("لطفا سازمان را انتخاب کنید.")
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldTitle")
+                                .ValueField("fldId")
+                                    .EmptyText("سازمان ...")
+                                .Store(X.Store()
+                                .Model(X.Model()
+                                .IDProperty("fldId")
+                                .Fields(
+                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                    new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                        )
+                                            )
+                                .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetOrgan"))
+                                .Reader(X.JsonReader().Root("data"))
+                                                )
+                                                .Listeners(l => { l.Load.Handler = "setdefaultValueOrgan()"; })
+                                        )
+                                .AllowBlank(false)
+                                .AutoFocus(true)
+                                .Listeners(l => l.Select.Handler = "ChangeOrgan()")
+                            ,
+                            X.Button().Text("انتخاب").Icon(Ext.Net.Icon.ArrowRedo)
+                            .Listeners(li => li.Click.Handler = "NextSearchShHesabCodeDaramad();")
+                            ,
+                            X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                            .Listeners(li => li.Click.Handler = "HelpSearchShHesabCodeDaramad();")
+
+                            )
+                        )
+                        .ItemID("GridSearchShHesabCodeDaramad").Flex(2)
+                    .BottomBar(X.PagingToolbar())
+                    .Height(330)
+                    .ColumnWidth(0.6)
+                    .Layout(Ext.Net.LayoutType.Column)
+                    .Store(
+                        X.StoreForModel()
+                        .Proxy(Html.X().AjaxProxy()
+                            .Url(Url.Action("Read"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+                .ExtraParams(x => x.Add(new { FiscalYearId = ViewBag.FiscalYearId }))
+                        )
+                        .PageSize(10)
+                        .RemoteFilter(true)
+                        .RemotePaging(true)
+
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                            X.RowNumbererColumn(),
+                                X.Column().Text("کد").DataIndex(Model, m => m.fldId).Hidden(true).Wrap(true).Flex(7),
+                                X.Column().Text("عنوان").DataIndex(Model, m => m.fldDaramadTitle).Wrap(true).Flex(7),
+                                X.Column().Text("کد درآمد").DataIndex(Model, m => m.fldDaramadCode).Wrap(true).Flex(2),
+                                X.Column().Text("واحد اندازه گیری").DataIndex(Model, m => m.fldNameVahed).Wrap(true).Flex(2),
+                                X.CheckColumn().Text("مشمول ارزش افزوده").DataIndex(Model, m => m.fldMashmooleArzesheAfzoode)/*.Renderer("hidecheck")*/.Editable(false).StopSelection(false).Flex(2).Filterable(false),
+                                X.CheckColumn().Text("مشمول کارمزد").DataIndex(Model, m => m.fldMashmooleKarmozd)/*.Renderer("hidecheck")*/.Editable(false).StopSelection(false).Flex(2).Filterable(false)
+                    )
+                                    .Listeners(a => a.CellDblClick.Handler = "NextSearchShHesabCodeDaramad();")
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+
+            )
+        )
+)
+<script type="text/javascript">
+    function HelpSearchShHesabCodeDaramad() {
+        if ('@ViewBag.State' == 1) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/SearchShomareHesabCodeDaramad/HelpCopyKoli',
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else if ('@ViewBag.State' == 2) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/SearchShomareHesabCodeDaramad/HelpCopyParametr',
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+    function setdefaultValueOrgan() {
+        var CboOrgan = App.SearchShHesabCodeDaramad.queryById('CboOrgan');
+        CboOrgan.setValue(String(@oo));
+        ChangeOrgan();
+    }
+    function ChangeOrgan() {
+        var CboOrgan = App.SearchShHesabCodeDaramad.queryById('CboOrgan');
+        App.SearchShHesabCodeDaramad.queryById('GridSearchShHesabCodeDaramad').getStore().getProxy().setExtraParam("OrganId", CboOrgan.getValue());
+        App.SearchShHesabCodeDaramad.queryById('GridSearchShHesabCodeDaramad').getStore().getProxy().setExtraParam("Id", '@ViewBag.id');
+        App.SearchShHesabCodeDaramad.queryById('GridSearchShHesabCodeDaramad').getStore().load();
+    }
+    function NextSearchShHesabCodeDaramad() {
+        var SelectedRow = App.SearchShHesabCodeDaramad.queryById('GridSearchShHesabCodeDaramad').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if ('@ViewBag.State' == 1) {
+                Ext.MessageBox.show({
+                    title: "هشدار",
+                    msg: "آیا مطمئن هستید همه موارد " + SelectedRow.data.fldDaramadTitle + " به " + '@ViewBag.DaramadTitle' + " کپی شود؟",
+                    icon: Ext.MessageBox.WARNING,
+                    buttons: Ext.MessageBox.YESNO,
+                    fn: function (btn) {
+                        if (btn == 'yes') {
+                            Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Daramad/SearchShomareHesabCodeDaramad/CopyKoli',
+                                params: {
+                                    MaghsadId: '@ViewBag.id',
+                                    MabdaId: SelectedRow.data.fldId,
+                                },
+                                success: function (data) {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Er == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    App.IncomeCodesParamFormul.queryById('TreeDaramadParamFormul').store.load();
+                                }
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                    }
+                });
+            }
+            else if ('@ViewBag.State' == 2) {
+                Ext.MessageBox.show({
+                    title: "هشدار",
+                    msg: "آیا مطمئن هستید همه پارامترهای " + SelectedRow.data.fldDaramadTitle + " به " + '@ViewBag.DaramadTitle' + " کپی شود؟",
+                    icon: Ext.MessageBox.WARNING,
+                    buttons: Ext.MessageBox.YESNO,
+                    fn: function (btn) {
+                        if (btn == 'yes') {
+                            Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Daramad/SearchShomareHesabCodeDaramad/CopyParametr',
+                                params: {
+                                    MaghsadId: '@ViewBag.id',
+                                    MabdaId: SelectedRow.data.fldId
+                                },
+                                success: function (data) {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Er == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    App.IncomeCodesParamFormul.queryById('TreeDaramadParamFormul').store.load();
+                                }
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                    }
+                });
+            }
+            else if ('@ViewBag.State' == 3) {
+                App.SearchShHesabCodeDaramad.body.mask('در حال انجام عملیات...');
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/SearchShomareHesabCodeDaramad/NerkhParam',
+                    params: {
+                        ParamId: '@ViewBag.ParamId',
+                        ShCodeId: SelectedRow.data.fldId,
+                        ParamMaghsad:'@ViewBag.DaramadTitle'
+                    },
+                    success: function (data) {
+                        App.SearchShHesabCodeDaramad.body.mask().hide();
+                    }
+                });
+
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

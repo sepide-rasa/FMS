@@ -1,0 +1,163 @@
+﻿@model IEnumerable<NewFMS.WCF_Automation.OBJ_TabagheBandi>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+
+@(Html.X().Window().Modal(true)//.Listeners(li => { li.Render.Fn = "addKeyMapBox"; })
+.Width(400)//.Height(300)
+    .Title("طبقه بندی نامه")
+    .ID("LetterTabagheBandi")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+        .ButtonAlign(Alignment.Center)
+        .Buttons(
+            Html.X().Button()
+                .Text("ذخیره")
+                .Icon(Ext.Net.Icon.Disk)
+                        .Listeners(l => l.Click.Handler = "SaveLetterTabagheBandi()"),
+            Html.X().Button()
+                .Text("خروج")
+                .Icon(Ext.Net.Icon.DoorOut)
+                        .Listeners(l => l.Click.Handler = "App.LetterTabagheBandi.destroy()")
+        )
+    .Items(
+            X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(true).Title("پوشه های شخصی")
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                .Defaults(new { Margin = 1 })
+                .Items(
+                X.Hidden().ItemID("fldId").Value(0),
+
+                                X.TreePanel().ColSpan(4)
+                                     .ID("TabagheBandiTree")
+                                .Width(300)
+                                .Height(200)
+                                .AutoScroll(true)
+                                .UseArrows(true)
+                                .Border(false)
+                                .Store(
+                                    X.TreeStore().AutoLoad(false)
+                                        .Proxy(
+                                             X.AjaxProxy().Url(Url.Action("NodeLoadLetterTabagheBandi"))
+                                            .ActionMethods(l => l.Read = HttpMethod.POST)
+                                        )
+                                            .Model(
+                                            Html.X().Model()
+                                                .Fields(
+                                                    X.ModelField().Name(Model, m => m.fldID).Type(ModelFieldType.String),
+                                                    X.ModelField().Name(Model, m => m.fldName).Type(ModelFieldType.String)
+                                                )
+                                        )
+                                    .Listeners(l =>
+                                    {
+                                        l.BeforeLoad.Fn = "GetParamTabagheBandiTree";
+                                    })
+                                )
+                                .Listeners(a =>
+                                {
+                                    a.ItemClick.Handler = "GetIdTabagheBandiTree(record)";
+                                    a.AfterRender.Handler = "App.TabagheBandiTree.expandAll();";
+                                    //a.Load.Handler = "App.TreeBox.expandAll();";
+                                })
+
+                                    .Root(Html.X().Node().NodeID("0").Text("پوشه های شخصی").Checked(null))
+                        )
+
+
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+        )
+)
+<script type="text/javascript">
+    var BoxId;
+    var GetParamTabagheBandiTree = function (store, operation, eOpts) {
+        var nodeId = operation.node.getId();
+        operation.params.nod = nodeId;
+        operation.params.ComisionID = '@ViewBag.CommisionId';
+        operation.params.fldLetterId = '@ViewBag.LetterId';
+        operation.params.fldMessageId = '@ViewBag.MessageId';
+    };
+
+    function GetIdTabagheBandiTree(record) {
+        BoxId = record.getId();
+
+    };
+
+
+    function SaveLetterTabagheBandi() {
+        var Id = App.LetterTabagheBandi.queryById('fldId');
+
+        var Father = App.TabagheBandiTree;
+        var Checked = Father.getChecked();
+        if (Checked == []) { return; }
+        var TabagheBandi = new Array();
+        var er = false;
+
+        if (BoxId == null) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک گزینه از ساختار درختی را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK,
+            });
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+
+
+        App.LetterTabagheBandi.body.mask("در حال ذخیره سازی");
+        for (var i = 0; i < Checked.length ; i++) {
+            FatherId = Checked[i];
+            TabagheBandi.push({
+                'fldTabagheBandiId': FatherId.getId()
+            });
+        }
+
+        var data = {
+            TabagheBandi: TabagheBandi,
+            fldLetterId: '@ViewBag.LetterId',
+            fldMessageId: '@ViewBag.MessageId',
+        };
+
+        $.ajax({
+            type: "POST",
+            url: '/Automation/TabagheBandi/SaveLetterTabagheBandi',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                });
+                App.LetterTabagheBandi.body.mask().hide();
+                SearchSK();
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+
+        });
+    }
+    function ClearBox() {
+        App.LetterTabagheBandi.queryById('fldId').setValue(0);
+    }
+
+</script>

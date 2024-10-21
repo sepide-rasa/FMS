@@ -1,0 +1,278 @@
+﻿@model IEnumerable<NewFMS.WCF_Common_Pay.OBJ_TypeEstekhdam>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X().Window().Modal(true)//.Listeners(li => { li.AfterRender.Handler = "LoadTypeEstekhdam_UserGroup()"; })
+.Width(370)//.Height(300)
+    .Title("تعریف انواع استخدام یک گروه کاربری")
+    .ID("NewTypeEstekhdam_UserGroup")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+        .ButtonAlign(Ext.Net.Alignment.Center)
+        .Buttons(X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l =>
+                    {
+                        l.Click.Handler = "SaveTypeEstekhdam_UserGroup();";
+
+                    })
+                    .ItemID("btnSaveTypeEstekhdam_UserGroup")
+                    ,
+                    X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                        .OnClientClick("App.NewTypeEstekhdam_UserGroup.hide();"))
+    .Items(
+            X.Panel().Border(false)
+            .Items(
+                X.FieldSet().Border(true).Title("انواع استخدام یک گروه گاربری")
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                .Defaults(new { Margin = 1 })
+                .Items(
+                X.Hidden().ItemID("fldId").Value(0),
+                X.Label("گروه کاربری:"),
+                         X.ComboBox()
+                        .ItemID("CboUserGroup")
+                                    .EmptyText("...")
+                                .AllowBlank(false)
+                                    .BlankText("لطفا گروه کاربری را انتخاب نمایید.")
+                                .TypeAhead(true)
+                                .Editable(false)
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldName")
+                                .ValueField("fldId")
+                                        .Listeners(l => l.Change.Handler = "LoadGridTypeEstekhdam()")
+                                .Store(
+                                 X.Store()
+
+                                    .Listeners(l => l.Load.Handler = "setDefaultCboUserGroup();")
+                                        .Model(X.Model()
+                                        .IDProperty("fldId")
+                                        .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" })
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                                        .Url(Url.Action("GetUserGroup"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                )
+                                ,
+                                    X.GridPanel()
+                                    .Center()
+                                    .AutoScroll(true)
+                                    .ColSpan(6)
+                                    .Width(320)
+                                    .Height(250)
+                                    .Title("لیست انواع استخدام")
+                                    .BottomBar(X.PagingToolbar())
+                                    .TitleAlign(TitleAlign.Right)
+                                    .Frame(true)
+                                    .ItemID("GridTypeEstekhdam")
+                                    .Store(
+                                        X.StoreForModel().AutoLoad(false)
+                                                    // .Listeners(l => l.Load.Handler = "LoadTypeEstekhdam_UserGroup()")
+                                            .Proxy(Html.X().AjaxProxy()
+                                            .Url(Url.Action("ReadTypeEstekhdam"))
+                                            .Reader(Html.X().JsonReader().Root("data"))
+                                            )
+                                            .PageSize(20)
+                                            .RemoteFilter(false)
+                                            .RemotePaging(false)
+                                    )
+                                    .View(
+                                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                                    )
+                                    .Plugins(X.FilterHeader().Remote(false))
+                                    .ColumnModel(
+                                        Html.X().RowNumbererColumn(),
+                                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("نوع استخدام").Flex(5).Wrap(true)
+                                    )
+                                    .SelectionModel(
+                                        Html.X().CheckboxSelectionModel().CheckOnly(true).PruneRemoved(false).ShowHeaderCheckbox(false)
+                                            .Mode(Ext.Net.SelectionMode.Multi)
+                                    )
+                        )
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+        )
+)
+<script type="text/javascript">
+
+    function LoadGridTypeEstekhdam() {
+        App.NewTypeEstekhdam_UserGroup.queryById('GridTypeEstekhdam').getSelectionModel().deselectAll();
+        App.NewTypeEstekhdam_UserGroup.body.mask("در حال بارگذاری...");
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/TypeEstekhdam_UserGroup/LoadDataEstekhdam',
+            params: {
+                UserGroupId: App.NewTypeEstekhdam_UserGroup.queryById('CboUserGroup').getValue()
+            },
+            success: function (result) {
+                var store = App.NewTypeEstekhdam_UserGroup.queryById("GridTypeEstekhdam").store;
+                store.loadData(result.Data);
+                if (result.checkId != null) {
+                    for (var j = 0; j < result.checkId.length; j++) {
+                        var index2 = App.NewTypeEstekhdam_UserGroup.queryById("GridTypeEstekhdam").getStore().findExact("fldId", result.checkId[j]);
+                        App.NewTypeEstekhdam_UserGroup.queryById("GridTypeEstekhdam").getSelectionModel().select(index2, true);
+                    }
+                }
+                App.NewTypeEstekhdam_UserGroup.body.mask().hide();
+            }
+        });
+   }
+    function setDefaultCboUserGroup() {
+        if ('@ViewBag.Id' == '0') {
+            App.NewTypeEstekhdam_UserGroup.queryById("CboUserGroup").setValue(App.NewTypeEstekhdam_UserGroup.queryById("CboUserGroup").store.getAt(0));
+        }
+    }
+    function LoadTypeEstekhdam_UserGroup() {
+
+        if ('@ViewBag.Id' != '0') {
+            App.NewTypeEstekhdam_UserGroup.body.mask("در حال بارگذاری...");
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/TypeEstekhdam_UserGroup/Details',
+                params: {
+                    Id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    var CboUserGroup = App.NewTypeEstekhdam_UserGroup.queryById('CboUserGroup');
+                    CboUserGroup.setValue(data.fldUserGroupId);
+                    var Id = App.NewTypeEstekhdam_UserGroup.queryById('fldId');
+                    Id.setValue(data.fldId);
+
+                    if (data.TypeEstekhdamId != null) {
+                        for (var j = 0; j < data.TypeEstekhdamId.length; j++) {
+                            var index2 = App.NewTypeEstekhdam_UserGroup.queryById("GridTypeEstekhdam").getStore().findExact("fldId", data.TypeEstekhdamId[j]);
+                            App.NewTypeEstekhdam_UserGroup.queryById("GridTypeEstekhdam").getSelectionModel().select(index2, true);
+                        }
+                    }
+                    
+
+
+                    App.NewTypeEstekhdam_UserGroup.body.mask().hide();
+                }
+            });
+        }
+
+
+    }
+    var TypeEstekhdamId = "";
+    function SaveTypeEstekhdam_UserGroup() {
+        var CboUserGroup = App.NewTypeEstekhdam_UserGroup.queryById('CboUserGroup');
+        var Id = App.NewTypeEstekhdam_UserGroup.queryById('fldId');
+        var Selection = App.NewTypeEstekhdam_UserGroup.queryById('GridTypeEstekhdam').getSelectionModel().getSelection();
+       
+        var er = false;
+
+        if (CboUserGroup.validate() == false) {
+            er = true;
+        }
+        if (Selection.length == 0) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا انواع استخدام مورد نظر خود را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            er = true;
+        }
+        if (er == true)
+            return;
+        else {
+            for (var i = 0; i < Selection.length ; i++) {
+                TypeEstekhdamId = TypeEstekhdamId + Selection[i].data.fldId + ",";
+            }
+        }
+
+
+
+        App.NewTypeEstekhdam_UserGroup.body.mask("در حال ذخیره سازی");
+
+        $.ajax({
+            type: "POST",
+            url: '/PayRoll/TypeEstekhdam_UserGroup/Save',
+            datatype: "json",
+
+            /*contentType: 'application/json',*/
+            data: {
+                fldId: Id.getValue(),
+                fldUseGroupId: CboUserGroup.getValue(),
+                fldTypeEstekhamId: TypeEstekhdamId,
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                });
+                App.TypeEstekhdam_UserGroup.queryById('GridTypeEstekhdam_UserGroup').store.load();
+                if (data.Er != 1)
+                    ClearTypeEstekhdam_UserGroup();
+                App.NewTypeEstekhdam_UserGroup.body.mask().hide();
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+
+        });
+    }
+    function ClearTypeEstekhdam_UserGroup() {
+        TypeEstekhdamId = "";
+        App.NewTypeEstekhdam_UserGroup.queryById('GridTypeEstekhdam').getSelectionModel().deselectAll();
+        App.NewTypeEstekhdam_UserGroup.queryById('fldId').setValue(0);
+    }
+    var addKeyMapTypeEstekhdam_UserGroup = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NewTypeEstekhdam_UserGroup.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "CboUserGroup") {
+                        nextfld = App.NewTypeEstekhdam_UserGroup.queryById('btnSaveTypeEstekhdam_UserGroup');
+                        SaveTypeEstekhdam_UserGroup();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

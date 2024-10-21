@@ -1,0 +1,181 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_MahdoodiyatMohasebat>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{
+    var X = Html.X();
+}
+
+@(X.Panel()
+    .Title("عوارض بدون محاسبه")
+    .Border(false)
+    .ID("MahdoodiyatMohasebat")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(li => li.AfterRender.Handler = "setHeightMahdoodiyatMohasebat();")
+    .Items(
+        X.Panel()
+            .Border(false)
+            .AutoScroll(true)
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Stretch })
+            .Items(
+                X.GridPanel()
+                    .AutoScroll(true)
+                    .ItemID("GridMahdoodiyatMohasebat")
+                    .BottomBar(X.PagingToolbar())
+                    .TopBar(
+                        Html.X().Toolbar()
+                            .Items(
+                                X.Button()
+                                    .Text("جدید")
+                                    .Icon(Ext.Net.Icon.Add)
+                                    .Listeners(li => li.Click.Handler = "NewMahdoodiyatMohasebat();"),
+                                X.Button()
+                                    .Text("ویرایش")
+                                    .Icon(Ext.Net.Icon.Pencil)
+                                    .Listeners(li => li.Click.Handler = "EditMahdoodiyatMohasebat();"),
+                                X.Button()
+                                    .Text("حذف")
+                                    .Icon(Ext.Net.Icon.Delete)
+                                    .Listeners(li => li.Click.Handler = "DeleteMahdoodiyatMohasebat();")
+
+                 , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                     .Listeners(l => { l.Click.Handler = "HelpMahdoodiyatMohasebat();"; })
+                        )
+                    )
+                    .Store(
+                        X.StoreForModel()
+                            .Listeners(l => l.DataChanged.Handler = "App.MahdoodiyatMohasebat.queryById('GridMahdoodiyatMohasebat').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                        )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                            Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldNoeKarbarName).Text("نوع کاربر").Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldNoeCodeDaramadName).Text("نوع کد درآمد").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldNoeAshkhasName).Text("نوع شخص").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldStatusName).Text("وضعیت").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldAzTarikh).Text("از تاریخ").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldTatarikh).Text("تا تاریخ").Flex(6)
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+                )
+            )
+)
+
+<script type="text/javascript">
+
+    function setHeightMahdoodiyatMohasebat() {
+        App.MahdoodiyatMohasebat.queryById('GridMahdoodiyatMohasebat').setHeight(App.DaramadWin.getHeight() - 175);
+        Ext.net.Mask.hide();
+    }
+
+    function EditMahdoodiyatMohasebat() {
+        var SelectedRow = App.MahdoodiyatMohasebat.queryById('GridMahdoodiyatMohasebat').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/MahdoodiyatMohasebat/New',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function () {
+                    /*Ext.net.Mask.hide();*/
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function NewMahdoodiyatMohasebat() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/MahdoodiyatMohasebat/New',
+            params: {
+                Id: 0
+            },
+            success: function () {
+                /*Ext.net.Mask.hide();*/
+            }
+        });
+    }
+
+    function DeleteMahdoodiyatMohasebat() {
+        var SelectedRow = App.MahdoodiyatMohasebat.queryById('GridMahdoodiyatMohasebat').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/MahdoodiyatMohasebat/Delete',
+                            params: {
+                                Id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1) {
+                                    ic = Ext.MessageBox.ERROR;
+                                }
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.MahdoodiyatMohasebat.queryById('GridMahdoodiyatMohasebat').store.load();
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function HelpMahdoodiyatMohasebat() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/MahdoodiyatMohasebat/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+</script>

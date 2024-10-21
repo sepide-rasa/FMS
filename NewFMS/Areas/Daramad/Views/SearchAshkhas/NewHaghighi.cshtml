@@ -1,0 +1,274 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window()
+    .Modal(true)
+        .Listeners(li => { li.Render.Fn = "addKeyMapNewHaghighi"; li.AfterRender.Handler = "SelectType();SetValue();"; })
+    .Width(280)
+        //   .Height(300)
+    .Resizable(false)
+    .Title("ثبت شخص حقیقی جدید")
+    .ID("NewHaghighi")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel()
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Border(false)
+            .KeyMap(Html.X().KeyMap()
+                .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+                .Binding(b =>
+                {
+                    b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                    .Handler("SaveAshkhaseHaghighi(); ")
+                    );
+
+                }))
+            .DefaultButton("btn")
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+        //.ToolTip("کلید میانبر F8")
+                            .Listeners(l => l.Click.Handler = "SaveAshkhaseHaghighi();")
+                        .ItemID("btnSaveAshkhaseHaghighi"),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .ToolTip("کلید میانبر Esc")
+                    .OnClientClick("App.NewHaghighi.destroy();")
+                    )
+            .Items(
+                X.FieldSet()
+                        .ItemID("Panel").Title("اطلاعات شخص حقیقی")
+                    .Layout(Ext.Net.LayoutType.Table)
+                    .Border(true)
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                    .Defaults(new { Margin = 2 })
+                        .Items(
+                            X.Hidden().ItemID("fldId"),
+                            X.Label("تابعیت:"),
+                            X.ComboBox()
+                            .ItemID("CboType")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .BlankText("لطفا نوع تابعیت را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .EmptyText("تابعیت")
+            //.FieldLabel("تابعیت")
+                            .Items(
+                                new ListItem("داخلی", "0"),
+                                new ListItem("خارجی", "1")
+                                )
+                                .SelectedItems(new { Value = "0" })
+                                .Listeners(l =>
+                                {
+                                    l.Select.Handler = "SelectType();";
+                                    /*l.Change.Handler="SelectType();";*/
+                                }),
+                                  X.Label("نام:"),
+                            X.TextField()
+                                .ItemID("txtName")
+                            .AllowBlank(false)
+                            .BlankText("لطفا نام را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .MaxLength(100)
+                                    .EnforceMaxLength(true)
+                            .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                            .AutoFocus(true)
+                                    , X.Label("نام خانوادگی:")
+                            , X.TextField()
+                            .ItemID("txtFamily")
+                            .AllowBlank(false)
+                            .BlankText("لطفا نام خانوادگی را وارد کنید.")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                            , X.Label("کد ملی:")
+                                .ItemID("lblCodeMeli")
+                            , X.TextField()
+                            .ItemID("txtCodeMeli")
+                                .Plugins(X.InputMask()
+                                        .Mask("AAAAAAAAAA")
+                                        .UnmaskOnBlur(true)
+                                        .MaskSymbols(ls =>
+                                        {
+                                            ls.Add(new MaskSymbol { Name = "A", Regex = "[0-9]", Placeholder = "_".ToCharArray()[0] });
+                                        })
+                                    )
+                            .AllowBlank(false)
+                            .BlankText("لطفا کد ملی را وارد کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            , X.TextField()
+                                .ItemID("txtCodeFaragir")
+                                .MaskRe("[0-9]")
+                                .AllowBlank(false)
+                                .MaxLength(50)
+                                .EnforceMaxLength(true)
+                                .BlankText("لطفا کد فراگیر را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)    
+        )
+    ))
+)
+
+<script type="text/javascript">
+    function SetValue() {
+        if ('@ViewBag.State' == 2) {
+            var txtCodeMeli = App.NewHaghighi.queryById('txtCodeMeli');
+            txtCodeMeli.setValue(App.AnnouncementComplication.queryById('txtCode_ShenaseMelli').getValue());
+        }
+    }
+    function SelectType() {
+
+        var CboType = App.NewHaghighi.queryById('CboType');
+        var lblCodeMeli = App.NewHaghighi.queryById('lblCodeMeli');
+        var txtCodeMeli = App.NewHaghighi.queryById('txtCodeMeli');
+        var txtCodeFaragir = App.NewHaghighi.queryById('txtCodeFaragir');
+        if (CboType.getValue() == "1") {
+            lblCodeMeli.setText("کد فراگیر:");
+            txtCodeMeli.hide();
+            txtCodeFaragir.show();
+            if ('@ViewBag.State' == 2) {
+                txtCodeFaragir.setValue(App.AnnouncementComplication.queryById('txtCode_ShenaseMelli').getValue());
+            }
+        }
+        else {
+            lblCodeMeli.setText("کد ملی:");
+            txtCodeMeli.show();
+            txtCodeFaragir.hide();
+            if ('@ViewBag.State' == 2) {
+                txtCodeMeli.setValue(App.AnnouncementComplication.queryById('txtCode_ShenaseMelli').getValue());
+            }
+        }
+    }
+    function SaveAshkhaseHaghighi() {
+        var txtName = App.NewHaghighi.queryById('txtName');
+        var txtFamily = App.NewHaghighi.queryById('txtFamily');
+        var txtCodeMeli = App.NewHaghighi.queryById('txtCodeMeli');
+        var fldId = App.NewHaghighi.queryById('fldId');
+        var CboType = App.NewHaghighi.queryById('CboType');
+        var txtCodeFaragir = App.NewHaghighi.queryById('txtCodeFaragir');
+        var code = "";
+        var er = false;
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (txtFamily.validate() == false) {
+            er = true;
+        }
+        if (txtCodeMeli.getValue() == "" && CboType.getValue() == "0") {
+            Ext.MessageBox.show({
+                Name: "خطا",
+                msg: "لطفا کد ملی را وارد نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK,
+            });
+            return;
+        }
+        else if (txtCodeFaragir.validate() == false && CboType.getValue() == "1") {
+            Ext.MessageBox.show({
+                Name: "خطا",
+                msg: "لطفا کد فراگیر را وارد نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK,
+            });
+            return;
+        }
+        
+        if (er == true)
+            return;
+        if (CboType.getValue() == "0") {
+            code = txtCodeMeli.getValue();
+        }
+        else {
+            code = txtCodeFaragir.getValue();
+        }
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Employee/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldName: txtName.getValue(),
+                fldFamily: txtFamily.getValue(),
+                fldCodemeli: code,
+                fldStatus: false,
+                fldDesc: "",
+                fldTypeShakhs: CboType.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.ERROR;
+                if (data.Er == 0) {
+                    ic = Ext.MessageBox.INFO;
+                    if ('@ViewBag.State' == 2) {
+                        var DetailMalek = App.AnnouncementComplication.queryById('DetailMalek');
+                        DetailMalek.show();
+                        App.AnnouncementComplication.queryById('txtCode_ShenaseMelli').setValue(txtCodeMeli.getValue());
+                        App.AnnouncementComplication.queryById('fldAshkhasId').setValue(data.AshkhasId);
+                        App.AnnouncementComplication.queryById('NameMalek').setText(txtName.getValue() + " " + txtFamily.getValue());
+                        App.AnnouncementComplication.queryById('NameFather').setText("");
+                        var lblFather = App.AnnouncementComplication.queryById("lblFather");
+                        lblFather.setText("نام پدر: ");
+                    }
+                    else if ('@ViewBag.State' == 5) {
+                        App.FishMotefareghe.queryById('txtCode_ShenaseMelli').setValue(txtCodeMeli.getValue());
+                        App.FishMotefareghe.queryById('fldAshkhasId').setValue(data.AshkhasId);
+                    }
+                }
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == 'ok') {
+                            if (data.Er != 1)
+                                App.NewHaghighi.destroy();
+                        }
+                    }
+                });
+                if ('@ViewBag.State' == 1)
+                    App.SearchAshkhas.queryById('GridSearchAshkhas').store.load();
+            }
+
+        });
+    }
+    var addKeyMapNewHaghighi = function (cmp) {
+        
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NewHaghighi.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtCodeMeli") {
+                        nextfld = App.NewHaghighi.queryById('btnSaveAshkhaseHaghighi');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+
+
+</script>

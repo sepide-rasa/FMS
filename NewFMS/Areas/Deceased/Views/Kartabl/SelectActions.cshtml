@@ -1,0 +1,145 @@
+﻿@model IEnumerable<NewFMS.WCF_Deceased.OBJ_Actions>
+@using Ext.Net.MVC;
+@{
+
+    var X = Html.X();
+}
+@(Html.X().Window().Modal(true)
+            .Width(600).Height(360)
+            .Title("لیست اقدامات")
+                .ID("SelectActions")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Items(
+                X.Panel().Border(false)
+                .Border(false)
+                .AutoScroll(true)
+                .Items(
+
+                        X.GridPanel().AutoScroll(true).Border(false)
+                            .TopBar(
+                            Html.X().Toolbar()
+                                .Items(
+                                    X.Button()
+                                        .Text("ذخیره")
+                                        .Icon(Ext.Net.Icon.Disk)//.ToolTip("کلید میانبر F8")
+                                        .Listeners(li =>
+                                        {
+                                            li.Click.Handler = "SaveSelected();";
+                                        })
+                        )
+                        )
+                            .Listeners(l => l.AfterRender.Handler = "LoadAllData()")
+                        .ItemID("GridSelectActions").Flex(2)
+                 //   .BottomBar(X.PagingToolbar())
+                    .Height(330)
+                    .ColumnWidth(0.6)
+                    .Layout(Ext.Net.LayoutType.Column)
+                    .Store(
+                        X.StoreForModel()
+                            .PageSize(200000)
+
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                        .Plugins(X.FilterHeader().Remote(false))
+                            .SelectionModel(
+                                Html.X().CheckboxSelectionModel().ShowHeaderCheckbox(true)
+                                    .Mode(Ext.Net.SelectionMode.Multi).PruneRemoved(false).CheckOnly(true))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldTitleAction).Text("عنوان").Flex(2)
+                    )
+                                 
+                    
+
+            )
+        )
+)
+<script type="text/javascript">
+ function LoadAllData() {
+     App.SelectActions.queryById('GridSelectActions').getSelectionModel().clearSelections();
+
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/Kartabl/LoadSeletedActions',
+                params: {
+                    KartablId: '@ViewBag.KartablId'
+                },
+
+            success: function (result) {
+
+                var store = App.SelectActions.queryById("GridSelectActions").store;
+                store.load({ start: 0, limit: store.count(), page: 1 });
+                store.loadData(result.Data);
+
+                if (result.checkId2.length != 0) {
+                    for (var j = 0; j < result.checkId2.length; j++) {
+                        var index2 = App.SelectActions.queryById("GridSelectActions").getStore().findExact("fldId", result.checkId2[j]);
+                        App.SelectActions.queryById("GridSelectActions").getSelectionModel().select(index2, true);
+                    }
+                }
+                Ext.net.Mask.hide();
+            }
+        });
+ }
+    function SaveSelected() {
+        var cods = new Array();
+        var SelectedRows = App.SelectActions.queryById('GridSelectActions').getSelectionModel().getSelection();
+        if (SelectedRows.length > 0) {
+            for (var i = 0; i < SelectedRows.length ; i++) {
+                cods.push({
+                    fldActionId: SelectedRows[i].data.fldId,
+                });
+            }
+
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "هیچ اقدامی برای ذخیره انتخاب نشده است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+
+        var data = {
+            cods: cods,
+            KartablId: '@ViewBag.KartablId'
+        };
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Deceased/Kartabl/SaveActions',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (data) {
+                var Message = "";
+                var result = data;/* JSON.parse(data);*/
+                var ic = Ext.MessageBox.INFO;
+                if (result.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+
+                App.SelectActions.queryById('GridSelectActions').selModel.refresh();
+                Ext.net.Mask.hide();
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+        });
+    }
+
+    
+ </script>

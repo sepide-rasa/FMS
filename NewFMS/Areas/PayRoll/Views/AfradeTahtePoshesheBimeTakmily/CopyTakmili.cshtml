@@ -1,0 +1,153 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+@(Html.X().Window().Modal(true)
+            .Width(300).Height(115)
+            .Title("کپی بیمه تکمیلی")
+                .ID("CopyGHarardadBime")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+                .ButtonAlign(Alignment.Center)
+                .Buttons(
+                    Html.X().Button()
+                        .Text("کپی")
+                        .Icon(Ext.Net.Icon.DatabaseCopy)
+                        .ItemID("btnCopy")
+                            .Listeners(l =>
+                            {
+                                l.Click.Handler = "Copy();";
+                                //l.Click.Fn = "showFilePI";
+                            })
+    ,
+                           
+
+                    Html.X().Button()
+                        .Text("خروج")
+                        .Icon(Ext.Net.Icon.DoorOut)
+                            .Listeners(l => l.Click.Handler = "App.CopyGHarardadBime.destroy()")
+                )
+            .Items(
+
+                X.Panel()
+                .Border(false)
+                .AutoScroll(true)
+                    .Layout(Ext.Net.LayoutType.Table)
+                    .Border(false)
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                    .Defaults(new { Margin = 2 })
+                .Items(
+                X.Label().Text("کپی از قرارداد بیمه :")
+                , X.ComboBox()
+                                .AutoFocus(true)
+                            .ItemID("CboFrom")
+                             .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .Editable(true)
+                            .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldName")
+                                .ValueField("fldId")
+                            .EmptyText("قرارداد بیمه")
+                           .Store(X.Store()
+                                .Model(X.Model()
+                                        .IDProperty("fldId")
+                                    .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetFromBime"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                                )
+                                   
+                                 ,X.Label().Text("کپی در قرارداد بیمه :")
+                                , X.ComboBox()
+                                .AutoFocus(true)
+                            .ItemID("Cboto")
+                             .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .Editable(true)
+                            .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldName")
+                                .ValueField("fldId")
+                            .EmptyText("قرارداد بیمه")
+
+                           .Store(X.Store()
+                               .Listeners(l => l.Load.Handler = "setDefaultCboBime()")
+                                .Model(X.Model()
+                                        .IDProperty("fldId")
+                                    .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetToBime"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                                )
+                                      
+                                
+                        
+
+                )
+        )
+)
+
+<script type="text/javascript">
+   
+    function setDefaultCboBime() {
+        App.CopyGHarardadBime.queryById('CboFrom').setValue(App.CopyGHarardadBime.queryById('CboFrom').store.getAt(0));
+        App.CopyGHarardadBime.queryById('Cboto').setValue(App.CopyGHarardadBime.queryById('Cboto').store.getAt(0));
+    }
+
+    function Copy() {
+        CboFrom=App.CopyGHarardadBime.queryById('CboFrom');
+        Cboto = App.CopyGHarardadBime.queryById('Cboto');
+        var er = false;
+        if (CboFrom.validate() == false) {
+            er = true;
+        }
+        if (Cboto.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/AfradeTahtePoshesheBimeTakmily/Copy',
+            params: {
+               
+                GHarardadBimeId_To: Cboto.getValue(),
+                GHarardadBimeId_From: CboFrom.getValue(),
+                OrganId: '@ViewBag.OrganId'
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                /*ClearAfrad();*/
+                ReloadGridDetail();
+                /*   App.Takmili.queryById('GridHeader').store.load();
+                   App.Takmili.queryById('GridDetail').getStore().loadData("");*/
+
+            }
+
+        });
+    }
+
+
+</script>

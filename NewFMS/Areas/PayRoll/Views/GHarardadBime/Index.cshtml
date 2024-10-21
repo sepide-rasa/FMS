@@ -1,0 +1,501 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_GHarardadBime>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+<style>
+    .align{
+        text-align:right;
+    }
+</style>
+@(Html.X().Panel()
+        .ID("GHarardadBime")
+                .Title("ثبت قرارداد بیمه")
+                    .Listeners(li => { li.AfterRender.Handler = "GHarardadBimeSetSize();"; li.Render.Fn = "addKeyMapGHarardadBime"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                .Listeners(l => { l.Click.Handler = "SaveGHarardadBime();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadGHarardadBime();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteGHarardadBime();"; })
+           ,  X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+               .Listeners(l => { l.Click.Handler = "HelpGHarardadBime();"; })
+
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.GHarardadBime.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("اطلاعات قرارداد بیمه").Height(160)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 8 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                            X.Label("نام بیمه طرف قرار داد:"),
+                          X.TextField()
+                              .MaxLength(50)
+                                .EnforceMaxLength(true)
+                        .ItemID("txtNameBime")
+                        .AllowBlank(false)
+                        .BlankText("لطفا نام بیمه را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AutoFocus(true)
+                            , X.Label("سقف تعداد بیمه:")
+                        , X.ComboBox()
+                            .ItemID("CboMaxBimeAsli")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Editable(false)
+                        .TypeAhead(true)
+                        .BlankText("لطفا سقف تعداد بیمه را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .EmptyText("سقف تعداد بیمه")
+                       // .FieldLabel("سقف تعداد بیمه شده اصلی (کارفرما)")
+                        .SelectedItems(new { Value = "6" })
+                        .Items(
+                            new ListItem("یک نفر", "1"),
+                            new ListItem("دو نفر", "2"),
+                            new ListItem("سه نفر", "3"),
+                            new ListItem("چهار نفر", "4"),
+                            new ListItem("پنج نفر", "5"),
+                            new ListItem("شش نفر به بالا", "6")
+                                )
+                        , X.Label("تاریخ شروع:")
+                        , X.PDateField()
+                            .ItemID("txtTarikhSHoro")
+                                .MaskRe("/[0-9 /]/")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Listeners(l => l.Change.Handler = "AzTarikh()")
+                        .AllowBlank(false)
+                        .BlankText("لطفا تاریخ شروع را وارد کنید.")
+                            , X.Label("تاریخ پایان:")
+                        , X.PDateField()
+                            .MaskRe("/[0-9 /]/")
+                            .ItemID("txtTarikhPayan")
+                            .Listeners(l => l.Change.Handler = "TaTarikh()")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AllowBlank(false)
+                        .BlankText("لطفا تاریخ پایان را وارد کنید.")
+                        ,X.FieldSet().Title("بیمه تکمیلی").Height(105).Cls("align")
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                        .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Label("مبلغ بیمه شده اصلی:")
+                        ,X.TextField()
+                        .Width(120)
+                        .ItemID("txtMablagheBimeSHodeAsli")
+                        .Text("0")
+                        .MaskRe("/[0-9]/")
+                        .Listeners(l => { l.Change.Handler = "App.GHarardadBime.queryById('txtMablagheBimeSHodeAsli').setValue(accounting.formatNumber(App.GHarardadBime.queryById('txtMablagheBimeSHodeAsli').getValue()));CheckInt(App.GHarardadBime.queryById('txtMablagheBimeSHodeAsli'));"; })
+                        .MaxLength(13)
+                        .EnforceMaxLength(true)
+                        .AllowBlank(false)
+                        .BlankText("لطفا مبلغ را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AutoFocus(false)
+                        , X.Label("درصد سهم پرسنل:")
+                            , X.TextField()
+                            .Width(120)
+                            .ItemID("txtDarsadBimeTakmily")
+                            .MaskRe("/[0-9-.]/")
+                            .Text("0")
+                            .Listeners(l => l.Change.Handler = "CheckDarsad(App.GHarardadBime.queryById('txtDarsadBimeTakmily'))")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .AllowBlank(false)
+                                .BlankText("لطفا درصد سهم پرسنل را وارد کنید.")
+                            , X.Label("مبلغ تحت تکفل 60 سال:")
+                            , X.TextField()
+                            .Width(120)
+                            .ItemID("txtMablaghe60Sal")
+                            .MaskRe("/[0-9]/")
+                            .Text("0")
+                            .Listeners(l => { l.Change.Handler = "App.GHarardadBime.queryById('txtMablaghe60Sal').setValue(accounting.formatNumber(App.GHarardadBime.queryById('txtMablaghe60Sal').getValue()));CheckInt(App.GHarardadBime.queryById('txtMablaghe60Sal'));"; })
+                                .MaxLength(13)
+                            .EnforceMaxLength(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا تکفل 60 سال را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                        , X.Label("درصد سهم پرسنل:")
+                             , X.TextField()
+                            .Width(120)
+                            .ItemID("txtDarsadBime60Sal")
+                            .MaskRe("/[0-9-.]/")
+                            .Text("0")
+                            .Listeners(l => l.Change.Handler = "CheckDarsad(App.GHarardadBime.queryById('txtDarsadBime60Sal'))")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .AllowBlank(false)
+                            .BlankText("لطفا درصد بیمه تکمیلی 60 سال را وارد کنید.")
+                        , X.Label("مبلغ تحت تکفل 70 سال:")
+                              , X.TextField()
+                            .Width(120)
+                            .ItemID("txtMablaghe70Sal")
+                            .MaskRe("/[0-9]/")
+                            .Text("0")
+                            .Listeners(l => { l.Change.Handler = "App.GHarardadBime.queryById('txtMablaghe70Sal').setValue(accounting.formatNumber(App.GHarardadBime.queryById('txtMablaghe70Sal').getValue()));CheckInt(App.GHarardadBime.queryById('txtMablaghe70Sal'));"; })
+                                .MaxLength(13)
+                            .EnforceMaxLength(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا تکفل 70 سال را وارد کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                        , X.Label("درصد سهم پرسنل:")
+                            , X.TextField()
+                            .Width(120)
+                            .ItemID("txtDarsadBime70Sal")
+                            .MaskRe("/[0-9-.]/")
+                            .Text("0")
+                            .Listeners(l => l.Change.Handler = "CheckDarsad(App.GHarardadBime.queryById('txtDarsadBime70Sal'))")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .AllowBlank(false)
+                            .BlankText("لطفا درصد بیمه تکمیلی 70 سال را وارد کنید.")
+                    ).ColSpan(4),
+                        X.FieldSet().Title("بیمه عمر").MarginSpec("0px 0px 50px 0px").Height(50).Cls("align")
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                        .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Label("مبلغ بیمه عمر:"),
+                            X.TextField()
+                            .Width(120)
+                            .ItemID("txtMablagheBimeOmr")
+                            .MaskRe("/[0-9]/")
+                            .Text("0")
+                                    .Listeners(l => { l.Change.Handler = "App.GHarardadBime.queryById('txtMablagheBimeOmr').setValue(accounting.formatNumber(App.GHarardadBime.queryById('txtMablagheBimeOmr').getValue()));CheckInt(App.GHarardadBime.queryById('txtMablagheBimeOmr'));"; })
+                            .MaxLength(13)
+                            .EnforceMaxLength(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا بیمه عمر را وارد کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            , X.Label("درصد سهم پرسنل:")
+                            , X.TextField()
+                            .Width(120)
+                            .ItemID("txtDarsadBimeOmr")
+                            .MaskRe("/[0-9-.]/")
+                            .Text("0")
+                                .Listeners(l => l.Change.Handler = "CheckDarsad(App.GHarardadBime.queryById('txtDarsadBimeOmr'))")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .AllowBlank(false)
+                            .BlankText("لطفا درصد بیمه عمر را وارد کنید.")
+                        ).ColSpan(4)   
+                    //, X.Label("توضیحات:"),
+                    //    X.TextField()
+                    //.ItemID("txtDesc")
+                    //.ColSpan(3)
+                    //.LabelAlign(Ext.Net.LabelAlign.Top)
+                    //.Width(375)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("GHarardadBimeGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.GHarardadBime.queryById('GHarardadBimeGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.GHarardadBime.queryById('GHarardadBimeGrid');grid.setHeight(App.PayWin.getHeight() - 370); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldNameBime).Text("نام بیمه طرف قرارداد").Flex(5),
+                        Html.X().Column().DataIndex(Model, m => m.fldTarikhSHoro).Text("تاریخ شروع").Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldTarikhPayan).Text("تاریخ پایان").Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldMaxBimeAsli).Text("سقف تعداد بیمه شده اصلی").Flex(5)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    
+    function AzTarikh() {
+        var txtTarikhSHoro = App.GHarardadBime.queryById('txtTarikhSHoro');
+        var txtTarikhPayan = App.GHarardadBime.queryById('txtTarikhPayan');
+        txtTarikhPayan.setMinValue(txtTarikhSHoro.getValue());
+        txtTarikhPayan.minText = "تاریخ شروع نباید از تاریخ پایان بزرگتر باشد.";
+    }
+    function TaTarikh() {
+        var txtTarikhSHoro = App.GHarardadBime.queryById('txtTarikhSHoro');
+        var txtTarikhPayan = App.GHarardadBime.queryById('txtTarikhPayan');
+        txtTarikhSHoro.setMaxValue(txtTarikhPayan.getValue());
+        txtTarikhSHoro.maxText = "تاریخ شروع نباید از تاریخ پایان بزرگتر باشد.";
+    }
+    /*App.PayWin.addListener('resize', function () {
+        App.GHarardadBime.setWidth(App.PayWin.getWidth());
+    });
+    App.PayWin.addListener('resize', function () {
+        var grid = App.GHarardadBime.queryById('GHarardadBimeGrid');
+        grid.setHeight(App.PayWin.getHeight()-260);
+    });*/
+    function HelpGHarardadBime() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/GHarardadBime/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function GHarardadBimeSetSize() {
+        App.GHarardadBime.setWidth(App.PayWin.getWidth());
+        var grid = App.GHarardadBime.queryById('GHarardadBimeGrid');
+        grid.setHeight(App.PayWin.getHeight() - 370);
+    }
+    function LoadGHarardadBime() {
+        var SelectedRow = App.GHarardadBime.queryById('GHarardadBimeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/GHarardadBime/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtNameBime = App.GHarardadBime.queryById('txtNameBime');
+                    txtNameBime.setValue(data.fldNameBime);
+                    var txtTarikhSHoro = App.GHarardadBime.queryById('txtTarikhSHoro');
+                    txtTarikhSHoro.setValue(data.fldTarikhSHoro);
+                    var txtTarikhPayan = App.GHarardadBime.queryById('txtTarikhPayan');
+                    txtTarikhPayan.setValue(data.fldTarikhPayan);
+                    var CboMaxBimeAsli = App.GHarardadBime.queryById('CboMaxBimeAsli');
+                    CboMaxBimeAsli.setValue(data.fldMaxBimeAsli);
+                    var txtMablagheBimeSHodeAsli = App.GHarardadBime.queryById('txtMablagheBimeSHodeAsli');
+                    txtMablagheBimeSHodeAsli.setValue(data.fldMablagheBimeSHodeAsli);
+                    var txtDarsadBimeTakmily = App.GHarardadBime.queryById('txtDarsadBimeTakmily');
+                    txtDarsadBimeTakmily.setValue(data.fldDarsadBimeTakmily);
+                    var txtMablaghe60Sal = App.GHarardadBime.queryById('txtMablaghe60Sal');
+                    txtMablaghe60Sal.setValue(data.fldMablaghe60Sal);
+                    var txtDarsadBime60Sal = App.GHarardadBime.queryById('txtDarsadBime60Sal');
+                    txtDarsadBime60Sal.setValue(data.fldDarsadBime60Sal);
+                    var txtMablaghe70Sal = App.GHarardadBime.queryById('txtMablaghe70Sal');
+                    txtMablaghe70Sal.setValue(data.fldMablaghe70Sal);
+                    var txtDarsadBime70Sal = App.GHarardadBime.queryById('txtDarsadBime70Sal');
+                    txtDarsadBime70Sal.setValue(data.fldDarsadBime70Sal);
+                    var txtMablagheBimeOmr = App.GHarardadBime.queryById('txtMablagheBimeOmr');
+                    txtMablagheBimeOmr.setValue(data.fldMablagheBimeOmr);
+                    var txtDarsadBimeOmr = App.GHarardadBime.queryById('txtDarsadBimeOmr');
+                    txtDarsadBimeOmr.setValue(data.fldDarsadBimeOmr);
+
+                    var fldId = App.GHarardadBime.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveGHarardadBime() {
+        var txtNameBime = App.GHarardadBime.queryById('txtNameBime');
+        var txtTarikhSHoro = App.GHarardadBime.queryById('txtTarikhSHoro');
+        var txtTarikhPayan = App.GHarardadBime.queryById('txtTarikhPayan');
+        var CboMaxBimeAsli = App.GHarardadBime.queryById('CboMaxBimeAsli');
+        var txtMablagheBimeSHodeAsli = App.GHarardadBime.queryById('txtMablagheBimeSHodeAsli');
+        var txtDarsadBimeTakmily = App.GHarardadBime.queryById('txtDarsadBimeTakmily');
+        var txtMablaghe60Sal = App.GHarardadBime.queryById('txtMablaghe60Sal');
+        var txtDarsadBime60Sal = App.GHarardadBime.queryById('txtDarsadBime60Sal');
+        var txtMablaghe70Sal = App.GHarardadBime.queryById('txtMablaghe70Sal');
+        var txtDarsadBime70Sal = App.GHarardadBime.queryById('txtDarsadBime70Sal');
+        var txtMablagheBimeOmr = App.GHarardadBime.queryById('txtMablagheBimeOmr');
+        var txtDarsadBimeOmr = App.GHarardadBime.queryById('txtDarsadBimeOmr');
+
+        var fldId = App.GHarardadBime.queryById('fldId');
+            var er = false;
+
+            if (txtNameBime.validate() == false) {
+                er = true;
+            }
+            if (txtTarikhSHoro.validate() == false) {
+                er = true;
+            }
+            if (txtTarikhPayan.validate() == false) {
+                er = true;
+            }
+            if (CboMaxBimeAsli.validate() == false) {
+                er = true;
+            }
+            if (txtMablagheBimeSHodeAsli.validate() == false) {
+                er = true;
+            }
+            if (txtDarsadBimeTakmily.validate() == false) {
+                er = true;
+            }
+            if (txtMablaghe60Sal.validate() == false) {
+                er = true;
+            }
+            if (txtDarsadBime60Sal.validate() == false) {
+                er = true;
+            }
+            if (txtMablaghe70Sal.validate() == false) {
+                er = true;
+            }
+            if (txtDarsadBime70Sal.validate() == false) {
+                er = true;
+            }
+            if (txtMablagheBimeOmr.validate() == false) {
+                er = true;
+            }
+            if (txtDarsadBimeOmr.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/GHarardadBime/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldNameBime: txtNameBime.getValue(),
+                    fldTarikhSHoro: txtTarikhSHoro.rawValue,
+                    fldTarikhPayan: txtTarikhPayan.rawValue,
+                    fldMaxBimeAsli: CboMaxBimeAsli.getValue(),
+                    fldMablagheBimeSHodeAsli: txtMablagheBimeSHodeAsli.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                    fldDarsadBimeTakmily: txtDarsadBimeTakmily.getValue(),
+                    fldMablaghe60Sal: txtMablaghe60Sal.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                    fldDarsadBime60Sal: txtDarsadBime60Sal.getValue(),
+                    fldMablaghe70Sal: txtMablaghe70Sal.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                    fldDarsadBime70Sal: txtDarsadBime70Sal.getValue(),
+                    fldMablagheBimeOmr: txtMablagheBimeOmr.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                    fldDarsadBimeOmr: txtDarsadBimeOmr.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.GHarardadBime.queryById('GHarardadBimeGrid').store.load();
+                    if (data.Err != 1)
+                        ClearGHarardadBime();
+                }
+
+            });
+    }
+    function DeleteGHarardadBime() {
+        var SelectedRow = App.GHarardadBime.queryById('GHarardadBimeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/GHarardadBime/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Err == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.GHarardadBime.queryById('GHarardadBimeGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearGHarardadBime() {
+        App.GHarardadBime.queryById('txtNameBime').setValue("");
+        App.GHarardadBime.queryById('txtTarikhSHoro').setValue("");
+        App.GHarardadBime.queryById('txtTarikhPayan').setValue("");
+        App.GHarardadBime.queryById('CboMaxBimeAsli').setValue("6");
+        App.GHarardadBime.queryById('txtMablagheBimeSHodeAsli').setValue("");
+        App.GHarardadBime.queryById('txtDarsadBimeTakmily').setValue("0");
+        App.GHarardadBime.queryById('txtMablaghe60Sal').setValue("");
+        App.GHarardadBime.queryById('txtDarsadBime60Sal').setValue("0");
+        App.GHarardadBime.queryById('txtMablaghe70Sal').setValue("");
+        App.GHarardadBime.queryById('txtDarsadBime70Sal').setValue("0");
+        App.GHarardadBime.queryById('txtMablagheBimeOmr').setValue("");
+        App.GHarardadBime.queryById('txtDarsadBimeOmr').setValue("0");
+        App.GHarardadBime.queryById('fldId').setValue(0);
+    }
+    var addKeyMapGHarardadBime = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.GHarardadBime.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtTarikhPayan") {
+                        nextfld = App.GHarardadBime.queryById('txtMablagheBimeSHodeAsli');
+                    }
+                    else if (keyfield.itemId == "txtDarsadBime70Sal") {
+                        nextfld = App.GHarardadBime.queryById('txtMablagheBimeOmr');
+                    }
+                    else if (keyfield.itemId == "txtDarsadBimeOmr") {
+                        nextfld = App.GHarardadBime.queryById('btnSave');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

@@ -1,0 +1,277 @@
+﻿@model IEnumerable<NewFMS.WCF_Deceased.OBJ_CauseOfDeath>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+    .ID("SabtCauseOfDeath")
+    .Title("ثبت علل فوت")
+        .Closable(true)
+        .Listeners(li => { li.AfterRender.Handler = "CauseOfDeathSetSize();"; li.Render.Fn = "addKeyMapSabtCauseOfDeath"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => { l.Click.Handler = "SaveCauseOfDeath();"; }).ItemID("btnSave"),
+                X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "LoadCauseOfDeath();"; }),
+                X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteCauseOfDeath();"; }),
+                //X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpCauseOfDeath();"; }),
+                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.SabtCauseOfDeath.destroy()")
+                )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                          .Layout(LayoutType.VBox)
+                             .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+
+                    .Items(
+                        X.FieldSet().Title("علل فوت")
+                            .Height(50)
+                            .Border(true)
+        //.Width(920)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                        .Items(
+                            X.Hidden()
+                                .ItemID("fldId"),
+                            X.Label("عنوان:"),
+                            X.TextField()
+                                .ItemID("txtTitle")
+        //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(false)
+                                     .MaxLength(50)
+                                    .EnforceMaxLength(true)
+                                .BlankText("لطفا عنوان را وارد کنید.")
+                                .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                                .AutoFocus(true),
+                            X.Label("توضیحات:"),
+                            X.TextField()
+                                .ItemID("txtDesc")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Width(380)
+                                .ColSpan(3)
+                        )
+                    )
+        ),
+        X.GridPanel()
+            .ItemID("CauseOfDeathGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                        .Listeners(l => l.DataChanged.Handler = "App.SabtCauseOfDeath.queryById('CauseOfDeathGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                .Plugins(X.FilterHeader().Remote(true))
+            .Listeners(l =>
+            {
+                l.AfterRender.Handler = "var grid = App.SabtCauseOfDeath.queryById('CauseOfDeathGrid');grid.setHeight(App.MotevafiatWin.getHeight() - 260); ";
+            })
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldReason).Text("عنوان").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    function test() {
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/Radif_Shomare/Index',
+            params: {
+                id: 1
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    /*  App.Win.addListener('resize', function () {
+        App.CauseOfDeath.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.CauseOfDeath.queryById('CauseOfDeathGrid');
+        grid.setHeight(App.Win.getHeight() - 240);
+    });*/
+
+    function CauseOfDeathSetSize() {
+        App.SabtCauseOfDeath.setWidth(App.MotevafiatWin.getWidth());
+        var grid = App.SabtCauseOfDeath.queryById('CauseOfDeathGrid');
+        grid.setHeight(App.MotevafiatWin.getHeight() - 260);
+    }
+
+    function LoadCauseOfDeath() {
+        var SelectedRow = App.SabtCauseOfDeath.queryById('CauseOfDeathGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/CauseOfDeath/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTitle = App.SabtCauseOfDeath.queryById('txtTitle');
+                    txtTitle.setValue(data.fldReason);
+                    var txtDesc = App.SabtCauseOfDeath.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtCauseOfDeath.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveCauseOfDeath() {
+        var txtTitle = App.SabtCauseOfDeath.queryById('txtTitle');
+        var txtDesc = App.SabtCauseOfDeath.queryById('txtDesc');
+        var fldId = App.SabtCauseOfDeath.queryById('fldId');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/CauseOfDeath/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldReason: txtTitle.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.SabtCauseOfDeath.queryById('CauseOfDeathGrid').store.load();
+                if (data.Err != 1)
+                    ClearCauseOfDeath();
+            }
+
+        });
+    }
+    function DeleteCauseOfDeath() {
+        var SelectedRow = App.SabtCauseOfDeath.queryById('CauseOfDeathGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Deceased/CauseOfDeath/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtCauseOfDeath.queryById('CauseOfDeathGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                        ClearCauseOfDeath();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearCauseOfDeath() {
+        App.SabtCauseOfDeath.queryById('fldId').setValue(0);
+        App.SabtCauseOfDeath.queryById('txtTitle').setValue("");
+        App.SabtCauseOfDeath.queryById('txtDesc').setValue("");
+    }
+    function HelpCauseOfDeath() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/CauseOfDeath/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var addKeyMapSabtCauseOfDeath = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtCauseOfDeath.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtCauseOfDeath.queryById('btnSave');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

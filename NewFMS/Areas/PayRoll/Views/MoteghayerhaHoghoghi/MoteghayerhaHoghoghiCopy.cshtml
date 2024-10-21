@@ -1,0 +1,101 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using Ext.Net.Utilities;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window()
+    .Width(300)
+    .Modal(true)
+    .Title("کپی متغیرهای حقوقی")
+    .ID("MoteghayerhaHoghoghiCopy")
+    .ButtonAlign(Ext.Net.Alignment.Center)
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Buttons(
+        X.Button()
+            .Text("کپی")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l =>
+            {
+                l.Click.Handler = "Coppy()";
+            }),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.MoteghayerhaHoghoghiCopy.destroy()"))
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet()
+                    .Border(false)
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Label("تاریخ صدور:"),
+                        X.PDateField()
+                            .ItemID("txtTarikheSodor")
+                            .MaskRe("/[0-9 /]/")
+                            .MaxLength(10)
+                            .EnforceMaxLength(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا تاریخ صدور را وارد کنید.")
+                            .Editable(true),
+                        X.Label("تاریخ اجرا:"),
+                        X.PDateField()
+                            .ItemID("txtTarikheEjra")
+                            .MaskRe("/[0-9 /]/")
+                            .MaxLength(10)
+                            .EnforceMaxLength(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا تاریخ اجرا را وارد کنید.")
+                            .Editable(true)
+                    )
+
+                )
+        )
+)
+
+<script type="text/javascript">
+    function Coppy() {
+        var er = false;
+        if (App.MoteghayerhaHoghoghiCopy.queryById('txtTarikheSodor').validate() == false)
+            er = true;
+        if (App.MoteghayerhaHoghoghiCopy.queryById('txtTarikheEjra').validate() == false)
+            er = true;
+        if (er == true)
+            return;
+        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/MoteghayerhaHoghoghi/Copy',
+            params: {
+                HeaderId: '@ViewBag.Id',
+                DateSodor: App.MoteghayerhaHoghoghiCopy.queryById('txtTarikheSodor').getRawValue(),
+                DateEjar: App.MoteghayerhaHoghoghiCopy.queryById('txtTarikheEjra').getRawValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == "ok" && data.Er == 0) {
+                            App.MoteghayerhaHoghoghiCopy.destroy();
+                        }
+                    }
+                });
+                App.MoteghayerhaHoghoghi.queryById('GridHeader').store.load();
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+</script>

@@ -1,0 +1,303 @@
+﻿@model NewFMS.Models.RadifShomare
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+    NewFMS.WCF_Common.CommonService servic = new NewFMS.WCF_Common.CommonService();
+    NewFMS.WCF_Common.ClsError Err = new NewFMS.WCF_Common.ClsError();
+}
+
+@(Html.X().Window().Modal(true)
+.Width(770)//.Height(220)
+        .Title("ردیف و شماره های قطعه")
+            .ID("Radif_Shomare")
+           //     .Listeners(li => { li.AfterRender.Fn = "addKeyMapRadif_Shomare"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+
+    .Items(
+         X.GridPanel().AutoScroll(true)
+                  .Listeners(l => l.ItemClick.Handler = "ReloadGridShomare();")
+                                    .ItemID("RadifGrid").Flex(2)
+                                              .TopBar(
+                                    Html.X().Toolbar()
+                                    .Items(
+                                    X.Button().Text("جدید").Icon(Ext.Net.Icon.Add)
+                                                    .Listeners(li => li.Click.Handler = "NewRadif();"),
+                                            X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                                                            .Listeners(Li => Li.Click.Handler = "EditRadif();"),
+                                            X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                                                .Listeners(de =>
+                                                {
+                                                    de.Click.Handler = "if (App.Radif_Shomare.queryById('RadifGrid').selModel.getLastSelected() == null) {Ext.MessageBox.show({ title: 'خطا', msg: 'لطفا یک سطر را انتخاب کنید',icon: Ext.MessageBox.ERROR,buttons: Ext.MessageBox.OK});return false;}else DeleteRadif();";
+                                                })
+                                       , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                            .Listeners(l => { l.Click.Handler = "HelpRadif_Shomare();"; })
+                                    )
+                                )
+                            .BottomBar(X.PagingToolbar())
+                            .Height(250)
+        //.ColumnWidth(0.6)
+        //.Layout(Ext.Net.LayoutType.Column)
+                            .Store(
+                                        X.StoreFor(Model.radif)
+                                             .Listeners(l => l.DataChanged.Handler = "App.Radif_Shomare.queryById('RadifGrid').selModel.refresh();")
+                                .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadRadif"))
+                                        .Reader(Html.X().JsonReader().Root("data"))
+                                                        .ExtraParams(p => p.Add(new { GheteId = @ViewBag.GheteId }))
+                                )
+                                .PageSize(5)
+                                .RemoteFilter(true)
+                                .RemotePaging(true)
+
+                            )
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+
+                            .Plugins(X.FilterHeader().Remote(true))
+                            .ColumnModel(
+                                    Html.X().RowNumbererColumn(),
+                                            Html.X().Column().DataIndex(Model.radif, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                                Html.X().Column().DataIndex(Model.radif, m => m.fldNameRadif).Text("نام ردیف").Flex(10),
+                                                Html.X().Column().DataIndex(Model.radif, m => m.fldDesc).Text("توضیحات").Flex(10)
+                                )
+               ,
+                  X.GridPanel().AutoScroll(true)
+                                    .ItemID("ShomareGrid").Flex(2)
+                                    .TopBar(
+                                Html.X().Toolbar()
+                                .Items(
+                                    X.Button().Text("جدید").Icon(Ext.Net.Icon.Add)
+                                                .Listeners(li => li.Click.Handler = "NewShomare();"),
+                                        X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                                                    .Listeners(Li => Li.Click.Handler = "EditShomare();"),
+                                        X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                                            .Listeners(de =>
+                                            {
+                                                de.Click.Handler = "if (App.Radif_Shomare.queryById('ShomareGrid').selModel.getLastSelected() == null) {Ext.MessageBox.show({ title: 'خطا', msg: 'لطفا یک سطر را انتخاب کنید',icon: Ext.MessageBox.ERROR,buttons: Ext.MessageBox.OK});return false;}else DeleteShomare();";
+                                            })
+
+                                )
+                            )
+                        .BottomBar(X.PagingToolbar())
+                        
+                        .Height(250)
+        //.ColumnWidth(0.6)
+        //.Layout(Ext.Net.LayoutType.Column)
+                        .Store(
+                                        X.StoreFor(Model.shomare).AutoLoad(false)
+                                         .Listeners(l => l.DataChanged.Handler = "App.Radif_Shomare.queryById('ShomareGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadShomare"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(5)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+
+                        )
+                        .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+
+                        .Plugins(X.FilterHeader().Remote(true))
+                        .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                        Html.X().Column().DataIndex(Model.shomare, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                        Html.X().Column().DataIndex(Model.shomare, m => m.fldShomare).Text("شماره").Flex(3),
+                                        Html.X().Column().DataIndex(Model.shomare, m => m.fldTedadTabaghat).Text("تعداد طبقات").Flex(3)
+                            )
+        //.Layout(Ext.Net.LayoutType.VBox)
+        //.LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+)
+<script type="text/javascript">
+    function HelpRadif_Shomare() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/Radif_Shomare/HelpRadif_Shomare',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function ReloadGridShomare() {
+        var SelectedRow = App.Radif_Shomare.queryById('RadifGrid').selModel.getLastSelected();
+
+        App.Radif_Shomare.queryById('ShomareGrid').getStore().getProxy().setExtraParam("RadifId", SelectedRow.data.fldId);
+        App.Radif_Shomare.queryById('ShomareGrid').getStore().load();
+    }
+
+    function NewRadif() {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Deceased/Radif_Shomare/NewRadif',
+                    params: {
+                        GheteId:'@ViewBag.GheteId',
+                        id: 0
+                    },
+                    success: function () {
+                        Ext.net.Mask.hide();
+                    }
+                });
+    }
+    function NewShomare() {
+        var SelectedRow = App.Radif_Shomare.queryById('RadifGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/Radif_Shomare/NewShomare',
+                params: {
+                    RadifId: SelectedRow.data.fldId,
+                    id: 0
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک پارامتر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+   
+    function EditShomare() {
+        var SelectedRow = App.Radif_Shomare.queryById('RadifGrid').selModel.getLastSelected();
+        var SelectedRow2 = App.Radif_Shomare.queryById('ShomareGrid').selModel.getLastSelected();
+        if (SelectedRow2 != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/Radif_Shomare/newShomare',
+                params: {
+                    RadifId: SelectedRow.data.fldId,
+                    id: SelectedRow2.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک نرخ را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function EditRadif() {
+        var SelectedRow = App.Radif_Shomare.queryById('RadifGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/Radif_Shomare/NewRadif',
+                params: {
+                    GheteId: '@ViewBag.GheteId',
+                    id: SelectedRow.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک نرخ را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteShomare() {
+        var SelectedRow = App.Radif_Shomare.queryById('ShomareGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Deceased/Radif_Shomare/DeleteShomare',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                ReloadGridShomare();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteRadif() {
+        var SelectedRow = App.Radif_Shomare.queryById('RadifGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Deceased/Radif_Shomare/DeleteRadif',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.Radif_Shomare.queryById('RadifGrid').store.load();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    </script>

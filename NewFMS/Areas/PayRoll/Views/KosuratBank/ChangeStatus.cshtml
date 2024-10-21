@@ -1,0 +1,179 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(l => l.AfterRender.Handler = "LoadDefults()")
+.Width(250)//.Height(220)
+    .Title("تغییر وضعیت")
+    .ID("ChangeStatusKosuratBank")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .KeyMap(Html.X().KeyMap()
+            .ID("ChangeStatusKosuratBankMap")
+            .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("SaveChangeStatusKosuratBank(); ")
+                );
+
+            }))
+        .DefaultButton("btn")
+        .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+               .Listeners(l =>
+               {
+                   l.Click.Handler = "SaveChangeStatusKosuratBank();";
+
+               })
+                   .ItemID("btnSave")
+
+            ,
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                .OnClientClick("App.ChangeStatusKosuratBank.destroy()")
+        ).Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+        .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                                .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Label("تاریخ تغییر:"),
+                       X.FieldSet()
+                                .Border(false)
+                                .ColSpan(3)
+                                .PaddingSpec("0 0 0 0")
+                                .Layout(LayoutType.HBox)
+                                .Items(
+                                    X.Label("ماه:"),
+                                    X.TextField()
+                                        .ItemID("txtMonth")
+                                        .Listeners(l => l.Change.Handler = "if(App.ChangeStatusKosuratBank.queryById('CboStatus').getValue()=='0'&& App.ChangeStatusKosuratBank.queryById('txtMonth').getValue()>12){App.ChangeStatusKosuratBank.queryById('txtMonth').setValue('');}")
+                                        .Text("0")
+                                        .MaskRe("/[0-9]/")
+                                        .Width(30)
+                                        .MaxLength(2)
+                                        .MinLength(2)
+                                        .EnforceMaxLength(true)
+                                        .AllowBlank(false)
+                                        .PaddingSpec("0 0 0 6px")
+                                        .BlankText("لطفا ماه را وارد کنید."),
+                                    X.Label().Text("/").MarginSpec("0 5px 0 0"),
+                                    X.Label("سال:"),
+                                    X.TextField()
+                                        .ItemID("txtYear")
+                                        .MaxLength(4)
+                                        .MinLength(4)
+                                        .EnforceMaxLength(true)
+                                        .Text("0")
+                                        .MaskRe("/[0-9]/")
+                                        .Width(50)
+                                        .AllowBlank(false)
+                                            .BlankText("لطفا سال را وارد کنید.")
+                                )
+                        , X.Label("وضعیت:")
+                   , X.ComboBox()
+                            .ItemID("CboStatus")
+                            .EmptyText("وضعیت...")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                            .ReadOnly(true)
+                            .BlankText("لطفا وضعیت را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Items(
+                                new ListItem("غیر فعال", "0"),
+                                new ListItem("فعال", "1")
+                                )
+                                    .SelectedItems(new { Value = @ViewBag.LastStatus })
+                    )
+
+            )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+        )
+)
+
+<script type="text/javascript">
+    function LoadDefults() {
+        var txtYear = App.ChangeStatusKosuratBank.queryById('txtYear');
+        var txtMonth = App.ChangeStatusKosuratBank.queryById('txtMonth');
+        if ('@ViewBag.LastStatus' == "0") {
+            txtYear.setValue('@ViewBag.Sal');
+            txtMonth.setValue('@ViewBag.Month');
+        }
+        else {
+            txtYear.setValue("9999");
+            txtMonth.setValue("99");
+            txtMonth.setReadOnly(true);
+            txtYear.setReadOnly(true);
+        }
+    }
+
+    function SaveChangeStatusKosuratBank() {
+        if (!App.ChangeStatusKosuratBank.active) return false;
+        var CboStatus = App.ChangeStatusKosuratBank.queryById('CboStatus');
+        var txtYear = App.ChangeStatusKosuratBank.queryById('txtYear');
+        var txtMonth = App.ChangeStatusKosuratBank.queryById('txtMonth');
+            if (txtMonth.getValue() == 0 || txtYear.getValue() == 0) {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "تاریخ غیر فعالی معتبر نیست.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                return;
+            }
+
+            var Status = false;
+            if (CboStatus.getValue() == "1")
+                Status = true;
+
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KosuratBank/SaveStatus',
+                params: {
+                    id: '@ViewBag.id',
+                    fldYear: txtYear.getValue(),
+                    fldMonth: txtMonth.getValue(),
+                    fldStatus: Status,
+                    OrganId:'@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK,
+                        fn: function (btn) {
+                            if (btn == 'ok')
+                                App.ChangeStatusKosuratBank.destroy();
+                        }
+                    });
+                    ReloadKosuratBank();
+                }
+
+            });
+    }
+
+    function EnterNext() {
+        var keyfield = App.ChangeStatusKosuratBank.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+    }
+</script>

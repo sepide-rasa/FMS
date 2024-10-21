@@ -1,0 +1,178 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<style>
+    .lbl {
+        color: red;
+    }
+</style>
+
+@(Html.X().Window().Modal(true)
+    .Width(250)
+    .Title("رمز عبور ")
+                        .ID("Password")
+                    .Resizable(false)
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+
+        .DefaultButton("btn")
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+                   .Buttons(X.Button().Text("ورود").Icon(Ext.Net.Icon.Disk)
+                           .Listeners(l =>
+                           {
+                               l.Click.Handler = "VorodModule();";
+
+                           })
+                               .ItemID("btnVorud")
+                            ,
+                            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                                                    .OnClientClick("App.Password.destroy();"))
+
+
+                .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                    .Defaults(new { Margin = 2 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.Label()
+                    .ItemID("lblError").ColSpan(2)
+                    .Cls("lbl")
+                    ,
+                    X.Label("رمز ورود:"),
+                        X.TextField()
+                            .InputType(Ext.Net.InputType.Password)
+                    .ItemID("txtPass")
+                    .Width(100)
+                  //  .FieldLabel("رمز ورود")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا رمز ورود را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AutoFocus(true)
+
+
+                       )
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+)
+        )
+)
+@(Html.X().KeyMap()
+                      .ID("PasswordMap")
+                             .Target("={App.Password.getTargetEl()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("if(App.BasicInfTab.activeTab.id=='Module')VorodModule();")
+                );
+
+            }))
+
+
+
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+
+    function VorodModule() {
+        var lblError = App.Password.queryById('lblError');
+        var txtPass = App.Password.queryById('txtPass');
+        var er = false;
+
+        if (txtPass.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Password/Vorod',
+            params: {
+                Password: txtPass.getValue()
+            },
+            success: function (data) {
+                if (data.Resualt == true) {
+                    if(State==1)
+                    {
+                      /*  Ext.net.DirectMethod.request({
+                            url: '/Comon/Module/Index',
+                            params: {
+
+                            }
+                        });*/
+                        Ext.net.Mask.show({
+                            msg: 'در حال بارگذاری...'
+                        });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/Module/IndexNew?containerId=FirstTab',
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                    else if(State==2)
+                    {
+                        /*Ext.net.DirectMethod.request({
+                            url: '/Comon/Module_Organ/Index',
+                            params: {
+
+                            }
+                        });*/
+                        Ext.net.Mask.show({
+                            msg: 'در حال بارگذاری...'
+                        });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/Module_Organ/IndexNew?containerId=FirstTab',
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                    else if (State == 3) {
+                        /*Ext.net.DirectMethod.request({
+                            url: '/Comon/Module_Organ/Index',
+                            params: {
+
+                            }
+                        });*/
+                        Ext.net.Mask.show({
+                            msg: 'در حال بارگذاری...'
+                        });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/Organization/IndexNew?containerId=FirstTab',
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                    App.Password.destroy();
+                }
+                else
+                    lblError.setText("رمز عبور اشتباه است.");
+            }
+
+        });
+    }
+    
+    function EnterNext() {
+            var keyfield = App.Password.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+            var nextfld;
+            if (keyfield.itemId == "txtPass") {
+                nextfld = App.Password.queryById('btnVorud');
+            }
+            nextfld.focus();
+    }
+</script>

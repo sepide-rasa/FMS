@@ -1,0 +1,415 @@
+﻿@model IEnumerable<NewFMS.WCF_Chek.OBJ_OlgoCheck>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+            .ID("SabtOlgoCheck")
+            .Title("ثبت الگوی چک")
+                .Listeners(li => { li.AfterRender.Handler = "OlgoCheckSetSize()"; li.Render.Fn = "addKeyMapSabtOlgoCheck"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                .Listeners(l => { l.Click.Handler = "SaveOlgoCheck();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadOlgoCheck();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteOlgoCheck();"; })
+            , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                .Listeners(l => { l.Click.Handler = "HelpOlgoCheck();"; })   
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.SabtOlgoCheck.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+                X.FormPanel().Border(false)
+                              .Layout(LayoutType.VBox)
+                                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                    X.FieldSet().Title("اطلاعات الگو")
+                                .Height(75)
+                                .Border(true)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    
+                        X.Label("عنوان:"),
+                                X.TextField()
+                                    .ItemID("txtName")
+                                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا عنوان را وارد کنید.")
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .AutoFocus(true)
+,
+                         X.Label("بانک:"),
+                            X.ComboBox()
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+        //.FieldLabel("استان")
+                            .ItemID("CboBank")
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .BlankText("لطفا بانک را انتخاب کنید.")
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("بانک ...")
+        //.SelectedItems(new { Value = "1" })
+                            .Store(X.Store()
+                            .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                        )
+                            .Proxy(X.AjaxProxy()
+                                .Url(Url.Action("GetBank"))
+                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                 .Listeners(l => l.Load.Handler = "setdefaultValueBank()")
+        // .Listeners(li => li.BeforeLoad.Handler = "LoadCity();")
+                                    )
+                                .AllowBlank(false)//.Width(100)
+                           ,
+                    X.FileUploadField().ColSpan(2)
+                .ItemID("FileUploadFieldHokm")
+                .ButtonOnly(true).ButtonText("انتخاب فایل")
+                    .DirectEvents(l =>
+                                    {
+                                        l.Change.Action = "Upload";
+                                        l.Change.Success = "hideprogress();";
+                                    }
+                                )
+                            .Listeners(l => l.Change.Fn = "showFile")
+                                    .Icon(Ext.Net.Icon.DiskUpload)
+                                  , X.Container().Content(@<div id="fi-button-msg" style="display:none;"></div>).ColSpan(2)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("OlgoCheckGrid")
+            .BottomBar(X.PagingToolbar())
+                .TopBar(
+                            Html.X().Toolbar()
+                            .Items(
+                                   X.Button().Text("طراحی الگو").Icon(Ext.Net.Icon.Pencil)
+                        .Listeners(l => { l.Click.Handler = "DesignOlgoCheck();"; }),
+                                       X.Button().Text("دانلود الگو").Icon(Ext.Net.Icon.ArrowDown)
+                        .Listeners(l => { l.Click.Handler = "DownloadReport();"; })
+                            )
+                        )
+            .Store(
+                            X.StoreForModel()
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtOlgoCheck.queryById('OlgoCheckGrid');grid.setHeight(App.ChekWin.getHeight() - 285); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                                 Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                                Html.X().Column().DataIndex(Model, m => m.fldIdFile).Text("کد").Hidden(true).Flex(1),
+                                Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("نام الگو").Flex(10),
+                                Html.X().Column().DataIndex(Model, m => m.fldBankName).Text("نام بانک").Flex(10)
+                                //Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    var FileId = 0;
+    function HelpOlgoCheck() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Chek/OlgoCheck/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function setdefaultValueBank() {
+        var CboBank = App.SabtOlgoCheck.queryById('CboBank');
+        CboBank.select(CboBank.store.getAt(0));
+    }
+
+    function OlgoCheckSetSize() {
+        App.SabtOlgoCheck.setWidth(App.ChekWin.getWidth());
+        var grid = App.SabtOlgoCheck.queryById('OlgoCheckGrid');
+        grid.setHeight(App.ChekWin.getHeight() - 285);
+    }
+
+    var Mojaz = 0;
+    var EndUpload = false;
+
+    var Check = setInterval(CheckEnd, 500);
+
+    function CheckEnd() {
+        if (EndUpload == true) {
+
+            Ext.MessageBox.hide();
+            Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+            clearInterval(CheckEnd);
+            EndUpload = false;
+        }
+    }
+    var showFile = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msg');
+        if (v) {
+            showProgressBar();
+            if (v.split('.').pop().toLowerCase() == "frx") {
+                Mojaz = 1;
+                    el.update('<b>فایل انتخاب شده:</b> ' + v);
+
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                } else {
+                    el.highlight();
+                }
+            }
+            else {
+                el.update('<b>فایل انتخاب شده:</b> ');
+            }
+        }
+    };
+
+    function hideprogress() {
+        if (Mojaz == 1 ) {
+            EndUpload = true;
+        }
+        Mojaz = 0;
+    }
+
+    function showProgressBar() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+    function DownloadReport() {
+        var SelectedRow = App.SabtOlgoCheck.queryById('OlgoCheckGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            window.location.href = '@Url.Content("~/Chek/OlgoCheck/Download?FileId=")' + SelectedRow.data.fldIdFile;
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+
+    }
+    function LoadOlgoCheck() {
+        var SelectedRow = App.SabtOlgoCheck.queryById('OlgoCheckGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Chek/OlgoCheck/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtName = App.SabtOlgoCheck.queryById('txtName');
+                    txtName.setValue(data.fldTitle);
+                    var CboBank = App.SabtOlgoCheck.queryById('CboBank');
+                    CboBank.setValue(data.fldIdBank);
+                    var fldId = App.SabtOlgoCheck.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    
+                    FileId = data.fldFileId;
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveOlgoCheck() {
+        var txtName = App.SabtOlgoCheck.queryById('txtName');
+        var CboBank = App.SabtOlgoCheck.queryById('CboBank');
+        var txtDesc = App.SabtOlgoCheck.queryById('txtDesc');
+        var fldId = App.SabtOlgoCheck.queryById('fldId');
+            var er = false;
+
+            if (txtName.validate() == false) {
+                er = true;
+            }
+            if (CboBank.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Chek/OlgoCheck/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldIdFile: FileId,
+                    fldTitle: txtName.getValue(),
+                    fldIdBank: CboBank.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtOlgoCheck.queryById('OlgoCheckGrid').store.load();
+                    if (data.Err != 1)
+                        ClearOlgoCheck();
+                }
+
+            });
+    }
+    function DeleteOlgoCheck() {
+        var SelectedRow = App.SabtOlgoCheck.queryById('OlgoCheckGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Chek/OlgoCheck/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    Name: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                               
+                                App.SabtOlgoCheck.queryById('OlgoCheckGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearOlgoCheck() {
+        App.SabtOlgoCheck.queryById('fldId').setValue(0);
+        App.SabtOlgoCheck.queryById('txtName').setValue("");
+        App.SabtOlgoCheck.queryById('CboBank').setValue("");
+        Ext.get('fi-button-msg').update('');
+        FileId = 0;
+    }
+    function DesignOlgoCheck() {
+        var SelectedRow = App.SabtOlgoCheck.queryById('OlgoCheckGrid').selModel.getLastSelected();
+        /*Ext.net.DirectMethod.request({
+            url: '/SaveReport/ReportIndex',
+            params: {
+                containerId: "SaveReport"
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });*/
+        if (SelectedRow != null)
+            window.open("/Chek/OlgoCheck/ReportIndex?Id=" + SelectedRow.data.fldId, "_blank");
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    var addKeyMapSabtOlgoCheck = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtOlgoCheck.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtName") {
+                        nextfld = App.SabtOlgoCheck.queryById('FileUploadFieldHokm');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

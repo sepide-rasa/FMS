@@ -1,0 +1,290 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+@model IEnumerable<NewFMS.WCF_Personeli.OBJ_HistoryNoeEstekhdam>
+@(Html.X().Window().Modal(true)
+.Width(450)//.Height(220)
+    .Title("تغییر وضعیت استخدام")
+    .ID("ChangeEstekhdamStatus")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .KeyMap(Html.X().KeyMap()
+            .ID("ChangeEstekhdamStatusMap")
+            .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("SaveChangeEstekhdamStatus(); ")
+                );
+
+            }))
+        
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+        .Items(
+                X.Panel().Border(false)
+                    .Layout(Ext.Net.LayoutType.VBox)
+                        .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                            .DefaultButton("btn")
+            .Buttons(
+                    X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ToolTip("کلید میانبر F8")
+                   .Listeners(l =>
+                   {
+                       l.Click.Handler = "SaveChangeEstekhdamStatus();";
+
+                   })
+                       .ItemID("btnSave")
+                ,
+                    X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "EditEstekhdamStatus();"; }),
+                    X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteChangeEstekhdamStatus();"; }),
+                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                    .OnClientClick("App.ChangeEstekhdamStatus.destroy()")
+            ).Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                    X.FieldSet().Border(true).Title("اطلاعات وضعیت استخدام")
+                .Center()
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                                .Defaults(new { Margin = 2 })
+                    .Items(
+                         X.Hidden()
+                                    .ItemID("fldId"),
+                            X.Label("تاریخ تغییر:"),
+                    X.PDateField()
+                            .ItemID("txtEstekhdamStatusChangeDate")
+                                     .MaskRe("/[0-9 /]/")
+                   // .FieldLabel("تاریخ تغییر")
+                 //   .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا تاریخ را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AutoFocus(true),
+                            X.Label("نوع استخدام:")
+                    , X.ComboBox()
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        //.FieldLabel("نوع استخدام")
+                        .ItemID("CboNoeEstekhdam")
+                        .TypeAhead(true)
+                        .QueryMode(DataLoadMode.Local)
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                        .DisplayField("Name")
+                        .ValueField("ID")
+                        .EmptyText("نوع استخدام")
+                        .Store(X.Store()
+                            .Model(X.Model()
+                                .IDProperty("ID")
+                                .Fields(
+                                new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                )
+                            )
+                            .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetAnvaeEstekhdam"))
+                                .Reader(X.JsonReader().Root("data"))
+                            )
+                                        //.Listeners(li => li.DataChanged.Handler = "LoadEstekhdamStatus();")
+                        )
+                    )
+
+                ), X.GridPanel()
+        //.TopBar(
+        //                    Html.X().Toolbar()
+        //                    .Items(
+        //                        X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => { l.Click.Handler = "SaveChangeStatus();"; }),
+        //                        X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "EditPassAndaz();"; }),
+        //                        //X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteChangeStatus();"; }),
+        //                        X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).Listeners(l => { l.Click.Handler = "App.ChangeStatus.destroy();"; })
+
+                //                    )
+        //                        )
+                                        .BottomBar(X.PagingToolbar())
+                                .Height(290)
+                                        .ItemID("GridEstekhdamStatus")
+                                    .Store(
+                                        X.StoreForModel().AutoLoad(true)
+                                                        .Listeners(l => l.DataChanged.Handler = "App.ChangeEstekhdamStatus.queryById('GridEstekhdamStatus').selModel.refresh();")
+                                        .Proxy(Html.X().AjaxProxy()
+                                            .Url(Url.Action("ReadHistoryEstekhdam"))
+                                            .Reader(Html.X().JsonReader().Root("data"))
+                                                .ExtraParams(ex =>
+                                                {
+                                                    ex.Add(new { PersonalId = @ViewBag.PrsPersonalInfoId });
+
+                                                })
+                                                )
+                                        .PageSize(20)
+                                        .RemotePaging(true)
+                                        .RemoteFilter(true)
+                                    )
+                                .View(
+                                    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                                    )
+                                        .Plugins(X.FilterHeader().Remote(true))
+                                .ColumnModel(
+                                        Html.X().RowNumbererColumn(),
+                                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldNoeEstekhdamId).Text("کد استخدام").Flex(1).Hidden(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldTarikh).Text("تاریخ").Flex(1),
+                                        Html.X().Column().DataIndex(Model, m => m.fldNoeEstekhdamTitle).Text("عنوان").Flex(1)
+                        )
+                                .SelectionModel(
+                                    Html.X().RowSelectionModel()
+                                        .Mode(Ext.Net.SelectionMode.Single)
+                        )
+                    
+            )
+        )
+)
+
+<script type="text/javascript">
+    
+    function EditEstekhdamStatus() {
+        var SelectedRow = App.ChangeEstekhdamStatus.queryById('GridEstekhdamStatus').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldNoeEstekhdamId != 0) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Personeli/PersonalInfo/EstekhdamDetail',
+                    params: {
+                        Id: SelectedRow.data.fldId
+                    },
+                    success: function (data) {
+                        if (data.Err == 1) {
+                            Ext.MessageBox.show({
+                                title: "خطا",
+                                msg: "اطلاعات شخص مورد نظر در حکم شخص استفاده شده است لذا شما اجازه ویرایش ندارید.",
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                        else {
+                            var txtEstekhdamStatusChangeDate = App.ChangeEstekhdamStatus.queryById('txtEstekhdamStatusChangeDate');
+                            txtEstekhdamStatusChangeDate.setValue(data.fldTarikh);
+                            var CboNoeEstekhdam = App.ChangeEstekhdamStatus.queryById('CboNoeEstekhdam');
+                            CboNoeEstekhdam.setValue(data.fldAnvaeEstekhdamId);
+                            var fldId = App.ChangeEstekhdamStatus.queryById('fldId');
+                            fldId.setValue(data.fldId);
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: " ویرایش تسویه حساب مجاز نیست .",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    
+    function SaveChangeEstekhdamStatus() {
+        if (!App.ChangeEstekhdamStatus.active) return false;
+
+            var fldId = App.ChangeEstekhdamStatus.queryById('fldId');
+            var CboNoeEstekhdam = App.ChangeEstekhdamStatus.queryById('CboNoeEstekhdam');
+            var txtStatusChangeDate = App.ChangeEstekhdamStatus.queryById('txtEstekhdamStatusChangeDate');
+
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/SaveEstekhdamStatus',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldNoeEstekhdamId: CboNoeEstekhdam.getValue(),
+                    fldPrsPersonalInfoId: '@ViewBag.PrsPersonalInfoId',
+                    fldTarikh: txtStatusChangeDate.rawValue
+                },
+                success: function (data) {
+                    var ic =Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon:ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+
+                    App.PersonalInfo.queryById('PersonalInfoGrid').store.load();
+                    App.ChangeEstekhdamStatus.queryById('GridEstekhdamStatus').store.load();
+                }
+
+            });
+    }
+
+    function DeleteChangeEstekhdamStatus() {
+        var SelectedRow = App.ChangeEstekhdamStatus.queryById('GridEstekhdamStatus').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldNoeEstekhdamId != 0) {
+                Ext.MessageBox.show({
+                    title: "هشدار",
+                    msg: "آیا برای حذف مطمئن هستید؟",
+                    icon: Ext.MessageBox.WARNING,
+                    buttons: Ext.MessageBox.YESNO,
+                    fn: function (btn) {
+                        if (btn == 'yes') {
+                            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Personeli/PersonalInfo/DeleteEstekhdamStatus',
+                                params: {
+                                    id: SelectedRow.data.fldId
+                                },
+                                success: function (data) {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Er == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    App.ChangeEstekhdamStatus.queryById('GridEstekhdamStatus').store.load()
+                                }
+                            });
+                            Ext.net.Mask.hide();
+                            ClearChangeEstekhdamStatus();
+                        }
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: " حذف تسویه حساب مجاز نیست .",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function EnterNext() {
+        var keyfield = App.ChangeEstekhdamStatus.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+    }
+</script>

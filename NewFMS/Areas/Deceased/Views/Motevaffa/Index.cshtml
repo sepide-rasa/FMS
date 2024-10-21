@@ -1,0 +1,794 @@
+﻿@model IEnumerable<NewFMS.WCF_Deceased.OBJ_Motevaffa>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+    .ID("SabtMotevaffa")
+    .Title("ثبت متوفی")
+        .Closable(true)
+        .Listeners(li => { li.AfterRender.Handler = "MotevaffaSetSize();"; li.Render.Fn = "addKeyMapSabtMotevaffa"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => { l.Click.Handler = "SaveMotevaffa();"; }).ItemID("btnSave"),
+                X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "LoadMotevaffa();"; }),
+                X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteMotevaffa();"; }),
+                X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpMotevaffa();"; }),
+                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.SabtMotevaffa.destroy()")
+                )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                          .Layout(LayoutType.VBox)
+                             .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+
+                    .Items(
+                        X.FieldSet().Title("اطلاعات متوفی")
+                            .Border(true)
+        //.Width(920)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 10 })
+                        .Items(
+                            X.Hidden().ItemID("fldId"),
+                                X.Hidden().ItemID("fldEmployeeId"),
+                            X.Label("نوع شخص:"),
+                            X.ComboBox()
+                                .ItemID("CboTypeShakhs")
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا نوع شخص را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .AllowBlank(false)
+                                .EmptyText("نوع شخص...")
+                                .Items(
+                                    new ListItem("حقیقی", "0"),
+                                    new ListItem("سایر", "1")
+                                    )
+                                  .Listeners(l => l.Change.Handler = "ChangeTypeShakhs()"),
+                                 X.Label("کد ملی:").ItemID("lblCodeMeli"),
+                            X.TextField().Width(145)
+                                .ItemID("txtCodeMeli")
+                                    .MaskRe("/[0-9]/")
+                                .AllowBlank(false)
+                                    .EnforceMaxLength(true)
+                                         .FieldStyle("direction:ltr;")
+                                    .BlankText("لطفا کدملی/کدمشخصه را وارد کنید.")
+                                        .Icon(Icon.UserAdd)
+                                .Listeners(l =>
+                                        {
+                                            l.SpecialKey.Handler = "CheckShakhs(e.getKey());";
+                                            l.Blur.Handler = "CheckShakhs(0);";
+                                        })
+                            .DirectEvents(li =>
+                            {
+                                li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                li.IconClick.Url = "/Comon/SearchEmployee/Index?State=7";
+                            })
+                                //.Listeners(l=>l.Blur.Handler="CheckShakhs(1)")
+                                ,
+                                //X.Label("کد مشخصه:").ItemID("lblCode"),
+                                //X.TextField() 
+                                //    .ItemID("txtCode")
+                                //        .MaskRe("/[0-9]/")
+                                //    .AllowBlank(false)
+                                //        .EnforceMaxLength(true)
+                                //    .BlankText("لطفا کد مشخصه را وارد کنید.")
+                                //        .Listeners(l => l.Blur.Handler = "CheckShakhs(2)"),
+                            X.Label("نام:"),
+                        X.TextField()
+                            .ItemID("txtName")
+                            .AllowBlank(false)
+                            .MaskRe("[أ-ئ,ا-ی, ,آ]")
+                            .BlankText("لطفا نام شخص را وارد کنید.")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true),
+                                 X.Label("نام خانوادگی:"),
+                            X.TextField()
+                                .ItemID("txtFamily")
+                                .AllowBlank(false)
+                                .MaskRe("[أ-ئ,ا-ی, ,آ]")
+                                .BlankText("لطفا نام خانوادگی را وارد کنید.")
+                                .MaxLength(100)
+                                .EnforceMaxLength(true),
+                        X.Label("نام پدر:"),
+                        X.TextField()
+                            .ItemID("txtFatherName")
+                            .AllowBlank(false)
+                            .MaskRe("[أ-ئ,ا-ی, ]")
+                            .BlankText("لطفا نام پدر را وارد کنید.")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                            ,X.Label("شماره شناسنامه:"),
+                        X.TextField()
+                            .ItemID("txtSh_Shenasnameh")
+                                .AllowBlank(false)
+                                .EnableKeyEvents(true)
+                            //.Listeners(l => l.KeyUp.Fn = "onInitializeToEnSh_Shenasnameh")
+                            .EnforceMaxLength(true)
+                            .MaxLength(10)
+                            .MaskRe("/[0-9]/")
+                            .BlankText("لطفا شماره شناسنامه را وارد کنید.")
+                 , X.Label("آرامستان:"),
+                 X.ComboBox()
+                .ItemID("cboVadiSalam")
+                .LabelAlign(Ext.Net.LabelAlign.Top)
+                .Editable(false)
+                .TypeAhead(true)
+                .QueryMode(DataLoadMode.Local)
+                .ForceSelection(true)
+                .TriggerAction(TriggerAction.All)
+                    .DisplayField("fldName")
+                .ValueField("fldId")
+                    .EmptyText("آرامستان")
+                .Listeners(ls =>
+                          ls.Select.Handler = "App.SabtMotevaffa.queryById('CboGhete').clearValue();  App.SabtMotevaffa.queryById('CboGhete').getStore().load();")
+                    .ValueNotFoundText("آرامستان...")
+                    .Store(X.Store()//.AutoLoad(false)
+                    .Model(X.Model()
+                            .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                        )
+                    )
+                    .Proxy(X.AjaxProxy()
+                        .Url(Url.Action("GetVadiSalam"))
+                        .Reader(X.JsonReader().Root("data"))
+                    )
+            )
+                .AllowBlank(false)
+                .BlankText("لطفا آرامستان را انتخاب کنید."),
+                X.Label("قطعه:"),
+                    X.ComboBox()
+                    .ItemID("CboGhete")
+                    .EmptyText("قطعه")
+                          .Listeners(ls => ls.Select.Handler = "App.SabtMotevaffa.queryById('CboRadif').clearValue(); App.SabtMotevaffa.queryById('CboRadif').getStore().load();")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .TypeAhead(true)
+                    .Editable(false)
+                    .AllowBlank(false)
+                    .BlankText("لطفا قطعه مورد نظر را انتخاب نمایید.")
+                    .QueryMode(DataLoadMode.Local)
+                    .ForceSelection(true)
+                    .TriggerAction(TriggerAction.All)
+                        .DisplayField("fldName")
+                        .ValueField("fldId")
+                        .Store(X.Store().AutoLoad(false)
+                        .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" })
+                                )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetGhete"))
+                            .Reader(X.JsonReader().Root("data")))
+                                           .Parameters(ps => ps.Add(new StoreParameter("VadiSalamId", "App.SabtMotevaffa.queryById('cboVadiSalam').getValue()", ParameterMode.Raw)))
+                                                    .Parameters(ps => ps.Add(new StoreParameter("MotevafaId", "App.SabtMotevaffa.queryById('fldId').getValue()", ParameterMode.Raw)))
+                                        )
+                    ,X.Label("ردیف:"),
+                    X.ComboBox()
+                    .ItemID("CboRadif")
+                    .EmptyText("ردیف")
+                            .Listeners(ls => ls.Select.Handler = "App.SabtMotevaffa.queryById('CboShomare').clearValue(); App.SabtMotevaffa.queryById('CboShomare').getStore().load();")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .TypeAhead(true)
+                    .Editable(false)
+                    .AllowBlank(false)
+                    .BlankText("لطفا ردیف مورد نظر را انتخاب نمایید.")
+                    .QueryMode(DataLoadMode.Local)
+                    .ForceSelection(true)
+                    .TriggerAction(TriggerAction.All)
+                        .DisplayField("fldName")
+                        .ValueField("fldId")
+                        .Store(X.Store().AutoLoad(false)
+                        .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" })
+                                )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetRadif"))
+                            .Reader(X.JsonReader().Root("data")))
+                                     .Parameters(ps => ps.Add(new StoreParameter("GheteId", "App.SabtMotevaffa.queryById('CboGhete').getValue()", ParameterMode.Raw)))
+                                                    .Parameters(ps => ps.Add(new StoreParameter("MotevafaId", "App.SabtMotevaffa.queryById('fldId').getValue()", ParameterMode.Raw)))
+                                        ),
+                         X.Label("شماره:"),
+                        X.ComboBox()
+                        .ItemID("CboShomare")
+                        .EmptyText("شماره")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .TypeAhead(true)
+                        .Editable(false)
+                        .AllowBlank(false)
+                        .BlankText("لطفا شماره مورد نظر را انتخاب نمایید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .Store(X.Store().AutoLoad(false)
+                            .Model(X.Model()
+                                .IDProperty("fldId")
+                                .Fields(
+                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" })
+                                    )
+                            .Proxy(X.AjaxProxy()
+                                .Url(Url.Action("GetShomare"))
+                                .Reader(X.JsonReader().Root("data")))
+                                        .Parameters(ps => ps.Add(new StoreParameter("RadifId", "App.SabtMotevaffa.queryById('CboRadif').getValue()", ParameterMode.Raw)))
+                                                .Parameters(ps => ps.Add(new StoreParameter("MotevafaId", "App.SabtMotevaffa.queryById('fldId').getValue()", ParameterMode.Raw)))
+                                            ),
+                                     X.Label("تاریخ فوت:"),
+                                            X.PDateField()
+                                    .ItemID("txtTarikhFot")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا تاریخ فوت را وارد کنید.")
+                                    .Listeners(l =>
+                                        {
+                                            l.Change.Handler = "setDateAzTarikhLog()";
+                                        })
+                                    .Editable(true)
+                                    .MaskRe("/[0-9/]/")
+                                    .MaxLength(10)
+                                    .MinLength(10)
+                                    .EnforceMaxLength(true),
+                                    X.Label("تاریخ دفن:"),
+                                    X.PDateField()
+                                    .ItemID("txtTarikhDafn")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا تاریخ دفن را وارد کنید.")
+                                        .Listeners(l =>
+                                            {
+                                                l.Change.Handler = "setDateTaTarikhLog()";
+
+                                            })
+                                    .Editable(true)
+                                    .MaskRe("/[0-9/]/")
+                                    .MaxLength(10)
+                                    .MinLength(10)
+                                    .EnforceMaxLength(true)
+                                    , X.Label("محل فوت:"),
+                                     X.ComboBox()
+                                    .ItemID("cboMahalFot")
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .Editable(true)
+                                    .TypeAhead(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                        .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                        .EmptyText("محل فوت")
+                                        .ValueNotFoundText("محل فوت...")
+                                        .Store(X.Store()//.AutoLoad(false)
+                                        .Model(X.Model()
+                                                .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetMahalFot"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                )
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا محل فوت را انتخاب کنید."),
+                                     X.Label("علت فوت:"),
+                                     X.ComboBox().ColSpan(4).Width(338)
+                                    .ItemID("cboElatFot")
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .Editable(true)
+                                    .TypeAhead(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                        .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                        .EmptyText("علت فوت")
+                                        .ValueNotFoundText("علت فوت...")
+                                        .Store(X.Store()//.AutoLoad(false)
+                                        .Model(X.Model()
+                                                .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetElatFot"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                )
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا علت فوت را انتخاب کنید.")
+                                            )
+                    )
+        ),
+        X.GridPanel()
+            .ItemID("MotevaffaGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                        .Listeners(l => l.DataChanged.Handler = "App.SabtMotevaffa.queryById('MotevaffaGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                .Plugins(X.FilterHeader().Remote(true))
+            .Listeners(l =>
+            {
+                l.AfterRender.Handler = "var grid = App.SabtMotevaffa.queryById('MotevaffaGrid');grid.setHeight(App.MotevafiatWin.getHeight() - 305); ";
+            })
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.fldTypeNameMotevafa).Text("نوع شخص").Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.fldname).Text("نام").Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.fldFamily).Text("نام خانوادگی").Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.fldCodeMotevafa).Text("کدملی/کدمشخصه").Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.fldNameVadiSalam).Text("آرامستان").Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.fldNameGhete).Text("قطعه").Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.fldNameRadif).Text("ردیف").Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.fldShomare).Text("شماره").Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.fldShomareTabaghe).Text("شماره طبقه").Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.fldTarikhFot).Text("تاریخ فوت").Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.fldTarikhDafn).Text("تاریخ دفن").Flex(2)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*  App.Win.addListener('resize', function () {
+        App.Motevaffa.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.Motevaffa.queryById('MotevaffaGrid');
+        grid.setHeight(App.Win.getHeight() - 240);
+    });*/
+    var fldGhabreAmanatId = 0;
+
+    function setDateAzTarikhLog() {
+        var txtTarikhFot = App.SabtMotevaffa.queryById('txtTarikhFot');
+        var txtTarikhDafn = App.SabtMotevaffa.queryById('txtTarikhDafn');
+        txtTarikhDafn.setMinValue(txtTarikhFot.getValue());
+        txtTarikhDafn.minText = "فیلد تاریخ دفن نباید قبل از فیلد تاریخ فوت باشد.";
+    }
+
+    function setDateTaTarikhLog() {
+        var txtTarikhFot = App.SabtMotevaffa.queryById('txtTarikhFot');
+        var txtTarikhDafn = App.SabtMotevaffa.queryById('txtTarikhDafn');
+        txtTarikhFot.setMaxValue(txtTarikhDafn.getValue());
+        txtTarikhFot.maxText = "فیلد تاریخ فوت نباید بعد از فیلد تاریخ دفن باشد.";
+    }
+
+    function ChangeTypeShakhs() {
+        var CboTypeShakhs = App.SabtMotevaffa.queryById('CboTypeShakhs');
+        var lblCodeMeli = App.SabtMotevaffa.queryById('lblCodeMeli');
+        var txtCodeMeli = App.SabtMotevaffa.queryById('txtCodeMeli');
+        var fldEmployeeId = App.SabtMotevaffa.queryById("fldEmployeeId");
+
+        var txtName = App.SabtMotevaffa.queryById('txtName');
+        txtName.setValue(""); txtName.setReadOnly(false);
+
+        var txtFamily = App.SabtMotevaffa.queryById('txtFamily');
+        txtFamily.setValue(""); txtFamily.setReadOnly(false);
+
+        var txtFatherName = App.SabtMotevaffa.queryById('txtFatherName');
+        txtFatherName.setValue(""); txtFatherName.setReadOnly(false);
+
+        var txtSh_Shenasnameh = App.SabtMotevaffa.queryById('txtSh_Shenasnameh');
+        txtSh_Shenasnameh.setValue("");
+        txtSh_Shenasnameh.setReadOnly(false);
+
+        if (CboTypeShakhs.getValue() == "0") {
+            lblCodeMeli.setText("کدملی:");
+            if (fldEmployeeId.getValue() != 0) {
+                txtCodeMeli.setValue("");
+                fldEmployeeId.setValue(0);
+            }
+        }
+        else {
+            lblCodeMeli.setText("کدمشخصه: ");
+            if (fldEmployeeId.getValue() != 0) {
+                txtCodeMeli.setValue("");
+                fldEmployeeId.setValue(0);
+            }
+        }
+    }
+    function CheckShakhs(code) {
+        var txtCodeMeli = App.SabtMotevaffa.queryById('txtCodeMeli');
+        var CboTypeShakhs = App.SabtMotevaffa.queryById('CboTypeShakhs');
+        
+
+        if (code == 0 || code == 13) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/Motevaffa/CheckShaks',
+                params: {
+                    Code_ShenaseMelli: txtCodeMeli.getValue(),
+                    Type: CboTypeShakhs.getValue()
+                },
+                success: function (data) {
+                    if (data.Er == 1) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: data.Msg,
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+               
+
+                        var txtName = App.SabtMotevaffa.queryById('txtName');
+                        txtName.setValue(data.fldName);
+                        if (data.fldName != "")
+                            txtName.setReadOnly(true);
+                        else
+                            txtName.setReadOnly(false);
+
+                        var txtFamily = App.SabtMotevaffa.queryById('txtFamily');
+                        txtFamily.setValue(data.fldFamily);
+                        if (data.fldFamily != "")
+                            txtFamily.setReadOnly(true);
+                        else
+                            txtFamily.setReadOnly(false);
+
+                        var txtFatherName = App.SabtMotevaffa.queryById('txtFatherName');
+                        txtFatherName.setValue(data.fldFatherName);
+
+                        if (data.fldFatherName != "")
+                            txtFatherName.setReadOnly(true);
+                        else
+                            txtFatherName.setReadOnly(false);
+
+                        var txtSh_Shenasnameh = App.SabtMotevaffa.queryById('txtSh_Shenasnameh');
+                        txtSh_Shenasnameh.setValue(data.fldSh_Shenasname);
+                        if (data.fldSh_Shenasname != "")
+                            txtSh_Shenasnameh.setReadOnly(true);
+                        else
+                            txtSh_Shenasnameh.setReadOnly(false);
+
+                        var fldEmployeeId = App.SabtMotevaffa.queryById('fldEmployeeId');
+                        fldEmployeeId.setValue(data.fldId);
+                        if (data.VadiSalamId != "0") {
+                            var cboVadiSalam = App.SabtMotevaffa.queryById('cboVadiSalam');
+                            cboVadiSalam.setValue(data.VadiSalamId); cboVadiSalam.setReadOnly(true);
+                            var CboGhete = App.SabtMotevaffa.queryById('CboGhete');
+                            CboGhete.clearValue(); CboGhete.getStore().load();
+                            CboGhete.setValue(data.GheteId); CboGhete.setReadOnly(true);
+                            var CboRadif = App.SabtMotevaffa.queryById('CboRadif');
+                            CboRadif.clearValue(); CboRadif.getStore().load();
+                            CboRadif.setValue(data.RadifId); CboRadif.setReadOnly(true);
+
+                            var CboShomare = App.SabtMotevaffa.queryById('CboShomare');
+                            CboShomare.clearValue(); CboShomare.getStore().load();
+                            CboShomare.setValue(data.ShomareId); CboShomare.setReadOnly(true);
+                        }
+                        else {
+                            App.SabtMotevaffa.queryById('cboVadiSalam').setReadOnly(false);
+                            var CboGhete = App.SabtMotevaffa.queryById('CboGhete');
+                            CboGhete.clearValue(); CboGhete.getStore().load();
+                            CboGhete.setReadOnly(false);
+                            var CboRadif = App.SabtMotevaffa.queryById('CboRadif');
+                            CboRadif.clearValue(); CboRadif.getStore().load();
+                            CboRadif.setReadOnly(false);
+
+                            var CboShomare = App.SabtMotevaffa.queryById('CboShomare');
+                            CboShomare.clearValue(); CboShomare.getStore().load();
+                            CboShomare.setReadOnly(false);
+                        }
+                    
+
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+    function MotevaffaSetSize() {
+        App.SabtMotevaffa.setWidth(App.MotevafiatWin.getWidth());
+        var grid = App.SabtMotevaffa.queryById('MotevaffaGrid');
+        grid.setHeight(App.MotevafiatWin.getHeight() - 305);
+        App.SabtMotevaffa.queryById('CboTypeShakhs').setValue("0");
+    }
+
+    function LoadMotevaffa() {
+        var SelectedRow = App.SabtMotevaffa.queryById('MotevaffaGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/Motevaffa/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var fldId = App.SabtMotevaffa.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    /*var fldEmployeeId = App.SabtMotevaffa.queryById('fldEmployeeId');
+                    fldEmployeeId.setValue(data.fldEmployeeId);*/
+                    var CboTypeShakhs = App.SabtMotevaffa.queryById('CboTypeShakhs');
+                    CboTypeShakhs.setValue(data.fldTypeMotevafa);
+                    CboTypeShakhs.setReadOnly(true);
+
+                    var txtCodeMeli = App.SabtMotevaffa.queryById('txtCodeMeli');
+                    txtCodeMeli.setValue(data.fldCodemeli); 
+                    txtCodeMeli.setReadOnly(true);
+                    
+                    var txtName = App.SabtMotevaffa.queryById('txtName');
+                    txtName.setValue(data.fldname); txtName.setReadOnly(true);
+                    var txtFamily = App.SabtMotevaffa.queryById('txtFamily');
+                    txtFamily.setValue(data.fldFamily); txtFamily.setReadOnly(true);
+                    var txtFatherName = App.SabtMotevaffa.queryById('txtFatherName');
+                    txtFatherName.setValue(data.fldFatherName); txtFatherName.setReadOnly(true);
+                    var txtSh_Shenasnameh = App.SabtMotevaffa.queryById('txtSh_Shenasnameh');
+                    txtSh_Shenasnameh.setValue(data.fldSh_Shenasname); txtSh_Shenasnameh.setReadOnly(true);
+
+                    var cboVadiSalam = App.SabtMotevaffa.queryById('cboVadiSalam');
+                    cboVadiSalam.setValue(data.fldVadiSalamId); cboVadiSalam.setReadOnly(true);
+                    var CboGhete = App.SabtMotevaffa.queryById('CboGhete');
+                    CboGhete.clearValue(); CboGhete.getStore().load();
+                    CboGhete.setValue(data.fldGheteId); CboGhete.setReadOnly(true);
+                    var CboRadif = App.SabtMotevaffa.queryById('CboRadif');
+                    CboRadif.clearValue(); CboRadif.getStore().load();
+                    CboRadif.setValue(data.fldRadifId); CboRadif.setReadOnly(true);
+
+                    var CboShomare = App.SabtMotevaffa.queryById('CboShomare');
+                    CboShomare.clearValue(); CboShomare.getStore().load();
+                    CboShomare.setValue(data.fldShomareId); CboShomare.setReadOnly(true);
+
+                    var txtTarikhFot = App.SabtMotevaffa.queryById('txtTarikhFot');
+                    txtTarikhFot.setValue(data.fldTarikhFot);
+                    var txtTarikhDafn = App.SabtMotevaffa.queryById('txtTarikhDafn');
+                    txtTarikhDafn.setValue(data.fldTarikhDafn);
+                    var cboMahalFot = App.SabtMotevaffa.queryById('cboMahalFot');
+                    cboMahalFot.setValue(data.fldMahalFotId);
+                    var cboElatFot = App.SabtMotevaffa.queryById('cboElatFot');
+                    cboElatFot.setValue(data.fldCauseOfDeathId);
+
+                    fldGhabreAmanatId = data.fldGhabreAmanatId;
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveMotevaffa() {
+        /*var fldEmployeeId = App.SabtMotevaffa.queryById('fldEmployeeId');*/
+        var CboTypeShakhs = App.SabtMotevaffa.queryById('CboTypeShakhs');
+        var txtCodeMeli = App.SabtMotevaffa.queryById('txtCodeMeli');
+        var txtName = App.SabtMotevaffa.queryById('txtName');
+        var txtFamily = App.SabtMotevaffa.queryById('txtFamily');
+        var txtFatherName = App.SabtMotevaffa.queryById('txtFatherName');
+        var txtSh_Shenasnameh = App.SabtMotevaffa.queryById('txtSh_Shenasnameh');
+        var cboVadiSalam = App.SabtMotevaffa.queryById('cboVadiSalam');
+        var CboGhete = App.SabtMotevaffa.queryById('CboGhete');
+        var CboRadif = App.SabtMotevaffa.queryById('CboRadif');
+        var CboShomare = App.SabtMotevaffa.queryById('CboShomare');
+        var txtTarikhFot = App.SabtMotevaffa.queryById('txtTarikhFot');
+        var txtTarikhDafn = App.SabtMotevaffa.queryById('txtTarikhDafn');
+        var cboMahalFot = App.SabtMotevaffa.queryById('cboMahalFot');
+        var cboElatFot = App.SabtMotevaffa.queryById('cboElatFot');
+        var fldId = App.SabtMotevaffa.queryById('fldId');
+        var er = false;
+
+        if (CboTypeShakhs.validate() == false) {
+            er = true;
+        }
+
+        if (txtCodeMeli.validate() == false) {
+            er = true;
+        }
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (txtFamily.validate() == false) {
+            er = true;
+        }
+        if (txtFatherName.validate() == false) {
+            er = true;
+        }
+        if (txtSh_Shenasnameh.validate() == false) {
+            er = true;
+        }
+        if (cboVadiSalam.validate() == false) {
+            er = true;
+        }
+        if (CboGhete.validate() == false) {
+            er = true;
+        }
+        if (CboRadif.validate() == false) {
+            er = true;
+        }
+        if (CboShomare.validate() == false) {
+            er = true;
+        }
+        if (txtTarikhFot.validate() == false) {
+            er = true;
+        }
+        if (txtTarikhDafn.validate() == false) {
+            er = true;
+        }
+        if (cboMahalFot.validate() == false) {
+            er = true;
+        }
+        if (cboElatFot.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        var CodeMeli = "";
+        var CodeMoshakhase = "";
+        if (CboTypeShakhs.getValue() == "0")
+            CodeMeli = txtCodeMeli.getValue();
+        else
+            CodeMoshakhase = txtCodeMeli.getValue();
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/Motevaffa/Save',
+            params: {
+                fldId: fldId.getValue(),
+                /*EmployeeId: fldEmployeeId.getValue(),*/
+                fldCodemeli: CodeMeli,
+                CodeMoshakhase: CodeMoshakhase,
+                fldName: txtName.getValue(),
+                fldFamily: txtFamily.getValue(),
+                fldFatherName: txtFatherName.getValue(),
+                Sh_Shenasnameh: txtSh_Shenasnameh.getValue(),
+                ShomareId: CboShomare.getValue(),
+                fldTarikhFot: txtTarikhFot.rawValue,
+                fldTarikhDafn: txtTarikhDafn.rawValue,
+                fldMahalFotId: cboMahalFot.getValue(),
+                fldCauseOfDeathId: cboElatFot.getValue(),
+                fldGhabreAmanatId: fldGhabreAmanatId
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.SabtMotevaffa.queryById('MotevaffaGrid').store.load();
+                if (data.Err != 1)
+                    ClearMotevaffa();
+            }
+
+        });
+    }
+    function DeleteMotevaffa() {
+        var SelectedRow = App.SabtMotevaffa.queryById('MotevaffaGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Deceased/Motevaffa/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtMotevaffa.queryById('MotevaffaGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                        ClearMotevaffa();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearMotevaffa() {      
+        App.SabtMotevaffa.queryById('fldId').setValue(0);
+        App.SabtMotevaffa.queryById('txtCodeMeli').setValue("").setReadOnly(false);
+        App.SabtMotevaffa.queryById('txtName').setValue("").setReadOnly(false);
+        App.SabtMotevaffa.queryById('txtFamily').setValue("").setReadOnly(false);
+        App.SabtMotevaffa.queryById('txtFatherName').setValue("").setReadOnly(false);
+        App.SabtMotevaffa.queryById('txtSh_Shenasnameh').setValue("").setReadOnly(false);
+        App.SabtMotevaffa.queryById('txtTarikhFot').setValue("");
+        App.SabtMotevaffa.queryById('txtTarikhDafn').setValue("");
+        App.SabtMotevaffa.queryById('cboVadiSalam').setValue("").setReadOnly(false);
+        App.SabtMotevaffa.queryById('CboGhete').setValue("").setReadOnly(false);
+        App.SabtMotevaffa.queryById('CboRadif').setValue("").setReadOnly(false);
+        App.SabtMotevaffa.queryById('CboShomare').setValue("").setReadOnly(false);
+        App.SabtMotevaffa.queryById('CboTypeShakhs').setValue("0").setReadOnly(false);
+        App.SabtMotevaffa.queryById('cboMahalFot').setValue("");
+        App.SabtMotevaffa.queryById('cboElatFot').setValue("");
+    }
+    function HelpMotevaffa() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/Motevaffa/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var addKeyMapSabtMotevaffa = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtMotevaffa.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;  
+                     if (keyfield.itemId == "cboElatFot") {
+                        nextfld = App.SabtMotevaffa.queryById('btnSave');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

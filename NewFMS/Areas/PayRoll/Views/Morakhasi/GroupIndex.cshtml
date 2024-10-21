@@ -1,0 +1,268 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_Morakhasi>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+@*<style>
+        #test legend{
+            text-align:right!important;
+        }
+    </style>*@
+<br />
+@(Html.X().Panel()
+        .ID("GroupMorakhasi")
+            .Title("ثبت گروهی مرخصی")
+                    //.Listeners(l =>
+                    //                {
+                    //                    l.AfterLayout.Handler = "ReloadMorakhasiGroup();";
+                    //                })
+        // .Listeners(li => li.AfterRender.Handler = "GroupMorakhasiSetSize();")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+        X.GridPanel()
+                          .TopBar(
+                                    Html.X().Toolbar()
+                                    .Items(
+                                        X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)//.ToolTip("کلید میانبر F2")
+                                                    .Listeners(Li => Li.Click.Handler = "SaveGroupMorakhasi();"),
+                                        X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)//.ToolTip("کلید میانبر F9")
+                                                    .Listeners(Li => Li.Click.Handler = "DeleteGroupMorakhasi();")
+
+                                    )
+                                )
+        .ItemID("GroupMorakhasiGrid")
+        .AutoScroll(true)
+               // .BottomBar(X.PagingToolbar().HideRefresh(true))
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.GroupMorakhasi.queryById('GroupMorakhasiGrid').selModel.refresh();")
+        //.Proxy(Html.X().AjaxProxy()
+        //    .Url(Url.Action("Read"))
+        //    .Reader(Html.X().JsonReader().Root("data"))
+        //)
+                            .PageSize(20000)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true).GetRowClass(l => l.Fn = "getRowClassMorakhasiGroup")
+                )
+                  //  .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.GroupMorakhasi.queryById('GroupMorakhasiGrid');grid.setHeight(App.PayWin.getHeight() - 170); ";
+
+                     })
+        .ColumnModel(
+                            Html.X().Column().DataIndex(Model, m => m.fldPersonalInfoId).Hidden(true).Flex(3),
+                            Html.X().Column().DataIndex(Model, m => m.fldMorakhasiId).Hidden(true).Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام و نام خانوادگی").Flex(6),
+                            Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کدملی").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.fldSh_Personali).Text("شماره پرسنلی").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldSalAkharinHokm).Text("سال آخرین حکم").Flex(2)
+                                .Editor(Html.X().TextField()
+                                                //.Listeners(l => l.Change.Handler = "SellectAllMoraghasi()")
+                                     .RTL(false).LabelCls("text-align: right;").LabelSeparator("")
+                                .Plugins(X.InputMask()
+                                    .Mask("1CCC")
+                                    .MaskSymbols(ls =>
+                                    {
+                                        ls.Add(new MaskSymbol { Name = "C", Regex = "[0-9]", Placeholder = "_".ToCharArray()[0] });
+                                    })
+                                )
+                                ),
+                    Html.X().Column().DataIndex(Model, m => m.fldTedad).Text("تعداد مرخصی").Flex(2)
+                    .Editor(Html.X().TextField()
+                        .MaskRe("/[0-9]/")
+                            .ID("txtTedad")
+                                        .Listeners(l => { l.Change.Handler = "CheckSal(App.txtTedad);"; })    
+                            .MaxLength(3)
+                            .EnforceMaxLength(true)
+                            )
+    )
+           .Listeners(l =>
+                                {
+                                    l.ViewReady.Handler = "ReloadMorakhasiGroup();";
+                                })
+              .SelectionModel(
+                            Html.X().CheckboxSelectionModel().PruneRemoved(false).ShowHeaderCheckbox(false)
+                                .Mode(SelectionMode.Multi).CheckOnly(true))
+                        .Plugins(
+                        Html.X().CellEditing().ClicksToEdit(1)
+                        .Listeners(l =>
+                                    {
+                                        l.Edit.Fn = "LockOff";
+                                        l.BeforeEdit.Fn = "LockOn";
+                                    }))
+    )
+)
+<script type="text/javascript">
+
+    var getRowClassMorakhasiGroup = function (record, rowIndex, rowParams, store) {
+        var color = 'white';
+        if (rowIndex % 2 == 1)
+            color = '#dfe8f6';
+        var clsName = "row" + rowIndex,
+            clsStyle = Ext.String.format(".{0} .x-grid-cell, .{0} .x-grid-rowwrap-div { background-color: {1} !important; })", clsName, color);
+        Ext.net.ResourceMgr.registerCssClass(clsName, clsStyle);
+        return clsName;
+    };
+
+    var LockOn = function (editor, e) {
+        App.GroupMorakhasi.queryById('GroupMorakhasiGrid').getSelectionModel().setLocked(true);
+        App.GroupMorakhasi.queryById('GroupMorakhasiGrid').getView().focusRow(e.rowIdx);
+    };
+
+    var LockOff = function (a, b) {
+        App.GroupMorakhasi.queryById('GroupMorakhasiGrid').getSelectionModel().setLocked(false);
+        App.GroupMorakhasi.queryById('GroupMorakhasiGrid').getView().focusRow(b.rowIdx);
+    };
+    function CheckSal(TxT) {
+        if (parseInt(TxT.getValue()) > 366)
+            TxT.setValue("");
+    }
+    function ReloadMorakhasiGroup() {
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Morakhasi/ReloadMorakhasiGroup',
+            params: {
+                FieldName: '@ViewBag.FieldName',
+                CostCenter_ChartId: '@ViewBag.CostCenter_ChartId',
+                OrganId:'@ViewBag.OrganId'
+            },
+            success: function (result) {
+                App.GroupMorakhasi.queryById('GroupMorakhasiGrid').getStore().loadData(result);
+                SellectAllMoraghasi();
+            }
+        });
+    }
+    function SellectAllMoraghasi() {
+        App.GroupMorakhasi.queryById('GroupMorakhasiGrid').getSelectionModel().selectAll();
+        App.GroupMorakhasi.queryById('GroupMorakhasiGrid').getView().focusRow(0);
+    }
+    function SaveGroupMorakhasi() {
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        var SelectItems = new Array();
+        var SelectedRow = App.GroupMorakhasi.queryById('GroupMorakhasiGrid').getSelectionModel().getSelection();
+        if (SelectedRow.length != 0) {
+            for (var k = 0; k < SelectedRow.length ; k++) {
+                if (SelectedRow[k].data.fldSalAkharinHokm != 0 && SelectedRow[k].data.fldSalAkharinHokm != "") {
+                    SelectItems.push({
+                        'fldId': SelectedRow[k].data.fldMorakhasiId,
+                        'fldPersonalId': SelectedRow[k].data.fldPersonalInfoId,
+                        'fldSalAkharinHokm': SelectedRow[k].data.fldSalAkharinHokm,
+                        'fldTedad': SelectedRow[k].data.fldTedad,
+                        'fldYear': '@ViewBag.Year',
+                        'fldMonth': '@ViewBag.Month',
+                        'fldNobatePardakht': '@ViewBag.nobatePardakht'
+                    });
+                }
+                else {
+                    Ext.net.Mask.hide();
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg:"سال آخرین حکم را وارد کنید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    return;
+                }
+            }
+            var data = {
+                morakhsiVal: SelectItems,
+                OrganId: '@ViewBag.OrganId'
+            };
+            $.ajax({
+                type: "POST",
+                url: '/PayRoll/Morakhasi/SaveGroup',
+                datatype: "json",
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                success: function (data1) {
+                    Ext.net.Mask.hide();
+                    var result = data1;/*JSON.parse(data1);*/
+                    var ico = Ext.MessageBox.INFO;
+                    if (result.Er == 1)
+                        ico = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: result.MsgTitle,
+                        msg: result.Msg,
+                        icon:ico,
+                        buttons: Ext.MessageBox.OK
+                    });
+                },
+                failure: function (data1) {
+                    alert(data.data1);
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا حداقل یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteGroupMorakhasi() {
+        var SelectItems = new Array();
+        var SelectedRow = App.GroupMorakhasi.queryById('GroupMorakhasiGrid').getSelectionModel().getSelection();
+        if (SelectedRow.length != 0) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        for (var k = 0; k < SelectedRow.length ; k++) {
+                            SelectItems.push({
+                                'fldId': SelectedRow[k].data.fldMorakhasiId
+                            });
+                        }
+                        var data = {
+                            MorakhasiGroupVal: SelectItems,
+                            OrganId: '@ViewBag.OrganId'
+                        };
+                        $.ajax({
+                            type: "POST",
+                            url: '/PayRoll/Morakhasi/DeleteGroup',
+                            datatype: "json",
+                            data: JSON.stringify(data),
+                            contentType: 'application/json',
+                            success: function (data1) {
+                                var result = data1;/*JSON.parse(data1);*/
+                                ReloadMorakhasiGroup();
+                                var ico = Ext.MessageBox.INFO;
+                                if (result.Er == 1)
+                                    ico = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: result.MsgTitle,
+                                    msg: result.Msg,
+                                    icon: ico,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                            },
+                            failure: function (data1) {
+                                alert(data.data1);
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا حداقل یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

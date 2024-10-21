@@ -1,0 +1,433 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_ItemNecessary>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+
+@(Html.X().Panel()
+        .ID("SabtItemNecessary")
+    .Title("تعریف آیتم های الزامی")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l => { l.Render.Fn = "addKeyMapSabtItemNecessary"; l.AfterRender.Handler = "SabtItemNecessarySetSize()"; })
+    .Resizable(false)
+    .Border(false)
+    .Items(
+        X.Panel()
+        .AutoScroll(true)
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .Buttons(
+                 X.Button().Text("ذخیره").Icon(Icon.Disk).Listeners(l => l.Click.Handler = "SaveTreeGroupCost()"),
+                 X.Button().Text("ویرایش") .Icon(Icon.Pencil).Listeners(l => l.Click.Handler = "EditNodeTreeItemNecessary()"),
+                 X.Button().Text("حذف").Icon(Icon.Delete).Listeners(l => l.Click.Handler = "DeleteNodeTreeItemNecessary()")
+                , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.SabtItemNecessary.destroy()")
+            ).ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.FieldSet()
+                    .Title("اطلاعات")
+                    .Height(70)
+                    .Border(true)
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                    .Items(
+                        X.Hidden()
+                            .ItemID("fldId"),
+                        X.Label("نام آیتم:"),
+                        X.TextField()
+                            .ItemID("txtNameItem")
+                            .AllowBlank(false)
+                            .BlankText("لطفا عنوان را وارد کنید.")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                            .AutoFocus(true),
+                        X.Label("ماهیت مانده:"),
+                        X.ComboBox()
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ItemID("CboMahiyat")
+                        .TypeAhead(true)
+                        .Editable(true)
+                        .QueryMode(DataLoadMode.Local)
+                        .BlankText("لطفا ماهیت را انتخاب کنید.")
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                        .ValueField("fldId")
+                        .EmptyText("ماهیت ...")
+                        .Store(X.Store()
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                )
+                                    )
+                        .Proxy(X.AjaxProxy()
+                        .Url(Url.Action("GetMahiyat"))
+                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                             //.Listeners(l => l.Load.Handler = "setdefaultValueBank()")
+                                )
+                            .AllowBlank(false),
+                                  X.Label("ماهیت گردش:"),
+                                X.ComboBox()
+                                    .ItemID("CboMahiyatGardesh")
+                                        .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                    .TypeAhead(true)
+                                    .Editable(false)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا ماهیت گردش را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Store(X.Store()
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                                .Fields(
+                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetMahiyat"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                    ),
+                        X.Label("نوع حساب:"),
+                        X.ComboBox()
+                        .ItemID("CboTypeHesab")
+                        .TypeAhead(true)
+                        .Editable(true)
+                        .QueryMode(DataLoadMode.Local)
+                        .BlankText("لطفا نوع حساب را انتخاب کنید.")
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                        .ValueField("fldId")
+                        .EmptyText("نوع حساب ...")
+                        .Store(X.Store()
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                )
+                                    )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetTypeHesab"))
+                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                                )
+                            .AllowBlank(false),
+                        X.Label("توضیحات:"),
+                        X.TextField()
+                            .ItemID("txtDesc")
+                            .Width(375).ColSpan(3)
+
+                        ),
+                X.TreePanel()
+                        .ID("TreeItemNecessary")
+                    .AutoScroll(true)
+                    .Frame(true)
+                    .Title("ساختار درختی")
+                    .Width(760)
+                    .Margin(5)
+                    .UseArrows(true)
+                    .Border(true)
+                    .Listeners(l =>
+                    {
+                        l.Render.Handler = "App.TreeItemNecessary.setHeight(Ext.getBody().getViewSize().height-300);";
+                        //l.AfterRender.Handler = "AddMenuTreeItemNecessary()";
+                    })
+                        .View(X.TreeView().Listeners(l => l.BeforeDrop.Fn = "moveNodesTreeItemNecessary").Plugins(X.TreeViewDragDrop().AppendOnly(true)))
+                    .Store(
+                        Html.X().TreeStore()
+                            .Model(
+                                Html.X().Model()
+                                    .Fields(
+                                        X.ModelField().Name(Model, m => m.fldNameItem).Type(ModelFieldType.String),
+                                            X.ModelField().Name(Model, m => m.fldMahiyatId).Type(ModelFieldType.Int),
+                                                X.ModelField().Name(Model, m => m.fldMahiyat_GardeshId).Type(ModelFieldType.Int),
+                                        X.ModelField().Name(Model, m => m.fldDesc).Type(ModelFieldType.String),
+                                            X.ModelField().Name(Model, m => m.fldTypeHesabId).Type(ModelFieldType.String)                                        
+                                        )
+                                )
+                            .Proxy(
+                                    Html.X().AjaxProxy().Url(Url.Action("LoadTreeItemNecessary"))
+                            )
+                                .Listeners(l => l.BeforeLoad.Fn = "GetParamTreeItemNecessary")
+                    )
+                     .Root(Html.X().Node()/*.NodeID("0")*/.Cls("1").Text("آیتم های الزامی").AttributesObject(new { fldNameItem = "", fldMahiyatId=0, fldDesc = "" }).Expanded(true))
+            )
+        )
+)
+<script type="text/javascript">
+
+    var GetParamTreeItemNecessary = function (store, operation, eOpts) {
+        operation.params.nod = operation.node.data.cls;/*.getId();*/
+    };
+    function SabtItemNecessarySetSize() {
+        var grid = App.TreeItemNecessary;
+        grid.setHeight(App.AccountingWin.getHeight() - 300);
+        }
+   /* function AddMenuTreeItemNecessary() {
+        var menu_grid = new Ext.menu.Menu({
+            bodyStyle: 'background-color:#dfe8f6 !important;',
+            items: [
+                { text: "ویرایش", iconCls: "Editico", handler: function () { EditNodeTreeItemNecessary(); } },
+                { text: "حذف", iconCls: "Deleteico", handler: function () { DeleteNodeTreeItemNecessary(); } }
+            ]
+        });
+        App.TreeItemNecessary.on("itemcontextmenu", function (view, record, item, index, e, eOpts) { if (record.data.fldNodeType != 2) { var position = e.getXY(); e.stopEvent(); menu_grid.showAt(position); } });
+    }*/
+
+    var moveNodesTreeItemNecessary = function (a, child, parent, d, e) {
+        e.wait = true;
+        Ext.MessageBox.show({
+            title: "هشدار",
+            msg: "آیا برای جابجایی این شاخه مطمئن هستید؟",
+            icon: Ext.MessageBox.WARNING,
+            buttons: Ext.MessageBox.YESNO,
+            fn: function (btn) {
+                if (btn == "yes") {
+                    Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Accounting/ItemNecessary/MoveNodes',
+                        params: {
+                            childId: child.records[0].data.cls,
+                            parentId: parent.data.cls
+                        },
+                        success: function (data) {
+                            if (data.Er == 1) {
+                                e.cancelDrop();
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.ERROR,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                            }
+                            if (data.Err != 1) {
+                                e.processDrop();
+                                Ext.net.Mask.hide();
+                            }
+                        }
+                    });
+                }
+                else {
+                    e.cancelDrop();
+                }
+            }
+        });
+    };
+
+    function SaveTreeGroupCost() {
+        var Id = App.SabtItemNecessary.queryById('fldId'); 
+        var txtNameItem = App.SabtItemNecessary.queryById("txtNameItem");
+        var CboMahiyat = App.SabtItemNecessary.queryById("CboMahiyat");
+        var CboMahiyatGardesh = App.SabtItemNecessary.queryById("CboMahiyatGardesh");
+        var CboTypeHesab = App.SabtItemNecessary.queryById("CboTypeHesab");
+        var txtDesc = App.SabtItemNecessary.queryById('txtDesc');
+        var SelectedNode = App.TreeItemNecessary.getSelectionModel().getLastSelected();
+
+        var er = false;
+
+        if (txtNameItem.validate() == false) {
+            er = true;
+        }
+        if (CboMahiyat.validate() == false) {
+            er = true;
+        }
+        if (CboMahiyatGardesh.validate() == false) {
+            er = true;
+        }
+        if (CboTypeHesab.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        if (SelectedNode == null) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا ابتدا یک سطر (شاخه) را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/ItemNecessary/Save',
+            params: {
+                PID: SelectedNode.data.cls,
+                fldId: Id.getValue(),
+                fldNameItem: txtNameItem.getValue(),
+                fldMahiyatId: CboMahiyat.getValue(),
+                fldMahiyat_GardeshId: CboMahiyatGardesh.getValue(),
+                fldTypeHesabId:CboTypeHesab.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                if (data.Er != 1) {
+                    if (Id.getValue() == 0) {/*insert*/
+                        App.TreeItemNecessary.getStore().load({ node: SelectedNode });
+                        ClearTreeGroupCost();
+                    }
+                    else {/*edit*/
+                        App.TreeItemNecessary.getStore().load({ node: SelectedNode.parentNode });
+                        ClearTreeGroupCost();
+                    }
+                }
+            }
+        });
+    }
+
+    function EditNodeTreeItemNecessary() {
+        var SelectedNode = App.TreeItemNecessary.getSelectionModel().getLastSelected();
+        if (SelectedNode != null) {
+            if (SelectedNode.data.cls != 1) {
+                
+                App.SabtItemNecessary.queryById('fldId').setValue(SelectedNode.data.cls);
+                App.SabtItemNecessary.queryById('txtNameItem').setValue(SelectedNode.data.fldNameItem);
+                App.SabtItemNecessary.queryById('CboMahiyat').setValue(String(SelectedNode.data.fldMahiyatId));
+                App.SabtItemNecessary.queryById('CboMahiyatGardesh').setValue(String(SelectedNode.data.fldMahiyat_GardeshId));
+                App.SabtItemNecessary.queryById('CboTypeHesab').setValue(String(SelectedNode.data.fldTypeHesabId));
+                App.SabtItemNecessary.queryById('txtDesc').setValue(SelectedNode.data.fldDesc);
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "امکان ویرایش شاخه مورد نظر وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر (شاخه) را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DeleteNodeTreeItemNecessary() {
+        var SelectedNode = App.TreeItemNecessary.getSelectionModel().getLastSelected();
+        var ParentNode = SelectedNode.parentNode;
+        if (SelectedNode != null) {
+            if (SelectedNode.data.cls != 1) {
+                if (SelectedNode.childNodes.length == 0) {
+                    Ext.MessageBox.show({
+                        title: "هشدار",
+                        msg: "آیا برای حذف مطمئن هستید؟",
+                        icon: Ext.MessageBox.WARNING,
+                        buttons: Ext.MessageBox.YESNO,
+                        fn: function (btn) {
+                            if (btn == 'yes') {
+                                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                Ext.net.DirectMethod.request({
+                                    url: '/Accounting/ItemNecessary/DeleteNode',
+                                    params: {
+                                        Id: SelectedNode.data.cls
+                                    },
+                                    success: function (data) {
+                                        if (data.Er == 1) {
+                                            Ext.MessageBox.show({
+                                                title: data.MsgTitle,
+                                                msg: data.Msg,
+                                                icon: Ext.MessageBox.ERROR,
+                                                buttons: Ext.MessageBox.OK
+                                            });
+                                        }
+                                        else {
+                                            App.TreeItemNecessary.getStore().load({ node: ParentNode });
+                                            App.TreeItemNecessary.getSelectionModel().clearSelections();
+                                            ClearTreeGroupCost();
+                                        }
+                                    }
+                                });
+                                Ext.net.Mask.hide();
+                            }
+                        }
+                    });
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا ابتدا زیرشاخه های مربوطه را پاک نموده و سپس اقدام به حذف شاخه مورد نظر نمایید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "امکان حذف شاخه مورد نظر وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر (شاخه) را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearTreeGroupCost() {
+        App.SabtItemNecessary.queryById('fldId').setValue(0);
+        App.SabtItemNecessary.queryById('txtNameItem').setValue("");
+        App.SabtItemNecessary.queryById('txtDesc').setValue("");
+    }
+
+    var addKeyMapSabtItemNecessary = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtItemNecessary.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        SaveTreeGroupCost();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>
+

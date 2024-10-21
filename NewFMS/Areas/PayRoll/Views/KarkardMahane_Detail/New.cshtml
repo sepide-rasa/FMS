@@ -1,0 +1,222 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window()
+    .Modal(true)
+    .Listeners(li => li.AfterRender.Handler = "LoadKarkardMahane_Detail();")
+    .Width(320)
+        //   .Height(300)
+    .Resizable(false)
+    .Title("اطلاعات کارکرد جدید")
+    .ID("NewKarkardMahane_Detail")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel()
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Border(false)
+            .KeyMap(Html.X().KeyMap()
+                .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+                .Binding(b =>
+                {
+                    b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                    .Handler("checkSaveKarkardMahane_Detail(); ")
+                    );
+
+                }))
+            .DefaultButton("btn")
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+        //.ToolTip("کلید میانبر F8")
+                        .Listeners(l => l.Click.Handler = "checkSaveKarkardMahane_Detail();")
+                    .ItemID("btnSave"),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .ToolTip("کلید میانبر Esc")
+                    .OnClientClick("App.NewKarkardMahane_Detail.destroy();")
+                    )
+            .Items(
+                X.FieldSet()
+                        .ItemID("Panel").Title("اطلاعات کارکرد")
+                    .Layout(Ext.Net.LayoutType.Table)
+                    .Border(true)
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                    .Defaults(new { Margin = 2 })
+                        .Items(
+                            X.Hidden().ItemID("fldId"),
+                                X.Hidden().ItemID("fldKarkardMahaneId"),
+                 X.Label("تعداد روز:")
+                    , X.TextField()
+                    .ItemID("txtDayCount")
+                    .Width(50)
+                    .MaxLength(2)
+                    .EnforceMaxLength(true)
+                    .MaskRe("/[0-9]/")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .AutoFocus(true)
+                    .BlankText("لطفا تعداد روز را وارد کنید.")
+                    .Listeners(l => { l.Change.Handler = "CheckCountDay();"; })
+                , X.Label().ItemID("lblMandeKarkard")
+                , X.Label().Text("کارگاه بیمه(Ins):"),
+                X.TextField()
+                .ItemID("txtKargahBime")
+                .ReadOnly(true)
+                .AllowBlank(false)
+                .BlankText("لطفا کارگاه بیمه را انتخاب نمایید.")
+                .MsgTarget(Ext.Net.MessageTarget.Side)
+                    //.Icon(Icon.Add)
+                        .Listeners(li =>
+                        {
+                            li.SpecialKey.Handler = "SearchKargahBime(e.getKey());";
+                           // li.IconClick.Handler = "Ext.net.DirectMethod.request({url:'/PayRoll/SearchInsuranceWorkshop/Index?State=1})";
+                        }).ColSpan(2)
+        )
+    ))
+)
+
+<script type="text/javascript">
+    var KarkardMande = '@ViewBag.KarkardMande';
+    var KargahBime = 0;
+    function CheckCountDay() {
+        var txtDayCount = App.NewKarkardMahane_Detail.queryById('txtDayCount');
+        if (parseInt(txtDayCount.getValue()) > KarkardMande) {
+            txtDayCount.blankText = "تعداد روز وارد شده نامعتبر است.";
+            txtDayCount.setValue("");
+        }
+    }
+    function SearchKargahBime(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/SearchInsuranceWorkshop/Index?State=1&OrganId='+'@ViewBag.OrganId'
+            });
+        }
+    }
+    function LoadKarkardMahane_Detail() {
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KarkardMahane_Detail/Details',
+                params: {
+                    id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    var txtDayCount = App.NewKarkardMahane_Detail.queryById('txtDayCount');
+                    txtDayCount.setValue(data.fldKarkard);
+                    var txtKargahBime = App.NewKarkardMahane_Detail.queryById('txtKargahBime');
+                    txtKargahBime.setValue(data.fldWorkShopName);
+                    var fldKarkardMahaneId = App.NewKarkardMahane_Detail.queryById('fldKarkardMahaneId');
+                    fldKarkardMahaneId.setValue(data.fldKarkardMahaneId);
+                    var Id = App.NewKarkardMahane_Detail.queryById('fldId');
+                    Id.setValue(data.fldId);
+                    KargahBime = data.fldKargahBimeId;
+                }
+            });
+        }
+        else {
+            var fldKarkardMahaneId = App.NewKarkardMahane_Detail.queryById('fldKarkardMahaneId');
+            fldKarkardMahaneId.setValue('@ViewBag.KarkardMahaneId');
+            var txtDayCount = App.NewKarkardMahane_Detail.queryById('txtDayCount');
+            txtDayCount.setValue(KarkardMande);
+        }
+        var lblMandeKarkard = App.NewKarkardMahane_Detail.queryById('lblMandeKarkard');
+        lblMandeKarkard.setText("مانده کارکرد:" + KarkardMande + " روز");
+    }
+    function checkSaveKarkardMahane_Detail() {
+        var SelectedRow = App.KarkardMahane_Detail.queryById('GridHeader').selModel.getLastSelected();
+        if (SelectedRow.data.fldStatusId == 1) {
+            SaveKarkardMahane_Detail();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "وضعیت فرد مورد نظر " + SelectedRow.data.fldStatusTitle + " است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SaveKarkardMahane_Detail() {
+        var txtDayCount = App.NewKarkardMahane_Detail.queryById('txtDayCount');
+        var txtKargahBime = App.NewKarkardMahane_Detail.queryById('txtKargahBime');
+        var Id = App.NewKarkardMahane_Detail.queryById('fldId');
+        var KarkardMahaneId = App.NewKarkardMahane_Detail.queryById('fldKarkardMahaneId');
+
+        var er = false;
+
+        if (txtKargahBime.validate() == false) {
+            er = true;
+        }
+        if (txtDayCount.validate() == false) {
+            er = true;
+        }
+
+
+        if (er == true)
+            return;
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/KarkardMahane_Detail/Save',
+            params: {
+                fldId: Id.getValue(),
+                fldKarkard: txtDayCount.getValue(),
+                fldKarkardMahaneId: KarkardMahaneId.getValue(),
+                fldKargahBimeId: KargahBime,
+                OrganId:'@ViewBag.OrganId'
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                KarkardMande = data.KarkardMande;
+                var lblMandeKarkard = App.NewKarkardMahane_Detail.queryById('lblMandeKarkard');
+                lblMandeKarkard.setText("مانده کارکرد:" + data.KarkardMande + " روز");
+                ClearKarkardMahane_Detail();
+                ReloadGridDetail();
+               /* App.KarkardMahane_Detail.queryById('GridHeader').store.load();
+                App.KarkardMahane_Detail.queryById('GridDetail').getStore().loadData("");*/
+            }
+
+        });
+    }
+    function ClearKarkardMahane_Detail() {
+        App.NewKarkardMahane_Detail.queryById('txtKargahBime').setValue("");
+        App.NewKarkardMahane_Detail.queryById('txtDayCount').setValue(KarkardMande);
+        App.NewKarkardMahane_Detail.queryById('fldId').setValue(0);
+        KargahBime = 0;
+    }
+
+    function EnterNext() {
+        var keyfield = App.NewKarkardMahane_Detail.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtDayCount") {
+            nextfld = App.NewKarkardMahane_Detail.queryById('txtKargahBime');
+        }
+        else if (keyfield.itemId == "txtKargahBime") {
+            nextfld = App.NewKarkardMahane_Detail.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+    }
+
+
+</script>

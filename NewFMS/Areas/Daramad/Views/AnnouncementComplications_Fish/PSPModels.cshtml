@@ -1,0 +1,226 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window()
+    .Closable(true)
+    .CloseAction(CloseAction.Destroy)
+    .Title("انتخاب مدل PSP")
+    .Layout(LayoutType.Fit)
+    .ID("ListPSPModels")
+    .Modal(true)
+    .Width(360)
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        Html.X().Button()
+            .Text("پرداخت")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "PayFishPcPos()"),
+        Html.X().Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => l.Click.Handler = "App.ListPSPModels.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.Table)
+            .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+            .PaddingSpec("15px 12px 15px 12px")
+            .Items(
+                X.Label("مدل PSP:"),
+                X.ComboBox()
+                    .ItemID("CboPSP")
+                    .TypeAhead(true)
+                    .Width(270)
+                    .QueryMode(DataLoadMode.Local)
+                    .ForceSelection(true)
+                    .Editable(false)
+                    .AllowBlank(false)
+                    .BlankText("لطفا مدل PSP را انتخاب کنید.")
+                    .TriggerAction(TriggerAction.All)
+                    .DisplayField("fldName")
+                    .ValueField("fldId")
+                    .Editable(true)
+                    .EmptyText("مدل PSP ...")
+                    .Store(X.Store()
+                        .Listeners(l => l.Load.Handler = "setDefaultCboPSP()")
+                        .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                            )
+                            )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetPSPModel"))
+                            .Reader(X.JsonReader().Root("data"))
+                            )
+                    )
+            )
+    )
+)
+
+<script type="text/javascript">
+
+    var VFishId = '@ViewBag.FishId';
+    var VShGhabz= '@ViewBag.ShGhabz';
+    var VShPardakht = '@ViewBag.ShPardakht';
+    var VPrice = '@ViewBag.Price';
+    var VSheba = '@ViewBag.Sheba';
+    var Vstate = '@ViewBag.state';
+
+    function setDefaultCboPSP() {
+        var Id = App.ListPSPModels.queryById('CboPSP').store.getAt(0).data.fldId;
+        App.ListPSPModels.queryById('CboPSP').setValue(Id);
+    }
+   /* function PayFishPcPos() {
+        var CboPSP = App.ListPSPModels.queryById('CboPSP');
+        if (CboPSP.getValue() == 1)
+            PayFishPcPosShahr();
+        else if (CboPSP.getValue() == 2)
+            PayFishPcPosSaman();
+    }*/
+
+    function PayFishPcPos() {
+        var CboPSP = App.ListPSPModels.queryById('CboPSP');
+        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+
+        var FishVal1 = new Array();
+        var GpPrice = 0;
+        if (Vstate == 2) {
+            var SelectedRows = App.GroupPayIndex.queryById('GridFishHa').getSelectionModel().getSelection();
+            if (SelectedRows.length > 0) {
+                for (var i = 0; i < SelectedRows.length ; i++) {
+                    FishVal1.push({
+                        fldId: SelectedRows[i].data.fldId,
+                        fldShenaseGhabz: SelectedRows[i].data.fldShenaseGhabz,
+                        fldShenasePardakht: SelectedRows[i].data.fldShenasePardakht,
+                        fldMablaghAvarezGerdShode: SelectedRows[i].data.fldMablaghAvarezGerdShode,
+                        fldShomareSheba: SelectedRows[i].data.fldShomareSheba,
+                        fldShomareHesab: SelectedRows[i].data.fldShomareHesab,
+                        fldShomareHesabId: SelectedRows[i].data.fldShomareHesabId
+                    });
+                    GpPrice = GpPrice + SelectedRows[i].data.fldMablaghAvarezGerdShode;
+                }
+            }
+        }
+        var data1 = {
+            PspId: CboPSP.getValue(),
+            FishId: VFishId,
+            ShGhabz: VShGhabz,
+            ShPardakht: VShPardakht,
+            Price: VPrice,
+            state: Vstate,
+            FishVal: FishVal1
+        };
+
+        $.ajax({
+            type: "POST",
+            url: '/Daramad/AnnouncementComplications_Fish/PcPosPay',
+            datatype: "json",
+            data: JSON.stringify(data1),
+            contentType: 'application/json',
+            success: function (data) {
+                Ext.net.Mask.hide();
+
+                if (data.Er == 1) {
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+                else {
+                    if (Vstate == 2) {
+                        VPrice = data.Price;
+                        VSheba = data.Sheba;
+                    }
+                    else {
+                        GpPrice = VPrice;
+                    }
+
+                    if (data.sherkat == 1) {/*شهر*/
+                        var ic = Ext.MessageBox.INFO;
+                        if (data.Er == 1) {
+                            ic = Ext.MessageBox.ERROR;
+                        }
+                        Ext.MessageBox.show({
+                            title: data.MsgTitle,
+                            msg: data.Msg,
+                            icon: ic,
+                            buttons: Ext.MessageBox.OK,
+                            fn: function (btn) {
+                                if (data.Er != 1 && btn == "ok") {
+                                    App.ListPSPModels.destroy();
+                                }
+                            }
+                        });
+                        if (data.Er != 1) {
+                            App.AnnouncementComplication_Fish.queryById('FishGrid').store.load();
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                    else if (data.sherkat == 2) {/*سامان*/
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/AnnouncementComplications_Fish/SamanPcPosPay',
+                            params: {
+                                PspId: CboPSP.getValue(),
+                                FishId: VFishId,
+                                ShGhabz: VShGhabz,
+                                ShPardakht: VShPardakht,
+                                Price: VPrice,
+                                state: Vstate,
+                                GpPrice: GpPrice
+                            },
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                    else if (data.sherkat == 3) {/*پارسیان*/
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/AnnouncementComplications_Fish/ParsianPcPosPay',
+                            params: {
+                                PspId: CboPSP.getValue(),
+                                FishId: VFishId,
+                                ShGhabz: VShGhabz,
+                                ShPardakht: VShPardakht,
+                                Price: VPrice,
+                                Sheba: VSheba,
+                                state: Vstate
+                            },
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            },
+            timeout:1000000
+        });
+    }
+    function PayFishPcPosSaman() {
+        var CboPSP = App.ListPSPModels.queryById('CboPSP');
+        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/AnnouncementComplications_Fish/SamanPcPosPay',
+            params: {
+                PspId: CboPSP.getValue(),
+                FishId: '@ViewBag.FishId',
+                ShGhabz: '@ViewBag.ShGhabz',
+                ShPardakht: '@ViewBag.ShPardakht',
+                Price: '@ViewBag.Price'
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+</script>

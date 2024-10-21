@@ -1,0 +1,215 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(li => li.AfterRender.Handler = "LoadModule_Organ();")
+    .Width(450)
+    .Title("ثبت ماژول_سازمان")
+                        .ID("NewModule_Organ")
+                    .Resizable(false)
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+
+        .DefaultButton("btn")
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+               .Buttons(X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ToolTip("کلید میانبر F8")
+                           .Listeners(l =>
+                           {
+                               l.Click.Handler = "SaveModule_Organ();";
+
+                           })
+                           .ItemID("btnSave")
+                            ,
+                            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                                                    .OnClientClick("App.NewModule_Organ.destroy();"))
+
+
+                .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                    .Defaults(new { Margin = 10 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                     X.TextField()
+                    .ItemID("txtModule")
+                    .FieldLabel(" ماژول(INS)")
+                    .IconCls("Organ")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا ماژول را انتخاب کنید .")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .ReadOnly(true)
+                    .Listeners(l =>
+                    {
+                        l.IconClick.Handler = "SelectModule(45);";
+                        l.SpecialKey.Handler = "SelectModule(e.getKey());";
+                    }
+
+                        )
+                    .AutoFocus(true)
+                    , X.TextField()
+                    .ItemID("txtOrgan")
+                    .AllowBlank(false)
+                    .FieldLabel("سازمان(INS)").IconCls("Organ")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .BlankText("لطفا سازمان را انتخاب کنید .")
+                    .ReadOnly(true)
+                    .Listeners(l =>
+                    {
+                        l.IconClick.Handler = "SelectOrgan(45);";
+                        l.SpecialKey.Handler = "SelectOrgan(e.getKey());";
+                    }
+
+                        )
+                    , X.TextArea()
+                    .ItemID("txtDesc")
+                    .FieldLabel("توضیحات")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(350).ColSpan(3)
+
+                    //, X.Image().ItemID("Image").ImageUrl("~/Content/Blank.jpg").Width(90).Height(110).Border(true)
+        //.Align(System.Web.UI.WebControls.ImageAlign.Middle)
+
+
+                    //, X.Image().ItemID("ImageSign").ImageUrl("~/Content/Blank.jpg").Width(90).Height(110).Border(true)
+        //.Align(System.Web.UI.WebControls.ImageAlign.Middle)
+
+
+                        )
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+)
+        )
+)
+@(Html.X().KeyMap()
+                      .ID("NewModule_OrganMap")
+                             .Target("={App.NewModule_Organ.getTargetEl()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("if(App.BasicInfTab.activeTab.id=='Module_Organ')SaveModule_Organ();")
+                );
+
+            }))
+
+
+
+<script type="text/javascript">
+    var OrganId_M = 0, ModuleId = 0;
+    function LoadModule_Organ() {
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/Comon/Module_Organ/Details',
+                params: {
+                    id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    
+                    var txtModule = App.NewModule_Organ.queryById('txtModule');
+                    txtModule.setValue(data.fldNameModule);
+                    var txtOrgan = App.NewModule_Organ.queryById('txtOrgan');
+                    txtOrgan.setValue(data.fldNameOrgan);
+                    var txtDesc = App.NewModule_Organ.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.NewModule_Organ.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    ModuleId = data.fldModuleId;
+                    OrganId_M = data.fldOrganId;
+                }
+            });
+        }
+    }
+
+    function SelectOrgan(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/comon/SearchOrganization/Index',
+                params: {
+                    State: 2,
+                    FieldName: ""
+                }
+            });
+        }
+    }
+
+    function SelectModule(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/comon/SearchModule/Index',
+                params: {
+                    State: 1,
+                    FieldName: ""
+                }
+            });
+        }
+    }
+
+    function SaveModule_Organ() {
+
+        var txtModule = App.NewModule_Organ.queryById('txtModule');
+        var txtOrgan = App.NewModule_Organ.queryById('txtOrgan');
+        var txtDesc = App.NewModule_Organ.queryById('txtDesc');
+        var fldId = App.NewModule_Organ.queryById('fldId');
+        var er = false;
+
+        if (txtModule.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Module_Organ/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldOrganId: OrganId_M,
+                fldModuleId:ModuleId,
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.Module_Organ.queryById('GridModule_Organ').store.load();
+                if (data.Err == 0)
+                    ClearModule_Organ();
+            }
+
+        });
+    }
+    function ClearModule_Organ() {
+        App.NewModule_Organ.queryById('fldId').setValue(0);
+        App.NewModule_Organ.queryById('txtModule').setValue("");
+        App.NewModule_Organ.queryById('txtOrgan').setValue("");
+        App.NewModule_Organ.queryById('txtDesc').setValue("");
+        OrganId_M = 0;
+        ModuleId = 0;
+    }
+    function EnterNext() {
+        var keyfield = App.NewModule_Organ.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+    }
+</script>

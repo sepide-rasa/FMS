@@ -1,0 +1,118 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_Coding_Details>
+@using Ext.Net.MVC;
+@{
+
+    var X = Html.X();
+}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X().Window().Modal(true).Listeners(l =>
+{
+    l.AfterRender.Handler = "SetTitle()";
+    l.Destroy.Handler = "SetFocustxtCode()";
+})
+            .Width(600).Height(400)
+            .Title("جستجو کدهای سرمایه ای")
+                    .ID("SearchCodingAcc")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Layout(Ext.Net.LayoutType.Fit)
+            .Items(
+                X.Panel().Border(false)
+                .Border(false)
+                .AutoScroll(true)
+                    .Layout(Ext.Net.LayoutType.Fit)
+                .Items(
+
+                        X.GridPanel().AutoScroll(true).Border(false)
+                        .TopBar(
+                            Html.X().Toolbar()
+                            .Items(
+                                    X.Button().Text("انتخاب").Icon(Ext.Net.Icon.ArrowRedo)
+                                                    .Listeners(li => li.Click.Handler = "NextSearchCodingAcc();")
+
+                            )
+                        )
+                                .ItemID("GridSearchCodingAcc")//.Flex(2)
+        //    .BottomBar(X.PagingToolbar())
+                    //.Height(330)
+        //.ColumnWidth(0.6)
+        //.Layout(Ext.Net.LayoutType.Column)
+                    .Store(
+                        X.StoreForModel()
+                        .Proxy(Html.X().AjaxProxy()
+                            .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                         .ExtraParams(x => x.Add(new { FieldName = @ViewBag.FieldName, Year = @ViewBag.Year }))
+                        )
+                        .PageSize(1000)
+                        .RemoteFilter(false)
+                        .RemotePaging(false)
+
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(false))
+                    .ColumnModel(
+                    Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldCode).Text("کد").Flex(1),
+                                    Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان").Flex(4).Wrap(true)
+                    )
+                            .Listeners(a => a.CellDblClick.Handler = "NextSearchCodingAcc();")
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+
+            )
+        )
+)
+
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+    function SetFocustxtCode() {
+        App.ProjeHa.queryById('txtTitleAcc').focus();
+    }
+    function SetTitle() {
+        if ('@ViewBag.FieldName' == "Mali")
+            App.SearchCodingAcc.setTitle("جستجوی کدهای مالی");
+    }
+    function NextSearchCodingAcc() {
+        var SelectedRow = App.SearchCodingAcc.queryById('GridSearchCodingAcc').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+           
+            App.ProjeHa.queryById('txtTitleAcc').setValue(SelectedRow.data.fldTitle);
+            App.ProjeHa.queryById('CodingIdAcc').setValue(SelectedRow.data.fldId);
+            
+            App.SearchCodingAcc.destroy();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+
+</script>

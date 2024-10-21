@@ -1,0 +1,317 @@
+﻿@model IEnumerable<NewFMS.WCF_AnbarAmval.OBJ_AnbarGroup>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using NewFMS.WCF_AnbarAmval
+
+@{ 
+    var X = Html.X();
+    NewFMS.WCF_Common.CommonService servic = new NewFMS.WCF_Common.CommonService();
+    NewFMS.WCF_Common.ClsError Err = new NewFMS.WCF_Common.ClsError();
+}
+
+@(Html.X().Panel()
+    .ID("StorageGroup")
+    .Title("تعریف گروه انبار")
+    .Closable(true)
+    .Listeners(li => { li.AfterRender.Handler = "StorageGroupSetSize();"; li.Render.Fn = "addKeyMapStorageGroup"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .ButtonAlign(Ext.Net.Alignment.Center)            
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l => l.Click.Handler = "SaveStorageGroup();").ItemID("btnSave"),
+                X.Button()
+                    .Text("ویرایش")
+                    .Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => l.Click.Handler = "LoadStorageGroup();"),
+                X.Button()
+                    .Text("حذف")
+                    .Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => l.Click.Handler = "DeleteStorageGroup();"),
+                X.Button()
+                    .Text("تعریف ساختار درختی")
+                    .Icon(Ext.Net.Icon.ApplicationSideTree)
+                    .Hidden(!servic.Permission(861, Convert.ToInt32(Session["OrganId"]), Session["Username"].ToString(), Session["Password"].ToString(), out Err))
+                    .Listeners(l =>l.Click.Handler = "TreeStorageGroup();"),
+                //X.Button()
+                    //.Text("راهنما")
+                    //.Icon(Ext.Net.Icon.Help)
+                    //.Listeners(l => { l.Click.Handler = "HelpStorageGroup();"; }),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.StorageGroup.destroy()")
+                )
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Title("مشخصات گروه")
+                            .Height(50)
+                            .Border(true)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                        .Items(
+                            X.Hidden()
+                                .ItemID("fldId"),
+                            X.Label("عنوان گروه:"),
+                            X.TextField()
+                                .ItemID("txtTitle")
+                                .AllowBlank(false)
+                                .BlankText("لطفا عنوان گروه را وارد کنید.")
+                                .MaxLength(100)
+                                .EnforceMaxLength(true)
+                                .AutoFocus(true),
+                            X.Label("توضیحات:"),
+                            X.TextField()
+                                .ItemID("txtDesc")
+                                .Width(380)
+                        )
+                    )
+        ),
+        X.GridPanel()
+            .ItemID("StorageGroupGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.StorageGroup.queryById('StorageGroupGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+            .Plugins(X.FilterHeader().Remote(true))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان گروه").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10),
+                Html.X().ComponentColumn().Flex(2).ItemID("ButtonsTree_Anbar").Component(Html.X().Button().ItemID("btnTree_Anbar").IconCls("Tree").Text("اختصاص ساختار درختی گروه انبار")
+                    .Listeners(l => l.Click.Handler = "GoToTree_Anbar();")).Filterable(false)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+    )
+)
+<script type="text/javascript">
+    function GoToTree_Anbar() {
+        var SelectedRow = App.StorageGroup.queryById("ButtonsTree_Anbar").activeRecord.record;
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/AnbarAmval/StorageGroup/Anbar_TreeWin',
+            params: {
+                GroupId: SelectedRow.data.fldId,
+                GroupName: SelectedRow.data.fldName
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function StorageGroupSetSize() {
+        App.StorageGroup.setWidth(App.AnbarAmvalWin.getWidth());
+        App.StorageGroup.queryById('StorageGroupGrid').setHeight(App.AnbarAmvalWin.getHeight() - 260);
+    }
+
+    function LoadStorageGroup() {
+        var SelectedRow = App.StorageGroup.queryById('StorageGroupGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/AnbarAmval/StorageGroup/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTitle = App.StorageGroup.queryById('txtTitle');
+                    txtTitle.setValue(data.fldName);
+                    var txtDesc = App.StorageGroup.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.StorageGroup.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveStorageGroup() {
+        var txtTitle = App.StorageGroup.queryById('txtTitle');
+        var txtDesc = App.StorageGroup.queryById('txtDesc');
+        var fldId = App.StorageGroup.queryById('fldId');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/AnbarAmval/StorageGroup/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldName: txtTitle.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                if (data.Er != 1) {
+                    App.StorageGroup.queryById('StorageGroupGrid').store.load();
+                    ClearStorageGroup();
+                }
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function TreeStorageGroup() {
+        var SelectedRow = App.StorageGroup.queryById('StorageGroupGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/AnbarAmval/StorageGroup/TreeStore',
+                params: {
+                    GroupId: SelectedRow.data.fldId,
+                    GroupName: SelectedRow.data.fldName
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DeleteStorageGroup() {
+        var SelectedRow = App.StorageGroup.queryById('StorageGroupGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/AnbarAmval/StorageGroup/Delete',
+                            params: {
+                                Id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.StorageGroup.queryById('StorageGroupGrid').store.load();
+                                ClearStorageGroup();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearStorageGroup() {
+        App.StorageGroup.queryById('fldId').setValue(0);
+        App.StorageGroup.queryById('txtTitle').setValue("");
+        App.StorageGroup.queryById('txtDesc').setValue("");
+    }
+
+    /*function HelpStorageGroup() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/AnbarAmval/StorageGroup/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }*/
+
+    var addKeyMapStorageGroup = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.StorageGroup.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        SaveStorageGroup();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

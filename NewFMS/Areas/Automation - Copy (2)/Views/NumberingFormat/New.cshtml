@@ -1,0 +1,245 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using Ext.Net.Utilities;
+@{
+    var X = Html.X();
+}
+
+
+
+@(Html.X().Window()
+    .Modal(true)
+                .Listeners(li => li.AfterRender.Handler = "LoadNumberingFormat();")
+    .Width(500)//.Height(300)
+        .Title("تعیین فرمت شماره دهی")
+            .ID("NewNumberingFormat")
+    .Resizable(false)
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .ButtonAlign(Alignment.Center)
+    .Layout(LayoutType.Fit)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l =>
+            {
+                l.Click.Handler = "SaveNumbering();";
+            })
+            .ItemID("btnSave"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.BulletCross)
+            .ToolTip("کلید میانبر Esc")
+                                .OnClientClick("App.NewNumberingFormat.destroy();"))
+                      .Items(
+        X.FormPanel()
+            .Border(false)
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            .Items(
+                X.FieldSet()
+                    .Border(false)
+                    .ItemID("test")
+                    .Center()
+
+                    .Items(
+                        X.Hidden()
+                        .ItemID("fldId"),
+                        X.FieldSet()
+                        .Border(true).Title("فرمت شماره دهی")
+                            .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 5 }).Defaults(new { Margin = 2 })
+                        .Items(
+                         X.Label("سال:")
+                            , X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboYear")
+                                .DisplayField("fldYear")
+                                .ValueField("fldYear")
+                                .TypeAhead(true)
+                                .Editable(false)
+                                .AllowBlank(false)
+                                .BlankText("لطفا سال را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                    .Store(X.Store().Listeners(l => l.Load.Handler = "SetDefultYear();")
+                                .Model(X.Model()
+                                .IDProperty("fldYear")
+                                    .Fields(
+                                        new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" }
+                                    )
+                                )
+                                    .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetSal"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                            )
+                                )
+                                  , X.Label("الگو: ")
+                                , X.ComboBox()
+                                    .ItemID("CboOlgu")
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .BlankText("لطفا الگو را انتخاب نمایید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .AllowBlank(false)
+                                    .Items(
+                                        new ListItem("شمارنده", "shomarande"),
+                                        new ListItem("شماره ثبت", "shomaresabt"),
+                                        new ListItem("سال دو رقمی", "sal2"),
+                                        new ListItem("سال چهار رقمی", "sal4"),
+                                            new ListItem("شماره حکم", "shomarehokm")
+                                        )
+                                        .SelectedItems(new { Value = "shomarande" })
+                                //.Listeners(l => l.Select.Handler = "ChangeOlgu()")
+                                , X.Button()
+                                    .Icon(Ext.Net.Icon.Add)//.MarginSpec("0px 226px 0px 0px")
+                                    .ItemID("btnAddOlgu")
+                                    .Listeners(l => l.Click.Handler = "AddOlgu()")
+                                , X.Label("شماره شروع:")
+                                , X.NumberField()
+                                    .ItemID("txtShomareShoro")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا شماره شروع را وارد کنید.")
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .MaxLength(9)
+                                    .Text("0")
+                                    .EnforceMaxLength(true)
+                                    .MaskRe("[0-9]")
+                                , X.Label("کاراکتر:")
+                                , X.TextField()
+                                    .ItemID("txtMatnAzad")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا کاراکتر را وارد کنید.")
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                , X.Button()//.MarginSpec("0px 226px 0px 0px")
+                                    .Icon(Ext.Net.Icon.Add)
+                                    .ItemID("btnMatnAzad")
+                                    .Listeners(l => l.Click.Handler = "AddMatnAzad()")
+                                , X.Label("متن الگو:")
+                                    , X.TextField().ColSpan(4)
+                                    .ItemID("txtMatnOlgu")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا متن الگو را وارد کنید.")
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .Width(335)
+                                        .IconCls("DelIco")
+                                    .Listeners(l => l.IconClick.Handler = "ClearText()")
+                                        , X.Label("توضیحات:")
+                                        , X.TextArea().ColSpan(4)
+                                        .ItemID("txtDesc")
+                                        .Width(335)
+                                    
+                  )
+                )
+
+            )
+        )
+)
+<script type="text/javascript">
+    function LoadNumberingFormat() {
+        if ('@ViewBag.id' != 0) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/NumberingFormat/Details',
+                params: {
+                    Id: '@ViewBag.id'
+                },
+                success: function (data) {
+                    var txtShomareShoro = App.NewNumberingFormat.queryById('txtShomareShoro');
+                    txtShomareShoro.setValue(data.fldStartNumber);
+                    var CboYear = App.NewNumberingFormat.queryById('CboYear');
+                    CboYear.setValue(data.fldYear);
+                    var txtMatnOlgu = App.NewNumberingFormat.queryById('txtMatnOlgu');
+                    txtMatnOlgu.setValue(data.fldNumberFormat);
+                    var txtDesc = App.NewNumberingFormat.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.NewNumberingFormat.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+
+    }
+    function SetDefultYear() {
+        var CboYear = App.NewNumberingFormat.queryById('CboYear');
+        CboYear.setValue('@ViewBag.Year');
+    }
+    function AddOlgu() {
+        var CboOlgu = App.NewNumberingFormat.queryById('CboOlgu');
+        var txtMatnOlgu = App.NewNumberingFormat.queryById('txtMatnOlgu');
+
+        txtMatnOlgu.setValue(txtMatnOlgu.getValue() + CboOlgu.getValue() + "*");
+    }
+    function AddMatnAzad() {
+        var txtMatnOlgu = App.NewNumberingFormat.queryById('txtMatnOlgu');
+        var txtMatnAzad = App.NewNumberingFormat.queryById('txtMatnAzad');
+        txtMatnOlgu.setValue(txtMatnOlgu.getValue() + txtMatnAzad.getValue() + "*");
+    }
+    function ClearText() {
+        App.NewNumberingFormat.queryById('txtMatnOlgu').setValue('');
+    }
+    function SaveNumbering() {
+        var txtShomareShoro = App.NewNumberingFormat.queryById('txtShomareShoro');
+        var CboYear = App.NewNumberingFormat.queryById('CboYear');
+        var txtMatnOlgu = App.NewNumberingFormat.queryById('txtMatnOlgu');
+        var CboType = App.NewNumberingFormat.queryById('CboType');
+        var txtDesc = App.NewNumberingFormat.queryById('txtDesc');
+        var fldId = App.NewNumberingFormat.queryById('fldId');
+        var er = false;
+
+        if (txtShomareShoro.validate() == false) {
+            er = true;
+        }
+        if (CboYear.validate() == false) {
+            er = true;
+        }
+        if (txtMatnOlgu.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/NumberingFormat/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldSecretariatID: '@ViewBag.SecretariatID',
+                fldStartNumber: txtShomareShoro.getValue(),
+                fldYear: CboYear.getValue(),
+                fldNumberFormat: txtMatnOlgu.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.FormatNumbering.queryById('GridHeader').store.load();
+                App.FormatNumbering.queryById('GridDetail').store.load();
+                if (data.Er != 1)
+                    ClearNumbering();
+            }
+
+        });
+    }
+    function ClearNumbering() {
+        App.NewNumberingFormat.queryById('fldId').setValue(0);
+        App.NewNumberingFormat.queryById('txtShomareShoro').setValue(0);
+        App.NewNumberingFormat.queryById('CboYear').setValue('@ViewBag.Year');
+        App.NewNumberingFormat.queryById('txtMatnOlgu').setValue("");
+        App.NewNumberingFormat.queryById('txtMatnAzad').setValue("");
+        App.FormatShomareName.queryById('CboOlgu').setValue("shomarande");
+        App.NewNumberingFormat.queryById('txtDesc').setValue("");
+    }
+</script>

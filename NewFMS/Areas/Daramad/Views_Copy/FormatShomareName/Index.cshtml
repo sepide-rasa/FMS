@@ -1,0 +1,397 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_FormatShomareName>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("FormatShomareName")
+            .Title("ثبت فرمت شماره نامه")
+            .Listeners(li => { li.AfterRender.Handler = "FormatShomareNameSetSize();"; li.Render.Fn = "addKeyMapFormatShomareName"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                .Listeners(l => { l.Click.Handler = "SaveFormatShomareName();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadFormatShomareName();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteFormatShomareName();"; })
+           , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                    .Listeners(l => { l.Click.Handler = "HelpFormatShomareName();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.FormatShomareName.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("فرمت شماره نامه")//.Height(100)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                             X.Label("نوع فرم: ")
+                            , X.ComboBox()
+                                .ItemID("CboType")
+                                .AutoFocus(true)
+                             //   .Width(100)
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا نوع فرم را انتخاب نمایید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .AllowBlank(false)
+                                .Items(
+                                    new ListItem("مکاتبات", "0"),
+                                        new ListItem("رسید به مؤدی", "1")
+                                    )
+                                .SelectedItems(new { Value = "0" }).ColSpan(2)
+                            ,X.Label("سال:")
+                            , X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboYear")
+                                .DisplayField("fldYear")
+                                .ValueField("fldYear")
+                                .TypeAhead(true)
+                                .Editable(false)
+                                .AllowBlank(false)
+                                .BlankText("لطفا سال را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                    .Store(X.Store().Listeners(l => l.Load.Handler = "SetDefultYear();")
+                                .Model(X.Model()
+                                .IDProperty("fldYear")
+                                    .Fields(
+                                        new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" }
+                                    )
+                                )
+                                    .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetSal"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                            )
+                                ).ColSpan(2)
+                            , X.Label("الگو: ")
+                            , X.ComboBox()
+                                .ItemID("CboOlgu")
+                               // .Width(100)
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا الگو را انتخاب نمایید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .AllowBlank(false)
+                                .Items(
+                                    new ListItem("شمارنده", "shomarande"),
+                                    new ListItem("سال دو رقمی", "sal2"),
+                                    new ListItem("سال چهار رقمی", "sal4")
+                                    )
+                                    .SelectedItems(new { Value = "shomarande" })
+                            .Listeners(l=>l.Select.Handler="ChangeOlgu()")
+                            ,X.Button()
+                            .Icon(Ext.Net.Icon.Add)
+                                .ItemID("btnAddOlgu")
+                                .Listeners(l => l.Click.Handler = "AddOlgu()")
+                            ,X.Label("شماره شروع:")
+                            ,X.NumberField()
+                                .ItemID("txtShomareShoro")
+                                .AllowBlank(false)
+                                .BlankText("لطفا شماره شروع را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .MaxLength(9)
+                                .Text("0")
+                                .EnforceMaxLength(true)
+                                .MaskRe("[0-9]")
+                                .ColSpan(2)
+                            , X.Label("متن آزاد:")
+                            , X.TextField()
+                                .ItemID("txtMatnAzad")
+                                .AllowBlank(false)
+                                .BlankText("لطفا متن آزاد را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                            , X.Button().MarginSpec("0px 226px 0px 0px")
+                                .Icon(Ext.Net.Icon.Add)
+                                .ItemID("btnMatnAzad")
+                                .Listeners(l => l.Click.Handler = "AddMatnAzad()")
+                                .ColSpan(4)
+                            , X.Label("متن الگو:")
+                                , X.TextField()
+                                .ItemID("txtMatnOlgu")
+                                .AllowBlank(false)
+                                .BlankText("لطفا متن الگو را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Width(395)
+                                .ColSpan(6)
+                              //  .Icon(Icon.Erase)
+                                    .IconCls("DelIco")
+                                .Listeners(l => l.IconClick.Handler = "ClearText()")
+                    , X.Label("توضیحات:"),
+                        X.TextField()
+                    .ItemID("txtDesc")
+                    .ColSpan(6)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(395)
+                )
+            )
+        )
+        ,
+        X.GridPanel()
+        .ItemID("FormatShomareNameGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.FormatShomareName.queryById('FormatShomareNameGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.FormatShomareName.queryById('FormatShomareNameGrid');grid.setHeight(App.DaramadWin.getHeight() - 360); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldYear).Text("سال").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.typeName).Text("نوع فرم").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.fldFormatShomareName).Text("فرمت").Flex(8)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    var HaveShomare = 0;
+    function SetDefultYear() {
+        var CboYear = App.FormatShomareName.queryById('CboYear');
+        CboYear.setValue('@ViewBag.Year');
+    }
+    function FormatShomareNameSetSize() {
+        App.FormatShomareName.setWidth(App.DaramadWin.getWidth());
+        var grid = App.FormatShomareName.queryById('FormatShomareNameGrid');
+        grid.setHeight(App.DaramadWin.getHeight() - 360);
+    }
+    function ChangeOlgu() {
+        var txtShomareShoro = App.FormatShomareName.queryById('txtShomareShoro');
+        var CboOlgu = App.FormatShomareName.queryById('CboOlgu');
+        if (CboOlgu.getValue() == "shomarande" || HaveShomare == 1)
+            txtShomareShoro.setDisabled(false);
+        else {
+            txtShomareShoro.setDisabled(true);
+            txtShomareShoro.setValue(0);
+        }
+    }
+    function AddOlgu() {
+        var CboOlgu = App.FormatShomareName.queryById('CboOlgu');
+        var txtMatnOlgu = App.FormatShomareName.queryById('txtMatnOlgu');
+        var txtShomareShoro = App.FormatShomareName.queryById('txtShomareShoro');
+        if (CboOlgu.getValue() == "shomarande")
+            HaveShomare=1;
+        txtMatnOlgu.setValue(txtMatnOlgu.getValue() + CboOlgu.getValue() + "*");
+    }
+    function AddMatnAzad() {
+        var txtMatnOlgu = App.FormatShomareName.queryById('txtMatnOlgu');
+        var txtMatnAzad = App.FormatShomareName.queryById('txtMatnAzad');
+        txtMatnOlgu.setValue(txtMatnOlgu.getValue() + txtMatnAzad.getValue() + "*");
+    }
+    function ClearText() {
+        HaveShomare = 0;
+        App.FormatShomareName.queryById('txtMatnOlgu').setValue('');
+    }
+    function LoadFormatShomareName() {
+        var SelectedRow = App.FormatShomareName.queryById('FormatShomareNameGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/FormatShomareName/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtShomareShoro = App.FormatShomareName.queryById('txtShomareShoro');
+                    txtShomareShoro.setValue(data.fldShomareShoro);
+                    var CboYear = App.FormatShomareName.queryById('CboYear');
+                    CboYear.setValue(data.fldYear);
+                    var txtMatnOlgu = App.FormatShomareName.queryById('txtMatnOlgu');
+                    txtMatnOlgu.setValue(data.fldFormatShomareName);
+                    var CboType = App.FormatShomareName.queryById('CboType');
+                    CboType.setValue(data.fldType);
+                    var txtDesc = App.FormatShomareName.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.FormatShomareName.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveFormatShomareName() {
+        var txtShomareShoro = App.FormatShomareName.queryById('txtShomareShoro');
+        var CboYear = App.FormatShomareName.queryById('CboYear');
+        var txtMatnOlgu = App.FormatShomareName.queryById('txtMatnOlgu');
+        var CboType = App.FormatShomareName.queryById('CboType');
+        var txtDesc = App.FormatShomareName.queryById('txtDesc');
+        var fldId = App.FormatShomareName.queryById('fldId');
+        var er = false;
+
+        if (txtShomareShoro.validate() == false) {
+            er = true;
+        }
+        if (CboYear.validate() == false) {
+            er = true;
+        }
+        if (txtMatnOlgu.validate() == false) {
+            er = true;
+        }
+        if (CboType.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        var t = true;
+        if (CboType.getValue() == "0")
+            t = false;
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/FormatShomareName/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldShomareShoro: txtShomareShoro.getValue(),
+                fldYear: CboYear.getValue(),
+                fldFormatShomareName: txtMatnOlgu.getValue(),
+                fldType: t,
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.FormatShomareName.queryById('FormatShomareNameGrid').store.load();
+                if (data.Er != 1)
+                    ClearFormatShomareName();
+            }
+
+        });
+    }
+    function HelpFormatShomareName() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/FormatShomareName/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function DeleteFormatShomareName() {
+        var SelectedRow = App.FormatShomareName.queryById('FormatShomareNameGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/FormatShomareName/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.FormatShomareName.queryById('FormatShomareNameGrid').store.load();
+                                ClearFormatShomareName();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearFormatShomareName() {
+        HaveShomare = 0;
+        App.FormatShomareName.queryById('fldId').setValue(0);
+        App.FormatShomareName.queryById('txtShomareShoro').setValue(0);
+        App.FormatShomareName.queryById('CboYear').setValue('@ViewBag.Year');
+        App.FormatShomareName.queryById('txtMatnOlgu').setValue("");
+        App.FormatShomareName.queryById('txtMatnAzad').setValue("");
+        App.FormatShomareName.queryById('CboOlgu').setValue("shomarande");
+        App.FormatShomareName.queryById('CboType').setValue("0");
+        App.FormatShomareName.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapFormatShomareName = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.FormatShomareName.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.FormatShomareName.queryById('btnSave');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

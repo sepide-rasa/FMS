@@ -1,0 +1,363 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_DocumentDesc>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .color{
+        color:red;
+    }
+</style>
+<br />
+@(Html.X().Panel()
+        .ID("SabtDescription")
+        .Title("تعریف شرح سند")
+            .Listeners(li => { li.AfterRender.Handler = "CenterCostSetSize();"; li.Render.Fn = "addKeyMapDescription"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+               X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveDescription")
+                .Listeners(l => { l.Click.Handler = "SaveDescription();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadDescription();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteDescription();"; })
+                , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpDescription();"; }),
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.SabtDescription.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.Label("نکته: فرمت پارامترها باید به صورت نمونه باشد [avarez]").Cls("color"),
+                 X.FieldSet().Border(false).Items(
+                    X.FieldSet().Border(true).Title("اطلاعات شرح سند")//.Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                        
+                    
+                    X.Label("عنوان:"),
+                    X.TextField()
+                    .ItemID("txtName")
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان را وارد کنید.")
+                    .AutoFocus(true)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .MaxLength(150)
+                    .EnforceMaxLength(true)
+                    .MaskRe("[a-z,A-Z,آ-ی, ,_,-]"),
+                        X.Label("دسته:"),
+                        X.ComboBox()
+                            .ItemID("CboType")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا دسته را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .SelectedItems(new { value = "1" })
+                            .Items(
+                                new ListItem("شرح کلی", "1"),
+                                new ListItem("شرح آرتیکل", "0")
+                            ),
+                     X.Label("شرح سند:"),
+                        X.TextArea()
+                        .AllowBlank(false)
+                        .BlankText("لطفا شرح سند را وارد کنید.")
+                    //.Listeners(l=>l.Blur.Handler="checkDesc()")
+                    .ItemID("txtDocDesc")
+                    .Width(345)//.ColSpan(3)
+                    
+                )
+             )
+            )
+        ),
+        X.GridPanel()
+            .ItemID("DescriptionGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                        X.StoreForModel()
+                                .Listeners(l => l.DataChanged.Handler = "App.SabtDescription.queryById('DescriptionGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtDescription.queryById('DescriptionGrid');grid.setHeight(App.AccountingWin.getHeight() - 325); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان").Flex(2).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldFlagName).Text("دسته").Flex(2).Wrap(true) ,                      
+                        
+                        Html.X().Column().DataIndex(Model, m => m.fldDocDesc).Text("شرح سند").Flex(10).Wrap(true)
+               )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+          )
+    )
+)
+<script type="text/javascript">
+    var AllowSave = false;
+    function checkDesc() {
+        var txtDocDesc = App.SabtDescription.queryById('txtDocDesc');
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DescriptionDocument/Check',
+            params: {
+                Value: txtDocDesc.getValue()
+            },
+            success: function (data) {
+                if (data.Msg != "") {
+
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "فرمت پارامتر وارد شده نادرست است",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    AllowSave = true;
+
+                    return
+                }
+                else
+                    AllowSave = false;
+               /* else if (data.q == false) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "فرمت پارامتر وارد شده نادرست است",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    AllowSave = true;
+
+                    return
+                }*/
+                
+            }
+        });
+    }
+    function HelpDescription() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DescriptionDocument/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function CenterCostSetSize() {
+        App.SabtDescription.setWidth(App.AccountingWin.getWidth());
+        var grid = App.SabtDescription.queryById('DescriptionGrid');
+        grid.setHeight(App.AccountingWin.getHeight() - 325);
+    }
+
+    function LoadDescription() {
+        var SelectedRow = App.SabtDescription.queryById('DescriptionGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/DescriptionDocument/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtName = App.SabtDescription.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var txtDocDesc = App.SabtDescription.queryById('txtDocDesc');
+                    txtDocDesc.setValue(data.fldDocDesc);
+                    var fldId = App.SabtDescription.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    var CboType = App.SabtDescription.queryById('CboType');
+                    CboType.setValue(data.fldFlag);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveDescription() {
+        var txtName = App.SabtDescription.queryById('txtName');
+        var txtDocDesc = App.SabtDescription.queryById('txtDocDesc');
+        var fldId = App.SabtDescription.queryById('fldId');
+        var CboType = App.SabtDescription.queryById('CboType');
+
+        var er = false;
+        /*checkDesc();
+            if (AllowSave == true) {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "فرمت پارامتر وارد شده نادرست است",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                return;
+            }*/
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (txtDocDesc.validate() == false) {
+            er = true;
+        }
+        if (CboType.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        var Flag = false;
+        if (CboType.getValue() == 1) {
+            Flag = true;
+        }
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DescriptionDocument/Check',
+            params: {
+                Value: txtDocDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                if (data.Msg != "")
+                {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "فرمت پارامتر وارد شده نادرست است",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+
+                    return
+                }
+                else {
+                    Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Accounting/DescriptionDocument/Save',
+                        params: {
+                            fldId: fldId.getValue(),
+                            fldName: txtName.getValue(),
+                            fldDocDesc: txtDocDesc.getValue(),
+                            fldFlag: Flag
+                        },
+                        success: function (data) {
+                            Ext.net.Mask.hide();
+                            var ic = Ext.MessageBox.INFO;
+                            if (data.Err == 1)
+                                ic = Ext.MessageBox.ERROR;
+                            Ext.MessageBox.show({
+                                Name: data.MsgName,
+                                msg: data.Msg,
+                                icon: ic,
+                                buttons: Ext.MessageBox.OK
+                            });
+                            App.SabtDescription.queryById('DescriptionGrid').store.load();
+                            if (data.Err != 1)
+                                ClearCenterCost();
+                        }
+
+                    });
+                }
+            }
+        });  
+    }
+
+    function DeleteDescription() {
+        var SelectedRow = App.SabtDescription.queryById('DescriptionGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Accounting/DescriptionDocument/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtDescription.queryById('DescriptionGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearCenterCost() {
+        App.SabtDescription.queryById('fldId').setValue(0);
+        App.SabtDescription.queryById('txtName').setValue("");
+        App.SabtDescription.queryById('txtDocDesc').setValue("");
+    }
+    var addKeyMapDescription = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtDescription.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDocDesc") {
+                        nextfld = App.SabtDescription.queryById('btnSaveDescription');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

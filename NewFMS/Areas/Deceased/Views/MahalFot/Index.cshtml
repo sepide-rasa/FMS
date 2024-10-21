@@ -1,0 +1,267 @@
+﻿@model IEnumerable<NewFMS.WCF_Deceased.OBJ_MahalFot>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+    .ID("SabtMahalFot")
+    .Title("ثبت محل فوت")
+        .Closable(true)
+        .Listeners(li => { li.AfterRender.Handler = "MahalFotSetSize();"; li.Render.Fn = "addKeyMapSabtMahalFot"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => { l.Click.Handler = "SaveMahalFot();"; }).ItemID("btnSave"),
+                X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "LoadMahalFot();"; }),
+                X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteMahalFot();"; }),
+                X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpMahalFot();"; }),
+                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.SabtMahalFot.destroy()")
+                )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                          .Layout(LayoutType.VBox)
+                             .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+
+                    .Items(
+                        X.FieldSet().Title("محل فوت")
+                            .Height(50)
+                            .Border(true)
+        //.Width(920)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                        .Items(
+                            X.Hidden()
+                                .ItemID("fldId"),
+                            X.Label("محل فوت:"),
+                            X.TextField()
+                                .ItemID("txtTitle")
+        //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(false)
+                                     .MaxLength(50)
+                                    .EnforceMaxLength(true)
+                                .BlankText("لطفا محل فوت را وارد کنید.")
+                                .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                                .AutoFocus(true),
+                            X.Label("توضیحات:"),
+                            X.TextField()
+                                .ItemID("txtDesc")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Width(380)
+                                .ColSpan(3)
+                        )
+                    )
+        ),
+        X.GridPanel()
+            .ItemID("MahalFotGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                        .Listeners(l => l.DataChanged.Handler = "App.SabtMahalFot.queryById('MahalFotGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                .Plugins(X.FilterHeader().Remote(true))
+            .Listeners(l =>
+            {
+                l.AfterRender.Handler = "var grid = App.SabtMahalFot.queryById('MahalFotGrid');grid.setHeight(App.MotevafiatWin.getHeight() - 260); ";
+            })
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                            Html.X().Column().DataIndex(Model, m => m.fldNameMahal).Text("محل فوت").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    
+    /*  App.Win.addListener('resize', function () {
+        App.MahalFot.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.MahalFot.queryById('MahalFotGrid');
+        grid.setHeight(App.Win.getHeight() - 240);
+    });*/
+
+    function MahalFotSetSize() {
+        App.SabtMahalFot.setWidth(App.MotevafiatWin.getWidth());
+        var grid = App.SabtMahalFot.queryById('MahalFotGrid');
+        grid.setHeight(App.MotevafiatWin.getHeight() - 260);
+    }
+
+    function LoadMahalFot() {
+        var SelectedRow = App.SabtMahalFot.queryById('MahalFotGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/MahalFot/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTitle = App.SabtMahalFot.queryById('txtTitle');
+                    txtTitle.setValue(data.fldNameMahal);
+                    var txtDesc = App.SabtMahalFot.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtMahalFot.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveMahalFot() {
+        var txtTitle = App.SabtMahalFot.queryById('txtTitle');
+        var txtDesc = App.SabtMahalFot.queryById('txtDesc');
+        var fldId = App.SabtMahalFot.queryById('fldId');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/MahalFot/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldNameMahal: txtTitle.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.SabtMahalFot.queryById('MahalFotGrid').store.load();
+                if (data.Err != 1)
+                    ClearMahalFot();
+            }
+
+        });
+    }
+    function DeleteMahalFot() {
+        var SelectedRow = App.SabtMahalFot.queryById('MahalFotGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Deceased/MahalFot/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtMahalFot.queryById('MahalFotGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                        ClearMahalFot();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearMahalFot() {
+        App.SabtMahalFot.queryById('fldId').setValue(0);
+        App.SabtMahalFot.queryById('txtTitle').setValue("");
+        App.SabtMahalFot.queryById('txtDesc').setValue("");
+    }
+    function HelpMahalFot() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/MahalFot/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var addKeyMapSabtMahalFot = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtMahalFot.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtMahalFot.queryById('btnSave');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

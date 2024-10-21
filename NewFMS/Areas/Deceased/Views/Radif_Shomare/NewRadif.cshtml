@@ -1,0 +1,135 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net.Utilities
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+
+
+
+@(X.Window().Title("ثبت ردیف جدید").Modal(true).Border(false)
+    .Listeners(l => l.AfterRender.Handler = "LoadRadif()")
+        .ID("NewRadif")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+          .Width(300)
+          .Layout(LayoutType.VBox)
+              .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.Height(130)
+             .ButtonAlign(Alignment.Center)
+
+        .DefaultButton("btn")
+
+             .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                .Listeners(l =>
+                {
+                    l.Click.Handler = "SaveNewRadif();";
+
+                })
+                    , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                            .OnClientClick("App.NewRadif.destroy()")
+                )
+    .Items(
+                X.Panel().ItemID("Panel")
+            .Border(false)
+                .Layout(LayoutType.Table)
+                .Padding(10)
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                .Defaults(new { Margin = 2 })
+                .Items(
+                                X.Hidden()
+                                    .ItemID("fldId"),
+                           X.Label("قطعه:"),
+                            X.TextField()
+                                .ItemID("txtGhete")
+        //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(false)
+                                     .MaxLength(50)
+                                    .EnforceMaxLength(true),
+                                   X.Label("ردیف:"),
+                            X.TextField()
+                                .ItemID("txtRadif")
+        //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(false)
+                                     .MaxLength(50)
+                                    .EnforceMaxLength(true)
+                                .BlankText("لطفا ردیف را وارد کنید.")
+                            //    .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                                .AutoFocus(true)
+
+        )
+    )
+)
+<script type="text/javascript">
+    function LoadRadif() {
+        if ('@ViewBag.Id'!=0) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/Radif_Shomare/DetailsRadif',
+                params: {
+                    Id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    var txtGhete = App.NewRadif.queryById('txtGhete');
+                    txtGhete.setValue(data.fldNameGhete);
+                    var txtRadif = App.NewRadif.queryById('txtRadif');
+                    txtRadif.setValue(data.fldNameRadif);
+                    var fldId = App.NewRadif.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            var txtGhete = App.NewRadif.queryById('txtGhete');
+            txtGhete.setValue('@ViewBag.GheteTitle');
+        }
+    }
+    function SaveNewRadif() {
+        var txtGhete = App.NewRadif.queryById('txtGhete');
+        var txtRadif = App.NewRadif.queryById('txtRadif');
+        var fldId = App.NewRadif.queryById('fldId');
+        var er = false;
+
+        if (txtRadif.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/Radif_Shomare/SaveRadif',
+            params: {
+                fldNameRadif: txtRadif.getValue(),
+                fldId: fldId.getValue(),
+                fldGheteId: '@ViewBag.GheteId'
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.Radif_Shomare.queryById('RadifGrid').store.load();
+            }
+
+        });
+        Ext.net.Mask.hide();
+
+    }
+</script>

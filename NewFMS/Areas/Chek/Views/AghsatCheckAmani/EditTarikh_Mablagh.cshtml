@@ -1,0 +1,122 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(li => li.AfterRender.Handler = "LoadEditTarikh_Mablagh()")
+    .Width(460)
+    .Title("ویرایش مبلغ و تاریخ اقساط")
+        .ID("EditTarikh_Mablagh")
+    .Resizable(false)
+    .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .ButtonAlign(Ext.Net.Alignment.Center)
+        .Buttons(X.Button().Text("تائید").Icon(Ext.Net.Icon.Accept)
+                .Listeners(l =>
+                {
+                    l.Click.Handler = "AcceptEditTarikh_Mablagh();";
+
+                })
+                .ItemID("btnSave")
+                ,
+                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                        .OnClientClick("App.EditTarikh_Mablagh.destroy();"))
+    .Items(
+        X.FormPanel().Border(false)
+        .Border(false)
+            .TitleAlign(Ext.Net.TitleAlign.Center)
+                .Items(
+                X.Panel().Border(false)
+            .Items(
+                X.FieldSet().Border(false).MarginSpec("5px 0 0 0")  
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                    .Defaults(new { Margin = 2 })
+                .Items(
+                X.Label().Text("مبلغ:"),
+                    X.TextField().Width(110).Listeners(l => { l.Change.Handler = "App.EditTarikh_Mablagh.queryById('txtMablagh').setValue(accounting.formatNumber(App.EditTarikh_Mablagh.queryById('txtMablagh').getValue()));"; l.Blur.Handler = "SetHorofMablagh()"; })
+                    .ItemID("txtMablagh")//.Listeners(l=>l.Blur.Handler="SetHorofMablagh()")
+                    .MaskRe("[0-9]")
+                     ,X.TextField().Width(250)
+                    .ItemID("txtMablagh_H"),
+                    X.Label().Text("تاریخ:")
+                    , X.PDateField().Width(110)
+                    .ItemID("txtTarikh")
+
+                        )
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+)
+        )
+)
+<script type="text/javascript">
+
+    function LoadEditTarikh_Mablagh() {
+        var txtMablagh = App.EditTarikh_Mablagh.queryById('txtMablagh');
+        txtMablagh.setValue('@ViewBag.Mablagh');
+        var txtMablagh_H = App.EditTarikh_Mablagh.queryById('txtMablagh_H');
+        txtMablagh_H.setValue('@ViewBag.Mablagh_H');
+        var txtTarikh = App.EditTarikh_Mablagh.queryById('txtTarikh');
+        txtTarikh.setValue('@ViewBag.Tarikh');
+    }
+    function SetHorofMablagh() {
+        var txtMablagh = App.EditTarikh_Mablagh.queryById('txtMablagh');
+        Ext.net.DirectMethod.request({
+            url: '/Chek/CheckHayeVarede/Mablagh_Horof',
+            params: {
+                Mablagh: parseInt(txtMablagh.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', '')),
+            },
+            success: function (data) {
+                var txtMablagh_H = App.EditTarikh_Mablagh.queryById('txtMablagh_H');
+                txtMablagh_H.setValue(data.Mablagh_H);
+            }
+        });
+    }
+    function AcceptEditTarikh_Mablagh() {
+        var txtMablaghEdit = App.EditTarikh_Mablagh.queryById('txtMablagh');
+        var txtTarikhEdit = App.EditTarikh_Mablagh.queryById('txtTarikh');
+        var MablaghEdit = parseInt(txtMablaghEdit.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''));
+
+        var Mablaghkol = App.DetailAghsat.queryById('txtMablagh');
+        var tedadkol = App.DetailAghsat.queryById('txtTedad');
+        var MablaghK = parseInt(Mablaghkol.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''));
+        var g = Ext.getCmp('DetailAghsatGrid');
+        var sm = g.getSelectionModel();
+        sm.getSelection()[0].set('fldMablagh', MablaghEdit);
+        sm.getSelection()[0].set('fldTarikh', txtTarikhEdit.rawValue);
+
+        /*if (grid.store.count() != 0) {
+            grid.store.removeAll();
+        }*/
+        App.EditTarikh_Mablagh.destroy();
+        var Ma = MablaghK - MablaghEdit; var MablaghNahaeii1; var jam1; var j = 1;
+        var grid = App.DetailAghsat.queryById('DetailAghsatGrid');
+       for (var i = 0; i < parseInt(tedadkol.getValue())-1 ; i++) {
+           if (Ma % parseInt(tedadkol.getValue()) - 1 != 0) {
+              var Mablagh_r = Ma / parseInt(tedadkol.getValue() - 1);
+               var q1 = parseInt(Mablagh_r);
+
+               if (i < tedadkol.getValue() - 1) {
+                   MablaghNahaeii1 = q1;
+                   jam1 = jam1 + q1;
+               }
+               else {
+                   MablaghNahaeii1 = (Mablagh_r - jam1);
+               }
+
+           }
+           else {
+               MablaghNahaeii1 = Mablagh_r / parseInt(tedadkol.getValue() - 1);
+           }
+
+           grid.store.update(j, {
+               fldMablagh: MablaghNahaeii1
+           });
+           j++;
+       }
+    }
+</script>

@@ -1,0 +1,506 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_DataForElamAvarez>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();
+   NewFMS.WCF_Common.CommonService servic = new NewFMS.WCF_Common.CommonService();
+   string IP = System.Web.HttpContext.Current.Request.ServerVariables["REMOTE_HOST"];
+   NewFMS.WCF_Common.ClsError Err = new NewFMS.WCF_Common.ClsError();
+   }
+<br />
+@*<style>
+        .x-rtl .x-textfield-icon {
+            margin-right: 120px;
+        }
+
+        .x-rtl .x-textfield-icon-input {
+            padding-right: 5px;
+        }
+
+        .rowheight {
+            height: 40px;
+        }
+    </style>*@
+<style>
+    .margincommandEjra {
+        margin: 0 0 0 12px !important;
+    }
+</style>
+
+@(Html.X().Panel()
+    .ID("AnnouncementComplication_Ejraiyat")
+    .Title("اجرائیات")
+        .Listeners(li => { li.AfterRender.Handler = "MainAnnouncementComplication_EjraiyatSetSize();";  })
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.VBox)
+    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        .Border(false)
+        // .Defaults(new { Margin = 20 })
+    .Items(
+
+         X.Panel()//.Title("فیش هاfdg")
+             .Border(false)
+                .Layout(LayoutType.VBox)
+                .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .ItemID("PnlEjraiyat")
+                .Items(
+                       X.FieldSet()
+        //.Width(600)
+                             .Border(false)
+                                     .Layout(LayoutType.HBox)
+        //.LayoutConfig(new TableLayoutConfig { Columns = 2 })
+        // .Defaults(new { Margin = 5 })
+                         .Items(
+
+                                X.FieldSet().Title("فیلترها")//.Height(50)
+                                    .Layout(LayoutType.Table)
+                                    .LayoutConfig(new TableLayoutConfig { Columns = 9 })
+        // .Defaults(new { Margin = 5 })
+                                            .Items(
+                                     X.Label("از تاریخ: "),
+                                     X.PDateField().MarginSpec("5px 5px 5px 0")
+                                         .ItemID("txtAzTarikhEjraiyat")
+                                         .Width(100)
+                                    .Listeners(l =>
+                                    {
+                                        l.Change.Handler = "setDateAzEjraiyat();";
+                                    })
+                                    , X.Label("تا تاریخ: "),
+                                            X.PDateField().Width(100).MarginSpec("5px 5px 5px 0")
+                                        .ItemID("txtTaTarikhEjraiyat")
+                                    .Listeners(l =>
+                                    {
+                                        l.Change.Handler = "setDateTaEjraiyat();";
+                                        l.AfterRender.Handler = "LoadEjraiyatGrid();";
+                                    })
+
+                                   ,
+                                   X.Label("نوع سند:"),
+                           // .PaddingSpec("0 3px 0 0"),
+                        X.ComboBox().Width(100)
+                            .ItemID("CboTypeSanad")
+                                .MarginSpec("5px 5px 5px 0")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                            .ForceSelection(true)
+                            .BlankText("لطفا نوع سند را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .EmptyText("نوع سند...")
+                                .SelectedItems(new { Value = "2" })
+                                .Listeners(l =>
+                                {
+                                    l.Select.Handler = "LoadEjraiyatGrid();";
+                                    //l.AfterRender.Handler = "App.AnnouncementComplication_Ejraiyat.queryById('CboTypeSanad').setValue('2');";
+                                    
+                                })
+                            .Items(
+                                new ListItem("همه موارد", "1"),
+                                new ListItem("چک", "2"),
+                                new ListItem("سفته", "3"),
+                                new ListItem("برات", "4")
+                                ),
+        /*X.Label("فیلتر براساس: "), X.ComboBox().MarginSpec("5px 5px 5px 0")
+     .ItemID("CboStatus")
+     .Editable(false)
+     .TypeAhead(true)
+     .BlankText("لطفا نوع فیلتر را انتخاب نمایید.")
+     .QueryMode(DataLoadMode.Local)
+     .TriggerAction(TriggerAction.All)
+     .AllowBlank(false)
+     .Items(
+         new ListItem("تسویه نقدی", "1"),
+         new ListItem("تسویه اقساط", "2"),
+         new ListItem("همه موارد", "0")
+         )
+     .SelectedItems(new { Value = "0" }),*/
+                                X.Button()
+                                    .Text("جستجو")
+                                    .Icon(Ext.Net.Icon.Find)
+        .Listeners(li => li.Click.Handler = "FilterDate();"),
+                                        X.Button().ItemID("btnReportCheck").MarginSpec("0 0 0 5px")
+                                        .Text("چاپ گزارش")
+                                        .Icon(Ext.Net.Icon.Printer)
+                .Listeners(li => li.Click.Handler = "PrintCheck();")
+                        , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).MarginSpec("0 0 0 5px")
+                     .Listeners(l => { l.Click.Handler = "HelpEjraiyat();"; })
+                                )
+                            )
+                            ,
+                                  X.GridPanel().AutoScroll(true)
+                                        .Title("اسناد")
+        //.Padding(5)
+                                            .ItemID("EjraiyatGrid").Flex(2)
+                                    .Width(500)
+                                    .Store(
+                                            X.StoreForModel().AutoLoad(false)
+                                                  .Listeners(l =>
+                                                  {
+                                                      l.DataChanged.Handler = "App.AnnouncementComplication_Ejraiyat.queryById('EjraiyatGrid').selModel.refresh();";
+                                                      l.BeforeLoad.Handler = "LoadEjraiyatGridWithParam()";
+                                                  })
+                                        .Proxy(Html.X().AjaxProxy()
+                                                            .Url(Url.Action("ReadEjraiyat"))
+                                                    .Reader(Html.X().JsonReader().Root("data"))
+
+                                        )
+                                        .PageSize(200)
+                                        .RemoteFilter(true)
+                                        .RemotePaging(true)
+
+                                    )
+                                    .View(
+                                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true).GetRowClass(l => l.Fn = "getRowClassEjra")
+                                    )
+                                         .Plugins(X.FilterHeader().Remote(true))
+                                         
+                                    .ColumnModel(
+                                            Html.X().RowNumbererColumn()
+
+                        ,
+                        Html.X().ImageCommandColumn().Hideable(false).Listeners(l => l.Command.Handler = "GoToTaghsit(record);")
+                                .Flex(1).Commands(Html.X().ImageCommand().Icon(Ext.Net.Icon.ArrowOutLonger).CommandName("Taghsit").ToolTip(tt => tt.Text = "پرونده تقسیط")
+                                    ).Hidden(!servic.Permission(524, Convert.ToInt32(Session["OrganId"]), Session["Username"].ToString(), Session["Password"].ToString(), out Err))
+                                    ,
+                                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldReplyTaghsitId).Text("ReplyTaghsitId").Hidden(true).Flex(1).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldElamAvarezId).Text("کد شناسایی").Flex(2).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام").Wrap(true).Flex(2),
+                                            Html.X().Column().DataIndex(Model, m => m.fldShenaseMeli).Text("شناسه/کدملی").Wrap(true).Flex(2),
+                                            Html.X().Column().DataIndex(Model, m => m.fldFather_Sabt).Text("نام پدر/شماره ثبت").Wrap(true).Flex(2),
+                                            Html.X().Column().DataIndex(Model, m => m.fldShomareSanad).Text("شماره سند").Flex(2).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldTarikhSarResid).Text("تاریخ سررسید").Flex(2).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldTarikhAkhz).Text("تاریخ اخذ").Flex(3).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldStatusName).Text("وضعیت").Flex(3).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldDateStatus).Text("تاریخ تغییر وضعیت").Flex(3).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldStatus).Text("وضعیت").Flex(3).Hidden(true).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldTypeSanadName).Text("نوع سند").Flex(2).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldTypeSanad).Text("کد نوع سند").Flex(1).Hidden(true).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldMablaghSanad).Text("مبلغ سند").Flex(2).Wrap(true).Renderer("LocalStringSanad"),
+                                            Html.X().Column().DataIndex(Model, m => m.fldBankName).Text("بانک").Flex(2).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldNameShobe).Text("شعبه").Flex(3).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldShomareHesab).Text("شماره حساب").Flex(3).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldShomareHesabId).Hidden(true).Text("کد شماره حساب").Flex(2),
+                                            Html.X().Column().DataIndex(Model, m => m.fldNameBaratDar).Text("برات دار").Flex(3).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldBaratDarId).Hidden(true).Text("کد شخص").Flex(2),
+                                            //    Html.X().ComponentColumn().Listeners(l => l.Bind.Fn = "TypeStatus").Filterable(false)
+                                            //.Editor(false)
+                                            //       .DataIndex("fldStatus")
+                                            //.Flex(2)
+                                            //.Text("وضعیت")
+                                            //   .ID("StatusId")
+                                            //    .Component(Html.X().ComboBox().ItemID("Cbostatus")
+                                            //    .Editable(false)
+                                            //    .DisplayField("fldTitle")
+                                            //    .ValueField("fldId")
+                                            //    .QueryMode(DataLoadMode.Local)
+                                            //        .Store(X.Store().AutoLoad(false)
+                                            //        .Model(X.Model()
+                                            //                .IDProperty("fldId")
+                                            //            .Fields(
+                                            //                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            //                    new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                            //            )
+                                            //        )
+                                            //        .Proxy(X.AjaxProxy()
+                                            //                        .Url(Url.Action("GetStatus"))
+                                            //            .Reader(X.JsonReader().Root("data"))
+                                        
+                                            //        )
+                                            //            // .Parameters(ps => ps.Add(new StoreParameter("TypeSand", "2", ParameterMode.Raw)))
+                                            //    )
+                   
+                                            //),
+                                            //     Html.X().CommandColumn().Text("ذخیره").ItemID("BtnSaveEjra").PrepareToolbar("disablebtnEjra")
+                                            //.Flex(1)
+                                            //.Commands(
+                                            //    Html.X().GridCommand()
+                                            //        .CommandName("SaveEjra")
+                                            //        .StandOut(true)
+                                            //        .Icon(Ext.Net.Icon.Disk)
+                                            //        .Text("ذخیره")
+                                            //)
+                                            //        .Listeners(ls => ls.Command.Fn = "SaveStatusEjra")
+                                                Html.X().ImageCommandColumn()//.PrepareCommand("hideBtnAsnadEjra")
+                                .Listeners(l => l.Command.Fn = "ActionsInGridEjra")
+                                .Flex(1).Commands(
+                                                 Html.X().ImageCommand().CommandName("GoToStatusEjra").Cls("margincommandEjra").IconCls("StatusSanad").ToolTip(tt => tt.Text = "تغییر وضعیت سند")
+                                )
+        
+                                        )
+                    )
+
+
+                    )
+
+)
+
+<script type="text/javascript">
+    function HelpEjraiyat() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/AnnouncementComplications_Ejraiyat/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function GoToTaghsit(record) {
+        Ext.net.Mask.show({
+            msg: 'در حال بارگذاری...'
+        });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/instalments/Index',
+            params: {
+                ReplyTaghsitId: record.data.fldReplyTaghsitId,
+                ElameAvarezId: record.data.fldElamAvarezId,
+                OrganId: '@ViewBag.OrganId'
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var LocalStringSanad = function (value) {
+        return value.toLocaleString();
+    };
+    var getRowClassEjra = function (record, rowIndex, rowParams, store) {
+        var color = 'white';
+        if (record.data.fldStatus == "2")
+            color = '#99C68E';
+        else if (record.data.fldStatus == "3") 
+            color = '#ff3333';
+        var clsName = "row" + record.data.fldStatus,
+            clsStyle = Ext.String.format(".{0} .x-grid-cell, .{0} .x-grid-rowwrap-div { background-color: {1} !important; })", clsName, color);
+        Ext.net.ResourceMgr.registerCssClass(clsName, clsStyle);
+        return clsName;
+    };
+
+
+    function LoadEjraiyatGrid() {
+        App.AnnouncementComplication_Ejraiyat.queryById('EjraiyatGrid').getStore().load();
+        
+        var CboTypeSanad = App.AnnouncementComplication_Ejraiyat.queryById('CboTypeSanad');
+        if (CboTypeSanad.getValue() == "2")
+            App.AnnouncementComplication_Ejraiyat.queryById('btnReportCheck').show();
+        else
+            App.AnnouncementComplication_Ejraiyat.queryById('btnReportCheck').hide();
+        
+    }
+    function PrintCheck() {
+        var txtAzTarikhEjraiyat = App.AnnouncementComplication_Ejraiyat.queryById('txtAzTarikhEjraiyat');
+        var txtTaTarikhEjraiyat = App.AnnouncementComplication_Ejraiyat.queryById('txtTaTarikhEjraiyat');
+        App.AnnouncementComplication_Ejraiyat.body.mask("در حال بارگذاری...");
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/AnnouncementComplications_Ejraiyat/PrintCheck',
+            params: {
+                AzTarikh: txtAzTarikhEjraiyat.rawValue,
+                TaTarikh: txtTaTarikhEjraiyat.rawValue,
+            },
+            success: function (data) {
+                App.AnnouncementComplication_Ejraiyat.body.mask().hide();
+            }
+
+        });
+    }
+    function LoadEjraiyatGridWithParam() {
+        /*App.AnnouncementComplication_Ejraiyat.queryById('CboTypeSanad').setValue('2');*/
+        App.AnnouncementComplication_Ejraiyat.queryById('EjraiyatGrid').getStore().getProxy().setExtraParam("AzTarikh", App.AnnouncementComplication_Ejraiyat.queryById("txtAzTarikhEjraiyat").rawValue);
+        App.AnnouncementComplication_Ejraiyat.queryById('EjraiyatGrid').getStore().getProxy().setExtraParam("TaTarikh", App.AnnouncementComplication_Ejraiyat.queryById("txtTaTarikhEjraiyat").rawValue);
+        App.AnnouncementComplication_Ejraiyat.queryById('EjraiyatGrid').getStore().getProxy().setExtraParam("TypeSanad", App.AnnouncementComplication_Ejraiyat.queryById('CboTypeSanad').getValue());
+    }
+    function ActionsInGridEjra(grid, command, record, row) {
+        if (command == 'GoToStatusEjra') {
+           /* Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای تغییر وضعیت مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/AnnouncementComplications_Ejraiyat/Save',
+                            params: {
+                                Status: App.StatusId.getComponent(row).getValue(),
+                                id: record.data.fldId,
+                                TypeSanad: record.data.fldTypeSanad
+                            },
+                            success: function (data) {
+                                Ext.net.Mask.hide();
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Err == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    Name: data.MsgName,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.AnnouncementComplication_Ejraiyat.queryById('EjraiyatGrid').store.load();
+                            }
+
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });*/
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/AnnouncementComplications_Ejraiyat/StatusEjra',
+                params: {
+                    id: record.data.fldId,
+                    TypeSanad: record.data.fldTypeSanad
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+
+            });
+            
+        }
+    }
+    /*var hideBtnAsnadEjra = function (grid, command, record, row) {
+        if (command.command == 'GoToStatusEjra') {
+            if (record.data.fldStatus == 1 ) {
+                command.disabled = false;
+                command.hideMode = 'visibility';
+            }
+            else {
+                command.disabled = true;
+                command.hideMode = 'visibility';
+            }
+        }
+    };*/
+   /* var TypeStatus = function (a, b, c, d) {
+        b.setValue(String(c.data.fldStatus));
+        b.store.proxy.setExtraParam("TypeSand", String(c.data.fldTypeSanad));
+        b.store.load();
+        if (c.data.fldStatus != 1)
+            b.disable(true);
+        
+    };*/
+    /*var disablebtnEjra = function (grid, toolbar, rowIndex, record) {
+
+   
+        var Button = toolbar.items.get(0);
+        if (record.data.fldStatus != 1) {
+            Button.setDisabled(true);
+
+        }
+    };*/
+    /*var SaveStatusEjra = function (column, command, record, recordIndex, cellIndex) {
+        
+        Ext.MessageBox.show({
+            title: "هشدار",
+            msg: "آیا برای تغییر وضعیت مطمئن هستید؟",
+            icon: Ext.MessageBox.WARNING,
+            buttons: Ext.MessageBox.YESNO,
+            fn: function (btn) {
+                if (btn == 'yes') {
+                    Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Daramad/AnnouncementComplications_Ejraiyat/Save',
+                        params: {
+                            Status: App.StatusId.getComponent(recordIndex).getValue(),
+                            id: record.data.fldId,
+                            TypeSanad: record.data.fldTypeSanad
+                        },
+                        success: function (data) {
+                            Ext.net.Mask.hide();
+                            var ic = Ext.MessageBox.INFO;
+                            if (data.Err == 1)
+                                ic = Ext.MessageBox.ERROR;
+                            Ext.MessageBox.show({
+                                Name: data.MsgName,
+                                msg: data.Msg,
+                                icon: ic,
+                                buttons: Ext.MessageBox.OK
+                            });
+                            App.AnnouncementComplication_Ejraiyat.queryById('EjraiyatGrid').store.load();
+                        }
+
+                    });
+                    Ext.net.Mask.hide();
+                }
+            }
+        });
+        
+    };*/
+    function FilterDate() {
+        var txtAzTarikhEjraiyat = App.AnnouncementComplication_Ejraiyat.queryById('txtAzTarikhEjraiyat');
+        var txtTaTarikhEjraiyat = App.AnnouncementComplication_Ejraiyat.queryById('txtTaTarikhEjraiyat');
+        var CboTypeSanad = App.AnnouncementComplication_Ejraiyat.queryById('CboTypeSanad');
+
+        Ext.net.Mask.show({ msg: 'در حال جستجو...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/AnnouncementComplications_Ejraiyat/FilterDate',
+            params: {
+                AzTarikh: txtAzTarikhEjraiyat.getRawValue(),
+                TaTarikh: txtTaTarikhEjraiyat.getRawValue(),
+                TypeSanad: CboTypeSanad.getValue()
+            },
+            success: function (data) {
+                App.AnnouncementComplication_Ejraiyat.queryById('EjraiyatGrid').store.loadRawData(data);
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function setDateAzEjraiyat() {
+        var txtAzTarikhEjraiyat = App.AnnouncementComplication_Ejraiyat.queryById('txtAzTarikhEjraiyat');
+        var txtTaTarikhEjraiyat = App.AnnouncementComplication_Ejraiyat.queryById('txtTaTarikhEjraiyat');
+        txtTaTarikhEjraiyat.setMinValue(txtAzTarikhEjraiyat.getValue());
+        txtTaTarikhEjraiyat.minText = "تاریخ پایان نباید قبل از تاریخ شروع باشد.";
+    }
+    function setDateTaEjraiyat() {
+        var txtAzTarikhEjraiyat = App.AnnouncementComplication_Ejraiyat.queryById('txtAzTarikhEjraiyat');
+        var txtTaTarikhEjraiyat = App.AnnouncementComplication_Ejraiyat.queryById('txtTaTarikhEjraiyat');
+        txtAzTarikhEjraiyat.setMaxValue(txtTaTarikhEjraiyat.getValue());
+        txtAzTarikhEjraiyat.maxText = "تاریخ شروع نباید بعد از تاریخ پایان باشد.";
+    }
+    function MainAnnouncementComplication_EjraiyatSetSize() {
+        /*App.AnnouncementComplication_Ejraiyat.queryById('CboTypeSanad').setValue('2');*/
+        App.AnnouncementComplication_Ejraiyat.setWidth(App.DaramadWin.getWidth());
+        var PnlEjraiyat = App.AnnouncementComplication_Ejraiyat.queryById('PnlEjraiyat');
+        PnlEjraiyat.setHeight(App.DaramadWin.getHeight() - 180);
+        /*var PnlEjraiiat = App.AnnouncementComplication_Ejraiyat.queryById('PnlEjraiiat');
+        PnlEjraiiat.setHeight(App.DaramadWin.getHeight() - 220);*/
+        /*var PnlSodurEjraiyat = App.AnnouncementComplication_Ejraiyat.queryById('PnlSodurEjraiyat');
+        PnlSodurEjraiyat.setHeight(App.DaramadWin.getHeight() - 220);*/
+
+        var EjraiyatGrid = App.AnnouncementComplication_Ejraiyat.queryById('EjraiyatGrid');
+        EjraiyatGrid.setWidth(App.DaramadWin.getWidth() - 50);
+
+
+    }
+
+  
+    var addKeyMapAnnouncementComplication_Ejraiyat = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.AnnouncementComplication_Ejraiyat.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    /* if (keyfield.itemId == "txtShSheba") {
+                         nextfld = App.AnnouncementComplication_Ejraiyat.queryById('btnSaveShomareHesabeOmoomi');
+                     }
+                     else {*/
+                    nextfld = keyfield.nextSibling().nextSibling();
+                    nextfld.selectText();
+                    /* }*/
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

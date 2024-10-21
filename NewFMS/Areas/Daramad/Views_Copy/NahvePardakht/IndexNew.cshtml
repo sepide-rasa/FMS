@@ -1,0 +1,268 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_NahvePardakht>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("SabtNahvePardakht")
+            .Title("ثبت نحوه پرداخت")
+           .Listeners(li => { li.AfterRender.Handler = "NahvePardakhtSetSize();"; li.Render.Fn = "addKeyMapSabtNahvePardakht"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveNahvePardakht")
+                    .Listeners(l => { l.Click.Handler = "SaveNahvePardakht();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadNahvePardakht();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteNahvePardakht();"; })
+           , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+               .Listeners(l => { l.Click.Handler = "HelpNahvePardakht();"; })
+
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.SabtNahvePardakht.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("نحوه پرداخت")//.Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                       X.Hidden().ItemID("fldId"),
+                          X.Label().Text("کد پرداخت:")
+                        , X.TextField()
+                        .ItemID("txtCode").MaxLength(2).EnforceMaxLength(true)
+                        .AllowBlank(false)
+                        .RTL(false)
+                        .MaskRe("[0-9]")
+                        .BlankText("لطفا کد پرداخت را وارد کنید."),
+                        X.Label().Text("روش پرداخت:")
+                        , X.TextField()
+                        .ItemID("txtTitle").MaxLength(100).EnforceMaxLength(true)
+                        .AllowBlank(false)
+                        .MaskRe("[آ-ی, ,_,-,A-Z,a-z]")
+                        .BlankText("لطفا روش پرداخت را وارد کنید.")
+                        , X.Label("توضیحات:"),
+                            X.TextField()
+                        .ItemID("txtDescNahvePardakht")
+                        .ColSpan(3)
+                        .Width(365)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("NahvePardakhtGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                            .Listeners(l => l.DataChanged.Handler = "App.SabtNahvePardakht.queryById('NahvePardakhtGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtNahvePardakht.queryById('NahvePardakhtGrid');grid.setHeight(App.DaramadWin.getHeight() - 278); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldCodePardakht).Text("کد پرداخت").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("روش پرداخت").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.Win.addListener('resize', function () {
+        App.NahvePardakht.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.NahvePardakht.queryById('NahvePardakhtGrid');
+        grid.setHeight(App.Win.getHeight()-260);
+    });*/
+
+
+
+       function NahvePardakhtSetSize() {
+           App.SabtNahvePardakht.setWidth(App.DaramadWin.getWidth());
+            var grid = App.SabtNahvePardakht.queryById('NahvePardakhtGrid');
+            grid.setHeight(App.DaramadWin.getHeight() - 278);
+        }
+        function LoadNahvePardakht() {
+            var SelectedRow = App.SabtNahvePardakht.queryById('NahvePardakhtGrid').selModel.getLastSelected();
+            if (SelectedRow != null) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/NahvePardakht/Details',
+                    params: {
+                        Id: SelectedRow.data.fldId
+                    },
+                    success: function (data) {
+                        var txtTitle = App.SabtNahvePardakht.queryById('txtTitle');
+                        txtTitle.setValue(data.fldTitle);
+                        var txtCode = App.SabtNahvePardakht.queryById('txtCode');
+                        txtCode.setValue(data.fldCodePardakht);
+                       var txtDescNahvePardakht = App.SabtNahvePardakht.queryById('txtDescNahvePardakht');
+                        txtDescNahvePardakht.setValue(data.fldDesc);
+                        var fldId = App.SabtNahvePardakht.queryById('fldId');
+                        fldId.setValue(data.fldId);
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        function HelpNahvePardakht() {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/NahvePardakht/Help',
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        function SaveNahvePardakht() {
+            var txtTitle = App.SabtNahvePardakht.queryById('txtTitle');
+            var txtCode = App.SabtNahvePardakht.queryById('txtCode');
+            var txtDescNahvePardakht = App.SabtNahvePardakht.queryById('txtDescNahvePardakht');
+            var fldId = App.SabtNahvePardakht.queryById('fldId');
+            var er = false;
+
+            if (txtTitle.validate() == false) {
+                er = true;
+            }
+           if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/NahvePardakht/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldCodePardakht: txtCode.getValue(),
+                    fldTitle: txtTitle.getValue(),
+                    fldDesc: txtDescNahvePardakht.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtNahvePardakht.queryById('NahvePardakhtGrid').store.load();
+                    if (data.Err != 1)
+                        ClearNahvePardakht();
+                }
+
+            });
+        }
+        function DeleteNahvePardakht() {
+            var SelectedRow = App.SabtNahvePardakht.queryById('NahvePardakhtGrid').selModel.getLastSelected();
+            if (SelectedRow != null) {
+                Ext.MessageBox.show({
+                    title: "هشدار",
+                    msg: "آیا برای حذف مطمئن هستید؟",
+                    icon: Ext.MessageBox.WARNING,
+                    buttons: Ext.MessageBox.YESNO,
+                    fn: function (btn) {
+                        if (btn == 'yes') {
+                            Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Daramad/NahvePardakht/Delete',
+                                params: {
+                                    id: SelectedRow.data.fldId
+                                },
+                                success: function (data) {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Er == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    App.SabtNahvePardakht.queryById('NahvePardakhtGrid').store.load()
+                                }
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        function ClearNahvePardakht() {
+            App.SabtNahvePardakht.queryById('fldId').setValue(0);
+            p.SabtNahvePardakht.queryById('txtCode').setValue("");
+            App.SabtNahvePardakht.queryById('txtTitle').setValue("");
+            App.SabtNahvePardakht.queryById('txtDescNahvePardakht').setValue("");
+        }
+        var addKeyMapSabtNahvePardakht = function (cmp) {
+            this.keyMap = new Ext.util.KeyMap({
+                target: cmp.getEl(),
+                binding: [{
+                    key: [13, 9], /*Ext.EventObject.ENTER,*/
+                    fn: function (key, e) {
+                        if (e.getKey() == 9) {
+                            e.stopEvent();
+                        }
+                        var keyfield = App.SabtNahvePardakht.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        var nextfld;
+                        if (keyfield.itemId == "txtDescNahvePardakht") {
+                            nextfld = App.SabtNahvePardakht.queryById('btnSaveNahvePardakht');
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }]
+            });
+        }
+</script>

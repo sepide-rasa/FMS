@@ -1,0 +1,484 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_CodhayeDaramadiElamAvarez>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();
+ var oo = (Session["OrganId"]).ToString();}
+<br />
+<script src="~/Scripts/accounting.min.js"></script>
+<style>
+    .testttt {
+        background-color: white;
+        background-image: url(/extjs/resources/ext_theme_classic/images/grid/invalid_line-gif/ext.axd);
+        background-repeat: repeat-x;
+        background-position: bottom;
+        border-color: #c30;
+    }
+
+    .tt {
+        color: black;
+        padding: 1px 3px 2px 3px;
+        background: white repeat-x 0 0;
+        border-width: 1px;
+        border-style: solid;
+        border-color: #b5b8c8;
+        background-image: url(/extjs/resources/ext_theme_classic/images/form/text-bg-gif/ext.axd);
+        height: 22px;
+        line-height: 17px;
+    }
+</style>
+@(Html.X().Panel()
+            .ID("FishMotefareghe")
+            .Title("ثبت فیش متفرقه")
+            .Listeners(li => { li.AfterRender.Handler = "FishMotefaregheSetSize();"; li.Render.Fn = "addKeyMapFishMotefareghe"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+            .Layout(LayoutType.VBox)
+                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+       .Items(
+    X.Panel().Border(false).Items(X.Label())
+        .Items(
+                X.Panel().Border(false)
+                 .Layout(LayoutType.VBox)
+                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .Items(
+                    X.FieldSet().Border(false).Items(
+                    X.FieldSet().Border(true).Title("اطلاعات")
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 10 })
+                    .Items(
+                    X.Hidden().ItemID("fldAshkhasId"),
+                    X.Hidden().ItemID("fldShomareHesabId"),
+                    X.Label("نوع شخص:"),
+                        X.ComboBox().Width(80)
+                        .ItemID("CboTypeAshkhas")
+                                .AutoFocus(true)
+                        .TypeAhead(true)
+                           // .Width(145)
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .EmptyText("نوع شخص")
+                        .SelectedItems(new { Value = "1" })
+                        .AllowBlank(false)
+                        .Editable(false)
+                        .BlankText("لطفا نوع شخص را انتخاب کنید.")
+                        .Items(
+                            new ListItem("حقیقی", "0"),
+                            new ListItem("حقوقی", "1")
+                            )
+                          .Listeners(l => l.Select.Handler = "ChangeTypeAshkhas()")
+                            ,
+                            X.Label("شناسه ملی:").ItemID("lblCode_ShenaseMelli"),
+                        X.TextField()
+                                .Width(145)
+                        .ItemID("txtCode_ShenaseMelli")
+                            .AllowBlank(false)
+                                .FieldStyle("direction:ltr;")
+                        .BlankText("لطفا کد/شناسه ملی را وارد کنید.")
+                        .Icon(Icon.UserAdd)
+                        .Listeners(l =>
+                                {
+                                    l.SpecialKey.Handler = "ChangeCode_ShenaseMelli(e.getKey());";
+                                    l.Blur.Handler = "ChangeCode_ShenaseMelli(0);";
+                                })
+                        .DirectEvents(li =>
+                        {
+                            li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                            li.IconClick.Url = "/Daramad/SearchAshkhas/Index?State=5";
+                        }),
+                        X.Label("شماره حساب:").ItemID("lblShHesab"),
+                        X.TextField()
+                        .Width(145)
+                        .ItemID("txtShHesab")
+                        .AllowBlank(false)
+                        .FieldStyle("direction:ltr;")
+                        .BlankText("لطفا شماره حساب را وارد کنید.")
+                        .ReadOnly(true)
+                        .Icon(Icon.Add)
+                        .DirectEvents(li =>
+                        {
+                            //li.SpecialKey.Url = "/Daramad/SearchAshkhas/Index?State=2";
+                            li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                            li.IconClick.Url = "/Comon/SearchShomareHesab/IndexShomareHesab_Organ?State=1";
+                        }),
+                        X.Label("تاریخ صدور:"),
+                                X.PDateField().Width(90)
+                        .ItemID("txtTarikhSodoor").MaxLength(10).EnforceMaxLength(true)
+                        .AllowBlank(false).Editable(true)
+                        .MaskRe("/[0-9 /]/")
+                        .BlankText("لطفا تاریخ صدور را وارد کنید.")
+                            .Listeners(l => l.Change.Handler = "setDateSodoor();")
+                        ,
+                            X.Label("تاریخ واریز:"),
+                                X.PDateField().Width(90)
+                            .ItemID("txtTarikhVariz").MaxLength(10).EnforceMaxLength(true)
+                            .AllowBlank(false).Editable(true)
+                            .MaskRe("/[0-9 /]/")
+                                .BlankText("لطفا تاریخ واریز را وارد کنید.")
+                                    .Listeners(l => l.Change.Handler = "setDateVariz();")
+                            ,
+                        X.Label("توضیحات:"),
+                        X.TextField().Width(900).ColSpan(10)
+                        .ItemID("txtDesc")
+                    )
+                )
+                )
+            ),
+                X.GridPanel()
+                .ID("GridFishMotefareghe").Flex(2)
+                .Width(1200)
+                .TopBar(
+                        Html.X().Toolbar()
+                        .Items(
+                            X.Button().Text("افزودن کد در آمد").Icon(Ext.Net.Icon.Add)//.ToolTip("کلید میانبر F2")
+                            .Listeners(Li => Li.Click.Handler = "AddCodeDaeamad();")
+                                , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                                .Listeners(l => { l.Click.Handler = "HelpFishMotefareghe();"; })
+
+                        )
+                    )
+                .AutoScroll(true)
+                .Features(Html.X().Summary().ID("summary").Dock(SummaryDock.Bottom))
+                .Store(
+                X.StoreForModel()
+                        .Listeners(l => l.Load.Handler = "LoadGrid()")
+                .PageSize(200000)
+                        )
+                .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+                    .Listeners(l =>
+                    {
+                        l.AfterRender.Handler = "var grid = App.FishMotefareghe.queryById('GridFishMotefareghe');grid.setHeight(App.DaramadWin.getHeight() - 60); ";
+
+                    })
+                    .ColumnModel(
+                            Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldShomareHesabCodeDaramadId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldDaramadCode).Text("کد درآمد").Flex(1).Editor(Html.X().TextField().MaskRe("/[0-9]/").ItemID("txtDaramadCode").Listeners(l => { l.SpecialKey.Handler = "SetCodeDaramad(e.getKey())"; l.Blur.Handler = "SetCodeDaramad(13)"; })),
+                            Html.X().Column().DataIndex(Model, m => m.fldSharheCodeDaramad).Text("شرح کد درآمد").Flex(5).Editor(Html.X().TextField().ItemID("txtSharheCodeDaramad")),
+                           Html.X().Column().DataIndex(Model, m => m.fldAsliValue).Text("مبلغ").Editor(Html.X().TextField().MaskRe("/[0-9]/").ItemID("txtAsliValue")).Renderer("LocalString").SummaryRenderer(new Renderer { Handler = "totalMablagh" }).Flex(2)//,
+                                //, Html.X().Column().DataIndex(Model, m => m.fldMaliyatValue).Text("مالیات").Editor(Html.X().TextField().MaskRe("/[0-9]/").ItemID("txtMaliyatValue"))
+                                //    , Html.X().Column().DataIndex(Model, m => m.fldAvarezValue).Text("عوارض").Editor(Html.X().TextField().MaskRe("/[0-9]/").ItemID("txtAvarezValue"))
+                            //Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Editor(Html.X().TextField().ItemID("txtDesc")).Flex(2)
+                            )
+            .Plugins(
+                    Html.X().CellEditing().ClicksToEdit(1))
+                        ,X.FieldSet()
+                        .Defaults(new { Margin = 5 })
+                        .Border(false)
+                        .Items(
+                         X.Button().Text("ذخیره").ItemID("btnSave").Listeners(l => l.Click.Handler = "SaveFishMotefareghe()").Icon(Ext.Net.Icon.Disk)
+                        , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.FishMotefareghe.destroy()")
+                        )  
+    )
+)
+<script type="text/javascript">
+    var MablaghKoliAsliValue = 0;
+    function setDateSodoor() {
+        var txtTarikhVariz = App.FishMotefareghe.queryById('txtTarikhVariz');
+        var txtTarikhSodoor = App.FishMotefareghe.queryById('txtTarikhSodoor');
+        txtTarikhVariz.setMinValue(txtTarikhSodoor.getValue());
+        txtTarikhVariz.minText = "تاریخ صدور نباید از تاریخ واریز بزرگتر باشد.";
+    }
+    function setDateVariz() {
+        var txtTarikhVariz = App.FishMotefareghe.queryById('txtTarikhVariz');
+        var txtTarikhSodoor = App.FishMotefareghe.queryById('txtTarikhSodoor');
+        txtTarikhSodoor.setMaxValue(txtTarikhVariz.getValue());
+        txtTarikhSodoor.maxText = "تاریخ صدور نباید از تاریخ واریز بزرگتر باشد.";
+    }
+
+    function HelpFishMotefareghe() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/FishMotefareghe/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function ChangeTypeAshkhas() {
+        var lblCode_ShenaseMelli = App.FishMotefareghe.queryById("lblCode_ShenaseMelli");
+        var txtCode_ShenaseMelli = App.FishMotefareghe.queryById("txtCode_ShenaseMelli");
+        var fldAshkhasId = App.FishMotefareghe.queryById("fldAshkhasId");
+        var CboTypeAshkhas = App.FishMotefareghe.queryById("CboTypeAshkhas");
+        if (CboTypeAshkhas.getValue() == "0") {
+            lblCode_ShenaseMelli.setText("کدملی: ");
+            txtCode_ShenaseMelli.setValue("");
+            fldAshkhasId.setValue(0);
+        }
+        else {
+            lblCode_ShenaseMelli.setText("شناسه ملی: ");
+            txtCode_ShenaseMelli.setValue("");
+            fldAshkhasId.setValue(0);
+        }
+    }
+    
+    function SetCodeDaramad(e) {
+        if (e == 13) {
+            var txtDaramadCode = App.FishMotefareghe.queryById("txtDaramadCode");
+            var txtSharheCodeDaramad= App.FishMotefareghe.queryById("txtSharheCodeDaramad");
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/FishMotefareghe/GetCodeDaramad',
+                params: {
+                    DaramadCode: txtDaramadCode.getValue(),
+                    FiscalYearId: '@ViewBag.FiscalYearId'
+                },
+                success: function (data) {
+                    if (data.Msg == "") {
+                        var g = Ext.getCmp('GridFishMotefareghe');
+                        var sm = g.getSelectionModel(); 
+                        sm.getSelection()[0].set('fldShomareHesabCodeDaramadId', data.fldShomareHesabCodeDaramadId);
+                        sm.getSelection()[0].set('fldSharheCodeDaramad', data.fldDaramadTitle);
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+    function LoadGrid() {
+        var grid = App.FishMotefareghe.queryById('GridFishMotefareghe');
+
+        grid.store.insert(0, {});
+        grid.getView().focusRow(0);
+        grid.editingPlugin.startEdit(grid.store.getAt(0), grid.columns[0]);
+    }
+    var LocalString = function (value) {
+        return value.toLocaleString();
+    };
+    var totalMablagh = function (records) {
+        var store = App.FishMotefareghe.queryById('GridFishMotefareghe').store;
+        var sum = store.sum('fldAsliValue');
+        MablaghKoliAsliValue = sum;
+        return "جمع کل:" + sum.toLocaleString();
+    };
+    function FishMotefaregheSetSize() {
+        App.FishMotefareghe.setWidth(App.DaramadWin.getWidth());
+        var grid = App.FishMotefareghe.queryById('GridFishMotefareghe');
+        grid.setHeight(App.DaramadWin.getHeight() - 305);
+        App.FishMotefareghe.queryById('txtTarikhVariz').setValue('@ViewBag.tarikhVariz');
+        App.FishMotefareghe.queryById('txtTarikhSodoor').setValue('@ViewBag.tarikhVariz');
+        
+    }
+    function AddCodeDaeamad() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/SearchCodeDaramad_Checked/Index',
+            params: {
+                State: 1,
+                FiscalYearId:'@ViewBag.FiscalYearId'
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    } 
+    var addKeyMapFishMotefareghe = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.FishMotefareghe.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDescComboBox") {
+                        nextfld = App.FishMotefareghe.queryById('btnSaveComboBox');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+    function ChangeCode_ShenaseMelli(code) {
+        var txtCode_ShenaseMelli = App.FishMotefareghe.queryById('txtCode_ShenaseMelli');
+        var CboTypeAshkhas = App.FishMotefareghe.queryById('CboTypeAshkhas');
+        var cc = txtCode_ShenaseMelli.getValue();
+        if ((CboTypeAshkhas.getValue() == "0" && cc.length == 10) || (CboTypeAshkhas.getValue() == "1" && cc.length == 11)) {
+            if (code == 0 || code == 13) {
+                Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/AnnouncementComplications/CheckCode_ShenaseMelli',
+                    params: {
+                        Code_ShenaseMelli: txtCode_ShenaseMelli.getValue(),
+                        Type: CboTypeAshkhas.getValue()
+                    },
+                    success: function (data) {
+                        if (data.Err == 1) {
+                            Ext.MessageBox.show({
+                                title: data.MsgTitle,
+                                msg: data.Msg,
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK,
+                                fn: function (btn) {
+                                    if (btn == 'ok') {
+                                        App.FishMotefareghe.queryById('txtCode_ShenaseMelli').setValue("");
+                                        App.FishMotefareghe.queryById('fldAshkhasId').setValue(0);
+                                    }
+                                }
+                            });
+                        }
+                        else if (data.Err == 2) {
+                            Ext.MessageBox.show({
+                                title: data.MsgTitle,
+                                msg: data.Msg,
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.YESNO,
+                                fn: function (btn) {
+                                    if (btn == 'yes') {
+                                        if (App.FishMotefareghe.queryById('CboTypeAshkhas').getValue() == "1")
+                                            Ext.net.DirectMethod.request({
+                                                url: '/Daramad/SearchAshkhas/NewHoghughi',
+                                                params: {
+                                                    State: 5
+                                                },
+                                                success: function (data) {
+                                                    Ext.net.Mask.hide();
+                                                }
+                                            });
+                                        else if (App.FishMotefareghe.queryById('CboTypeAshkhas').getValue() == "0")
+                                            Ext.net.DirectMethod.request({
+                                                url: '/Daramad/SearchAshkhas/NewHaghighi',
+                                                params: {
+                                                    State: 5
+                                                },
+                                                success: function (data) {
+                                                    Ext.net.Mask.hide();
+                                                }
+                                            });
+                                    }
+                                    else {
+                                        App.FishMotefareghe.queryById('txtCode_ShenaseMelli').setValue("");
+                                        App.FishMotefareghe.queryById('fldAshkhasId').setValue(0);;
+                                    }
+                                }
+                            });
+                        }
+                        else {
+                            var CboTypeAshkhas = App.FishMotefareghe.queryById('CboTypeAshkhas');
+                            App.FishMotefareghe.queryById('txtCode_ShenaseMelli').setValue(data.fldShenase_CodeMeli);
+                            App.FishMotefareghe.queryById('fldAshkhasId').setValue(data.fldId);
+                        }
+
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "کد/شناسه ملی نامعتبر است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SaveFishMotefareghe() {
+        var HaveErr = 0;
+        var fldAshkhasId = App.FishMotefareghe.queryById('fldAshkhasId');
+        var fldShomareHesabId = App.FishMotefareghe.queryById('fldShomareHesabId');
+        var txtCode_ShenaseMelli = App.FishMotefareghe.queryById('txtCode_ShenaseMelli');
+        var txtShHesab = App.FishMotefareghe.queryById('txtShHesab'); 
+        var txtTarikhVariz = App.FishMotefareghe.queryById('txtTarikhVariz');
+        var txtTarikhSodoor = App.FishMotefareghe.queryById('txtTarikhSodoor');
+        var txtDesc = App.FishMotefareghe.queryById('txtDesc');
+        var er = false;
+        if (txtCode_ShenaseMelli.validate() == false)
+            er = true;
+        if (txtShHesab.validate() == false)
+            er = true; 
+        if (txtTarikhVariz.validate() == false)
+            er = true;
+        if (txtTarikhSodoor.validate() == false)
+            er = true;
+        if (er == true)
+            return;
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        var SelectItems = new Array();
+        var SelectedRow = App.FishMotefareghe.queryById('GridFishMotefareghe');
+        for (var k = 0; k < SelectedRow.selModel.store.count() ; k++) {
+            row = SelectedRow.selModel.store.data.items[k];
+            if (row.data.fldAsliValue == 0 && row.data.fldDaramadCode != "")
+                HaveErr = 1;
+            if (row.data.fldDaramadCode != "") {
+                SelectItems.push({
+                    'fldShomareHesabCodeDaramadId': row.data.fldShomareHesabCodeDaramadId,
+                    'fldDaramadCode': row.data.fldDaramadCode,
+                    'fldSharheCodeDaramad': row.data.fldSharheCodeDaramad,
+                    'fldAsliValue': row.data.fldAsliValue,
+                    'fldMaliyatValue':0,
+                    'fldAvarezValue': 0,
+                   /* 'fldMaliyatValue': row.data.fldMaliyatValue,
+                    'fldAvarezValue': row.data.fldAvarezValue,*/
+                });
+            }
+        }
+        var data = {
+            ItemArray: SelectItems,
+            fldAshkhasId: fldAshkhasId.getValue(),
+            fldShomareHesabId: fldShomareHesabId.getValue(),
+            fldDesc: txtDesc.getValue(),
+            TarikhVariz: txtTarikhVariz.rawValue,
+            TarikhSodoor: txtTarikhSodoor.rawValue,
+            MablaghKoliAsliValue: MablaghKoliAsliValue,
+            FiscalYearId:'@ViewBag.FiscalYearId'
+        };
+        if (HaveErr == 1) {
+            Ext.net.Mask.hide();
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا مبلغ مورد نظر را وارد کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+        if (SelectItems.length == 0) {
+            Ext.net.Mask.hide();
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا اطلاعات کد درآمد مورد نظر را وارد کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+        $.ajax({
+            type: "POST",
+            url: '/Daramad/FishMotefareghe/Save',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json; charset=utf-8',
+            success: function (data1) {
+                Ext.net.Mask.hide();
+                var result = data1;/*JSON.parse(data1);*/
+                var ico = Ext.MessageBox.INFO;
+                if (result.Er == 1)
+                    ico = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ico,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.FishMotefareghe.queryById('GridFishMotefareghe').store.load();
+            },
+            failure: function (data1) {
+                alert(data.data1);
+            }
+        });
+    }
+
+</script>

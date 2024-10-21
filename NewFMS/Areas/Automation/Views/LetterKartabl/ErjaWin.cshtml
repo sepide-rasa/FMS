@@ -1,0 +1,474 @@
+﻿@model IEnumerable<NewFMS.WCF_Automation.OBJ_InternalAssignmentReceiver>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+
+@(Html.X().Window().Modal(true)
+            .Listeners(li => li.AfterRender.Handler = "LoadErjaWin();")
+.Width(670)//.Height(300)
+    .Title("ارجاعات")
+         .ID("ErjaWin")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+            .Margin(10)
+            .DefaultButton("btn")
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+               .Buttons(X.Button().Text("ارجاع").Icon(Ext.Net.Icon.Disk).Margin(10)
+                           .Listeners(l =>
+                           {
+                               l.Click.Handler = "SaveErjaWin();";
+
+                           })
+                           .ItemID("btnErja")
+                            ,
+                                X.Button().Text("نمایش نامه").Icon(Ext.Net.Icon.Script).Margin(10)
+                                .ItemID("btnShowLetter")
+                               .Listeners(l =>
+                               {
+                                   l.Click.Handler = "ShowLetter();";
+
+                               })
+                                ,
+                            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                                   .OnClientClick("App.ErjaWin.destroy()"))
+
+                .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                .Defaults(new { Margin = 2 })
+                .Items(
+                X.Hidden().ItemID("fldId"),
+
+                            X.Hidden().ItemID("CommisionSelected"),
+
+                     X.Label("ارجاع دهنده:"),
+                        X.TextField()
+                        .Width(300)
+                        .ItemID("txtPersonal")
+                        .MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AllowBlank(false)
+                        .ReadOnly(true)
+                        
+                , X.Label().Text("حداکثر مهلت پاسخ:")
+                , X.PDateField()
+                    .ItemID("txtTarikh")//.PaddingSpec("0 0 9px 0")
+                    .Width(100)
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .Editable(false)
+                    .MaskRe("/[0-9,/]/")
+                    .BlankText("لطفا تاریخ را انتخاب نمایید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                 //   .Listeners(l => l.Change.Handler = "TaTarikh()")
+                    
+                      )
+                      ,
+                      X.FieldSet().Border(false)
+                      .ItemID("fldSetgirande")
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                .Defaults(new { Margin = 2 })
+                .Items(
+                  X.Button().Text("اضافه کردن ارجاع گیرنده").ColSpan(2)
+                      .Icon(Ext.Net.Icon.Add).MarginSpec("0 0 0 50px")
+                               .Listeners(l =>
+                               {
+                                   l.Click.Handler = "AddToGrid();";
+
+                               })
+
+
+                        )
+    ,
+         X.GridPanel().AutoScroll(true)
+                                .TopBar(
+                                    Html.X().Toolbar()
+                                    .Items(
+                                            X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).ItemID("btnDelG")
+                                            .Listeners(li => li.Click.Handler = "if (App.ErjaWin.queryById('GridEeja').selModel.getLastSelected() == null) {Ext.MessageBox.show({ title: 'خطا', msg: 'لطفا یک سطر را انتخاب کنید',icon: Ext.MessageBox.ERROR,buttons: Ext.MessageBox.OK});return false;}else DelMomayez();")
+
+                                    )
+                                )
+                                .ItemID("GridEeja").Flex(2)
+
+                            .Height(200).Width(610)
+        //.ColumnWidth(0.6)
+        //.Layout(Ext.Net.LayoutType.Column)
+                            .Store(
+                                       X.StoreForModel().AutoLoad(false)
+                                    .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadAssReciever"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                                         .ExtraParams(x => x.Add(new { AssId = @ViewBag.SourceAssId }))
+                                )
+                                .PageSize(10)
+                                .RemoteFilter(false)
+                                .RemotePaging(true)
+
+                            )
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+                                .Plugins(Html.X().CellEditing())
+                            .ColumnModel(
+        //Html.X().RowNumbererColumn(),
+                                        Html.X().Column().DataIndex(Model, m => m.fldID).Text("کد").Flex(1).Hidden(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldReceiverComisionID).Text("کد").Flex(1).Hidden(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldName_Family).Text("نام کارمند").Flex(4),
+                                         Html.X().ComponentColumn().ID("colAssType").DataIndex(Model, m => m.fldAssignmentTypeID).Filterable(false)
+                                            .Flex(3).Editor(true).Text("نوع ارجاع")//.Listeners(l=>l.Bind.Fn="setToken").Listeners(l=>l.Edit.Fn="AddtoArray")
+                                            .Component(
+                                                X.ComboBox()
+                                        .ItemID("CboType")
+                                        .ID("CboAssType")
+                                        .TypeAhead(true)
+                                        .Editable(false)
+                                        .QueryMode(DataLoadMode.Local)
+                                        .AllowBlank(false)
+                                        //.ForceSelection(true)
+                                        //.Listeners(l => l.AfterRender.Fn = "setValidateCboPaye")
+                                        .BlankText("لطفا نوع ارجاع را انتخاب کنید.")
+                                        .TriggerAction(TriggerAction.All)
+                                        .DisplayField("Name")
+                                        .ValueField("ID")
+                                        .EmptyText("نوع ارجاع...")
+                                        .Store(X.Store()
+                                            .Model(X.Model()
+                                                .IDProperty("ID")
+                                                .Fields(
+                                                    new ModelField("ID", ModelFieldType.Int) { Mapping = "fldId" },
+                                                    new ModelField("Name", ModelFieldType.String) { Mapping = "fldName" }
+                                                    )
+                                                )
+                                .Proxy(Html.X().AjaxProxy()
+                                    .ActionMethods(l => l.Read = Ext.Net.HttpMethod.POST)
+                                                .Url(Url.Action("GetAssType"))
+                                                .Reader(X.JsonReader().Root("data"))
+                                            )
+                                        )
+                                ),
+                                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("شرح ارجاع").Flex(7)
+                                        .Editor(X.TextField().ID("txtDesc"))
+
+                            )
+
+                            .SelectionModel(
+                                Html.X().RowSelectionModel()
+                                    .Mode(Ext.Net.SelectionMode.Single)
+                            )
+        //,
+        //    X.FieldSet().Title("توضیحات").Width(610)
+        //        .Layout(Ext.Net.LayoutType.Fit).Items(
+        //X.TextArea().ItemID("txtDesc")
+        //)
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+           
+        )
+)
+
+<script type="text/javascript">
+
+
+    function AddToGrid() {
+        var SelectedRow = App.ErjaWin.queryById('GridEeja');
+        var CommisionSelected = App.ErjaWin.queryById('CommisionSelected');
+        CommisionSelected.setValue("");
+        if (SelectedRow.selModel.store.count() == 0) {
+            Ext.net.DirectMethod.request({
+                url: '/Automation/SearchCommisionCheckBox/Index?State=1&CommId=' + '@ViewBag.commId'
+            });
+        }
+        else {
+            var s = "";
+            for (var i = 0; i < SelectedRow.selModel.store.count() ; i++) {
+                row = SelectedRow.selModel.store.data.items[i];
+                s = s + row.data.fldReceiverComisionID + ";";
+
+                if (i == SelectedRow.selModel.store.count() - 1) {
+                    CommisionSelected.setValue(s);
+                    Ext.net.DirectMethod.request({
+                        url: '/Automation/SearchCommisionCheckBox/Index?State=1&CommId=' + '@ViewBag.commId'
+                    });
+                }
+            }
+        }
+    }
+
+
+
+    function LoadErjaWin() {
+        App.ErjaWin.queryById('txtPersonal').setValue('@ViewBag.CommName');
+        App.ErjaWin.queryById('txtTarikh').setValue('@ViewBag.Tarikh');
+
+        /*Ext.net.DirectMethod.request({
+            url: '/faces/MomayezDetails/DetailsErjaWin',
+            params: {
+                ArzyabGroupId: 'ViewBag.ArzyabGroupId',
+                RequestId : 'ViewBag.RequestId'
+            },
+            success: function (data) {
+                var Id = App.ErjaWin.queryById('fldId');
+                Id.setValue(data.fldId);
+            }
+        });*/
+        var btnShowLetter = App.ErjaWin.queryById('btnShowLetter');
+        var btnErja = App.ErjaWin.queryById('btnErja');
+        var fldSetgirande = App.ErjaWin.queryById('fldSetgirande');
+        var txtTarikh = App.ErjaWin.queryById('txtTarikh');
+        var btnDelG = App.ErjaWin.queryById('btnDelG');
+
+        if ('@ViewBag.state' == 1) {
+            if ('@ViewBag.LetterTypeId' == 0)
+                btnShowLetter.hide();
+            else
+                btnShowLetter.show();
+        }
+        else if ('@ViewBag.state' == 2)
+            btnShowLetter.hide();
+        else if ('@ViewBag.state' == 3) {
+            btnShowLetter.show();
+            btnErja.hide();
+            fldSetgirande.hide();
+            txtTarikh.setReadOnly(true);
+            btnDelG.hide();
+            App.ErjaWin.queryById('GridEeja').store.load();
+        }
+
+    }
+    function ShowLetter() {
+        var IdOfKartabl = Ext.getCmp("MenuPanel1").child("[collapsed=false]").id;
+         
+        var lett = '@ViewBag.fldLetterId'.split(';');
+        if ('@ViewBag.state' == 3) {
+            Ext.net.Mask.show({
+                msg: 'در حال بارگذاری...'
+            });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/LetterKartabl/UpdateReadFlag',
+                params: {
+                    ComisionId: IdOfKartabl,
+                    AssignmentID: '@ViewBag.SourceAssId'
+                },
+                success: function () {
+                    SearchSK();
+                    if ('@ViewBag.LetterTypeId' == 1) {
+                        Ext.net.DirectMethod.request({
+                            url: '/Automation/SadereLetter/Index',
+                            params: {
+                                CommisionId: '@ViewBag.commId',
+                                LetterId: lett[0],
+                                SourceAssId: '@ViewBag.SourceAssId',
+                                HistoryLetterID: 0
+                            },
+                            success: function () {
+                                Ext.net.Mask.hide();
+                                App.ErjaWin.hide();
+                            }
+                        });
+                    }
+                    else if ('@ViewBag.LetterTypeId' == 2) {
+                        Ext.net.DirectMethod.request({
+                            url: '/Automation/VaredeLetter/Index',
+                            params: {
+                                CommisionId: '@ViewBag.commId',
+                                LetterId: lett[0],
+                                SourceAssId: '@ViewBag.SourceAssId'
+                            },
+                            success: function () {
+                                Ext.net.Mask.hide();
+                                App.ErjaWin.hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            if ('@ViewBag.LetterTypeId' == 1) {
+                Ext.net.Mask.show({
+                    msg: 'در حال بارگذاری...'
+                });
+                Ext.net.DirectMethod.request({
+                    url: '/Automation/SadereLetter/Index',
+                    params: {
+                        CommisionId: '@ViewBag.commId',
+                        LetterId: lett[0],
+                        SourceAssId: '@ViewBag.SourceAssId',
+                        HistoryLetterID: 0
+                    },
+                    success: function () {
+                        App.ErjaWin.hide();
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else if ('@ViewBag.LetterTypeId' == 2) {
+                Ext.net.Mask.show({
+                    msg: 'در حال بارگذاری...'
+                });
+                Ext.net.DirectMethod.request({
+                    url: '/Automation/VaredeLetter/Index',
+                    params: {
+                        CommisionId: '@ViewBag.commId',
+                        LetterId: lett[0],
+                        SourceAssId: '@ViewBag.SourceAssId'
+                    },
+                    success: function () {
+                        App.ErjaWin.hide();
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+    }
+
+    function SaveErjaWin() {
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        /*var txtDesc = App.ErjaWin.queryById('txtDesc');*/
+        var txtPersonal = App.ErjaWin.queryById('txtPersonal');
+        var txtTarikh = App.ErjaWin.queryById('txtTarikh');
+        var Id = App.ErjaWin.queryById('fldId');
+
+
+        var er = false;
+
+
+        if (txtPersonal.validate() == false) {
+            er = true;
+        }
+
+        var Items = new Array();
+        var er = false;
+        var SelectedRow = App.ErjaWin.queryById('GridEeja');
+        var ErAssignmentTypeID = 0;
+        for (var i = 0; i < SelectedRow.selModel.store.count() ; i++) {
+            row = SelectedRow.selModel.store.data.items[i];
+            if (row.data.fldAssignmentTypeID != 0) {
+                Items.push({
+                    'fldReceiverComisionID': row.data.fldReceiverComisionID,
+                    'fldAssignmentTypeID': row.data.fldAssignmentTypeID,
+                    'fldDesc': row.data.fldDesc
+                });
+            }
+            else
+                ErAssignmentTypeID = 1;
+        }
+        if (ErAssignmentTypeID == 1) {
+            Ext.MessageBox.show({
+                Name: "خطا",
+                msg: "فیلد نوع ارجاع انتخاب نشده است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            Ext.net.Mask.hide();
+            er = true;
+        }
+        if (Items == "") {
+            Ext.MessageBox.show({
+                Name: "خطا",
+                msg: " ارجاع دهنده ای برای ذخیره ثبت نشده.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            Ext.net.Mask.hide();
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        var data1 = {
+            recievers: Items,
+            fldId: Id.getValue(),
+            fldDesc: "",/* txtDesc.getValue(),*/
+            LetterId: '@ViewBag.fldLetterId',
+            MessageId: '@ViewBag.fldMessageId',
+            fldSenderComisionID: '@ViewBag.commId',
+            fldAnswerDate: txtTarikh.rawValue,
+            fldSourceAssId: '@ViewBag.SourceAssId'
+        };
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Automation/LetterKartabl/SaveAssignment',
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify(data1),
+            datatype: "json",
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == 'ok') {
+                            var IdOfKartabl = Ext.getCmp("MenuPanel1").child("[collapsed=false]").id;
+                            var SelBox = Ext.getCmp(IdOfKartabl).getSelectionModel().getLastSelected();
+                            if (SelBox != null)
+                                SearchSK();
+                            App.ErjaWin.destroy();
+                        }
+                    }
+                });
+                Ext.net.Mask.hide();
+            }
+        });
+
+    }
+    function ClearErjaWin() {
+        App.ErjaWin.queryById('CboCommittee').setValue("");
+        App.ErjaWin.queryById('CheckedIsUser').setValue(false);
+        App.ErjaWin.queryById('Momayezi_ArzyabGroupId').setValue(0);
+        App.ErjaWin.queryById('fldId').setValue(0);
+    }
+    function DelMomayez() {
+        var SelectedHeaderRow = App.ErjaWin.queryById('GridEeja').selModel.getLastSelected();
+        if (SelectedHeaderRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+
+                        App.ErjaWin.queryById('GridEeja').deleteSelected();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function EnterNext() {
+        var keyfield = App.ErjaWin.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+
+    }
+</script>

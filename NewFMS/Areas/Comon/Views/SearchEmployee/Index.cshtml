@@ -1,0 +1,202 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_Employee>
+@using Ext.Net.MVC;
+@{
+
+    var X = Html.X();
+}
+@(Html.X().Window().Modal(true)
+            .Width(500).Height(360)
+            .Title("اشخاص")
+                    .ID("SearchEmployee")
+                    .Listeners(l=>l.Destroy.Handler="setFocusTextField()")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Items(
+                X.Panel().Border(false)
+                .Border(false)
+                .AutoScroll(true)
+                .Items(
+
+                        X.GridPanel().AutoScroll(true).Border(false)
+                        .TopBar(
+                            Html.X().Toolbar()
+                            .Items(
+                                    X.Button().Text("انتخاب").Icon(Ext.Net.Icon.ArrowRedo)
+                                                    .Listeners(li => li.Click.Handler = "NextSearchEmployee();")
+
+                            )
+                        )
+                                .ItemID("GridSearchEmployee").Flex(2)
+                    .BottomBar(X.PagingToolbar())
+                    .Height(330)
+                    .ColumnWidth(0.6)
+                    .Layout(Ext.Net.LayoutType.Column)
+                    .Store(
+                        X.StoreForModel()
+                        .Proxy(Html.X().AjaxProxy()
+                            .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                               //     .ExtraParams(pa => pa.Add(new { State = ViewBag.State }))
+                        )
+                        .PageSize(10)
+                        .RemoteFilter(true)
+                        .RemotePaging(true)
+
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1),
+                                Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldFamily).Text("نام خانوادگی").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldMeli_Moshakhase).Text("کد ملی/مشخصه").Flex(3),
+                                        Html.X().Column().DataIndex(Model, m => m.fldFatherName).Text("نام پدر").Flex(2),
+                                        Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کد ملی").Flex(3).Hidden(true),
+                                                Html.X().Column().DataIndex(Model, m => m.fldCodeMoshakhase).Text("fldCodeMoshakhase").Flex(2).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldSh_Shenasname).Text("شماره شناسنامه").Hidden(true).Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(3)
+                    )
+                            .Listeners(a => a.CellDblClick.Handler = "NextSearchEmployee();")
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+
+            )
+        )
+)
+
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+    function setFocusTextField() {
+        if (State == 9) {
+            App.pettyCashier.queryById('txtName').focus();
+        }
+    }
+    function NextSearchEmployee() {
+        var SelectedRow = App.SearchEmployee.queryById('GridSearchEmployee').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            if (State == 1) {
+                App.UsersTab.activeTab.queryById('txtEmployeeName').setValue(SelectedRow.data.fldName + " " + SelectedRow.data.fldFamily);
+                EmployeeId = SelectedRow.data.fldId;
+            }
+           
+          
+            else if (State == 2) {
+                var g = App.Masoulin.queryById('GridDetail');
+                /*var g = Ext.getCmp('GridDetail');*/
+              /*  var g = Ext.getCmp('GridItem');*/
+                var sm = g.getSelectionModel();
+                sm.getSelection()[0].set('fldNameEmployee', SelectedRow.data.fldName + " " + SelectedRow.data.fldFamily);
+                sm.getSelection()[0].set('fldEmployId', SelectedRow.data.fldId);
+            }
+            else if (State == 3) {
+                Ext.net.DirectMethod.request({
+                    url: '/Personeli/PersonalInfo/ChekInPersonal',
+                    params: {
+                        NationalCode: SelectedRow.data.fldMeli_Moshakhase
+                    },
+                    success: function (data) {
+                        if (data.MsgTitle == "") {
+                            App.PersonalInfo.queryById('txtname').setValue(SelectedRow.data.fldName).setReadOnly(true);
+                            App.PersonalInfo.queryById('txtNationalCode').setValue(SelectedRow.data.fldMeli_Moshakhase);
+                            App.PersonalInfo.queryById('txtFamilyName').setValue(SelectedRow.data.fldFamily).setReadOnly(true);
+                            App.PersonalInfo.queryById('txtFamilyName').setValue(SelectedRow.data.txtFatherName).setReadOnly(true);
+                            App.PersonalInfo.queryById("EmployeeId").setValue(SelectedRow.data.fldId);
+
+                        }
+                        else {
+                            Ext.MessageBox.show({
+                                title: data.MsgTitle,
+                                msg: data.Msg,
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                    }
+                });
+            }
+            else if (State == 4) {
+                App.NewUser.queryById('txtNameFamily').setValue(SelectedRow.data.fldName + " " + SelectedRow.data.fldFamily);
+                App.NewUser.queryById('EmployeeId').setValue(SelectedRow.data.fldId);
+            }
+            else if (State == 5) {
+                App.RequestTaghsit_Takhfif.queryById('txtEmployee').setValue(SelectedRow.data.fldName + " " + SelectedRow.data.fldFamily);
+                App.RequestTaghsit_Takhfif.queryById('EmployeeId').setValue(SelectedRow.data.fldId);
+            }
+            else if (State == 6) {
+                App.GhabreAmanat.queryById('txtCode_ShenaseMelli').setValue(SelectedRow.data.fldMeli_Moshakhase);
+                var txtNameEmp = App.GhabreAmanat.queryById('txtNameEmp');
+                txtNameEmp.setValue(SelectedRow.data.fldName);
+                if (SelectedRow.data.fldName != "")
+                    txtNameEmp.setReadOnly(true);
+                var txtFamilyEmp = App.GhabreAmanat.queryById('txtFamilyEmp');
+                txtFamilyEmp.setValue(SelectedRow.data.fldFamily);
+                if (SelectedRow.data.fldFamily != "")
+                    txtFamilyEmp.setReadOnly(true);
+                var txtFatherName = App.GhabreAmanat.queryById('txtFatherName');
+                txtFatherName.setValue(SelectedRow.data.fldFatherName);
+                if (SelectedRow.data.fldFatherName != "")
+                    txtFatherName.setReadOnly(true);
+                var txtSh_Shenasname = App.GhabreAmanat.queryById('txtSh_Shenasname');
+                txtSh_Shenasname.setValue(SelectedRow.data.fldSh_Shenasname);
+                if (SelectedRow.data.fldSh_Shenasname != "")
+                    txtSh_Shenasname.setReadOnly(true);
+                App.GhabreAmanat.queryById('fldEmployeeId').setValue(SelectedRow.data.fldId);
+                if (SelectedRow.data.fldCodemeli != "")
+                    App.GhabreAmanat.queryById('CboType').setValue("0");
+                else
+                    App.GhabreAmanat.queryById('CboType').setValue("1");
+            }
+            else if (State == 7) {
+                App.SabtMotevaffa.queryById('txtCodeMeli').setValue(SelectedRow.data.fldMeli_Moshakhase);
+                var txtName = App.SabtMotevaffa.queryById('txtName');
+                txtName.setValue(SelectedRow.data.fldName);
+                if (SelectedRow.data.fldName != "")
+                    txtName.setReadOnly(true);
+                var txtFamily = App.SabtMotevaffa.queryById('txtFamily');
+                txtFamily.setValue(SelectedRow.data.fldFamily);
+                if (SelectedRow.data.fldFamily != "")
+                    txtFamily.setReadOnly(true);
+                var txtFatherName = App.SabtMotevaffa.queryById('txtFatherName');
+                txtFatherName.setValue(SelectedRow.data.fldFatherName);
+                if (SelectedRow.data.fldFatherName != "")
+                    txtFatherName.setReadOnly(true);
+                var txtSh_Shenasnameh = App.SabtMotevaffa.queryById('txtSh_Shenasnameh');
+                txtSh_Shenasnameh.setValue(SelectedRow.data.fldSh_Shenasname);
+                if (SelectedRow.data.fldSh_Shenasname != "")
+                    txtSh_Shenasnameh.setReadOnly(true);
+                App.SabtMotevaffa.queryById('fldEmployeeId').setValue(SelectedRow.data.fldId);
+                if (SelectedRow.data.fldCodemeli != "")
+                    App.SabtMotevaffa.queryById('CboTypeShakhs').setValue("0");
+                else
+                    App.SabtMotevaffa.queryById('CboTypeShakhs').setValue("1");
+            }
+            else if (State ==8) {
+                App.SabtSigners.queryById('txtShakhs').setValue(SelectedRow.data.fldName + " " + SelectedRow.data.fldFamily);
+                App.SabtSigners.queryById('EmployeeId').setValue(SelectedRow.data.fldId);
+                App.SabtSigners.queryById('PostEjraeeId').setValue(SelectedRow.data.fldOrganPostEjraeeId);
+                App.SabtSigners.queryById('txtPostEjraee').setValue(SelectedRow.data.fldPostEjraee);
+            }
+            else if (State == 9) {
+                App.pettyCashier.queryById('txtName').setValue(SelectedRow.data.fldName + " " + SelectedRow.data.fldFamily);
+                App.pettyCashier.queryById('EmployeeId').setValue(SelectedRow.data.fldId);
+            }
+            App.SearchEmployee.destroy();
+        }
+        
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+
+</script>

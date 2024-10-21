@@ -1,0 +1,121 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net.Utilities
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(X.Window()
+    .Title("تعیین مناسبت ها")
+    .Modal(true)
+    .Border(false)
+    .Width(250)
+    .ID("ChangeStatusDate")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.VBox)
+    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("انتخاب")
+            .IconCls("Select")
+            .Listeners(l => l.Click.Handler = "SetDateMonasebat();"),
+        X.Button()
+            .Text("حذف مناسبت")
+            .Icon(Icon.Delete)
+            .Listeners(l => l.Click.Handler = "DeleteMonasebat();")
+        )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.Table)
+            .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+            .Padding(10)
+            .Defaults(new { Margin = 2 })
+            .Items(
+                X.Label("تاریخ:"),
+                X.TextField()
+                    .ItemID("txtTarikh")
+                    .FieldStyle("background-image:none;background-color:#d3e1f1;")
+                    .Value(@ViewBag.Year + "/" + @ViewBag.Month + "/" + @ViewBag.Day)
+                    .ReadOnly(true),
+                X.Label("مناسبت:"),
+                X.ComboBox()
+                    .ItemID("CboMonasebat")
+                    .Listeners(l => l.AfterRender.Handler = "App.ChangeStatusDate.queryById('CboMonasebat').validate();")
+                    .Editable(true)
+                    .ForceSelection(true)
+                    .TypeAhead(true)
+                    .BlankText("لطفا مناسبت را انتخاب کنید.")
+                    .QueryMode(DataLoadMode.Local)
+                    .TriggerAction(TriggerAction.All)
+                    .AllowBlank(false)
+                    .EmptyText("مناسبت...")
+                    .DisplayField("fldTitle")
+                    .ValueField("fldId")
+                    .Store(X.Store()
+                        .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" },
+                                new ModelField("fldMazaya", ModelFieldType.Boolean) { Mapping = "fldMazaya" }
+                            )
+                        )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetMonasebat"))
+                            .Reader(X.JsonReader().Root("data"))
+                        )
+                        .Listeners(l => l.Load.Handler = "setMonasebatValue()")
+                    )
+            )
+    )
+)
+
+<script type="text/javascript">
+
+    function setMonasebatValue() {
+        App.ChangeStatusDate.queryById('CboMonasebat').setValue('@ViewBag.MonasebatId');
+    }
+
+    function SetDateMonasebat() {
+        var CboMonasebat = App.ChangeStatusDate.queryById('CboMonasebat');
+        if (CboMonasebat.validate() == false) {
+            return;
+        }
+        var id = '@ViewBag.Id';
+        if (document.getElementById(id).getElementsByTagName("span").length > 0) {
+            document.getElementById(id).removeChild(document.getElementById(id).childNodes[1]);
+        }
+        var spann = document.createElement('span');
+        spann.innerHTML = CboMonasebat.getDisplayValue();
+        spann.id = CboMonasebat.getValue();
+        document.getElementById(id).appendChild(spann);
+        spann.classList.add("tooltiptext");
+        document.getElementById(id).classList.add("tooltip");
+        document.getElementById(id).classList.add("holiday");
+        if (CboMonasebat.findRecordByValue(CboMonasebat.getValue()).data.fldMazaya) {
+            document.getElementById(id).classList.add("SpecialDay");
+            document.getElementById(id).style.backgroundImage = "radial-gradient(circle, green, white)";
+        }
+        else {
+            document.getElementById(id).classList.add("SpecialDay2");
+            document.getElementById(id).style.backgroundImage = "radial-gradient(circle, gray, white)";
+        }
+        App.ChangeStatusDate.destroy();
+    }
+
+    function DeleteMonasebat() {
+        var id = '@ViewBag.Id';
+        document.getElementById(id).classList.remove("tooltip");
+        document.getElementById(id).classList.remove("holiday");
+        document.getElementById(id).classList.remove("SpecialDay");
+        document.getElementById(id).removeChild(document.getElementById(id).childNodes[1]);
+        document.getElementById(id).style.backgroundImage = "";
+        App.ChangeStatusDate.destroy();
+    }
+</script>
+

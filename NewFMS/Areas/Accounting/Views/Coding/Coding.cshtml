@@ -1,0 +1,1262 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_Coding_Details>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .rowheightCoding_Details {
+        height: 35px !important;
+    }
+    .rowheightCoding_Details2 {
+        height: 30px !important;
+    }
+    #FieldSetCodingg legend {
+        text-align: right;
+        font-family: Tahoma !important;
+    }
+</style>
+@(Html.X().Window()
+    .Width(800)
+    .Height(610)
+    .Modal(true)
+    .ID("Coding_Details")
+    .Title("ساختار درختی کدینگ")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l => l.Destroy.Handler = "SetFocusHeadLineComponent()")
+    .Listeners(l =>
+    {
+        l.Render.Fn = "addKeyMapCoding_Details";
+        l.BeforeClose.Handler = "validPcodeCoding=false;";
+        l.Resize.Handler = "ResizeTreeCoding()";
+        l.AfterRender.Handler = "App.Coding_Details.queryById('txtDaramadCode').hide();App.Coding_Details.queryById('lblDaramadCode').hide();setTRAttrs()";
+    })
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        Html.X().Button()
+            .Text("ادامه")
+            .ItemID("btnContinueC_D")
+            .Icon(Icon.NextGreen)
+            .Listeners(l=>l.Click.Handler="setCboHeadLine()")
+    )
+    //.Resizable(false)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.HBox)
+            .Padding(10)
+            .Items(
+                X.FieldSet()
+                    .Title("مشخصات ساختار درختی")
+                    .Border(true)
+                    .ItemID("TreeFieldsetCoding_Details")
+                    //.Listeners(l => l.Render.Handler = "App.Coding_Details.queryById('TreeFieldsetCoding_Details').setHeight(Ext.getBody().getViewSize().height-160);")
+                    .Defaults(new { Margin = 2 })
+                    .AutoScroll(true)
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 2/*, TRAttrs = { Cls = "rowheightCoding_Details" } */})
+                    .Items(
+                        X.Hidden()
+                            .ItemID("fldId").Value(0),
+                        X.Hidden()
+                            .ItemID("ParentId").Value(0),
+                        X.Hidden()
+                            .ItemID("ParentItemId").Value(0),
+                        X.Hidden()
+                            .ItemID("fldAccountLevelId"),
+                        X.Label("کد گــره پــدر:"),
+                        X.TextField()
+                            .ItemID("txtPCode")
+                            .FieldStyle("direction:ltr;")
+                            .Listeners(l =>
+                            {
+                                l.Change.Handler = "validPcodeCoding=false;loadCboTemplateCoding();";
+                            })
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                            .MaskRe("[0-9]"),
+                        X.Label("کد گره فـرزنـد:"),
+                        X.TextField()
+                            .ItemID("txtCode")
+                            .FieldStyle("direction:ltr;")
+                            .Listeners(l =>
+                            {
+                                l.Focus.Handler = "CheckValidatePCode_Coding()";
+                                l.Blur.Handler = "CheckValidateCode_Coding()";
+                            })
+                            .AllowBlank(false)
+                            .BlankText("لطفا کد را وارد کنید.")
+                            .MaskRe("[0-9]")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true),
+                        X.FieldSet()
+                            .Border(true)
+                            .Title("<div><input type='checkbox' id='checkboxCoding' onChange='EnableCboCoding()'>مطابق با الگو</input></div>")
+                            .Padding(2)
+                            .ColSpan(2)
+                            .Defaults(new { Margin = 2 })
+                            .ID("FieldSetCodingg")
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 2, TRAttrs = { Cls = "rowheightCoding_Details" } })
+                            .Items(
+                                X.Label("نوع حسابداری:"),
+                                X.ComboBox()
+                                    .ItemID("CboAccountingType")
+                                    .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                    .TypeAhead(true)
+                                    .Disabled(true)
+                                    .Editable(false)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا نوع حسابداری را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Listeners(l => {
+                                        l.Change.Handler = "LoadCboTemplateName2()";
+                                        l.AfterRender.Handler = "App.Coding_Details.queryById('CboAccountingType').validate();";
+                                    })
+                                    .Store(X.Store()
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" },
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetAccountingType"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                    ),
+                                X.Label("الگو:"),
+                                X.ComboBox()
+                                    .ItemID("CboTemplateName")
+                                    .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                    .TypeAhead(true)
+                                    .Disabled(true)
+                                    .Editable(false)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا الگو را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Listeners(l => {
+                                        l.AfterRender.Handler = "App.Coding_Details.queryById('CboTemplateName').validate();";
+                                        l.Change.Handler = "loadCboTemplateCoding()";
+                                    })
+                                    .Store(X.Store()
+                                        .AutoLoad(false)
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetTemplate"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                        .Parameters(ps => ps.Add(new StoreParameter("AccountingTypeId", "App.Coding_Details.queryById('CboAccountingType').getValue()", ParameterMode.Raw)))
+                                        .Parameters(ps => ps.Add(new StoreParameter("Year", @ViewBag.Year, ParameterMode.Raw)))
+                                    ),
+                                X.Label("آیتم های الگو:"),
+                                X.ComboBox()
+                                    .ItemID("CboTemplateCoding")
+                                    .Disabled(true)
+                                    .DisplayField("fldTitle")
+                                    .ValueField("fldId")
+                                    .TypeAhead(true)
+                                    .Editable(false)
+                                    .Disabled(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا نوع تطابق را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Listeners(l => l.Change.Handler = "SetCboMahiyat2()")
+                                    .Store(X.Store()
+                                        .AutoLoad(false)
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" },
+                                                    new ModelField("fldMahiyatId", ModelFieldType.String) { Mapping = "fldMahiyatId" },
+                                                            new ModelField("fldMahiyat_GardeshId", ModelFieldType.String) { Mapping = "fldMahiyat_GardeshId" },
+                                                new ModelField("fldTypeHesabId", ModelFieldType.String) { Mapping = "fldTypeHesabId" }                                                  
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetTemplateCoding"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                        .Parameters(ps => ps.Add(new StoreParameter("TemplateNameId", "App.Coding_Details.queryById('CboTemplateName').getValue()", ParameterMode.Raw)))
+                                        .Parameters(ps => ps.Add(new StoreParameter("PCode", "App.Coding_Details.queryById('txtPCode').getValue()", ParameterMode.Raw))) 
+                                    )
+                            ),
+                        X.Label("عنــوان آیتم:"),
+                        X.TextArea()
+                            .ItemID("txtItemName")
+                            .AllowBlank(false)
+                            .BlankText("لطفا عنوان آیتم را وارد کنید.")
+                            .MaxLength(200)
+                            .EnforceMaxLength(true),
+                        X.Label("کد درآمد:").ItemID("lblDaramadCode"),
+                        X.TextField()
+                            .ItemID("txtDaramadCode")
+                            .FieldStyle("direction:ltr;")
+                            .AllowBlank(false)
+                            .BlankText("لطفا کد درآمد را وارد کنید.")
+                            .MaskRe("[0-9]")
+                            .MaxLength(10)
+                            .EnforceMaxLength(true),
+                        X.Label("ماهیت مانده:"),
+                        X.ComboBox()
+                            .ItemID("CboMahiyat")
+                            .DisplayField("fldTitle")
+                            .ValueField("fldId")
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .AllowBlank(false)
+                            .BlankText("لطفا ماهیت را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetMahiyat"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            ),
+                                 X.Label("ماهیت گردش:"),
+                            X.ComboBox()
+                                .ItemID("CboMahiyatGardesh")
+                                .DisplayField("fldTitle")
+                                .ValueField("fldId")
+                                .TypeAhead(true)
+                                .Editable(false)
+                                .AllowBlank(false)
+                                .BlankText("لطفا ماهیت گردش را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                .Store(X.Store()
+                                    .Model(X.Model()
+                                        .IDProperty("fldId")
+                                        .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetMahiyat"))
+                                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                                ),
+                        X.Label("نوع حساب:"),
+                        X.ComboBox()
+                            .ItemID("CboTypeHesab")
+                            .DisplayField("fldTitle")
+                            .ValueField("fldId")
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع حساب را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetTypeHesab"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            ),
+                        X.Label("سطــح:"),
+                        X.TextField()
+                            .ItemID("txtLevel")
+                            .ReadOnly(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا سطح را وارد کنید."),
+                        X.Label("توضیحات:"),
+                        X.TextArea()
+                            .ItemID("txtDesc"),
+                        X.FieldSet()
+                            .ColSpan(2)
+                            .Width(235)
+                            .Border(false)
+                            .Layout(LayoutType.VBox)
+                            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                            .Items(
+                                X.Button()
+                                    .Text("ذخیره")
+                                    .Icon(Icon.Disk)
+                                    .Listeners(l => l.Click.Handler = "SaveCoding_Details()"))
+                    ),
+                X.TreePanel()
+                    .ID("TreeCoding")
+                    .AutoScroll(true)
+                    .Frame(true)
+                    .Title("ساختار درختی کدینگ")
+                    .Width(500)
+                    .Margin(5)
+                    .UseArrows(true)
+                    .Border(true)
+                    .TopBarItem(
+                        X.Label("مقدار جستجو:"),
+                        X.TextField()
+                            .ItemID("TxtFilter"),
+                        X.Button()
+                            .Text("جستجو")
+                            .Icon(Icon.Magnifier)
+                            .Listeners(l => {
+                                l.Click.Handler = "App.TreeCoding.store.load();setTimeout(function(){if(App.Coding_Details.queryById('TxtFilter').getValue()!=''){App.TreeCoding.expandAll();}},500);";
+                                l.AfterRender.Handler = "App.TreeCoding.store.load();";                                
+                            })  
+                    )
+                    //.SelectionModel(X.TreeSelectionModel().Mode(SelectionMode.Single))
+                    .Listeners(l =>
+                    {
+                        l.Render.Handler = "App.TreeCoding.setHeight(Ext.getBody().getViewSize().height-220);";
+                        l.AfterRender.Handler = "AddMenuTreeCoding();";
+                        l.ItemClick.Handler = "setPCodeFromTree2()";                       
+                    })
+                    //.ViewConfig(X.TreeView().Selectable(true))
+                    .Store(
+                        Html.X().TreeStore()
+                            .Model(
+                                Html.X().Model()
+                                    .Fields(
+                                        X.ModelField().Name(Model, m => m.fldCode).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldTempCodingId).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldTempNameId).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldAccountingTypeId).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldTitle).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldMahiyatId).Type(ModelFieldType.String),
+                                            X.ModelField().Name(Model, m => m.fldMahiyat_GardeshId).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldAccountLevelId).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldName_AccountingLevel).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldPCod).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldDesc).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldTypeHesabId).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldDaramadCode).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldItemIdParent).Type(ModelFieldType.Int)
+                                    )
+                            )                            
+                            .Proxy(
+                                Html.X().AjaxProxy().Url(Url.Action("LoadTreeCoding"))
+                            )
+                            .Listeners(l => {
+                                l.BeforeLoad.Fn = "GetParamTreeCoding";
+                            })
+                    )
+                    .Root(Html.X().Node().NodeID("0").Text("ساختار درختی کدینگ").EmptyChildren(true).Children()/*.AttributesObject(new { fldName = "", fldNodeType = "2", fldDesc = "" })*/.Expanded(true))
+                )
+        )
+)
+<script type="text/javascript">
+    var validPcodeCoding = false;
+    var SelectedRecId = 0;
+    var SelectedRecId_Khazane = 0;
+
+    var GetParamTreeCoding = function (store, operation, eOpts) {
+        operation.params.nod = operation.node.getId();
+        operation.params.HeaderId = '@ViewBag.HeaderId';
+        operation.params.FilterValue = App.Coding_Details.queryById('TxtFilter').getValue();
+    };
+
+    function setTRAttrs() {
+        var trr = App.Coding_Details.queryById("TreeFieldsetCoding_Details").getTargetEl().el.child("table", true);
+        for (var i = 0; i < trr.rows.length; i++) {
+            trr.rows[i].classList.add("rowheightCoding_Details");
+        }
+    }
+
+    function ResizeTreeCoding() {
+        App.TreeCoding.setSize(App.Coding_Details.getWidth() - 300, App.Coding_Details.getHeight() - 73);
+        var len = document.getElementsByClassName("rowheightCoding_Details").length;
+        for (var i = 0; i < len - 1; i++) {
+            document.getElementsByClassName("rowheightCoding_Details")[i].style.height = App.Coding_Details.getHeight() / 16 + "px";
+        }
+        App.Coding_Details.queryById('TreeFieldsetCoding_Details').setHeight(App.Coding_Details.getHeight() - 71);
+    }
+
+    function AddMenuTreeCoding() {
+        App.TreeCoding.onKeyDown = function (key, n) { alert(); if (key.getKey() == 13) { n.expand(); } };
+        var menu_grid = new Ext.menu.Menu({
+            bodyStyle: 'background-color:#dfe8f6 !important;',
+            items: [
+                { text: "ویرایش", iconCls: "Editico", handler: function () { EditNodeTreeCoding(); } },
+                { text: "حذف", iconCls: "Deleteico", handler: function () { DeleteNodeTreeCoding(); } }
+            ]
+        });
+        var menu_grid2 = new Ext.menu.Menu({
+            bodyStyle: 'background-color:#dfe8f6 !important;',
+            items: [
+                { text: "ویرایش", iconCls: "Editico", handler: function () { EditNodeTreeCoding(); } },
+                { text: "حذف", iconCls: "Deleteico", handler: function () { DeleteNodeTreeCoding(); } },
+                { text: "نوع پرونده", iconCls: "Copy", handler: function () { ParvandeTypeTreeCoding(); } }
+            ]
+        });
+        App.TreeCoding.on("itemcontextmenu", function (view, record, item, index, e, eOpts) {
+
+            if (record.getId() != 0) {
+                var position = e.getXY(); e.stopEvent();
+                if (record.raw.lastNode == 0)
+                    menu_grid.showAt(position);
+                else
+                    menu_grid2.showAt(position);
+
+            }
+        });
+    }
+
+    function SetFocusHeadLineComponent() {
+        if ('@ViewBag.Status' == 2) {
+            var grid = App.DocRegister_Details.queryById('DocRegister_DetailsGrid');
+            var Editor = grid.editingPlugin.getEditor(grid.store.getAt(parseInt('@ViewBag.rowIdx')), grid.columnManager.columns[4]);
+            @*Editor.field.getStore().getProxy().setExtraParam("Year", '@ViewBag.Year');
+            Editor.field.store.load();*@
+            grid.editingPlugin.startEdit(parseInt('@ViewBag.rowIdx'), 4);
+            Editor.field.setValue(parseInt(SelectedRecId));
+            SelectedRecId = 0;
+        }
+        else if ('@ViewBag.Status' == 3) {
+            var grid = App.DocRegister_DetailsKhazane.queryById('DocRegister_DetailsKhazaneGrid');
+            var Editor = grid.editingPlugin.getEditor(grid.store.getAt(parseInt('@ViewBag.rowIdx')), grid.columnManager.columns[4]);
+            @*Editor.field.getStore().getProxy().setExtraParam("Year", '@ViewBag.Year');
+            Editor.field.store.load();*@
+            grid.editingPlugin.startEdit(parseInt('@ViewBag.rowIdx'), 4);
+            Editor.field.setValue(parseInt(SelectedRecId_Khazane));
+            SelectedRecId_Khazane = 0;
+        }
+    }
+
+    function setPCodeFromTree2() {
+        var SelectedRecord = App.TreeCoding.getSelectionModel().getLastSelected();
+        if (SelectedRecord.data.id != "0") {
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/Coding/GetFirstParent',
+                params: {
+                    Code: App.TreeCoding.getSelectionModel().getLastSelected().data.id,
+                    HeaderID: '@ViewBag.HeaderId'
+                },
+                success: function (data) {
+                    App.Coding_Details.queryById("CboMahiyat").setValue(data.fldMahiyatId).enable();
+                    App.Coding_Details.queryById("CboMahiyatGardesh").setValue(data.fldMahiyat_GardeshId).enable();
+                    App.Coding_Details.queryById("CboTypeHesab").setValue(data.fldTypeHesabId).enable();
+                }
+            });
+        }
+        App.Coding_Details.queryById('txtPCode').setValue(App.TreeCoding.getSelectionModel().getLastSelected().data.fldCode);
+        App.Coding_Details.queryById('txtPCode').enable();
+        App.Coding_Details.queryById('txtPCode').focus();
+        App.Coding_Details.queryById("txtCode").setValue("");
+
+        if (App.TreeCoding.getSelectionModel().getLastSelected().data.fldItemIdParent == 7 || App.TreeCoding.getSelectionModel().getLastSelected().data.fldItemIdParent == 8) {
+            if (App.TreeCoding.getSelectionModel().getLastSelected().data.fldItemIdParent == 7)
+                App.Coding_Details.queryById("lblDaramadCode").setText("کد درآمد:");
+            if (App.TreeCoding.getSelectionModel().getLastSelected().data.fldItemIdParent == 8)
+                App.Coding_Details.queryById("lblDaramadCode").setText("کد بودجه:");
+
+            App.Coding_Details.queryById('txtDaramadCode').show();
+            App.Coding_Details.queryById("lblDaramadCode").show();
+            var trr = App.Coding_Details.queryById("TreeFieldsetCoding_Details").getTargetEl().el.child("table", true);
+            for (var i = 0; i < trr.rows.length; i++) {
+                trr.rows[i].classList.remove("rowheightCoding_Details");
+                trr.rows[i].classList.add("rowheightCoding_Details2");
+            }
+            App.Coding_Details.queryById("TreeFieldsetCoding_Details").updateLayout();
+        }
+        else {
+            App.Coding_Details.queryById('txtDaramadCode').setValue("");
+            App.Coding_Details.queryById('txtDaramadCode').hide();
+            App.Coding_Details.queryById("lblDaramadCode").hide();
+            var trr = App.Coding_Details.queryById("TreeFieldsetCoding_Details").getTargetEl().el.child("table", true);
+            for (var i = 0; i < trr.rows.length; i++) {
+                trr.rows[i].classList.remove("rowheightCoding_Details2");
+                trr.rows[i].classList.add("rowheightCoding_Details");
+            }
+            App.Coding_Details.queryById("TreeFieldsetCoding_Details").updateLayout();
+        }
+
+        if (App.Coding_Details.queryById("fldId").getValue() != 0) {
+            App.Coding_Details.queryById('fldId').setValue(0);
+            App.Coding_Details.queryById('fldAccountLevelId').setValue(0);
+            document.getElementById("checkboxCoding").checked = false;
+            EnableCboCoding();
+            App.Coding_Details.queryById('txtItemName').setValue("");
+            /*App.Coding_Details.queryById('CboMahiyat').setValue("");
+            App.Coding_Details.queryById('CboTypeHesab').setValue("");*/
+            App.Coding_Details.queryById('txtLevel').setValue("");
+            App.Coding_Details.queryById('txtDesc').setValue("");
+            App.Coding_Details.queryById('txtDaramadCode').setValue("");
+        }
+    }
+
+    function LoadCboTemplateName2() {
+        if (App.Coding_Details.queryById("CboAccountingType").getValue() != null && App.Coding_Details.queryById("CboAccountingType").getValue() != "") {
+            App.Coding_Details.queryById("CboTemplateName").store.load();
+        }
+    }
+
+    function loadCboTemplateCoding() {
+        if (App.Coding_Details.queryById("txtPCode").validate() == true && App.Coding_Details.queryById("CboTemplateName").getValue() != null && App.Coding_Details.queryById("CboTemplateName").getValue() != "") {
+            App.Coding_Details.queryById('CboTemplateCoding').store.load();
+        }
+        else {
+            App.Coding_Details.queryById('CboTemplateCoding').clearValue();
+            App.Coding_Details.queryById('CboTemplateCoding').store.removeAll();
+        }
+    }
+
+    function EnableCboCoding() {
+        if (document.getElementById("checkboxCoding").checked == true) {
+            App.Coding_Details.queryById("CboTemplateCoding").enable();
+            App.Coding_Details.queryById("CboTemplateName").enable();
+            App.Coding_Details.queryById("CboAccountingType").enable();
+        }
+        else {
+            App.Coding_Details.queryById("CboAccountingType").disable();
+            App.Coding_Details.queryById("CboAccountingType").clearValue();
+            App.Coding_Details.queryById("CboTemplateName").disable();
+            App.Coding_Details.queryById("CboTemplateName").clearValue();
+            App.Coding_Details.queryById("CboTemplateName").store.removeAll();
+            App.Coding_Details.queryById("CboTemplateCoding").disable();
+            App.Coding_Details.queryById("CboTemplateCoding").clearValue();
+            App.Coding_Details.queryById("CboTemplateCoding").store.removeAll();
+        }
+    }
+
+    function SetCboMahiyat2() {
+        var CboTemplateCoding = App.Coding_Details.queryById("CboTemplateCoding");
+        if (document.getElementById("checkboxCoding").checked == true && CboTemplateCoding.getValue() != null) {
+            var MahiyatId = CboTemplateCoding.findRecordByValue(CboTemplateCoding.getValue()).data.fldMahiyatId;
+            var fldMahiyat_GardeshId = CboTemplateCoding.findRecordByValue(CboTemplateCoding.getValue()).data.fldMahiyat_GardeshId;
+            var TypeHesabId = CboTemplateCoding.findRecordByValue(CboTemplateCoding.getValue()).data.fldTypeHesabId;
+
+            App.Coding_Details.queryById("CboMahiyat").setValue(MahiyatId);
+            App.Coding_Details.queryById("CboMahiyat").disable();
+            App.Coding_Details.queryById("CboMahiyatGardesh").setValue(fldMahiyat_GardeshId);
+            App.Coding_Details.queryById("CboMahiyatGardesh").disable();
+            App.Coding_Details.queryById("CboTypeHesab").setValue(TypeHesabId);
+            App.Coding_Details.queryById("CboTypeHesab").disable();
+        }
+        else {
+            var iddd = App.Coding_Details.queryById("ParentId").getValue();
+            if (App.TreeCoding.getSelectionModel().getLastSelected() != undefined)
+                iddd = App.TreeCoding.getSelectionModel().getLastSelected().data.id;
+
+            if (iddd != 0) {
+                Ext.net.DirectMethod.request({
+                    url: '/Accounting/Coding/GetFirstParent',
+                    params: {
+                        Code: iddd,/*App.TreeCoding.getSelectionModel().getLastSelected().data.id,*/
+                        HeaderID: '@ViewBag.HeaderId'
+                    },
+                    success: function (data) {
+                        App.Coding_Details.queryById("CboMahiyat").setValue(data.fldMahiyatId);
+                        App.Coding_Details.queryById("CboMahiyatGardesh").setValue(data.fldMahiyat_GardeshId);
+                        App.Coding_Details.queryById("CboTypeHesab").setValue(data.fldTypeHesabId);
+                    }
+                });
+            }
+            /*.Coding_Details.queryById("CboMahiyat").setValue("");
+            App.Coding_Details.queryById("CboMahiyat").enable();
+            App.Coding_Details.queryById("CboTypeHesab").setValue("");
+            App.Coding_Details.queryById("CboTypeHesab").enable();*/
+        }
+    }
+
+    function CheckValidateCode_Coding() {
+        var txtCode = App.Coding_Details.queryById("txtCode");
+        var txtPCode = App.Coding_Details.queryById('txtPCode');
+        var fldId = App.Coding_Details.queryById('fldId');
+
+        if (validPcodeCoding == true) {
+            Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/Coding/CheckValidateCode',
+                params: {
+                    Code: txtCode.getValue(),
+                    Pcode: txtPCode.getValue(),
+                    HeaderId: '@ViewBag.HeaderId',
+                    Id: fldId.getValue()
+                },
+                success: function (data) {
+                    if (data.Valid == 1) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "کد گره فرزند تکراری است.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK,
+                            closable: false,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    txtCode.setValue("");
+                                    /*txtCode.focus();*/
+                                }
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                    else if (data.Valid == 2) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "کد گره فرزند نامعتبر است.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK,
+                            closable: false,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    txtCode.setValue("");
+                                    /*txtCode.focus();*/
+                                }
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                    else if (data.Valid == 3) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "کد گره فرزند وارد شده بیشتر از تعداد سطوح تعریف شده است.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK,
+                            closable: false,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    txtCode.setValue("");
+                                    /*txtCode.focus();*/
+                                }
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                    else {
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+    }
+
+    function CheckValidatePCode_Coding() {
+        var txtPCode = App.Coding_Details.queryById('txtPCode');
+        var txtCode = App.Coding_Details.queryById("txtCode");
+        var fldAccountLevelId = App.Coding_Details.queryById("fldAccountLevelId");
+        var ParentItemId = App.Coding_Details.queryById("ParentItemId");
+        var ParentId = App.Coding_Details.queryById("ParentId");
+        var txtLevel = App.Coding_Details.queryById("txtLevel");
+
+        if (App.Coding_Details.queryById('fldId').getValue() == 0) {
+            if (txtPCode.getValue() != "") {
+                Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Accounting/Coding/CheckExistPCode',
+                    params: {
+                        Pcode: txtPCode.getValue(),
+                        HeaderId: '@ViewBag.HeaderId'
+                    },
+                    success: function (data) {
+                        if (data.Valid == 0) {
+                            Ext.MessageBox.show({
+                                title: "خطا",
+                                msg: "کد گره پدر نامعتبر است.",
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK,
+                                closable: false,
+                                fn: function (btn) {
+                                    if (btn == "ok") {
+                                        validPcodeCoding = false;
+                                        txtPCode.setValue("");
+                                        txtPCode.focus();
+                                        App.TreeCoding.getSelectionModel().deselectAll();
+                                        App.TreeCoding.getSelectionModel().clearSelections();
+                                    }
+                                }
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                        else {
+                            var record = App.TreeCoding.getRootNode().findChild("fldCode", txtPCode.getValue(), true);
+                            if (record != null) {
+                                App.TreeCoding.getSelectionModel().select(record);
+                            }
+                            /*App.Coding_Details.queryById("CboTemplateCoding").store.load();*/
+                            Ext.net.DirectMethod.request({
+                                url: '/Accounting/Coding/GetDefaultCode',
+                                params: {
+                                    Pcode: txtPCode.getValue(),
+                                    HeaderId: '@ViewBag.HeaderId'
+                                },
+                                success: function (data) {
+                                    Ext.net.DirectMethod.request({
+                                        url: '/Accounting/Coding/GetFirstParent',
+                                        params: {
+                                            Code: data.parentId,
+                                            HeaderID: '@ViewBag.HeaderId'
+                                        },
+                                        success: function (data) {
+                                            App.Coding_Details.queryById("CboMahiyat").setValue(data.fldMahiyatId).enable();
+                                            App.Coding_Details.queryById("CboMahiyatGardesh").setValue(data.fldMahiyat_GardeshId).enable();
+                                            App.Coding_Details.queryById("CboTypeHesab").setValue(data.fldTypeHesabId).enable();
+                                        }
+                                    });
+                                    if (data.parentItemId == 7 || data.parentItemId == 8) {
+                                        if (data.parentItemId == 7)
+                                            App.Coding_Details.queryById("lblDaramadCode").setText("کد درآمد:");
+                                        if (data.parentItemId == 8)
+                                            App.Coding_Details.queryById("lblDaramadCode").setText("کد بودجه:");
+
+                                        App.Coding_Details.queryById('txtDaramadCode').show();
+                                        App.Coding_Details.queryById("lblDaramadCode").show();
+                                        var trr = App.Coding_Details.queryById("TreeFieldsetCoding_Details").getTargetEl().el.child("table", true);
+                                        for (var i = 0; i < trr.rows.length; i++) {
+                                            trr.rows[i].classList.remove("rowheightCoding_Details");
+                                            trr.rows[i].classList.add("rowheightCoding_Details2");
+                                        }
+                                        App.Coding_Details.queryById("TreeFieldsetCoding_Details").updateLayout();
+                                    }
+                                    else {
+                                        App.Coding_Details.queryById('txtDaramadCode').setValue("");
+                                        App.Coding_Details.queryById('txtDaramadCode').hide();
+                                        App.Coding_Details.queryById("lblDaramadCode").hide();
+                                        var trr = App.Coding_Details.queryById("TreeFieldsetCoding_Details").getTargetEl().el.child("table", true);
+                                        for (var i = 0; i < trr.rows.length; i++) {
+                                            trr.rows[i].classList.remove("rowheightCoding_Details2");
+                                            trr.rows[i].classList.add("rowheightCoding_Details");
+                                        }
+                                        App.Coding_Details.queryById("TreeFieldsetCoding_Details").updateLayout();
+                                    }
+                                    txtCode.setValue(data.DefaultCode);
+                                    fldAccountLevelId.setValue(data.fldAccountLevelId);
+                                    ParentId.setValue(data.parentId);
+                                    ParentItemId.setValue(data.parentItemId);
+                                    txtLevel.setValue(data.LevelName);
+                                    txtCode.focus();
+                                    validPcodeCoding = true;
+                                    Ext.net.Mask.hide();
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+            else {
+                Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+                var record = App.TreeCoding.getRootNode();
+                App.TreeCoding.getSelectionModel().select(record);
+                /*App.Coding_Details.queryById("CboTemplateCoding").store.load();*/
+                Ext.net.DirectMethod.request({
+                    url: '/Accounting/Coding/GetDefaultCode',
+                    params: {
+                        Pcode: txtPCode.getValue(),
+                        HeaderId: '@ViewBag.HeaderId'
+                    },
+                    success: function (data) {
+                        Ext.net.DirectMethod.request({
+                            url: '/Accounting/Coding/GetFirstParent',
+                            params: {
+                                Code: data.parentId,
+                                HeaderID: '@ViewBag.HeaderId'
+                            },
+                            success: function (data) {
+                                App.Coding_Details.queryById("CboMahiyat").setValue(data.fldMahiyatId).enable();
+                                App.Coding_Details.queryById("CboMahiyatGardesh").setValue(data.fldMahiyat_GardeshId).enable();
+                                App.Coding_Details.queryById("CboTypeHesab").setValue(data.fldTypeHesabId).enable();
+                            }
+                        });
+                        if (data.parentItemId == 7 || data.parentItemId == 8) {
+                            if (data.parentItemId == 7)
+                                App.Coding_Details.queryById("lblDaramadCode").setText("کد درآمد:");
+                            if (data.parentItemId == 8)
+                                App.Coding_Details.queryById("lblDaramadCode").setText("کد بودجه:");
+
+                            App.Coding_Details.queryById('txtDaramadCode').show();
+                            App.Coding_Details.queryById("lblDaramadCode").show();
+                            var trr = App.Coding_Details.queryById("TreeFieldsetCoding_Details").getTargetEl().el.child("table", true);
+                            for (var i = 0; i < trr.rows.length; i++) {
+                                trr.rows[i].classList.remove("rowheightCoding_Details");
+                                trr.rows[i].classList.add("rowheightCoding_Details2");
+                            }
+                            App.Coding_Details.queryById("TreeFieldsetCoding_Details").updateLayout();
+                        }
+                        else {
+                            App.Coding_Details.queryById('txtDaramadCode').setValue("");
+                            App.Coding_Details.queryById('txtDaramadCode').hide();
+                            App.Coding_Details.queryById("lblDaramadCode").hide();
+                            var trr = App.Coding_Details.queryById("TreeFieldsetCoding_Details").getTargetEl().el.child("table", true);
+                            for (var i = 0; i < trr.rows.length; i++) {
+                                trr.rows[i].classList.remove("rowheightCoding_Details2");
+                                trr.rows[i].classList.add("rowheightCoding_Details");
+                            }
+                            App.Coding_Details.queryById("TreeFieldsetCoding_Details").updateLayout();
+                        }
+                        txtCode.setValue(data.DefaultCode);
+                        fldAccountLevelId.setValue(data.fldAccountLevelId);
+                        ParentId.setValue(data.parentId);
+                        ParentItemId.setValue(data.parentItemId);
+                        txtLevel.setValue(data.LevelName);
+                        validPcodeCoding = true;
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+        else {
+            validPcodeCoding = true;
+        }
+    }
+
+    function SaveCoding_Details() {
+        var SelectedNode;
+        var ParentNode;
+        if (App.TreeCoding.getSelectionModel().getLastSelected() != undefined) {
+            SelectedNode = App.TreeCoding.getSelectionModel().getLastSelected();
+            ParentNode = App.TreeCoding.getSelectionModel().getLastSelected().parentNode;
+        }
+        var Id = App.Coding_Details.queryById('fldId');
+        var fldAccountLevelId = App.Coding_Details.queryById('fldAccountLevelId');
+        var txtPCode = App.Coding_Details.queryById("txtPCode");
+        var txtCode = App.Coding_Details.queryById("txtCode");
+        var CboTemplateCoding = App.Coding_Details.queryById('CboTemplateCoding');
+        var txtItemName = App.Coding_Details.queryById('txtItemName');
+        var CboMahiyat = App.Coding_Details.queryById('CboMahiyat');
+        var CboMahiyatGardesh = App.Coding_Details.queryById('CboMahiyatGardesh');
+        var CboTypeHesab = App.Coding_Details.queryById('CboTypeHesab');
+        var txtLevel = App.Coding_Details.queryById('txtLevel');
+        var txtDesc = App.Coding_Details.queryById('txtDesc');
+        var txtDaramadCode = App.Coding_Details.queryById('txtDaramadCode');
+        var DaramadCode = "";
+
+        var er = false;
+
+        if (txtCode.validate() == false) {
+            er = true;
+        }
+        if (txtItemName.validate() == false) {
+            er = true;
+        }
+        if (CboMahiyat.validate() == false) {
+            er = true;
+        }
+        if (CboMahiyatGardesh.validate() == false) {
+            er = true;
+        }
+        if (CboTypeHesab.validate() == false) {
+            er = true;
+        }
+        if (txtLevel.validate() == false) {
+            er = true;
+        }
+        if ((App.Coding_Details.queryById("ParentItemId").getValue() == 7 || App.Coding_Details.queryById("ParentItemId").getValue() == 8)/*App.TreeCoding.getSelectionModel().getLastSelected().data.fldItemIdParent == 7*/ && txtDaramadCode.validate() == false) {
+            er = true;
+        }
+        else {
+            DaramadCode = App.Coding_Details.queryById('txtDaramadCode').getValue();
+        }
+        if (document.getElementById("checkboxCoding").checked == true) {
+            if (CboTemplateCoding.validate() == false) {
+                er = true;
+            }
+        }
+
+        if (er == true)
+            return;
+
+        var TempCodingId = null;
+        if (document.getElementById("checkboxCoding").checked == true) {
+            TempCodingId = CboTemplateCoding.getValue();
+        }
+        /*var PID = null;
+        if (txtPCode.getValue() != "") {*/
+        var PID = App.Coding_Details.queryById("ParentId").getValue();/*App.TreeCoding.getSelectionModel().getLastSelected().data.id;*/
+        /*}*/
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/Coding/SaveCoding_Details',
+            params: {
+                fldId: Id.getValue(),
+                fldHeaderCodId: '@ViewBag.HeaderId',
+                PID: PID,
+                fldTempCodingId: TempCodingId,
+                fldTitle: txtItemName.getValue(),
+                fldPCod: txtPCode.getValue(),
+                fldMahiyatId: CboMahiyat.getValue(),
+                fldMahiyat_GardeshId: CboMahiyatGardesh.getValue(),
+                fldTypeHesabId: CboTypeHesab.getValue(),
+                fldCode: txtCode.getValue(),
+                fldAccountLevelId: fldAccountLevelId.getValue(),
+                fldDaramadCode: DaramadCode,
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    closable: false,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            if (data.Er != 1) {
+                                if (Id.getValue() == 0) {
+                                    SelectedNode.reload();
+                                    ClearCoding_Details();
+                                }
+                                else {
+                                    ParentNode.reload();
+                                    ClearCoding_Details();
+                                }
+                            }
+                        }
+                    }
+                });
+                Ext.net.Mask.hide();
+                if (data.Er != 1) {
+                    if (Id.getValue() == 0) {/*insert*/
+                        SelectedNode.collapse();
+                    }
+                    else {/*edit*/
+                        ParentNode.collapse();
+                    }
+                }
+            }
+        });
+    }
+
+    function ClearCoding_Details() {
+        App.Coding_Details.queryById('fldId').setValue(0);
+        App.Coding_Details.queryById('fldAccountLevelId').setValue(0);
+        App.Coding_Details.queryById("txtPCode").enable();
+        /*App.Coding_Details.queryById("txtPCode").setValue("");*/
+        App.Coding_Details.queryById("txtCode").setValue("");
+        document.getElementById("checkboxCoding").checked = false;
+        EnableCboCoding();
+        App.Coding_Details.queryById('txtItemName').setValue("");
+        App.Coding_Details.queryById('txtDaramadCode').setValue("");
+        App.Coding_Details.queryById('CboMahiyat').setValue("").enable();
+        App.Coding_Details.queryById('CboMahiyatGardesh').setValue("").enable();
+        App.Coding_Details.queryById('CboTypeHesab').setValue("").enable();
+        App.Coding_Details.queryById('txtLevel').setValue("");
+        App.Coding_Details.queryById('txtDesc').setValue("");
+        /*App.TreeCoding.getSelectionModel().deselectAll();
+        App.TreeCoding.getSelectionModel().clearSelections();*/
+    }
+
+    function ParvandeTypeTreeCoding() {
+        Ext.net.Mask.show({ msg: 'در حال بارگزاری...' });
+        var SelectedNode = App.TreeCoding.getSelectionModel().getLastSelected();
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/Coding/SetCaseType',
+            params: {
+                NodeId: SelectedNode.data.id
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function EditNodeTreeCoding() {
+        var SelectedNode = App.TreeCoding.getSelectionModel().getLastSelected();
+        App.Coding_Details.queryById('fldId').setValue(SelectedNode.data.id);
+        App.Coding_Details.queryById('fldAccountLevelId').setValue(SelectedNode.data.fldAccountLevelId);
+        App.Coding_Details.queryById('txtDesc').setValue(SelectedNode.data.fldDesc);
+        App.Coding_Details.queryById("txtPCode").setValue(SelectedNode.data.fldPCod);
+        App.Coding_Details.queryById("txtPCode").disable();
+        App.Coding_Details.queryById("txtCode").setValue(SelectedNode.data.fldCode);
+        if (App.TreeCoding.getSelectionModel().getLastSelected().data.fldItemIdParent == 7 || App.TreeCoding.getSelectionModel().getLastSelected().data.fldItemIdParent == 8) {
+            if (App.TreeCoding.getSelectionModel().getLastSelected().data.fldItemIdParent == 7)
+                App.Coding_Details.queryById("lblDaramadCode").setText("کد درآمد:");
+            if (App.TreeCoding.getSelectionModel().getLastSelected().data.fldItemIdParent == 8)
+                App.Coding_Details.queryById("lblDaramadCode").setText("کد بودجه:");
+            App.Coding_Details.queryById('txtDaramadCode').show();
+            App.Coding_Details.queryById("lblDaramadCode").show();
+            var trr = App.Coding_Details.queryById("TreeFieldsetCoding_Details").getTargetEl().el.child("table", true);
+            for (var i = 0; i < trr.rows.length; i++) {
+                trr.rows[i].classList.remove("rowheightCoding_Details");
+                trr.rows[i].classList.add("rowheightCoding_Details2");
+            }
+            App.Coding_Details.queryById("TreeFieldsetCoding_Details").updateLayout();
+            App.Coding_Details.queryById('txtDaramadCode').setValue(SelectedNode.data.fldDaramadCode);
+        }
+        else {
+            App.Coding_Details.queryById('txtDaramadCode').setValue("");
+            App.Coding_Details.queryById('txtDaramadCode').hide();
+            App.Coding_Details.queryById("lblDaramadCode").hide();
+            var trr = App.Coding_Details.queryById("TreeFieldsetCoding_Details").getTargetEl().el.child("table", true);
+            for (var i = 0; i < trr.rows.length; i++) {
+                trr.rows[i].classList.remove("rowheightCoding_Details2");
+                trr.rows[i].classList.add("rowheightCoding_Details");
+            }
+            App.Coding_Details.queryById("TreeFieldsetCoding_Details").updateLayout();
+        }
+
+        if (SelectedNode.data.fldTempCodingId == "0") {
+            document.getElementById("checkboxCoding").checked = false;
+            EnableCboCoding();
+            setTimeout(function () {
+                App.Coding_Details.queryById('CboMahiyat').setValue(String(SelectedNode.data.fldMahiyatId));
+                App.Coding_Details.queryById('CboMahiyatGardesh').setValue(String(SelectedNode.data.fldMahiyat_GardeshId));
+                App.Coding_Details.queryById('CboTypeHesab').setValue(String(SelectedNode.data.fldTypeHesabId));
+            }, 300);
+        }
+        else {
+            document.getElementById("checkboxCoding").checked = true;
+            EnableCboCoding();
+            App.Coding_Details.queryById("CboAccountingType").setValue(SelectedNode.data.fldAccountingTypeId);
+            App.Coding_Details.queryById("CboTemplateName").store.on('load', function () {
+                if (App.Coding_Details.queryById('fldId').getValue() != 0) {
+                    App.Coding_Details.queryById('CboTemplateName').setValue(SelectedNode.data.fldTempNameId);
+                    App.Coding_Details.queryById("CboTemplateCoding").store.load();
+                }
+            }, App.Coding_Details.queryById("CboTemplateName").store, { single: true });
+
+            if (App.Coding_Details.queryById('CboTemplateName').getValue() != null) {
+                App.Coding_Details.queryById("CboTemplateCoding").store.load();
+            }
+
+            App.Coding_Details.queryById("CboTemplateCoding").store.on('load', function () {
+                if (App.Coding_Details.queryById('fldId').getValue() != 0) {
+                    App.Coding_Details.queryById('CboTemplateCoding').setValue(SelectedNode.data.fldTempCodingId);
+                }
+            }, App.Coding_Details.queryById("CboTemplateCoding").store, { single: true });
+        }
+        App.Coding_Details.queryById('txtItemName').setValue(SelectedNode.data.fldTitle);
+        App.Coding_Details.queryById('txtLevel').setValue(SelectedNode.data.fldName_AccountingLevel);
+    }
+
+    function DeleteNodeTreeCoding() {
+        var SelectedNode = App.TreeCoding.getSelectionModel().getLastSelected();
+        var ParentNode = SelectedNode.parentNode;
+        if (SelectedNode != null) {
+            if (SelectedNode.data.id != 0) {
+                if (SelectedNode.data.cls == 0) {
+                    Ext.MessageBox.show({
+                        title: "هشدار",
+                        msg: "آیا برای حذف مطمئن هستید؟",
+                        icon: Ext.MessageBox.WARNING,
+                        buttons: Ext.MessageBox.YESNO,
+                        fn: function (btn) {
+                            if (btn == 'yes') {
+                                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                Ext.net.DirectMethod.request({
+                                    url: '/Accounting/Coding/DeleteNode',
+                                    params: {
+                                        Id: SelectedNode.data.id
+                                    },
+                                    success: function (data) {
+
+                                        var ic = Ext.MessageBox.INFO;
+                                        if (data.Er == 1) {
+                                            ic = Ext.MessageBox.ERROR;
+                                        }
+                                        Ext.MessageBox.show({
+                                            title: data.MsgTitle,
+                                            msg: data.Msg,
+                                            icon: ic,
+                                            buttons: Ext.MessageBox.OK,
+                                            closable: false,
+                                            fn: function (btn) {
+                                                if (btn == "ok") {
+                                                    if (data.Er != 1) {
+                                                        ParentNode.reload();
+                                                    }
+                                                }
+                                            }
+                                        });
+                                        if (data.Er != 1) {
+                                            ParentNode.collapse();
+                                            /*App.TreeTemplateCoding.getStore().load({ node: ParentNode });
+                                            ClearTemplateCoding();*/
+                                        }
+                                        Ext.net.Mask.hide();
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا ابتدا زیرشاخه های مربوطه را پاک نموده و سپس اقدام به حذف شاخه مورد نظر نمایید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "امکان حذف گره مورد نظر وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر (گره) را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function setCboHeadLine() {
+        var SelectedNode = App.TreeCoding.getSelectionModel().getLastSelected();
+        if (SelectedNode != null) {
+            if (SelectedNode.data.id != 0) {
+                if (SelectedNode.data.cls == 0) {
+                    if (SelectedNode.data.fldName_AccountingLevel == "گروه" || SelectedNode.data.fldName_AccountingLevel == "کل") {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "انتخاب گره مورد نظر امکان پذیر نمی باشد.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                    else {
+                        if ('@ViewBag.Status' == 2) {
+                            SelectedRecId = SelectedNode.data.id;
+                            @*App.ColHeadLine.getComponent(parseInt('@ViewBag.rowIdx')).setValue(parseInt(SelectedNode.data.id));*@
+                        }
+                        if ('@ViewBag.Status' == 3) {
+                            SelectedRecId_Khazane = SelectedNode.data.id;
+                            @*App.ColHeadLine.getComponent(parseInt('@ViewBag.rowIdx')).setValue(parseInt(SelectedNode.data.id));*@
+                        }
+                        App.Coding_Details.destroy();
+                    }
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "انتخاب گره مورد نظر امکان پذیر نمی باشد.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "انتخاب گره مورد نظر امکان پذیر نمی باشد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر (گره) را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    var addKeyMapCoding_Details = function (cmp) {
+        if ('@ViewBag.Status' == 1) {
+            App.Coding_Details.queryById("btnContinueC_D").hide();
+        }
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield;
+                    var nextfld;
+                    if ((Ext.Element.getActiveElement()).name == "") {
+                        keyfield = document.getElementById("checkboxCoding");
+                    }
+                    else {
+                        keyfield = App.Coding_Details.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    }
+                    if (keyfield.itemId == "txtCode") {
+                        nextfld = document.getElementById("checkboxCoding");
+                        nextfld.focus();
+                        return;
+                    }
+                    else if (keyfield.id == "checkboxCoding") {
+                        if (document.getElementById("checkboxCoding").checked == true) {
+                            nextfld = App.Coding_Details.queryById("CboAccountingType");
+                        }
+                        else {
+                            nextfld = App.Coding_Details.queryById("txtItemName");
+                        }
+                    }
+                    else if (keyfield.itemId == "CboTemplateCoding") {
+                        nextfld = App.Coding_Details.queryById("txtItemName");
+                    }
+                    else if (keyfield.itemId == "txtItemName") {
+                        if (App.Coding_Details.queryById("ParentItemId").getValue()/*App.TreeCoding.getSelectionModel().getLastSelected().data.fldItemIdParent*/ == 7
+                            || App.Coding_Details.queryById("ParentItemId").getValue() == 8) {
+                            nextfld = App.Coding_Details.queryById("txtDaramadCode");
+                        }
+                        else {
+                            if (document.getElementById("checkboxCoding").checked == true) {
+                                nextfld = App.Coding_Details.queryById("txtDesc");
+                            }
+                            else {
+                                nextfld = App.Coding_Details.queryById("CboMahiyat");
+                            }
+                        }
+                    }
+                    else if (keyfield.itemId == "txtDaramadCode") {
+                        if (document.getElementById("checkboxCoding").checked == true) {
+                            nextfld = App.Coding_Details.queryById("txtDesc");
+                        }
+                        else {
+                            nextfld = App.Coding_Details.queryById("CboMahiyat");
+                        }
+                    }
+                    else if (keyfield.itemId == "CboMahiyat") {
+                        nextfld = App.Coding_Details.queryById("CboMahiyatGardesh");
+                    }
+                    else if (keyfield.itemId == "CboMahiyatGardesh") {
+                        nextfld = App.Coding_Details.queryById("CboTypeHesab");
+                    }
+                    else if (keyfield.itemId == "CboTypeHesab") {
+                        nextfld = App.Coding_Details.queryById("txtDesc");
+                    }
+                    else if (keyfield.itemId == "txtDesc") {
+                        SaveCoding_Details();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

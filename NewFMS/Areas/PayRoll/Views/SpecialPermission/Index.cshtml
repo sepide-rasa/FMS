@@ -1,0 +1,374 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_SpecialPermission>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("SpecialPermission")
+        .Title("تعریف دسترسی خاص")
+              .Listeners(li => { li.AfterRender.Handler = "SpecialPermissionSetSize();"; li.Render.Fn = "addKeyMapSpecialPermission"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+        X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false)
+        .Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                .Listeners(l => { l.Click.Handler = "SaveSpecialPermission();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadSpecialPermission();"; })
+                , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                            .Listeners(l => { l.Click.Handler = "DeleteSpecialPermission();"; })
+                  , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpSpecialPermission();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.SpecialPermission.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+                         .Layout(LayoutType.VBox)
+                                     .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("دسترسی های خاص").Height(190)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.Hidden().ItemID("fldUserSelectId"),
+                      X.Label("کاربر (Ins):"),
+                              X.TextField()
+                                 .ItemID("txtUserSelect")
+        //  .Icon(Ext.Net.Icon.UserSuitBlack)
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                            .AllowBlank(false)
+                            .ReadOnly(true)
+                            .BlankText("لطفا کاربر را انتخاب کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Icon(Ext.Net.Icon.Add)
+                            .AutoFocus(true)
+                            .DirectEvents(li =>
+                                {
+                                    li.SpecialKey.Url = "/Comon/SearchUserSingle/Index?State=1";
+                                    li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                    li.IconClick.Url = "/Comon/SearchUserSingle/Index?State=1";
+                                })
+                      , X.Label("عملیات:"), 
+                        X.ComboBox()
+                             .ItemID("CboOpration")
+                        .AllowBlank(false)
+                         .TypeAhead(true)
+                         .Editable(false)
+                         .QueryMode(DataLoadMode.Local)
+                         .BlankText("لطفا عملیات را انتخاب کنید.")
+                         .ForceSelection(true)
+                         .TriggerAction(TriggerAction.All)
+                         .DisplayField("fldTitle")
+                         .ValueField("fldId")
+                         .EmptyText("عملیات")
+                         .SelectedItems(new { Value = "1" })
+                         .Store(X.Store()
+                         .Model(X.Model()
+                         .IDProperty("fldId")
+                         .Fields(
+                              new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                              new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                    )
+                                      )
+                         .Proxy(X.AjaxProxy()
+                         .Url(Url.Action("GetOpration"))
+                         .Reader(X.JsonReader().Root("data"))
+                                   )
+                                 )
+                            , X.TreePanel()
+                                .ID("TreeSpecialPermission")
+                            .AutoScroll(true)
+                            .Width(450)
+                            .ColSpan(4)
+                            .Height(120)
+                            .UseArrows(true)
+                            .Border(false)
+                                .Store(
+                        Html.X().TreeStore()
+                            .Proxy(
+                                        Html.X().AjaxProxy().Url(Url.Action("Node"))
+                            )
+                    )
+
+                            .Listeners(a =>
+                            {
+                                a.ItemClick.Handler = "GetIdChartOrgan(record)";
+                                a.AfterRender.Handler = "this.getRootNode().expand();";
+                                a.BeforeLoad.Fn = "nodeLoad";
+                            })
+                .Root(Html.X().Node().NodeID("0").Text("چارت سازمانی"))
+
+                            .View(
+                            X.TreeView()
+                            .Plugins(
+                            X.TreeViewDragDrop().AppendOnly(true).ContainerScroll(true)
+
+                        )
+                            )
+                                   , X.Label()
+                            .Text("چارت سازمانی:")
+                            ,
+                            X.FieldSet().Border(false)
+                            .Items(
+                               X.Label()
+                                        .ItemID("LblChart").Cls("tessst"))
+                                .Padding(0)
+                            .ColSpan(3)
+                    //, X.Label("توضیحات:"),
+                    //    X.TextField()
+                    //.ItemID("txtDesc")
+                    //.LabelAlign(Ext.Net.LabelAlign.Top)
+                    //.Width(260)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("SpecialPermissionGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.SpecialPermission.queryById('SpecialPermissionGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SpecialPermission.queryById('SpecialPermissionGrid');grid.setHeight(App.PayWin.getHeight() - 400); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldNameEmloyee).Text("نام کاربر").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.fldTitleOpr).Text("عملیات").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldTitleChart).Text("چارت سازمانی").Flex(2)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    var NodeId = 0;
+    var NodeTitle = "";
+    var nodeLoad = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/KarkardMahaneGroup/NodeLoad',
+            params: {
+                nod: node.getId()
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+
+    function GetIdChartOrgan(record) {
+        NodeTitle = record.getData().text;
+        NodeId = record.getId();
+        App.SpecialPermission.queryById('LblChart').setText(NodeTitle);
+    };
+    /*App.Win.addListener('resize', function () {
+        App.SpecialPermission.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.SpecialPermission.queryById('SpecialPermissionGrid');
+        grid.setHeight(App.Win.getHeight()-260);
+    });*/
+    function SpecialPermissionSetSize() {
+        App.SpecialPermission.setWidth(App.PayWin.getWidth());
+        var grid = App.SpecialPermission.queryById('SpecialPermissionGrid');
+        grid.setHeight(App.PayWin.getHeight() - 400);
+    }
+    function HelpSpecialPermission() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/SpecialPermission/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function LoadSpecialPermission() {
+        var SelectedRow = App.SpecialPermission.queryById('SpecialPermissionGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/SpecialPermission/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtUserSelect = App.SpecialPermission.queryById('txtUserSelect');
+                    txtUserSelect.setValue(data.fldNameEmloyee);
+                    var fldUserSelectId = App.SpecialPermission.queryById('fldUserSelectId');
+                    fldUserSelectId.setValue(data.fldUserSelectId);
+                    var CboOpration = App.SpecialPermission.queryById('CboOpration');
+                    CboOpration.setValue(data.fldOpertionId);
+                    var fldId = App.SpecialPermission.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    NodeId = data.fldChartOrganId;
+                    App.SpecialPermission.queryById('LblChart').setText(data.fldTitleChart);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveSpecialPermission() {
+        var txtUserSelect = App.SpecialPermission.queryById('txtUserSelect');
+        var fldUserSelectId = App.SpecialPermission.queryById('fldUserSelectId');
+        var CboOpration = App.SpecialPermission.queryById('CboOpration');
+        var fldId = App.SpecialPermission.queryById('fldId');
+            var er = false;
+
+            if (txtUserSelect.validate() == false) {
+                er = true;
+            }
+            if (NodeId == 0 ) {
+                er = true;
+                Ext.MessageBox.show({
+                    Name: "خطا",
+                    msg: "لطفا چارت سازمانی را انتخاب کنید.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/SpecialPermission/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldUserSelectId: fldUserSelectId.getValue(),
+                    fldOpertionId: CboOpration.getValue(),
+                    fldChartOrganId: NodeId
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SpecialPermission.queryById('SpecialPermissionGrid').store.load();
+                    if (data.Er != 1)
+                        ClearSpecialPermission();
+                }
+
+            });
+    }
+    function DeleteSpecialPermission() {
+        var SelectedRow = App.SpecialPermission.queryById('SpecialPermissionGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/PayRoll/SpecialPermission/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Err == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SpecialPermission.queryById('SpecialPermissionGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearSpecialPermission() {
+        App.SpecialPermission.queryById('fldId').setValue(0);
+        App.SpecialPermission.queryById('txtUserSelect').setValue("");
+        App.SpecialPermission.queryById('fldUserSelectId').setValue(0);
+        NodeId = 0;
+    }
+    var addKeyMapSpecialPermission = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+        var keyfield = App.SpecialPermission.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtDesc") {
+            nextfld = App.SpecialPermission.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

@@ -1,0 +1,291 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_DocumentRecord_Details>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .borders{
+        border-right:none;
+        border-top:none;
+    }
+    .borders2{
+        border-right:none;
+        border-top:none;
+        border-bottom:none;
+    }
+</style>
+<script>    
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X().Window()
+    .ID("ShowDocument")
+    .Title("مشاهده سند")
+    .Width(1200)
+    .Height(600)
+    .Modal(true)
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l => l.AfterRender.Handler = "loadHeaderDoc()")
+    .Border(false)
+    .Layout(LayoutType.Fit)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.Fit)
+            .Items(        
+                X.GridPanel()
+                    .ItemID("DocumentGrid")
+                    .Frame(true)
+                    .Title("سنـــــــد")
+                    .TitleAlign(TitleAlign.Center)
+                    .Features(Html.X().Summary().ID("summaryDocuments").Dock(SummaryDock.Bottom))
+                    .Listeners(l => {
+                        l.AfterRender.Handler = "App.ShowDocument.queryById('DocumentGrid').setHeight(Ext.getBody().getViewSize().height-200);";
+                    })
+                    .TopBar(
+                        Html.X().Toolbar()
+                            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Stretch })
+                            .Items(
+                                X.Panel()
+                                    .Layout(LayoutType.HBox)
+                                    .LayoutConfig(new HBoxLayoutConfig { Align=HBoxAlign.Stretch})
+                                    .Height(55)
+                                    .Items(
+                                        X.Panel()
+                                            .Flex(1)
+                                            .Border(false)
+                                            .LayoutConfig(new VBoxLayoutConfig { Align=VBoxAlign.Stretch})                                            
+                                            .Items(
+                                                X.Panel()
+                                                    .Border(true)
+                                                    .Height(27)                                                    
+                                                    .BodyCls("borders")                                                    
+                                                    .Items(
+                                                        X.Label("شماره سند:").Margin(5).ItemID("fldDocumentNum")
+                                                    ),
+                                                X.Panel()
+                                                    .Border(true)
+                                                    .BodyCls("borders2")
+                                                    .Height(27)
+                                                    .Items(
+                                                        X.Label("تاریخ:").Margin(5).ItemID("fldTarikhDocument")
+                                                    )
+                                            ),
+                                        X.Panel()
+                                            .Flex(1)
+                                            .Border(false)
+                                            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Stretch })
+                                            .Items(
+                                                X.Panel()
+                                                    .Border(true)
+                                                    .BodyCls("borders")
+                                                    .Height(27)
+                                                    .Items(
+                                                        X.Label("شماره عطف:").Margin(5).ItemID("fldAtfNum")
+                                                    ),
+                                                X.Panel()
+                                                    .Border(true)
+                                                    .Height(27)
+                                                    .BodyCls("borders2")
+                                                    .Items(
+                                                        X.Label("شماره روزانه:").Margin(5).ItemID("fldShomareRoozane")
+                                                    )                                                    
+                                            ),
+                                        X.Panel()
+                                            .Flex(1)
+                                            .Border(false)
+                                            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Stretch })
+                                            .Items(
+                                                X.Panel()
+                                                    .Border(true)
+                                                    .BodyCls("borders")
+                                                    .Height(27)
+                                                    .Items(
+                                                        X.Label("شماره بایگانی:").Margin(5).ItemID("fldArchiveNum")
+                                                    ),
+                                                X.Panel()
+                                                    .Height(27)
+                                                    .BodyCls("borders2")
+                                                    .Border(true)
+                                                    .Items(
+                                                        X.Label("شماره فرعی:").Margin(5).ItemID("fldFareiNum")
+                                                    )
+                                            ), 
+                                        X.Panel()
+                                            .Flex(1)
+                                            .Border(false)
+                                            .LayoutConfig(new VBoxLayoutConfig { Align=VBoxAlign.Stretch})      
+                                            .Items(                           
+                                                X.Panel()
+                                                    .Border(true)
+                                                    .BodyCls("borders")
+                                                    .Height(27)
+                                                    .Items(
+                                                        X.Label("نوع سند:").Margin(5).ItemID("fldTypeSanadName")
+                                                    ),
+                                                X.Panel()
+                                                    .Height(27)
+                                                    .BodyCls("borders2")
+                                                    .Border(true)
+                                                    .Items(
+                                                        X.Label("وضعیت سند:").Margin(5).ItemID("fldTypeName")
+                                                    )
+                                            ),
+                                        X.Panel()
+                                            .Flex(6)                                            
+                                            .Border(false)
+                                            .Items(
+                                                X.Label("شرح سند:").Margin(5).ItemID("fldDescriptionDocu")
+                                            )
+                                    )
+                            )
+                    )
+                    .Store(
+                        X.StoreForModel()
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("ReadDocRegister_Details"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .Parameters(ps => ps.Add(new StoreParameter("HeaderId", @ViewBag.DocHeaderId, ParameterMode.Raw)))
+                            .PageSize(1000)
+                            .RemoteFilter(false)
+                            .RemotePaging(false)
+                    )
+                    .Plugins(X.FilterHeader().Remote(false))
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Listeners(l => l.ItemMouseEnter.Fn = "createTooltipHeadLine")
+                    .BottomBar(X.PagingToolbar())
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldSourceId).Text("کد پرونده").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldCaseTypeId).Text("کد نوع پرونده").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldCode).Flex(3).Sortable(false).Text("کد حساب").Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldNameCoding).Flex(7).Sortable(false).Text("عنوان حساب").Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldDescription).Flex(7).Sortable(false).Text("شرح").Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldBedehkar).SummaryType(SummaryType.Sum).SummaryRenderer(new Renderer { Handler = "sumColBedDoc" })
+                            .Flex(4).Sortable(false).Text("بدهکار").Renderer("return value.toLocaleString()"),
+                        Html.X().Column().DataIndex(Model, m => m.fldBestankar).SummaryType(SummaryType.Sum).SummaryRenderer(new Renderer { Handler = "sumColBesDoc" })
+                            .Flex(4).Sortable(false).Text("بستانکار").Renderer("return value.toLocaleString()"),
+                        Html.X().Column().DataIndex(Model, m => m.fldNameCenter).Flex(4).Sortable(false).Text("مرکز هزینه").Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).SummaryRenderer(new Renderer { Handler = "SetRemainDoc" })
+                            .Flex(4).Sortable(false).Text("پرونده").Wrap(true)
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+            )
+        )
+)
+<script type="text/javascript">    
+    function loadHeaderDoc() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DocRegistration/Details',
+            params: {
+                HeaderId: '@ViewBag.DocHeaderId',
+                Year: '@ViewBag.Year',
+                ModuleId: '@ViewBag.ModuleId'
+            },
+            success: function (data) {
+                App.ShowDocument.queryById("fldTarikhDocument").setText("تاریخ: "+data.fldTarikhDocument);
+                App.ShowDocument.queryById("fldDocumentNum").setText("شماره سند: "+data.fldDocumentNum);
+                App.ShowDocument.queryById("fldAtfNum").setText("شماره عطف: " + data.fldAtfNum);
+                App.ShowDocument.queryById("fldShomareRoozane").setText("شماره روزانه: " + data.ShomareRoozane);
+                if (data.fldArchiveNum == null)
+                    data.fldArchiveNum = "ندارد";
+                App.ShowDocument.queryById("fldArchiveNum").setText("شماره بایگانی: " + data.fldArchiveNum);
+                if (data.fldShomareFaree == null)
+                    data.fldShomareFaree = "ندارد";
+                App.ShowDocument.queryById("fldFareiNum").setText("شماره فرعی: " + data.fldShomareFaree);
+                App.ShowDocument.queryById("fldTypeSanadName").setText("نوع سند: " + data.fldTypeSanadName);
+                App.ShowDocument.queryById("fldTypeName").setText("وضعیت سند: " + data.fldTypeName);
+                App.ShowDocument.queryById("fldDescriptionDocu").setText("شرح سند: "+data.fldDescriptionDocu);
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function sumColBesDoc() {
+        var store = App.ShowDocument.queryById("DocumentGrid").store;
+        var summaryRec = App.ShowDocument.queryById("DocumentGrid").getView().getFeature("summaryDocuments").summaryRecord;
+        var sum = 0;
+        store.each(function (rec) {
+            sum += rec.get('fldBestankar');
+        });
+        if (sum == summaryRec.data.fldBedehkar) {
+            return "<div style='display:inline;'>جمع بس: </div>" + "<div style='display:inline;color:#167747;'>" + sum.toLocaleString() + "</div>";
+        }
+        else {
+            return "<div style='display:inline;'>جمع بس: </div>" + "<div style='display:inline;color:red;'>" + sum.toLocaleString() + "</div>";
+        }
+    }
+
+    function sumColBedDoc() {
+        var store = App.ShowDocument.queryById("DocumentGrid").store;
+        var summaryRec = App.ShowDocument.queryById("DocumentGrid").getView().getFeature("summaryDocuments").summaryRecord;
+        var sum = 0;
+        store.each(function (rec) {
+            sum += rec.get('fldBedehkar');
+        });
+        if (sum == summaryRec.data.fldBestankar) {
+            return "<div style='display:inline;'>جمع بد: </div>" + "<div style='display:inline;color:#167747;'>" + sum.toLocaleString() + "</div>";
+        }
+        else {
+            return "<div style='display:inline;'>جمع بد: </div>" + "<div style='display:inline;color:red;'>" + sum.toLocaleString() + "</div>";
+        }
+    }
+
+    function SetRemainDoc() {
+        var summaryRec = App.ShowDocument.queryById("DocumentGrid").getView().getFeature("summaryDocuments").summaryRecord;
+        if (parseFloat(summaryRec.data.fldBedehkar) == parseFloat(summaryRec.data.fldBestankar)) {
+            return "<div style='display:inline;color:#167747;'>تراز می باشد.</div>";
+        }
+        else {
+            var Mande = parseFloat(summaryRec.data.fldBedehkar) - parseFloat(summaryRec.data.fldBestankar);
+            if (Mande < 0) {/*مانده بستانکاری*/
+                return "<div style='display:inline;'>مانده :</div>" + "<div style='display:inline;color:red;'>" + (Mande * -1).toLocaleString() + " بد</div>";
+            }
+            else {
+                return "<div style='display:inline;'>مانده :</div>" + "<div style='display:inline;color:red;'>" + Mande.toLocaleString() + " بس</div>";
+            }
+        }
+    }  
+
+    var createTooltipHeadLine = function (view, record, item) {
+        if (record.get('fldCodingId') != 0 && record.get('fldCodingId') != null) {
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/DocRegistration/GetCodingDetails_Tooltip',
+                params: {
+                    fldCodingId: record.get('fldCodingId'),
+                    fldYear: App.ShowDocument.queryById("fldTarikhDocument").getText().substr(7,4)
+                },
+                success: function (data) {
+                    var tip = "<div style='display: inline-block';><p><strong>جمع بدهکاری: " +
+                    data.fldBedehkar.toLocaleString() + "</strong></p><p><strong>جمع بستانکاری: " + data.fldBestankar.toLocaleString() +
+                    "</strong></p>" + "<p><strong>مانده حساب: " + data.MandehHeasb.toLocaleString() + "</strong></p><p><strong>تشخیص: " + data.Tashkhis + "</div>";
+                    var target = item.cells[1];
+                    Ext.fly(target).set({ 'data-qtip': tip, 'anchor': true });
+                }
+            });
+        }
+    };   
+</script>

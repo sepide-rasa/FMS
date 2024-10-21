@@ -1,0 +1,307 @@
+﻿@model IEnumerable<NewFMS.WCF_Archive.OBJ_PropertiesValues>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+
+@(Html.X().Panel()
+        .ID("PropertiesValues")
+    .Title("ثبت مقادیر خاصیت ها")
+    .Closable(true)
+    .Listeners(li =>
+    {
+        //li.Render.Fn = "addKeyMapFileMojaz";
+        li.AfterRender.Handler = "setSizePropertiesValues()";
+    })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Buttons(
+                      X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => l.Click.Handler = "SavePropertiesValues();").ItemID("btnSave"),
+                        X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => l.Click.Handler = "LoadPropertiesValues();"),
+                        X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => l.Click.Handler = "DeletePropertiesValues();"),
+                        X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => l.Click.Handler = "HelpPropertiesValues();"),
+                    X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.PropertiesValues.destroy()")
+                )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .ItemID("pnlPro")
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Border(true)
+                            .Title("مقادیرخاصیت ها")
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                            .Items(
+                                X.Hidden()
+                                    .ItemID("fldId"),
+                                X.FieldSet()
+                                    .Border(false)
+                                    .Defaults(new { Margin = 2 })
+                                    .Layout(LayoutType.Table)
+                                    .LayoutConfig(new TableLayoutConfig { Columns =4 })
+                                    .Items(
+                                        X.Label("نام خاصیت:"),
+                                        X.ComboBox()
+                                            .ItemID("CboParticular")
+                                            .TypeAhead(true)
+                                            .Editable(true)
+                                            .ForceSelection(true)
+                                            .QueryMode(DataLoadMode.Local)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا نام خاصیت را انتخاب کنید.")
+                                            .Listeners(l => l.AfterRender.Handler = "App.PropertiesValues.queryById('CboParticular').validate();")
+                                            .TriggerAction(TriggerAction.All)
+                                            .DisplayField("fldName")
+                                            .ValueField("fldId")
+                                            .EmptyText("نام خاصیت...")
+                                            .Store(X.Store()
+                                                .Model(X.Model()
+                                                    .IDProperty("fldId")
+                                                    .Fields(
+                                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                    )
+                                                )
+                                                .Proxy(X.AjaxProxy()
+                                                            .Url(Url.Action("GetParticular"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                                )
+                                            ),
+                                    X.Label("مقدار خاصیت"),
+                                    X.TextField()
+                                        .ItemID("txtValue")
+                                        .AllowBlank(false)
+                                        .BlankText("لطفا مقدار خاصیت را وارد کنید.")
+                                        .MaxLength(50)
+                                        .EnforceMaxLength(true)
+                                                .Listeners(l => l.AfterRender.Handler = "App.PropertiesValues.queryById('txtValue').validate()")
+                                        .AutoFocus(true),
+                                        X.Label("توضیحات:"),
+                                        X.TextArea()
+                                            .ItemID("txtDesc")
+                                            .Width(365)
+                                            .ColSpan(3)
+                                        )
+                             )
+                           )
+    ),
+
+        X.GridPanel()
+            .ItemID("PropertiesValuesGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.PropertiesValues.queryById('PropertiesValuesGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .Plugins(X.FilterHeader().Remote(true))
+                    .Listeners(l => l.AfterRender.Handler = "App.PropertiesValues.queryById('PropertiesValuesGrid').setHeight(App.ArchiveWin.getHeight() - 320); ")
+            .ColumnModel(
+               Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldNameFn).Text("نام خاصیت").Wrap(true).Flex(4),
+                Html.X().Column().DataIndex(Model, m => m.fldValue).Text("مقدار").Wrap(true).Flex(4),
+                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+             )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+        )
+    )
+    )
+
+
+
+
+<script type="text/javascript">
+    function setSizePropertiesValues() {
+       App.PropertiesValues.queryById("pnlPro").setHeight(App.ArchiveWin.getHeight() - 485);
+    }
+    
+    function LoadPropertiesValues() {
+        var SelectedRow = App.PropertiesValues.queryById('PropertiesValuesGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Archive/PropertiesValues/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var CboParticular = App.PropertiesValues.queryById('CboParticular');
+                    CboParticular.setValue(String(data.fldParticularId));
+                    var txtValue = App.PropertiesValues.queryById('txtValue');
+                    txtValue.setValue(data.fldValue);
+                    var txtDesc = App.PropertiesValues.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.PropertiesValues.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SavePropertiesValues() {
+        var CboParticular = App.PropertiesValues.queryById('CboParticular');
+        var txtValue = App.PropertiesValues.queryById('txtValue');
+        var txtDesc = App.PropertiesValues.queryById('txtDesc');
+        var fldId = App.PropertiesValues.queryById('fldId');
+        var er = false;
+
+        if (CboParticular.validate() == false) {
+            er = true;
+        }
+        if (txtValue.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Archive/PropertiesValues/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldValue: txtValue.getValue(),
+                fldParticularId: CboParticular.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+                App.PropertiesValues.queryById('PropertiesValuesGrid').store.load();
+                if (data.Er != 1)
+                    ClearFormat();
+            }
+
+        });
+    }
+
+    function DeletePropertiesValues() {
+        var SelectedRow = App.PropertiesValues.queryById('PropertiesValuesGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Archive/PropertiesValues/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.PropertiesValues.queryById('PropertiesValuesGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearFormat() {
+        App.PropertiesValues.queryById('fldId').setValue(0);
+        App.PropertiesValues.queryById('txtValue').setValue("");
+        App.PropertiesValues.queryById('CboParticular').setValue("");
+        App.PropertiesValues.queryById('txtDesc').setValue("");
+        Ext.get('fi-button-msgFormat').update("");
+    }
+
+    function HelpFormatFiles() {
+        /*Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Archive/Format/Help',
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });*/
+    }
+
+    var addKeyMapPropertiesValues = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    if (Ext.Element.getActiveElement().name == "") {
+                        SaveFormatFiles();
+                        return;
+                    }
+                    var keyfield = App.FormatFiles.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.FormatFiles.queryById("btnSave");
+                        nextfld.focus();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

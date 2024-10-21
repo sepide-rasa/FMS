@@ -1,0 +1,268 @@
+﻿@model IEnumerable<NewFMS.Models.spr_tblAshkhaseHoghoghiTitlesSelect>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+<style>
+    td {
+        text-align: left;
+    }
+
+    /* .x-rtl .x-textfield-icon {
+        margin-right: 120px;
+    }
+
+    .x-rtl .x-textfield-icon-input {
+        padding-right: 3px;
+    }*/
+
+    #fieldsetfile legend {
+        text-align: right;
+        font-family: Tahoma !important;
+    }
+
+    .lblDaraei {
+        color: red;
+    }
+</style>
+
+@(Html.X().Window()
+   // .Listeners(l => l.AfterRender.Handler = "LoadAshkhaseHoghoghiDetails();")
+    .Closable(true)
+   // .Listeners(l => l.BeforeRender.Handler = "hidelblHoghoghi();")
+    .CloseAction(CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Modal(true)
+    .Width(500).Height(320)
+    .ID("AshkhasHoghoghiTitle")
+    .Title("ثبت عنوان در نامه نگاری")
+    //.ButtonAlign(Alignment.Center)
+    //.Buttons(
+    //    Html.X().Button()
+    //        .Text("ذخیره")
+    //        .Icon(Ext.Net.Icon.Disk)
+    //        .Listeners(l => l.Click.Handler = "SaveAshkhaseHoghoghiDetails()"),
+    //    Html.X().Button()
+    //        .Text("خروج")
+    //        .Icon(Ext.Net.Icon.DoorOut)
+    //        .Listeners(l => l.Click.Handler = "App.NewAshkhasHoghoghiTitle.destroy()")
+    //)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.PaddingSpec("4px 0 4px 0")
+                .Items(
+       
+            X.Panel().Border(false).Buttons(
+                    X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                        .Listeners(l => { l.Click.Handler = "SaveAshkhaseHoghoghiTitle();"; })
+                , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                        .Listeners(l => { l.Click.Handler = "LoadAshkhaseHoghoghiTitle();"; })
+                , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                            .Listeners(l => { l.Click.Handler = "DeleteAshkhaseHoghoghiTitle();"; })
+                , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.AshkhasHoghoghiTitle.destroy()")
+            ).ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                    X.FormPanel().Border(false)
+                 .Layout(LayoutType.VBox)
+                             .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .Items(
+                X.FieldSet().Border(false).Items(
+                        X.FieldSet().Border(false)//.Title("اطلاعات شخص حقوقی")
+                      //  .Height(80)
+                         .Defaults(new { Margin = 2 })
+                        .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                    .Items(
+                        X.Hidden().ItemID("fldId"),
+                           
+                        X.Label("نام:"),
+                            X.TextField().Width(400)
+                        .ItemID("txtName")
+        // .FieldLabel("نام")
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AllowBlank(false)
+                        .BlankText("لطفا نام را وارد کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .MaxLength(250)
+                                .EnforceMaxLength(true)
+                    //    .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                        .AutoFocus(true)
+                       
+                        )
+    )
+                    )
+                ),
+                X.GridPanel().Height(200).Width(400)
+                    .ItemID("AshkhaseHoghoghiTitleGrid")
+                  //  .BottomBar(X.PagingToolbar())
+                    .Store(
+                                        X.StoreForModel()
+                                                    .Listeners(l => l.DataChanged.Handler = "App.AshkhasHoghoghiTitle.queryById('AshkhaseHoghoghiTitleGrid').selModel.refresh();")
+                                    .Proxy(Html.X().AjaxProxy()
+                                        .Url(Url.Action("ReadTitles"))
+                                        .Reader(Html.X().JsonReader().Root("data"))
+                                                    .ExtraParams(ex => ex.Add(new { fldAshkhasHoghoghiId = @ViewBag.Id }))
+                                    )
+                                    .PageSize(2000)
+                                    .RemoteFilter(true)
+                                    .RemotePaging(true)
+                                )
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+                            .Plugins(X.FilterHeader().Remote(true))
+                             //.Listeners(l =>
+                             //{
+                             //    l.AfterRender.Handler = "var grid = App.AshkhasHoghoghiTitle.queryById('AshkhaseHoghoghiTitleGrid');grid.setHeight(App.Win.getHeight() - 300); ";
+
+                             //})
+                .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                    Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام").Flex(10)
+            )
+                        .SelectionModel(
+                            Html.X().RowSelectionModel()
+                                .Mode(Ext.Net.SelectionMode.Single)
+            )
+            )
+    )
+)
+
+
+
+
+<script type="text/javascript">
+    function LoadAshkhaseHoghoghiTitle() {
+        var SelectedRow = App.AshkhasHoghoghiTitle.queryById('AshkhaseHoghoghiTitleGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/AshkhaseHoghoghi/DetailsTitle',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var txtName = App.AshkhasHoghoghiTitle.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var fldId = App.AshkhasHoghoghiTitle.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                   
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SaveAshkhaseHoghoghiTitle() {
+        var txtName = App.AshkhasHoghoghiTitle.queryById('txtName');
+        var fldId = App.AshkhasHoghoghiTitle.queryById('fldId');
+        var er = false;
+
+        if (txtName.validate() == false) {
+            er = true;
+        }
+       
+
+        if (er == true)
+            return;
+     
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/AshkhaseHoghoghi/SaveTitle',
+            params: {
+                fldId: fldId.getValue(),
+                fldName: txtName.getValue(),
+                fldAshkhasHoghoghiId: '@ViewBag.Id'
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.AshkhasHoghoghiTitle.queryById('AshkhaseHoghoghiTitleGrid').store.load();
+                if (data.Er != 1)
+                    ClearAshkhaseHoghoghiTitle();
+            }
+
+        });
+    }
+    
+    function DeleteAshkhaseHoghoghiTitle() {
+        var SelectedRow = App.AshkhasHoghoghiTitle.queryById('AshkhaseHoghoghiTitleGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/AshkhaseHoghoghi/DeleteTitle',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.AshkhasHoghoghiTitle.queryById('AshkhaseHoghoghiTitleGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearAshkhaseHoghoghiTitle() {
+        App.AshkhasHoghoghiTitle.queryById('fldId').setValue(0);
+        App.AshkhasHoghoghiTitle.queryById('txtName').setValue("");
+    }
+
+
+    function EnterNext() {
+        var keyfield = App.NewAshkhasHoghoghiTitle.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+
+        nextfld = keyfield.nextSibling().nextSibling();
+
+        nextfld.focus();
+        nextfld.selectText();
+    }
+</script>

@@ -1,0 +1,659 @@
+﻿@model IEnumerable<NewFMS.WCF_Deceased.OBJ_GhabreAmanat>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+<script>
+    var ShowStatusMotevafa = function (value, record) {
+        var template2 = '<img src={0} alt="" title={1} />';
+
+        var Pic = "@Url.Content("~/Content/icons/Motevafiat/mini/امانت.png")";
+        var ToolTip = "قبر" + '&nbsp;' + "امانت" ;
+      
+        if (value == 1 || value == 2 || value == 3) {
+             Pic = "@Url.Content("~/Content/icons/Motevafiat/mini/مرده.png")";
+             ToolTip = "فوت" + '&nbsp;' + "شده" ;
+        }
+     
+        return Ext.String.format(template2, Pic, ToolTip);
+    };
+</script>
+@(Html.X().Panel()
+        .ID("GhabreAmanat")
+        .Title("ثبت قبر امانت")
+            .Listeners(li => { li.AfterRender.Handler = "GhabreAmanatSetSize();"; li.Render.Fn = "addKeyMapGhabreAmanat"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                .Listeners(l => { l.Click.Handler = "SaveGhabreAmanat();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadGhabreAmanat();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteGhabreAmanat();"; })
+            , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                .Listeners(l => { l.Click.Handler = "HelpGhabreAmanat();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.GhabreAmanat.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("اطلاعات قبر امانت").Height(100)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 8 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                        X.Hidden().ItemID("fldEmployeeId"),
+                            X.Label("آرامستان:")
+                                     , X.ComboBox()
+                                    .AutoFocus(true)
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Editable(true)
+                        .ItemID("CboVadiSalam")
+                        .TypeAhead(true)
+                                .BlankText("لطفا آرامستان را انتخاب کنید.")
+                                .AllowBlank(false)
+                        .QueryMode(DataLoadMode.Local)
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                            .DisplayField("Title")
+                        .ValueField("ID")
+                      .Listeners(ls =>
+                                                  ls.Select.Handler = "App.GhabreAmanat.queryById('cboGhete').clearValue(); App.GhabreAmanat.queryById('cboGhete').getStore().load()"
+                                            )
+                        .Store(X.Store()
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                                    new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                        new ModelField("Title", ModelFieldType.String) { Mapping = "Title" }
+                                )
+                                    )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetVadiSalam"))
+                        .Reader(X.JsonReader().Root("data"))
+                                )
+                                )
+                                ,
+                                     X.Label("قطعه:")
+                                     , X.ComboBox()
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Editable(true)
+                                .ItemID("cboGhete")
+                            .TypeAhead(true)
+                                    .BlankText("لطفا قطعه را انتخاب کنید.")
+                                    .AllowBlank(false)
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                                .DisplayField("Title")
+                            .ValueField("ID")
+                          .Listeners(ls =>
+                                                                  ls.Select.Handler = "App.GhabreAmanat.queryById('CboRadif').clearValue(); App.GhabreAmanat.queryById('CboRadif').getStore().load()"
+                                                )
+                            .Store(X.Store().AutoLoad(false)
+                            .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                                        new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                            new ModelField("Title", ModelFieldType.String) { Mapping = "Title" }
+                                    )
+                                        )
+                            .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetGhete"))
+                            .Reader(X.JsonReader().Root("data"))
+                                    )
+                                        .Parameters(ps => ps.Add(new StoreParameter("VadiSalamId", "App.GhabreAmanat.queryById('CboVadiSalam').getValue()", ParameterMode.Raw)))
+                                                .Parameters(ps => ps.Add(new StoreParameter("AmanatId", "App.GhabreAmanat.queryById('fldId').getValue()", ParameterMode.Raw)))
+                                    )
+                        ,
+                                         X.Label("ردیف:")
+                                         , X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Editable(true)
+                                .ItemID("CboRadif")
+                                .TypeAhead(true)
+                                        .BlankText("لطفا ردیف را انتخاب کنید.")
+                                        .AllowBlank(false)
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                    .DisplayField("Title")
+                                .ValueField("ID")
+                              .Listeners(ls =>
+                                            ls.Select.Handler = "App.GhabreAmanat.queryById('cboShomare').clearValue(); App.GhabreAmanat.queryById('cboShomare').getStore().load()"
+                                                    )
+                                .Store(X.Store().AutoLoad(false)
+                                .Model(X.Model()
+                                .IDProperty("fldId")
+                                .Fields(
+                                            new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                                new ModelField("Title", ModelFieldType.String) { Mapping = "Title" }
+                                        )
+                                            )
+                                .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetRadif"))
+                                .Reader(X.JsonReader().Root("data"))
+                                        )
+                                                .Parameters(ps => ps.Add(new StoreParameter("GheteId", "App.GhabreAmanat.queryById('cboGhete').getValue()", ParameterMode.Raw)))
+                                                .Parameters(ps => ps.Add(new StoreParameter("AmanatId", "App.GhabreAmanat.queryById('fldId').getValue()", ParameterMode.Raw)))
+                                        )
+                                            ,
+                                             X.Label("شماره:")
+                                             , X.ComboBox()
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .Editable(true)
+                                        .ItemID("cboShomare")
+                                    .TypeAhead(true)
+                                            .BlankText("لطفا شماره را انتخاب کنید.")
+                                            .AllowBlank(false)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                        .DisplayField("Title")
+                                    .ValueField("ID")
+                                    .Store(X.Store().AutoLoad(false)
+                                    .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                                new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                                    new ModelField("Title", ModelFieldType.String) { Mapping = "Title" }
+                                            )
+                                                )
+                                    .Proxy(X.AjaxProxy()
+                                                .Url(Url.Action("GetShomare"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                            )
+                                        .Parameters(ps => ps.Add(new StoreParameter("RadifId", "App.GhabreAmanat.queryById('CboRadif').getValue()", ParameterMode.Raw)))
+                                                .Parameters(ps => ps.Add(new StoreParameter("AmanatId", "App.GhabreAmanat.queryById('fldId').getValue()", ParameterMode.Raw)))
+                                            )
+                                               ,
+                                X.Label("تاریخ: "),
+                                 X.PDateField()
+                                .MaskRe("/[0-9 /]/")
+                                .MaxLength(10)
+                                .EnforceMaxLength(true)
+                                .ItemID("txtTarikh")
+                                .AllowBlank(false)
+                            .BlankText("لطفا تاریخ را انتخاب کنید.")
+                                    ,
+                                    //X.Label("شماره سند:"),
+                                    //X.TextField()
+                                    //            .ItemID("txtShomareSanad")
+                                    //    .AllowBlank(false)
+                                    //    .BlankText("لطفا نام خانوادگی را وارد کنید.")
+                                    //            .MaskRe("/[0-9 /]/"),
+                        X.Label("نوع شخص:")
+                          .PaddingSpec("0 0 0 20px")
+                    , X.ComboBox()
+                        .ItemID("CboType")
+                        .TypeAhead(true)
+                           // .Width(75)
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .EmptyText("نوع شخص")
+                        .SelectedItems(new { Value = "0" })
+                        .AllowBlank(false)
+                        .Editable(false)
+                        .BlankText("لطفا نوع شخص را انتخاب کنید.")
+        // .PaddingSpec("0 0 0 100px")
+                        .Items(
+                            new ListItem("حقیقی", "0"),
+                            new ListItem("سایر", "1")
+                            )
+                          .Listeners(l => l.Select.Handler = "ChangeType()")
+                            ,
+                            X.Label("کد ملی:")
+                                    .PaddingSpec("0 0 0 10px").ItemID("lblCode_ShenaseMelli"),
+                        X.TextField()
+                                .Width(146)
+                        .ItemID("txtCode_ShenaseMelli")
+                            .AllowBlank(false)
+                                .FieldStyle("direction:ltr;")
+                        .BlankText("لطفا کدملی/کدمشخصه را وارد کنید.")
+        //.ReadOnly(true)
+                        .Icon(Icon.UserAdd)
+                            .Listeners(l =>
+                                    {
+                                        l.SpecialKey.Handler = "ChangeCode_ShenaseMelli(e.getKey());";
+                                        l.Blur.Handler = "ChangeCode_ShenaseMelli(0);";
+                                    //    l.Focus.Handler = "ShakhsBeforBlur();";
+                                    })
+                        .DirectEvents(li =>
+                        {
+                            //li.SpecialKey.Url = "/Daramad/SearchAshkhas/Index?State=2";
+                            li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                            li.IconClick.Url = "/Comon/SearchEmployee/Index?State=6";
+                        })
+                        .ColSpan(3)
+                        ,
+                              X.Label("نام:"),
+                                X.TextField()
+                                        .ItemID("txtNameEmp")
+        //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                                    .AllowBlank(false)
+                                         .MaxLength(50)
+                                        .EnforceMaxLength(true)
+                                    .BlankText("لطفا نام شخص را وارد کنید.")
+                                        .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                            ,
+                                  X.Label("نام خانوادگی:"),
+                                    X.TextField()
+                                                .ItemID("txtFamilyEmp")
+        //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                                        .AllowBlank(false)
+                                             .MaxLength(50)
+                                            .EnforceMaxLength(true)
+                                        .BlankText("لطفا نام خانوادگی را وارد کنید.")
+                                            .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                            ,
+                                  X.Label("نام پدر:"),
+                                    X.TextField()
+                                                .ItemID("txtFatherName")
+        //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                                        .AllowBlank(false)
+                                             .MaxLength(50)
+                                            .EnforceMaxLength(true)
+                                        .BlankText("لطفا نام پدر را وارد کنید.")
+                                            .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                            ,
+                                  X.Label("شماره شناسنامه:"),
+                                    X.TextField()
+                                                .ItemID("txtSh_Shenasname")
+        //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                                        //.AllowBlank(false)
+                                             .MaxLength(50)
+                                            .EnforceMaxLength(true)
+                                        .BlankText("لطفا شماره شناسنامه را وارد کنید.")
+                                        .MaskRe("[0-9]")
+        /*   , X.Label("توضیحات:"),
+               X.TextField()
+           .ItemID("txtDesc")
+           .ColSpan(3)
+           .LabelAlign(Ext.Net.LabelAlign.Top)
+           .Width(392)*/
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("GhabreAmanatGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.GhabreAmanat.queryById('GhabreAmanatGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.GhabreAmanat.queryById('GhabreAmanatGrid');grid.setHeight(App.MotevafiatWin.getHeight() - 310); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.Tabaghe).Text("وضعیت").Flex(1).Renderer("ShowStatusMotevafa").Filterable(false),
+                        Html.X().Column().DataIndex(Model, m => m.fldNameVadiSalam).Text("آرامستان").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldNameGhete).Text("قطعه").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldNameRadif).Text("ردیف").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldShomare).Text("شماره").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldMeli_Moshakhase).Text("کدملی/مشخصه").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldname).Text("نام").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldFamily).Text("نام خانوادگی").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldFatherName).Text("نام پدر").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldSh_Shenasname).Text("شماره شناسنامه").Flex(2)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    function HelpGhabreAmanat() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/GhabreAmanat/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+ 
+    function GhabreAmanatSetSize() {
+        App.GhabreAmanat.setWidth(App.MotevafiatWin.getWidth());
+        var grid = App.GhabreAmanat.queryById('GhabreAmanatGrid');
+        grid.setHeight(App.MotevafiatWin.getHeight() - 310);
+        App.GhabreAmanat.queryById('txtTarikh').setValue('@ViewBag.TarikhRooz');
+        
+    }
+    
+    function LoadGhabreAmanat() {
+        var SelectedRow = App.GhabreAmanat.queryById('GhabreAmanatGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/GhabreAmanat/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+
+                    var CboVadiSalam = App.GhabreAmanat.queryById('CboVadiSalam');
+                    CboVadiSalam.setValue(data.fldVadiSalamId);
+                    var cboGhete = App.GhabreAmanat.queryById('cboGhete');
+                    cboGhete.clearValue(); cboGhete.getStore().load();
+                    cboGhete.setValue(data.fldGheteId);
+                    var CboRadif = App.GhabreAmanat.queryById('CboRadif');
+                    CboRadif.clearValue(); CboRadif.getStore().load();
+                    CboRadif.setValue(data.fldRadifId);
+                    var cboShomare = App.GhabreAmanat.queryById('cboShomare');
+                    cboShomare.clearValue(); cboShomare.getStore().load();
+                    cboShomare.setValue(data.fldShomareId);
+                   
+                    App.GhabreAmanat.queryById('txtCode_ShenaseMelli').setValue(data.Code_Meli);
+                    App.GhabreAmanat.queryById('txtNameEmp').setValue(data.fldname);
+                    App.GhabreAmanat.queryById('txtNameEmp').setReadOnly(true);
+                    App.GhabreAmanat.queryById('txtFamilyEmp').setValue(data.fldFamily);
+                    App.GhabreAmanat.queryById('txtFamilyEmp').setReadOnly(true);
+                    App.GhabreAmanat.queryById('txtFatherName').setValue(data.fldFatherName);
+                    App.GhabreAmanat.queryById('txtFatherName').setReadOnly(true);
+                    App.GhabreAmanat.queryById('txtSh_Shenasname').setValue(data.fldSh_Shenasname);
+                    App.GhabreAmanat.queryById('txtSh_Shenasname').setReadOnly(true);
+                     App.GhabreAmanat.queryById('txtTarikh').setValue(data.fldTarikhRezerv);
+                     App.GhabreAmanat.queryById("CboType").setValue(data.typeCode);
+                    /*var txtDesc = App.GhabreAmanat.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                     
+                     var txtShomareSanad = App.GhabreAmanat.queryById('txtShomareSanad');
+                     txtShomareSanad.setValue(data.fldShomareSanad);*/
+
+                    var fldId = App.GhabreAmanat.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveGhabreAmanat() {
+        var cboShomare = App.GhabreAmanat.queryById('cboShomare');
+       /* var txtDesc = App.GhabreAmanat.queryById('txtDesc');*/
+        var txtCode_ShenaseMelli=App.GhabreAmanat.queryById('txtCode_ShenaseMelli');
+        var txtNameEmp=App.GhabreAmanat.queryById('txtNameEmp');
+        var txtFamilyEmp=App.GhabreAmanat.queryById('txtFamilyEmp');
+        var txtFatherName=App.GhabreAmanat.queryById('txtFatherName');
+        var txtSh_Shenasname = App.GhabreAmanat.queryById('txtSh_Shenasname');
+        var txtTarikh = App.GhabreAmanat.queryById('txtTarikh');
+        var CboType = App.GhabreAmanat.queryById("CboType");
+        /*var txtShomareSanad = App.GhabreAmanat.queryById('txtShomareSanad');*/
+
+        var fldId = App.GhabreAmanat.queryById('fldId');
+        var er = false;
+
+        /*if (txtShomareSanad.validate() == false) {
+            er = true;
+        }*/
+
+        if (cboShomare.validate() == false) {
+            er = true;
+        }
+        if (txtTarikh.validate() == false) {
+            er = true;
+        }
+        if (txtFatherName.validate() == false) {
+            er = true;
+        }
+        if (txtFamilyEmp.validate() == false) {
+            er = true;
+        }
+        if (txtNameEmp.validate() == false) {
+            er = true;
+        }
+        if (txtCode_ShenaseMelli.validate() == false) {
+            er = true;
+        }
+
+        if (er)
+            return;
+
+        var CodeMeli="";
+        var CodeMoshakhase="";
+        if(CboType.getValue()=="0")
+            CodeMeli=txtCode_ShenaseMelli.getValue();
+        else
+            CodeMoshakhase=txtCode_ShenaseMelli.getValue();
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/GhabreAmanat/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldShomareId: cboShomare.getValue(),
+                fldTarikhRezerv:txtTarikh.getRawValue(),
+                fldDesc:"",/* txtDesc.getValue(),*/
+                CodeMeli:CodeMeli, 
+                CodeMoshakhase:CodeMoshakhase,
+                Name:txtNameEmp.getValue(), 
+                Family:txtFamilyEmp.getValue(), 
+                Sh_Sh:txtSh_Shenasname.getValue(), 
+                NameFather: txtFatherName.getValue(),
+                /*fldShomareSanad: txtShomareSanad.getValue()*/
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.GhabreAmanat.queryById('GhabreAmanatGrid').store.load();
+                if (data.Er != 1)
+                    ClearGhabreAmanat();
+            }
+
+        });
+    }
+    function DeleteGhabreAmanat() {
+        var SelectedRow = App.GhabreAmanat.queryById('GhabreAmanatGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/GhabreAmanat/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.GhabreAmanat.queryById('GhabreAmanatGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearGhabreAmanat() {
+        App.GhabreAmanat.queryById('CboVadiSalam').setValue(0);
+        App.GhabreAmanat.queryById('cboGhete').setValue(0);
+        App.GhabreAmanat.queryById('CboRadif').setValue(0);
+        App.GhabreAmanat.queryById('cboShomare').setValue(0);
+        App.GhabreAmanat.queryById("fldEmployeeId").setValue(0);        
+        App.GhabreAmanat.queryById("txtNameEmp").setValue("");
+        App.GhabreAmanat.queryById("txtFamilyEmp").setValue("");
+        App.GhabreAmanat.queryById("txtFatherName").setValue("");
+        App.GhabreAmanat.queryById("txtSh_Shenasname").setValue(""); 
+        App.GhabreAmanat.queryById("txtCode_ShenaseMelli").setValue("");
+        /*App.GhabreAmanat.queryById("txtShomareSanad").setValue("");
+        App.GhabreAmanat.queryById('txtDesc').setValue("");*/
+        App.GhabreAmanat.queryById('fldId').setValue(0);
+    }
+    function ChangeType() {
+        var lblCode_ShenaseMelli = App.GhabreAmanat.queryById("lblCode_ShenaseMelli");
+        var txtCode_ShenaseMelli = App.GhabreAmanat.queryById("txtCode_ShenaseMelli");
+        var fldEmployeeId = App.GhabreAmanat.queryById("fldEmployeeId");
+        var CboType = App.GhabreAmanat.queryById("CboType");
+        if (CboType.getValue() == "0") {
+            lblCode_ShenaseMelli.setText("کدملی: ");
+            if (fldEmployeeId.getValue() != 0) {
+                txtCode_ShenaseMelli.setValue("");
+                fldEmployeeId.setValue(0);
+            }
+        }
+        else {
+            lblCode_ShenaseMelli.setText("کدمشخصه: ");
+            if (fldEmployeeId.getValue() != 0) {
+                txtCode_ShenaseMelli.setValue("");
+                fldEmployeeId.setValue(0);
+            }
+        }
+    }
+    function ChangeCode_ShenaseMelli(code) {
+        var txtCode_ShenaseMelli = App.GhabreAmanat.queryById('txtCode_ShenaseMelli');
+        var CboType = App.GhabreAmanat.queryById('CboType');
+        var cc = txtCode_ShenaseMelli.getValue();
+       /* if ((CboType.getValue() == "0" && cc.length == 10) || (CboType.getValue() == "1" )) {*/
+            if (code == 0 || code == 13) {
+                Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Deceased/GhabreAmanat/CheckCode_ShenaseMelli',
+                    params: {
+                        Code_ShenaseMelli: txtCode_ShenaseMelli.getValue(),
+                        Type: CboType.getValue()
+                    },
+                    success: function (data) {
+                      
+                       
+                        var txtNameEmp=App.GhabreAmanat.queryById('txtNameEmp');
+                        txtNameEmp.setValue(data.fldName);
+                        if (data.fldName != "")
+                            txtNameEmp.setReadOnly(true);
+                        else
+                            txtNameEmp.setReadOnly(false);
+                        var txtFamilyEmp=App.GhabreAmanat.queryById('txtFamilyEmp');
+                        txtFamilyEmp.setValue(data.fldFamily);
+                        if (data.fldFamily != "")
+                            txtFamilyEmp.setReadOnly(true);
+                        else
+                            txtFamilyEmp.setReadOnly(false);
+                        var txtFatherName=App.GhabreAmanat.queryById('txtFatherName');
+                        txtFatherName.setValue(data.fldFatherName);
+                        if (data.fldFatherName != "")
+                            txtFatherName.setReadOnly(true);
+                        else
+                            txtFatherName.setReadOnly(false);
+                        var txtSh_Shenasname=App.GhabreAmanat.queryById('txtSh_Shenasname');
+                        txtSh_Shenasname.setValue(data.fldSh_Shenasname);
+                        if (data.fldSh_Shenasname != "")
+                            txtSh_Shenasname.setReadOnly(true);
+                        else
+                            txtSh_Shenasname.setReadOnly(false);
+                        App.GhabreAmanat.queryById('fldEmployeeId').setValue(data.fldId);
+                        var lblCode_ShenaseMelli = App.GhabreAmanat.queryById("lblCode_ShenaseMelli");
+                        if (data.fldCodemeli != "" && data.fldCodemeli != null) {
+                            App.GhabreAmanat.queryById('CboType').setValue("0");
+                            lblCode_ShenaseMelli.setText("کدملی: ");
+                        }
+                        else {
+                            App.GhabreAmanat.queryById('CboType').setValue("1");
+                            lblCode_ShenaseMelli.setText("کدمشخصه: ");
+                        }
+               
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+       /* }
+        else {
+            App.GhabreAmanat.queryById('txtCode_ShenaseMelli').setValue("");
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "کد ملی نامعتبر است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }*/
+    }
+
+    var addKeyMapGhabreAmanat = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+        var keyfield = App.GhabreAmanat.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+       
+        /*if (keyfield.itemId == "txtSh_Shenasname") {
+                nextfld = App.GhabreAmanat.queryById('txtDesc');
+            }
+        else*/ if (keyfield.itemId == "txtCode_ShenaseMelli") {
+                nextfld = App.GhabreAmanat.queryById('btnSave');
+            }
+            else {
+                nextfld = keyfield.nextSibling().nextSibling();
+                nextfld.selectText();
+            }
+        nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

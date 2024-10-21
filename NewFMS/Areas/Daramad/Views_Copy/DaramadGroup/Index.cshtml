@@ -1,0 +1,342 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_DaramadGroup>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();
+   var oo = (Session["OrganId"]).ToString();}
+<br />
+@(Html.X().Panel()
+        .ID("SabtDaramadGroup")
+            .Title("تعریف گروه های درآمد")
+           .Listeners(li => { li.AfterRender.Handler = "DaramadGroupSetSize();"; li.Render.Fn = "addKeyMapSabtDaramadGroup"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveDaramadGroup")
+                    .Listeners(l => { l.Click.Handler = "SaveDaramadGroup();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadDaramadGroup();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteDaramadGroup();"; })
+            , X.Button().Text("پارامترها").Icon(Ext.Net.Icon.ApplicationViewList)
+                    .Listeners(l => { l.Click.Handler = "AddParametrs();"; })
+            , X.Button().Text("الگوی فیش").Icon(Ext.Net.Icon.ScriptGear)
+                    .Listeners(l => { l.Click.Handler = "PatternFish();"; })
+                 , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                 .Listeners(l => { l.Click.Handler = "HelpDaramadGroup();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.SabtDaramadGroup.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("گروه درآمد").Height(80)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                       X.Hidden().ItemID("fldId"),
+                         X.Label("سازمان:"),
+                                X.ComboBox()
+                                .ItemID("CboOrgan")
+                                .Width(395)
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .ReadOnly(true)
+                            .QueryMode(DataLoadMode.Local)
+                                .BlankText("لطفا سازمان را انتخاب کنید.")
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldTitle")
+                            .ValueField("fldId")
+                                .EmptyText("سازمان ...")
+                            .Store(X.Store()
+                            .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                    )
+                                        )
+                            .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetOrgan"))
+                            .Reader(X.JsonReader().Root("data"))
+                                            )
+                                        .Listeners(l => l.Load.Handler = "setdefaultValueOrgan()")
+                                    )
+                            .AllowBlank(false)
+                            .Listeners(l => l.Select.Handler = "ChangeOrgan()").ColSpan(3),
+                          X.Label().Text("عنوان:")
+                                    , X.TextField()
+                                .AutoFocus(true)
+                                            .ItemID("txtTitle").MaxLength(100).EnforceMaxLength(true)
+                                    .AllowBlank(false).Width(170)
+                                        .MaskRe("[آ-ی, ,_,-]")
+                                     .BlankText("لطفا عنوان را وارد کنید.")
+                        , X.Label("توضیحات:"),
+                            X.TextField()
+                        .ItemID("txtDescDaramadGroup")
+
+                        .Width(170)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("DaramadGroupGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                            .Listeners(l => l.DataChanged.Handler = "App.SabtDaramadGroup.queryById('DaramadGroupGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtDaramadGroup.queryById('DaramadGroupGrid');grid.setHeight(App.DaramadWin.getHeight() - 290); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.Win.addListener('resize', function () {
+        App.DaramadGroup.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.DaramadGroup.queryById('DaramadGroupGrid');
+        grid.setHeight(App.Win.getHeight()-260);
+    });*/
+
+    function setdefaultValueOrgan() {
+        var CboOrgan = App.SabtDaramadGroup.queryById('CboOrgan');
+        CboOrgan.setValue(String(@oo));
+    }
+
+       function DaramadGroupSetSize() {
+           App.SabtDaramadGroup.setWidth(App.DaramadWin.getWidth());
+            var grid = App.SabtDaramadGroup.queryById('DaramadGroupGrid');
+            grid.setHeight(App.DaramadWin.getHeight() - 290);
+        }
+        function LoadDaramadGroup() {
+            var SelectedRow = App.SabtDaramadGroup.queryById('DaramadGroupGrid').selModel.getLastSelected();
+            if (SelectedRow != null) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/DaramadGroup/Details',
+                    params: {
+                        Id: SelectedRow.data.fldId
+                    },
+                    success: function (data) {
+                        var txtTitle = App.SabtDaramadGroup.queryById('txtTitle');
+                        txtTitle.setValue(data.fldTitle);
+                       var txtDescDaramadGroup = App.SabtDaramadGroup.queryById('txtDescDaramadGroup');
+                        txtDescDaramadGroup.setValue(data.fldDesc);
+                        var fldId = App.SabtDaramadGroup.queryById('fldId');
+                        fldId.setValue(data.fldId);
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+
+        function SaveDaramadGroup() {
+            var txtTitle = App.SabtDaramadGroup.queryById('txtTitle');
+            var txtDescDaramadGroup = App.SabtDaramadGroup.queryById('txtDescDaramadGroup');
+            var fldId = App.SabtDaramadGroup.queryById('fldId');
+            var er = false;
+
+            if (txtTitle.validate() == false) {
+                er = true;
+            }
+           if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/DaramadGroup/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldTitle: txtTitle.getRawValue(),
+                    fldDesc: txtDescDaramadGroup.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtDaramadGroup.queryById('DaramadGroupGrid').store.load();
+                    if (data.Err != 1)
+                        ClearDaramadGroup();
+                }
+
+            });
+        }
+        function HelpDaramadGroup() {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/DaramadGroup/Help',
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        function DeleteDaramadGroup() {
+            var SelectedRow = App.SabtDaramadGroup.queryById('DaramadGroupGrid').selModel.getLastSelected();
+            if (SelectedRow != null) {
+                Ext.MessageBox.show({
+                    title: "هشدار",
+                    msg: "آیا برای حذف مطمئن هستید؟",
+                    icon: Ext.MessageBox.WARNING,
+                    buttons: Ext.MessageBox.YESNO,
+                    fn: function (btn) {
+                        if (btn == 'yes') {
+                            Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Daramad/DaramadGroup/Delete',
+                                params: {
+                                    id: SelectedRow.data.fldId
+                                },
+                                success: function (data) {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Er == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    App.SabtDaramadGroup.queryById('DaramadGroupGrid').store.load()
+                                }
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        function ClearDaramadGroup() {
+            App.SabtDaramadGroup.queryById('fldId').setValue(0);
+            App.SabtDaramadGroup.queryById('txtTitle').setValue("");
+            App.SabtDaramadGroup.queryById('txtDescDaramadGroup').setValue("");
+        }
+
+        function AddParametrs() {
+            var SelectedRow = App.SabtDaramadGroup.queryById('DaramadGroupGrid').selModel.getLastSelected();
+            if (SelectedRow != null) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/DaramadGroup/Parametrs',
+                    params: {
+                        Id: SelectedRow.data.fldId
+                    },
+                    success: function (data) {
+                        Ext.net.Mask.hide();
+                    }
+                })
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        
+        function PatternFish() {
+            var SelectedRow = App.SabtDaramadGroup.queryById('DaramadGroupGrid').selModel.getLastSelected();
+            if (SelectedRow != null) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/DaramadGroup/PatternFish',
+                    params: {
+                        Id: SelectedRow.data.fldId
+                    },
+                    success: function (data) {
+                        Ext.net.Mask.hide();
+                    }
+                })
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        var addKeyMapSabtDaramadGroup = function (cmp) {
+            this.keyMap = new Ext.util.KeyMap({
+                target: cmp.getEl(),
+                binding: [{
+                    key: [13, 9], /*Ext.EventObject.ENTER,*/
+                    fn: function (key, e) {
+                        if (e.getKey() == 9) {
+                            e.stopEvent();
+                        }
+                        var keyfield = App.SabtDaramadGroup.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        var nextfld;
+                        if (keyfield.itemId == "txtDescDaramadGroup") {
+                            nextfld = App.SabtDaramadGroup.queryById('btnSaveDaramadGroup');
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }]
+            });
+        }
+</script>

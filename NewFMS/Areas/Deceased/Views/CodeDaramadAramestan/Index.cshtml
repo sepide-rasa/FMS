@@ -1,0 +1,206 @@
+﻿@model IEnumerable<NewFMS.WCF_Deceased.OBJ_CodeDaramadAramestan>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();
+ var oo = (Session["OrganId"]).ToString();}
+<style>
+    .margincommandStatus {
+        margin: 0 0 0 12px !important;
+    }
+</style>
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+    var ShowStatus = function (value, record) {
+        var template1 = '<img src={0} alt="" title={1} />';
+        if (value == 1) {
+            var Pic = "@Url.Content("~/Content/icons/Deceased/mini/accept.png")";
+            var ToolTip = "فعال";
+        }
+        if (value == 0) {
+            var Pic = "@Url.Content("~/Content/icons/Deceased/mini/cancel.png")";
+            var ToolTip = "غیر" + '&nbsp;' + "فعال" ;
+        }
+        return Ext.String.format(template1, Pic, ToolTip);
+    };
+</script>
+<br />
+@(Html.X().Panel()
+            .ID("SabtCodeDaramadAramestan")
+            .Title("کد های درآمد آرامستان")
+                                     .Listeners(li => { li.Render.Handler = "CodeDaramadAramestanSetSize()";/* li.AfterRender.Handler = "LoadGridCodeDaeamad()";*/ })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+            .Buttons(
+                        X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)//.ItemID("btnSaveCity")
+                        .Listeners(l => { l.Click.Handler = "SaveCodeDaramadAramestan()"; })
+                        , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpCodeDaramadAramestan()"; }),
+
+                 X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                            .OnClientClick("App.SabtCodeDaramadAramestan.destroy()")
+            ).ButtonAlign(Ext.Net.Alignment.Center)
+       .Items(
+      
+            X.GridPanel()
+           
+                            .ItemID("GridCodeDaramadAramestan")
+        //  .BottomBar(X.PagingToolbar().HideRefresh(true))
+                 //       .Icon(Icon.Table)
+                   //     .Frame(true)
+                        .AutoScroll(true)
+                       // .Title("کدهای درآمد")
+                        .Store(
+                            X.StoreForModel()
+        // .Listeners(l => l.DataChanged.Handler = "App.SabtCodeDaramadAramestan.queryById('GridCodeDaramadAramestan').selModel.refresh();")
+                                    .RemoteFilter(true)
+                                                .PageSize(200000)
+                                        )
+                            .Plugins(Html.X().CellEditing().ClicksToEdit(1))
+                                     .Listeners(l =>
+                                 {
+                                     l.AfterRender.Handler = "var grid = App.SabtCodeDaramadAramestan.queryById('GridCodeDaramadAramestan');grid.setHeight(App.MotevafiatWin.getHeight() - 210); ";
+
+                                 })
+                             .Plugins(X.FilterHeader().Remote(false))
+                        .SelectionModel(
+                            Html.X().CheckboxSelectionModel().ShowHeaderCheckbox(true)
+                                .Mode(SelectionMode.Multi).PruneRemoved(false).CheckOnly(true))
+                        .ColumnModel(
+                            Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldDaramadCode).Text("کد درآمد").Flex(2).Wrap(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldDaramadTitle).Text("عنوان").Flex(8).Wrap(true),
+                            Html.X().CheckColumn().DataIndex(Model, m => m.fldMashmooleArzesheAfzoode).Text("مشمول ارزش افزوده").Flex(2).Renderer("hidecheck").Editable(false).StopSelection(false).Wrap(true),
+                            Html.X().CheckColumn().DataIndex(Model, m => m.fldMashmooleKarmozd).Text("مشمول کارمزد").Flex(2).Renderer("hidecheck").Editable(false).StopSelection(false).Wrap(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldNameVahed).Text("واحداندازه گیری").Flex(2).Wrap(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldShomareHesab).Text("شماره حساب").Flex(4).Wrap(true)
+                )
+    )
+)
+<script type="text/javascript">
+   
+  
+    var hidecheck = function (value, metaData, record, rowIndex, colIndex, store) {
+        if (record.data.id != 1)
+            return Ext.ux.CheckColumn.prototype.renderer.apply(this, arguments);
+    };
+    function CodeDaramadAramestanSetSize() {
+        App.SabtCodeDaramadAramestan.setWidth(App.MotevafiatWin.getWidth());
+        var grid = App.SabtCodeDaramadAramestan.queryById('GridCodeDaramadAramestan');
+        /* grid.setHeight(App.MotevafiatWin.getHeight() - 330);*/
+        LoadAllData();
+    }
+  
+   
+    function HelpCodeDaramadAramestan() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/CodeDaramadAramestan/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+   
+   
+
+    function LoadAllData() {
+        App.SabtCodeDaramadAramestan.queryById('GridCodeDaramadAramestan').getSelectionModel().clearSelections();
+      
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/CodeDaramadAramestan/LoadAllData',
+
+            success: function (result) {
+
+                var store = App.SabtCodeDaramadAramestan.queryById("GridCodeDaramadAramestan").store;
+                store.load({ start: 0, limit: store.count(), page: 1 });
+                store.loadData(result.Data);
+
+                if (result.checkId2.length != 0) {
+                    for (var j = 0; j < result.checkId2.length; j++) {
+                        var index2 = App.SabtCodeDaramadAramestan.queryById("GridCodeDaramadAramestan").getStore().findExact("fldCodeDaramadId", result.checkId2[j]);
+                        App.SabtCodeDaramadAramestan.queryById("GridCodeDaramadAramestan").getSelectionModel().select(index2, true);
+                    }
+                }
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    
+    function SaveCodeDaramadAramestan() {
+     
+        var cods = new Array();
+        var SelectedRows = App.SabtCodeDaramadAramestan.queryById('GridCodeDaramadAramestan').getSelectionModel().getSelection();
+        if (SelectedRows.length > 0) {
+                for (var i = 0; i < SelectedRows.length ; i++) {
+                    cods.push({
+                        fldCodeDaramadId: SelectedRows[i].data.fldCodeDaramadId,
+                        fldId: SelectedRows[i].data.fldId
+                    });
+                }
+        
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "هیچ سطری برای ذخیره انتخاب نشده است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+
+        var data = {
+            cods: cods
+        };
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Deceased/CodeDaramadAramestan/Save',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (data) {
+                var Message = "";
+                var result = data;/* JSON.parse(data);*/
+                var ic = Ext.MessageBox.INFO;
+                if (result.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+    
+                App.SabtCodeDaramadAramestan.queryById('GridCodeDaramadAramestan').selModel.refresh();
+                Ext.net.Mask.hide();
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+        });
+    }
+ 
+</script>

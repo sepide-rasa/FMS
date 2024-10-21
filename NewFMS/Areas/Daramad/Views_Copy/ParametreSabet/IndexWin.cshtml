@@ -1,0 +1,583 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_ParametreSabet>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true)
+.Width(630)//.Height(220)
+        .Title("تعریف پارامتر ثابت")
+        .ID("IndexWin")
+            .Listeners(li => { li.AfterRender.Fn = "addKeyMapIndexWin"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+
+    .Items(
+                X.Panel()
+                                    .Defaults(new { Margin = 5 })
+                 .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                .Border(false)
+                .Buttons(
+                            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveParametreSabetWin")
+                    .Listeners(l => { l.Click.Handler = "SaveParametreSabetWin();"; })
+                , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadParametreSabetWin();"; })
+                , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                   .Listeners(l => { l.Click.Handler = "DeleteParametreSabetWin();"; })
+                , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                    .Listeners(l => { l.Click.Handler = "HelpParametreSabetWin();"; })
+                , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.IndexWin.destroy()")
+                    )
+                .ButtonAlign(Ext.Net.Alignment.Center)
+                .Items(
+        //X.Panel()
+        //    .Border(true)
+        //        .Layout(Ext.Net.LayoutType.VBox)
+        //    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+        //    .Items(
+                            X.FieldSet()
+                                .Border(true)
+                                .Title("اطلاعات پارامتر")
+                                .Width(600)
+                                .Defaults(new { Margin = 2 })
+                                .Layout(LayoutType.Table)
+                                .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                                .Items(
+                        X.Hidden().ItemID("fldId"),
+                        X.Label("کد درآمد:"),
+                            X.TextField()
+                                .Width(505)
+                                .ColSpan(5)
+                            .ReadOnly(true)
+                            .Text(@ViewBag.DaramadTitle)
+                            ,
+                        X.Label("نام فارسی:"),
+                            X.TextField()
+                                .Width(120)
+                        .ItemID("txtNameParametreFa")
+                        .AllowBlank(false)
+                        .AutoFocus(true)
+                        .BlankText("لطفا نام فارسی را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .MaxLength(100)
+                        .EnforceMaxLength(true)
+                        //.MaskRe("[آ-ی, ,_,-]")
+                        , X.Label("نام در فرمول:"),
+                            X.TextField()
+                                .Width(120)
+                        .ItemID("txtNameParametreEn")
+                        .FieldStyle("direction:ltr;")
+                        .AllowBlank(false)
+                        .BlankText("لطفا نام در فرمول را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .MaxLength(100)
+                        .EnforceMaxLength(true)
+                        .MaskRe("[a-z,A-Z, ,_,-,0-9]")
+                        , X.Label("نوع استفاده:")
+                            , X.ComboBox()
+                                .Width(120)
+                        .ItemID("CboNoe")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Editable(true)
+                        .ForceSelection(true)
+                        .TypeAhead(true)
+                        .BlankText("لطفا نوع استفاده را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .EmptyText("...")
+        //  .FieldLabel("جنسیت")
+                        .Items(
+                            new ListItem("محاسبات", "0"),
+                            new ListItem("نامه نگاری", "1")
+                            )
+                                    .SelectedItems(new { Value = "1" })
+
+                            , X.Label("نوع:")
+                            , X.ComboBox()
+                            .Width(120)
+                            .ItemID("CboTypeParametr")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Editable(true)
+                            .ForceSelection(true)
+                            .TypeAhead(true)
+                            .BlankText("لطفا نوع را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .EmptyText("...")
+        //  .FieldLabel("جنسیت")
+                            .Items(
+                                new ListItem("متغیر", "1"),
+                                new ListItem("ثابت", "0")
+                                    )
+                                            .Listeners(l => l.Select.Handler = "ChangeTypeParametr()")
+                                        .SelectedItems(new { Value = "1" })
+                                        
+                        , X.Label("نوع فیلد:")
+                            , X.ComboBox()
+                                .Width(120)
+                        .ItemID("CboNoeField")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Editable(true)
+                        .ForceSelection(true)
+                        .TypeAhead(true)
+                        .BlankText("لطفا نوع فیلد را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .EmptyText("...")
+        //  .FieldLabel("جنسیت")
+                        .Items(
+                            new ListItem("عدد صحیح", "1"),
+                            new ListItem("عدد اعشاری", "2"),
+                            new ListItem("رشته", "3"),
+                            new ListItem("تاریخ", "4"),
+                            new ListItem("ComboBox", "5")
+                                )
+                                .Listeners(l => l.Select.Handler = "ChangeNoeField()")
+                        .SelectedItems(new { Value = "1" })
+
+                                , X.ComboBox()
+                                    .Width(120)
+                            .ItemID("CboNoeField2")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Editable(true)
+                            .ForceSelection(true)
+                            .TypeAhead(true)
+                            .BlankText("لطفا نوع فیلد را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .EmptyText("...")
+        //  .FieldLabel("جنسیت")
+                            .Items(
+                                new ListItem("عدد صحیح", "1"),
+                                new ListItem("عدد اعشاری", "2")
+                                    )
+                            .SelectedItems(new { Value = "1" })
+                        
+                        , X.Label("نام :").ItemID("lblComboBox"),
+                            X.ComboBox()
+                        .Width(120)
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ItemID("CboComboBox")
+                        .TypeAhead(true)
+                        .Editable(true)
+                        .QueryMode(DataLoadMode.Local)
+                        .BlankText("لطفا نام ComboBox را انتخاب کنید.")
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                        .ValueField("fldId")
+                        .EmptyText("...")
+                        .Store(X.Store()
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                )
+                                    )
+                        .Proxy(X.AjaxProxy()
+                                .Url(Url.Action("GetComboBox"))
+                        .Reader(X.JsonReader().Root("data"))
+                                        ).Listeners(l => l.Load.Handler = "DefaultCboComboBox()")
+                                )
+                            .AllowBlank(false)
+                        , X.Label("وضعیت:")
+                        , X.ComboBox()
+                        .Width(120)
+                            .ItemID("CboVaziyat")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Editable(true)
+                            .ForceSelection(true)
+                            .TypeAhead(true)
+                            .BlankText("لطفا نوع استفاده را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .EmptyText("...")
+        //  .FieldLabel("جنسیت")
+                            .Items(
+                                new ListItem("فعال", "1"),
+                                new ListItem("غیر فعال", "0")
+                                )
+                                        .SelectedItems(new { Value = "1" })
+                                       // .ColSpan(3)
+                        , X.Label("توضیحات:"),
+                            X.TextField()
+                        .ItemID("txtDesc")
+                        .Width(505)
+                        .ColSpan(5)
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        )
+        //)
+        ),
+                  X.GridPanel().AutoScroll(true)
+                                .ItemID("ParametreSabetWinGrid").Flex(2)
+                        .BottomBar(X.PagingToolbar())
+                        .Height(200)
+        //.ColumnWidth(0.6)
+        //.Layout(Ext.Net.LayoutType.Column)
+                        .Store(
+                            X.StoreForModel()
+                                 .Listeners(l => l.DataChanged.Handler = "App.IndexWin.queryById('ParametreSabetWinGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                            .Url(Url.Action("Read"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                                            .ExtraParams(p => p.Add(new { ShomareHesabCodeDaramadId = @ViewBag.ShomareHesabCodeDaramadId }))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+
+                        )
+                        .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+
+                        .Plugins(X.FilterHeader().Remote(true))
+                        .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldFormulId).Text("فرمول").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldDaramadTitle).Text("کد درآمد").Flex(3).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldNameParametreFa).Text("نام پارامتر").Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.NoeName).Text("نوع").Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.NoeFieldName).Text("نوع فیلد").Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.fldNoeParametr).Text("نوع").Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.VaziyatName).Text("وضعیت").Flex(3),
+                                Html.X().ComponentColumn().Flex(1).ItemID("buttonFormula")
+                                    .Component(Html.X().Button().ItemID("btnbindFormula").Text("فرمول").Listeners(l => l.Click.Handler = "GotoFormula()")).Filterable(false)
+
+                            )
+        //.Layout(Ext.Net.LayoutType.VBox)
+        //.LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+)
+
+<script type="text/javascript">
+    function HelpParametreSabetWin() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/ParametreSabet/HelpIndexWin',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function DefaultCboComboBox() {
+        var CboComboBox = App.IndexWin.queryById('CboComboBox');
+        CboComboBox.select(CboComboBox.store.getAt(0));
+    }
+    function ChangeTypeParametr() {
+        var CboNoeField = App.IndexWin.queryById('CboNoeField');
+        var CboNoeField2 = App.IndexWin.queryById('CboNoeField2');
+        var CboTypeParametr = App.IndexWin.queryById('CboTypeParametr');
+        
+        if (CboTypeParametr.getValue() == "0") {
+            CboNoeField.hide();
+            CboNoeField2.show();
+        }
+        else {
+            CboNoeField.show();
+            CboNoeField2.hide();
+        }
+    }
+    function ChangeNoeField() {
+        var CboNoeField = App.IndexWin.queryById('CboNoeField');
+        var CboComboBox = App.IndexWin.queryById('CboComboBox');
+        var lblComboBox = App.IndexWin.queryById('lblComboBox');
+        var CboTypeParametr = App.IndexWin.queryById('CboTypeParametr');
+
+        var grid = App.IndexWin.queryById('ParametreSabetWinGrid');
+
+        var txtDesc = App.IndexWin.queryById('txtDesc');
+
+        if (CboNoeField.getValue() == "5") {
+            CboComboBox.show();
+            lblComboBox.show();
+            txtDesc.setWidth(312);
+        }
+        else {
+            CboComboBox.hide();
+            lblComboBox.hide();
+            txtDesc.setWidth(505);
+        }
+        if (CboTypeParametr.getValue() == "0") {
+            CboComboBox.hide();
+            lblComboBox.hide();
+            txtDesc.setWidth(505);
+        }
+    }
+    function LoadParametreSabetWin() {
+        var SelectedRow = App.IndexWin.queryById('ParametreSabetWinGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/ParametreSabet/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtNameParametreFa = App.IndexWin.queryById('txtNameParametreFa');
+                    txtNameParametreFa.setValue(data.fldNameParametreFa);
+                    var txtNameParametreEn = App.IndexWin.queryById('txtNameParametreEn');
+                    txtNameParametreEn.setValue(data.fldNameParametreEn);
+                    var CboTypeParametr = App.IndexWin.queryById('CboTypeParametr');
+                    CboTypeParametr.setValue(data.fldTypeParametr);
+                    ChangeTypeParametr();
+                    var CboNoe = App.IndexWin.queryById('CboNoe');
+                    CboNoe.setValue(data.fldNoe);
+                    var CboNoeField = App.IndexWin.queryById('CboNoeField');
+                    CboNoeField.setValue(data.fldNoeField);
+                    var CboNoeField2 = App.IndexWin.queryById('CboNoeField2');
+                    CboNoeField2.setValue(data.fldNoeField);
+                    ChangeNoeField();
+                    var CboVaziyat = App.IndexWin.queryById('CboVaziyat');
+                    CboVaziyat.setValue(data.fldVaziyat);
+                    var CboComboBox = App.IndexWin.queryById('CboComboBox');
+                    CboComboBox.setValue(data.fldComboBaxId);
+                    var txtDesc = App.IndexWin.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.IndexWin.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    
+    function SaveParametreSabetWin() {
+        var txtNameParametreFa = App.IndexWin.queryById('txtNameParametreFa');
+        var txtNameParametreEn = App.IndexWin.queryById('txtNameParametreEn');
+        var CboNoe = App.IndexWin.queryById('CboNoe');
+        var CboNoeField = App.IndexWin.queryById('CboNoeField');
+        var CboNoeField2 = App.IndexWin.queryById('CboNoeField2');
+        var CboVaziyat = App.IndexWin.queryById('CboVaziyat');
+        var CboComboBox = App.IndexWin.queryById('CboComboBox');
+        var CboTypeParametr = App.IndexWin.queryById('CboTypeParametr');
+        var txtDesc = App.IndexWin.queryById('txtDesc');
+        var fldId = App.IndexWin.queryById('fldId');
+        var er = false;
+
+        
+        if (txtNameParametreFa.validate() == false) {
+            er = true;
+        }
+        if (txtNameParametreEn.validate() == false) {
+            er = true;
+        }
+        if (CboNoe.validate() == false) {
+            er = true;
+        }
+        if (CboTypeParametr.getValue() == "0") {
+            if (CboNoeField2.validate() == false) {
+                er = true;
+            }
+        }
+        else {
+            if (CboNoeField.validate() == false) {
+                er = true;
+            }
+        }
+        if (CboTypeParametr.validate() == false) {
+            er = true;
+        }
+        if (CboVaziyat.validate() == false) {
+            er = true;
+        }
+        if (CboNoeField.getValue() == "5") {
+            if (CboComboBox.validate() == false) {
+                er = true;
+            }
+        }
+
+        if (er == true)
+            return;
+
+        var vaziat = false;
+        if (CboVaziyat.getValue() == "1")
+            vaziat = true;
+
+        var Noe = false;
+        if (CboNoe.getValue() == "1")
+            Noe = true;
+
+        var TypeParametr = false;
+        if (CboTypeParametr.getValue() == "1")
+            TypeParametr = true;
+
+        var NoeField = CboNoeField.getValue();
+        if (CboTypeParametr.getValue() == "0")
+            NoeField = CboNoeField2.getValue();
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/ParametreSabet/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldShomareHesabCodeDaramadId: '@ViewBag.ShomareHesabCodeDaramadId',
+                fldNameParametreFa: txtNameParametreFa.getValue(),
+                fldNameParametreEn: txtNameParametreEn.getValue(),
+                fldNoe: Noe,
+                fldNoeField: NoeField,
+                fldVaziyat: vaziat,
+                fldComboBaxId: CboComboBox.getValue(),
+                fldTypeParametr:TypeParametr,
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.IndexWin.queryById('ParametreSabetWinGrid').store.load();
+                if (data.Er != 1)
+                    ClearParametreSabetWin();
+            }
+
+        });
+    }
+    function DeleteParametreSabetWin() {
+        var SelectedRow = App.IndexWin.queryById('ParametreSabetWinGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/ParametreSabet/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.IndexWin.queryById('ParametreSabetWinGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearParametreSabetWin() {
+        App.IndexWin.queryById('fldId').setValue(0);
+        App.IndexWin.queryById('txtNameParametreFa').setValue("");
+        App.IndexWin.queryById('txtNameParametreEn').setValue("");
+        App.IndexWin.queryById('CboNoe').setValue("1");
+        App.IndexWin.queryById('CboNoeField').setValue("1");
+        App.IndexWin.queryById('CboNoeField2').setValue("1");
+        App.IndexWin.queryById('CboNoeField2').hide();
+        App.IndexWin.queryById('CboNoeField').show();
+        App.IndexWin.queryById('CboTypeParametr').setValue("1");
+        App.IndexWin.queryById('CboVaziyat').setValue("1");
+        App.IndexWin.queryById('CboComboBox').setValue("1");
+        ChangeNoeField();
+        App.IndexWin.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapIndexWin = function (cmp) {        
+        App.IndexWin.queryById('CboNoeField2').hide();
+        App.IndexWin.queryById('CboComboBox').hide();
+        App.IndexWin.queryById('lblComboBox').hide();
+
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.IndexWin.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    var CboNoeField = App.IndexWin.queryById('CboNoeField');
+                    if (keyfield.itemId == "CboNoeField" && CboNoeField.getValue() !== "5") {
+                        nextfld = App.IndexWin.queryById('CboVaziyat');
+                    }
+                    else if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.IndexWin.queryById('btnSaveParametreSabetWin');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+    function GotoFormula() {
+        var ParamId = "";
+        var grid = App.IndexWin.queryById("ParametreSabetWinGrid");
+        var column = App.IndexWin.queryById("ParametreSabetWinGrid").columnManager.columns[2];
+        var record = App.IndexWin.queryById("buttonFormula").activeRecord.record;
+        ParamId = record.data.fldId;
+
+        openWindowWithPost("/WritingFormula/Formula", {
+            ID: ParamId,
+            FieldName: "FormulSabet",
+            FormulId: record.data.fldFormulId,
+            RankingType: null,
+            OrganId: null,
+            OrganName: "پارامتر اختصاصی(" + record.data.fldNameParametreFa + ")",
+            AzTarikh: ""
+        });
+    }
+
+    function openWindowWithPost(url, data) {
+        var form = document.createElement("form");
+        form.target = "_blank";
+        form.method = "POST";
+        form.action = url;
+        form.style.display = "none";
+
+        for (var key in data) {
+            var input = document.createElement("input");
+            input.type = "hidden";
+            input.name = key;
+            input.value = data[key];
+            form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    }
+</script>

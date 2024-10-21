@@ -1,0 +1,364 @@
+﻿@model NewFMS.Models.Vam
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("Vam")
+        .Title("ثبت اطلاعات وام")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Border(false)
+        .Listeners(li => li.AfterRender.Handler = "VamSetSize();")
+       .Items(
+    X.Panel().Border(false)//.Height(250)
+        .Items(
+                X.GridPanel()
+                                .AutoScroll(true)
+                                    .Listeners(l => l.ItemClick.Handler = "ReloadGridDetailVam();")
+                         .TopBar(
+                Html.X().Toolbar()
+                .Items(
+                                    X.ComboBox()
+                                        .ItemID("CboOrgan")
+                                        .TypeAhead(true)
+                                        .AutoFocus(true)
+                                        .Editable(true)
+                                        .QueryMode(DataLoadMode.Local)
+                                        .TriggerAction(TriggerAction.All)
+                                        .BlankText("لطفا سازمان را انتخاب کنید.")
+             .Listeners(l => l.Change.Handler = "App.Vam.queryById('GridHeader').store.load();App.Vam.queryById('GridHeader').getSelectionModel().clearSelections();App.Vam.queryById('GridDetailVam').store.loadData('');App.Vam.queryById('GridDetailVam').getSelectionModel().clearSelections();")
+                                        .AllowBlank(false)
+                                        .ForceSelection(true)
+                                        .DisplayField("fldTitle")
+                                        .ValueField("fldId")
+                                        .EmptyText("سازمان ...")
+                                        .Width(250)
+                                        .Store(X.Store()
+                                            .Model(X.Model()
+                                                .IDProperty("fldId")
+                                                .Fields(
+                                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                    new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                                )
+                                            )
+                                            .Proxy(X.AjaxProxy()
+                                                .Url(Url.Action("GetOrgan"))
+                                                .Reader(X.JsonReader().Root("data"))
+                                            )
+                                                    .Listeners(l => l.Load.Handler = "setdefaultValueVam()")
+                                            )
+                )
+            )
+                                .ItemID("GridHeader")
+                                .BottomBar(X.PagingToolbar())
+                                .Flex(2)
+                                .Store(
+                                           X.StoreFor(Model.Personal)
+                                           .AutoLoad(false)
+                                        .Proxy(Html.X().AjaxProxy()
+                                            .Url(Url.Action("Read"))
+                                            .Reader(Html.X().JsonReader().Root("data")))
+                                                    .Parameters(ps => ps.Add(new StoreParameter("OrganId", "App.Vam.queryById('CboOrgan').getValue()", ParameterMode.Raw)))
+                                .PageSize(9)
+                                .RemotePaging(true)
+        /*.Listeners(l => l.DataChanged.Handler = "App.Vam.queryById('GridHeader').selModel.refresh();")*/)
+                                .View(
+                                    Html.X().GridView()
+                                        .LoadingText("در حال بارگذاری...")
+                                        .RTL(true))
+                                            .Plugins(X.FilterHeader().Remote(true))
+                                    .ColumnModel(
+                                        Html.X().RowNumbererColumn(),
+                                                         Html.X().Column().DataIndex(Model.Personal, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                                                    Html.X().Column().DataIndex(Model.Personal, m => m.fldName_Father).Text("نام و نام خانوادگی").Flex(5).Wrap(true),
+                                                    Html.X().Column().DataIndex(Model.Personal, m => m.fldCodemeli).Text("کد ملی").Flex(2),
+                                                    Html.X().Column().DataIndex(Model.Personal, m => m.fldSh_Personali).Text("شماره پرسنلی").Flex(2),
+                                                        Html.X().Column().DataIndex(Model.Personal, m => m.fldJobeCode).Text("کد شغلی بیمه").Flex(2),
+                                            Html.X().Column().DataIndex(Model.Personal, m => m.fldStatusId).Text("وضعیت").Hidden(true).Flex(1),/*فعال1:   2:غیرفعال  3:بازنشسته*/
+                                            Html.X().Column().DataIndex(Model.Personal, m => m.fldStatusTitle).Text("وضعیت").Hidden(true).Flex(1)
+                                        )
+                                .SelectionModel(
+                                    Html.X().RowSelectionModel()
+                                        .Mode(Ext.Net.SelectionMode.Single)
+                                        )
+        ),
+           X.Panel()
+                                .ItemID("PnlGridDetailVam")
+                                .Title("اطلاعات وام")
+                                .Border(false)
+                                .Layout(Ext.Net.LayoutType.Fit)
+                                .Items(
+                                        X.GridPanel()
+                                             .Listeners(l => l.ItemClick.Handler = "CheckTasvie();")
+                                                  .TopBar(
+                                Html.X().Toolbar()
+                                .Items(
+                                X.Button().Text("جدید").Icon(Ext.Net.Icon.Add)//.ToolTip("کلید میانبر F8")
+                                        .Listeners(li => li.Click.Handler = "NewVam();"),
+                                    X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).ItemID("btnEditVam")//.ToolTip("کلید میانبر F2")
+                                            .Listeners(Li => Li.Click.Handler = "EditVam();"),
+                                        X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).ItemID("btnDelVam")//.ToolTip("کلید میانبر F9")
+                                        .Listeners(de =>
+                                        {
+                                            de.Click.Handler = "if (App.Vam.queryById('GridHeader').selModel.getLastSelected() == null) {Ext.MessageBox.show({ title: 'خطا', msg: 'لطفا یک سطر را انتخاب کنید',icon: Ext.MessageBox.ERROR,buttons: Ext.MessageBox.OK});return false;}else DeleteVam();";
+                                        })
+                                            , X.Button().Text("تسویه").Icon(Ext.Net.Icon.Reload).ItemID("btnTasvieVam")
+                                        .Listeners(Li => Li.Click.Handler = "Tasvie();")
+                                           , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                                            .Listeners(l => { l.Click.Handler = "HelpVam();"; }) 
+                                )
+                            )
+                                              .BottomBar(X.PagingToolbar().HideRefresh(true))
+                                        .AutoScroll(true)
+                                        .ID("GridDetailVam")
+                                        .Flex(2)//.Height(187)
+                                        .Store(
+                                                   X.StoreFor(Model.VamVal)
+                                                .PageSize(9)
+                                                .RemotePaging(true)
+        /*.Listeners(l => l.DataChanged.Handler = " App.Vam.queryById('GridDetail').selModel.refresh();")*/
+                        )
+                                        .View(
+                                            Html.X().GridView()
+                                                .LoadingText("در حال بارگذاری...")
+                                                .RTL(true)
+                        )
+                                        .ColumnModel(
+                                            Html.X().RowNumbererColumn(),
+                                                    Html.X().Column().DataIndex(Model.VamVal, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                                                    Html.X().Column().DataIndex(Model.VamVal, m => m.fldPersonalId).Text("کد").Hidden(true).Flex(1),
+                                                    Html.X().Column().DataIndex(Model.VamVal, m => m.fldTarikhDaryaft).Text("تاریخ دریافت").Flex(4),
+                                                    Html.X().Column().DataIndex(Model.VamVal, m => m.fldStartDate).Text("تاریخ شروع قسط").Flex(4),
+                                                    Html.X().Column().DataIndex(Model.VamVal, m => m.fldTypeVamName).Text("نوع وام").Flex(4),
+                                                    Html.X().Column().DataIndex(Model.VamVal, m => m.fldMablaghVam).Text("مبلغ وام").Flex(4).Renderer("Rial"),
+                                                    Html.X().Column().DataIndex(Model.VamVal, m => m.fldStatusName).Text("وضعیت").Flex(10),
+                                                    Html.X().Column().DataIndex(Model.VamVal, m => m.fldStatus).Text("وضعیت").Hidden(true).Flex(1)
+                                                    )
+                                        .SelectionModel(
+                                            Html.X().RowSelectionModel()
+                                                .Mode(Ext.Net.SelectionMode.Single)
+                                )
+                    )
+    )
+)
+<script type="text/javascript">
+    var dadat;
+    function setdefaultValueVam() {
+        App.Vam.queryById('CboOrgan').select(App.Vam.queryById('CboOrgan').store.getAt(0));
+    }
+    function HelpVam() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Vam/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function VamSetSize() {
+        var grid = App.Vam.queryById('GridHeader');
+        grid.setHeight((App.PayWin.getHeight() - 200) / 2);
+        var GridDetail = App.Vam.queryById('GridDetailVam');
+        GridDetail.setHeight((App.PayWin.getHeight() - 200) / 2);
+    }
+    function ReloadGridDetailVam() {
+        var SelectedRow = App.Vam.queryById('GridHeader').selModel.getLastSelected();
+
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Vam/Rload?PersonalId=' + SelectedRow.data.fldId+"&OrganId="+App.Vam.queryById('CboOrgan').getValue(),
+
+            success: function (result) {
+                App.Vam.queryById('GridDetailVam').getStore().loadData(result);
+            }
+        });
+    }
+    function CheckTasvie() {
+        var SelectedRow = App.Vam.queryById('GridDetailVam').selModel.getLastSelected();
+        if (SelectedRow.data.fldStatus == false) {
+            App.Vam.queryById('btnEditVam').setDisabled(true);
+            App.Vam.queryById('btnDelVam').setDisabled(true);
+            App.Vam.queryById('btnTasvieVam').setDisabled(true);
+        }
+        else {
+            App.Vam.queryById('btnEditVam').setDisabled(false);
+            App.Vam.queryById('btnDelVam').setDisabled(false);
+            App.Vam.queryById('btnTasvieVam').setDisabled(false);
+        }
+    }
+    function EditVam() {
+        var SelectedRow = App.Vam.queryById('GridDetailVam').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/Vam/CheckCalc',
+                params: {
+                    id: SelectedRow.data.fldId,
+                    OrganId: App.Vam.queryById('CboOrgan').getValue()
+                },
+                success: function (data) {
+                    if (data.flag == 0) {
+                        Ext.net.DirectMethod.request({
+                            url: '/PayRoll/Vam/new',
+                            params: {
+                                id: SelectedRow.data.fldId,
+                                PersonalId: SelectedRow.data.fldPersonalId,
+                                OrganId: App.Vam.queryById('CboOrgan').getValue()
+                            },
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                    else {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "وام مورد نظر محاسبه شده است، ویرایش مجاز نیست.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+               
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function NewVam() {
+        var SelectedRow = App.Vam.queryById('GridHeader').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldStatusId == 1) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/PayRoll/Vam/new',
+                    params: {
+                        id: 0,
+                        PersonalId: SelectedRow.data.fldId,
+                        OrganId: App.Vam.queryById('CboOrgan').getValue()
+                    },
+                    success: function (data) {
+                        Ext.net.Mask.hide();
+                        if (data.HaveVam == 1)
+                            Ext.MessageBox.show({
+                                title: "خطا",
+                                msg: "فرد مورد نظر در حال حاضر وام تسویه نشده دارد.",
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK
+                            });
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "وضعیت فرد مورد نظر " + SelectedRow.data.fldStatusTitle + " است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک پرسنل را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteVam() {
+        var SelectedHeaderRow = App.Vam.queryById('GridDetailVam').selModel.getLastSelected();
+        if (SelectedHeaderRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/PayRoll/Vam/Delete',
+                            params: {
+                                id: SelectedHeaderRow.data.fldId,
+                                OrganId: App.Vam.queryById('CboOrgan').getValue()
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                ReloadGridDetailVam();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function Tasvie() {
+        var SelectedHeaderRow = App.Vam.queryById('GridDetailVam').selModel.getLastSelected();
+        if (SelectedHeaderRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای تسویه وام مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/PayRoll/Vam/Tasvie',
+                            params: {
+                                id: SelectedHeaderRow.data.fldId,
+                                OrganId: App.Vam.queryById('CboOrgan').getValue()
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                ReloadGridDetailVam();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

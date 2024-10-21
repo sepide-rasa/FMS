@@ -1,0 +1,350 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_Company>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("SabtCompany")
+            .Title("شرکت های خارجی")
+           .Listeners(li => { li.AfterRender.Handler = "CompanySetSize();"; li.Render.Fn = "addKeyMapSabtCompany"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveCompany")
+                    .Listeners(l => { l.Click.Handler = "SaveCompany();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadCompany();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteCompany();"; })
+                 //, X.Button().Text("تست xml").Icon(Ext.Net.Icon.Help)
+                 //.Listeners(l => { l.Click.Handler = "testXML();"; })
+            , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                .Listeners(l => { l.Click.Handler = "HelpCompany();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.SabtCompany.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("شرکت ها")//.Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                           X.Hidden().ItemID("fldId"),
+                        X.Hidden().ItemID("fldKarbarId"),
+                          X.Label().Text("نام:")
+                        , X.TextField()
+                            .ItemID("txtTitle").MaxLength(100).EnforceMaxLength(true)
+                            .AllowBlank(false)//.Width(170)
+                        // .MaskRe("[آ-ی, ,_,-]")
+                            .BlankText("لطفا نام شرکت را وارد کنید.")
+                        , X.Label("شناسه ملی:")
+                             , X.TextField()
+                            .Width(110)
+                                .ItemID("txtShenaseMeli")
+                            .FieldStyle("direction:ltr;")
+                            .AllowBlank(false)
+                            .BlankText("لطفا شناسه ملی را وارد کنید.")
+                            .MaxLength(11)
+                            .EnforceMaxLength(true)
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .MaskRe("[0-9]")
+                            
+                      ,X.Label("نام کاربری: "),
+                        X.TextField()
+                            .Width(110)
+                        .AllowBlank(false)
+                        .ReadOnly(true)
+                        .EnforceMaxLength(true)
+                                .ItemID("txtUserName")
+                        .Icon(Icon.UserAdd)
+                            .DirectEvents(li =>
+                                {
+                                    li.SpecialKey.Url = "/Comon/SearchUserSingle/Index?State=2";
+                                    li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                    li.IconClick.Url = "/Comon/SearchUserSingle/Index?State=2";
+                                })
+
+                            , X.Label("کد شرکت مبدا(یوزر):")
+                            , X.TextField()
+                                    .ItemID("txtUser")
+                                .FieldStyle("direction:ltr;")
+                                .AllowBlank(false)
+                                    .BlankText("لطفا کد شرکت مبدا(یوزر) را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top),
+                                 X.Label("کد سازمان مبدا(پسورد):")
+                            , X.TextField()
+                                    .ItemID("txtPass")
+                                .FieldStyle("direction:ltr;")
+                                    .AllowBlank(false).ColSpan(3)
+                                    .BlankText("لطفا کد سازمان مبدا(پسورد) را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                        , X.Label("آدرس وب سرویس:")
+                            , X.TextField()
+                                    .ItemID("txtURL")
+                                    .ColSpan(5)
+                            .Width(505)
+                                .FieldStyle("direction:ltr;")
+                                .AllowBlank(false)
+                                .BlankText("لطفا آدرس وب سرویس را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                        , X.Label("توضیحات:"),
+                            X.TextField()
+                            .ColSpan(5)
+                        .ItemID("txtDescCompany")
+
+                        .Width(505)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("CompanyGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                            .Listeners(l => l.DataChanged.Handler = "App.SabtCompany.queryById('CompanyGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtCompany.queryById('CompanyGrid');grid.setHeight(App.DaramadWin.getHeight() - 260); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("نام").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldShenaseMeli).Text("شناسه ملی").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldUserName).Text("نام کاربری").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldURL).Text("آدرس وب سرویس").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    function HelpCompany() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/Company/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+       function CompanySetSize() {
+           App.SabtCompany.setWidth(App.DaramadWin.getWidth());
+            var grid = App.SabtCompany.queryById('CompanyGrid');
+            grid.setHeight(App.DaramadWin.getHeight() - 308);
+        }
+        function LoadCompany() {
+            var SelectedRow = App.SabtCompany.queryById('CompanyGrid').selModel.getLastSelected();
+            if (SelectedRow != null) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/Company/Details',
+                    params: {
+                        Id: SelectedRow.data.fldId
+                    },
+                    success: function (data) {
+                        var txtTitle = App.SabtCompany.queryById('txtTitle');
+                        txtTitle.setValue(data.fldTitle);
+                        var txtUser = App.SabtCompany.queryById('txtUser');
+                        txtUser.setValue(data.fldUserNameService);
+                        var txtPass = App.SabtCompany.queryById('txtPass');
+                        txtPass.setValue(data.fldPassService);
+                       var txtDescCompany = App.SabtCompany.queryById('txtDescCompany');
+                        txtDescCompany.setValue(data.fldDesc);
+                        var fldId = App.SabtCompany.queryById('fldId');
+                        fldId.setValue(data.fldId);
+                        var txtShenaseMeli = App.SabtCompany.queryById('txtShenaseMeli');
+                        txtShenaseMeli.setValue(data.fldShenaseMeli);
+                        var fldKarbarId = App.SabtCompany.queryById('fldKarbarId');
+                        fldKarbarId.setValue(data.fldKarbarId);
+                        var txtURL = App.SabtCompany.queryById('txtURL');
+                        txtURL.setValue(data.fldURL);
+                        var txtUserName = App.SabtCompany.queryById('txtUserName');
+                        txtUserName.setValue(data.fldUserName);
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+
+        function SaveCompany() {
+            var txtTitle = App.SabtCompany.queryById('txtTitle');
+            var txtDescCompany = App.SabtCompany.queryById('txtDescCompany');
+            var fldId = App.SabtCompany.queryById('fldId');
+            var txtShenaseMeli = App.SabtCompany.queryById('txtShenaseMeli');
+            var fldKarbarId = App.SabtCompany.queryById('fldKarbarId');
+            var txtURL = App.SabtCompany.queryById('txtURL');
+            var txtUserName = App.SabtCompany.queryById('txtUserName');
+            var txtUser = App.SabtCompany.queryById('txtUser');            
+            var txtPass = App.SabtCompany.queryById('txtPass');
+            var er = false;
+
+            if (txtTitle.validate() == false) {
+                er = true;
+            }
+            if (txtUserName.validate() == false) {
+                er = true;
+            }
+            if (txtURL.validate() == false) {
+                er = true;
+            }
+            if (txtShenaseMeli.validate() == false) {
+                er = true;
+            }
+           if (er == true)
+                return;
+            
+
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/Company/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldTitle: txtTitle.getRawValue(),
+                    fldShenaseMeli: txtShenaseMeli.getValue(),
+                    fldKarbarId: fldKarbarId.getValue(),
+                    fldURL: txtURL.getValue(),
+                    fldPassService: txtPass.getValue(),
+                    fldUserNameService: txtUser.getValue(),
+                    fldDesc: txtDescCompany.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtCompany.queryById('CompanyGrid').store.load();
+                    if (data.Err != 1)
+                        ClearCompany();
+                }
+
+            });
+        }
+        function DeleteCompany() {
+            var SelectedRow = App.SabtCompany.queryById('CompanyGrid').selModel.getLastSelected();
+            if (SelectedRow != null) {
+                Ext.MessageBox.show({
+                    title: "هشدار",
+                    msg: "آیا برای حذف مطمئن هستید؟",
+                    icon: Ext.MessageBox.WARNING,
+                    buttons: Ext.MessageBox.YESNO,
+                    fn: function (btn) {
+                        if (btn == 'yes') {
+                            Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Daramad/Company/Delete',
+                                params: {
+                                    id: SelectedRow.data.fldId
+                                },
+                                success: function (data) {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Er == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    App.SabtCompany.queryById('CompanyGrid').store.load()
+                                }
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        function ClearCompany() {
+            App.SabtCompany.queryById('fldId').setValue(0);
+            App.SabtCompany.queryById('fldKarbarId').setValue(0);
+            App.SabtCompany.queryById('txtTitle').setValue("");
+            App.SabtCompany.queryById('txtDescCompany').setValue("");
+            App.SabtCompany.queryById('txtShenaseMeli').setValue("");
+            App.SabtCompany.queryById('txtURL').setValue("");
+            App.SabtCompany.queryById('txtUserName').setValue("");
+        }
+
+
+        function testXML() {
+            window.location.href = '@Url.Content("~/Daramad/Company/testXML?UserName=behsa")' + "&Pass=" + "111";
+            /* Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+             Ext.net.DirectMethod.request({
+                 url: '/Daramad/Company/testXML',
+                 success: function (data) {
+                     Ext.net.Mask.hide();
+                 }
+             });*/
+        }
+        var addKeyMapSabtCompany = function (cmp) {
+            this.keyMap = new Ext.util.KeyMap({
+                target: cmp.getEl(),
+                binding: [{
+                    key: [13, 9], /*Ext.EventObject.ENTER,*/
+                    fn: function (key, e) {
+                        if (e.getKey() == 9) {
+                            e.stopEvent();
+                        }
+                        var keyfield = App.SabtCompany.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        var nextfld;
+                        if (keyfield.itemId == "txtDescCompany") {
+                            nextfld = App.SabtCompany.queryById('btnSaveCompany');
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }]
+            });
+        }
+</script>

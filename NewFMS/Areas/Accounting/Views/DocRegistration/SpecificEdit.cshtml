@@ -1,0 +1,199 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .specificcss td  {        
+        border:solid 1px #99bbe8;
+        border-radius:5px;
+        height:30px;       
+    }
+    .specificcss td:nth-child(odd)  {        
+        background-color:#dfe8f6;     
+        text-align:right;
+    }
+    .specificcss td:nth-child(even)  {     
+        text-align:center;
+    }
+    .specificcss td table tbody tr td  {        
+        border:none;       
+    }
+    .specificcss table{
+        margin:0 !important;
+        padding:0 !important;        
+    }
+</style>
+@(Html.X().Window()
+    .Modal(true)
+    .ID("EditOnlyNum")
+    .Title("ویرایش")
+    .Height(210)
+    .Width(450)
+    .Closable(true)
+    .Resizable(false)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Layout(LayoutType.Fit)
+    .ButtonAlign(Alignment.Center)
+    .Listeners(l=>{
+        l.AfterRender.Handler = "loadDocData()";
+        l.Render.Fn = "addKeyMapEditOnlyNum";
+    })
+    .Buttons(
+        X.Button()
+            .Text("ثبت")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveEditOnlyNum();"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.EditOnlyNum.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet()
+                    .Title("مشخصات سند")
+                    .Border(true)
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4, TableAttrs = { Cls = "specificcss" } })
+                    .Items(
+                        X.Label("تاریخ ثبت سند:"),
+                        X.Label()
+                            .ItemID("lblDate")
+                            .ColSpan(3),
+                        X.Label("شماره سند:"),
+                        X.Label()
+                            .ItemID("lblDocNum"),
+                        X.Label("شماره عطف:"),
+                        X.Label()
+                            .ItemID("lblAtfNum"),
+                        X.Label("شماره روزانه:"),                        
+                        X.Label()
+                            .ItemID("lblDailyNum"),
+                        X.Label("نوع سند:"),
+                        X.Label()
+                            .ItemID("lblType"),                        
+                        X.Label("شماره بایگانی:"),
+                        X.TextField()
+                            .ItemID("txtArchiveNum")
+                            .AutoFocus(true)
+                            .Border(false)
+                            .AllowBlank(false)
+                            .FieldStyle("background-image:none;background-color:yellow;border:none;")
+                            .BlankText("لطفا شماره بایگانی را وارد کنید")
+                            .Width(100)
+                            .Height(30)
+                            .MaxLength(50)
+                            .EnforceMaxLength(true),
+                        X.Label("شماره فرعی:"),
+                        X.TextField()
+                            .ItemID("txtFareiNum")
+                            .FieldStyle("background-image:none;background-color:yellow;border:none;")
+                            .AllowBlank(true)
+                            .Width(100)
+                            .Height(30)
+                            .MaxLength(50)
+                            .EnforceMaxLength(true)
+                    )
+            )
+        )
+)
+<script type="text/javascript">
+    function loadDocData() {
+        if('@ViewBag.Required'==1)
+            App.EditOnlyNum.queryById("txtArchiveNum").allowBlank = false;
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DocRegistration/GetDocDetails',
+            params: {
+                HeaderId: '@ViewBag.HeaderId',
+                Year: '@ViewBag.Year',
+                ModuleId: '@ViewBag.ModuleId'
+            },
+            success: function (data) {
+                if (data.fldShomareFaree == "") {
+                    data.fldShomareFaree = "ندارد";
+                }
+                if (data.fldArchiveNum == "") {
+                    data.fldArchiveNum = "ندارد";
+                }
+                App.EditOnlyNum.queryById('lblDate').setText(data.fldTarikhDocument);
+                App.EditOnlyNum.queryById('lblDocNum').setText(data.fldDocumentNum);
+                App.EditOnlyNum.queryById('lblAtfNum').setText(data.fldAtfNum);
+                App.EditOnlyNum.queryById('lblDailyNum').setText(data.ShomareRoozane);
+                App.EditOnlyNum.queryById('lblType').setText(data.fldTypeSanadName);
+            }
+        });
+    }
+
+
+    function SaveEditOnlyNum() {
+        var txtArchiveNum = App.EditOnlyNum.queryById('txtArchiveNum');
+        var txtFareiNum = App.EditOnlyNum.queryById('txtFareiNum');
+        if (txtArchiveNum.validate() == false) {
+            return;
+        }
+        else {
+            Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/DocRegistration/UpdateHeader1',
+                params: {
+                    HeaderId: '@ViewBag.HeaderId',
+                    FareiNum: txtFareiNum.getValue(),
+                    ArchiveNum: txtArchiveNum.getValue()
+                },
+                success: function (data) {
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK,
+                        fn: function (btn) {
+                            if (btn == "ok")
+                                App.EditOnlyNum.destroy();
+                        }
+                    });
+                    if (data.Er != 1) {
+                        App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.load();
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+
+    var addKeyMapEditOnlyNum = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9, 120], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9 || e.getKey() == 120) {
+                        e.stopEvent();
+                    }
+                    
+                    var keyfield = App.EditOnlyNum.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtArchiveNum") {
+                        nextfld = App.EditOnlyNum.queryById("txtFareiNum");
+                        nextfld.focus();
+                        nextfld.selectText();
+                        return;
+                    }
+                    else if (keyfield.itemId == "txtFareiNum") {
+                        SaveEditOnlyNum();
+                    }
+                }
+            }]
+        });
+    };
+</script>
+

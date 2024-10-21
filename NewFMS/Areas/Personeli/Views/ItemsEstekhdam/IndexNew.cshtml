@@ -1,0 +1,303 @@
+﻿@model IEnumerable<NewFMS.WCF_Common_Pay.OBJ_Items_Estekhdam>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+    .ID("Items_Estekhdam")
+        .Title("ویرایش آیتم های استخدام")
+            .Listeners(li => li.AfterRender.Handler = "Items_EstekhdamSetSize();")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+                .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => { l.Click.Handler = "SaveItems_Estekhdam();"; }).ItemID("btnSave"),
+                X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "LoadItems_Estekhdam();"; }),
+                X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpItems_Estekhdam();"; }),
+                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.Items_Estekhdam.destroy()")
+                
+                )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.Panel()
+                        .Border(false)
+                              .Layout(LayoutType.VBox)
+                                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                                X.FieldSet().Title("آیتم های استخدام")
+                                .Height(110)
+                                .Border(true)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                        .Items(
+                            X.Hidden()
+                            .ItemID("fldId"),
+                            X.Label("عنوان:"),
+                             X.TextField()
+                             .ItemID("txtTitle")
+                            //.MsgTarget(Ext.Net.MessageTarget.Side)
+                            .AllowBlank(false)
+                            .BlankText("لطفا عنوان را وارد کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .AutoFocus(true)
+                            , X.Label("آیتم حقوقی:")
+                            ,X.TextField()
+                            .ItemID("txtTitleItem")
+                            .ReadOnly(true)
+                           // .FieldLabel("آیتم حقوقی ").IconCls("Itemhoghooghi")
+                            //    .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(false)
+                                .BlankText("لطفا آیتم های حقوقی را وارد کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .AutoFocus(false)
+                            , X.Label("نوع استخدام:")
+                                , X.TextField()
+                                .ReadOnly(true)
+                            .ItemID("txtTitleType")
+                            //    .FieldLabel("نوع استخدام ").IconCls("noestekhdam")
+                         //   .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(false)
+                                .BlankText("لطفا نوع استخدام را وارد کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            , X.Label("دارای ضریب:")
+                                , X.TextField()
+                                .ReadOnly(true)
+                            .ItemID("txtZarib")
+                              //.FieldLabel("دارای ضریب ").IconCls("zarib")
+                           // .MsgTarget(Ext.Net.MessageTarget.Side)
+
+                                .AllowBlank(false)
+                                .BlankText("لطفا دارای ضریب را وارد کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            ,
+                            X.Label("توضیحات:"),
+                            X.TextField()
+                                    .ItemID("txtDesc")
+                                .ReadOnly(true)
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Width(370)
+                                .ColSpan(3)
+                        )
+                    )
+        ),
+        X.GridPanel()
+            .ItemID("Items_EstekhdamGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.Items_Estekhdam.queryById('Items_EstekhdamGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                    .PageSize(15)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+            .Plugins(X.FilterHeader().Remote(true))
+            .Listeners(l =>
+            {
+                l.AfterRender.Handler = "var grid = App.Items_Estekhdam.queryById('Items_EstekhdamGrid');grid.setHeight(App.PersoneliWin.getHeight() - 320); ";
+            })
+            .ColumnModel(
+                            Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                            Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.fldTitleItemsHoghughi).Text("آیتم حقوقی").Flex(3),
+                            Html.X().Column().DataIndex(Model, m => m.fldTypeEstekhdamTitle).Text("نوع استخدام").Flex(3),
+                            Html.X().Column().DataIndex(Model, m => m.fldHasZaribstring).Text("دارای ضریب").Flex(1),
+                            Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(12)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.PersoneliWin.addListener('resize', function () {
+        App.Items_Estekhdam.setWidth(App.PersoneliWin.getWidth());
+    });
+    App.PersoneliWin.addListener('resize', function () {
+        var grid = App.Items_Estekhdam.queryById('Items_EstekhdamGrid');
+        grid.setHeight(App.PersoneliWin.getHeight() - 240);
+    });*/
+    function Items_EstekhdamSetSize() {
+        App.Items_Estekhdam.setWidth(App.PersoneliWin.getWidth());
+        var grid = App.Items_Estekhdam.queryById('Items_EstekhdamGrid');
+        grid.setHeight(App.PersoneliWin.getHeight() - 320);
+    }
+    function LoadItems_Estekhdam() {
+        var SelectedRow = App.Items_Estekhdam.queryById('Items_EstekhdamGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/ItemsEstekhdam/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTitle = App.Items_Estekhdam.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var txtTitleItem = App.Items_Estekhdam.queryById('txtTitleItem');
+                    txtTitleItem.setValue(data.fldTitleItemsHoghughi);
+                    var txtTitleType = App.Items_Estekhdam.queryById('txtTitleType');
+                    txtTitleType.setValue(data.fldTypeEstekhdamTitle);
+                    var txtZarib = App.Items_Estekhdam.queryById('txtZarib');
+                    txtZarib.setValue(data.fldHasZaribstring);
+                    var txtDesc = App.Items_Estekhdam.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.Items_Estekhdam.queryById('fldId');
+                    fldId.setValue(data.fldId);
+
+                    App.Items_Estekhdam.queryById('txtTitle').focus();
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function HelpItems_Estekhdam() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/ItemsEstekhdam/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SaveItems_Estekhdam() {
+        var txtTitle = App.Items_Estekhdam.queryById('txtTitle');
+        var fldId = App.Items_Estekhdam.queryById('fldId');
+        var txtTitleItem = App.Items_Estekhdam.queryById('txtTitleItem');
+        var txtTitleType = App.Items_Estekhdam.queryById('txtTitleType');
+        var txtZarib = App.Items_Estekhdam.queryById('txtZarib');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (txtTitleItem.validate() == false) {
+            er = true;
+        }
+        if (txtTitleType.validate() == false) {
+            er = true;
+        }
+        if (txtZarib.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/ItemsEstekhdam/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldTitle: txtTitle.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.Items_Estekhdam.queryById('Items_EstekhdamGrid').store.load();
+                if (data.Er != 1)
+                    ClearItems_Estekhdam();
+            }
+
+        });
+    }
+    function DeleteItems_Estekhdam() {
+        var SelectedRow = App.Items_Estekhdam.queryById('Items_EstekhdamGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Personeli/ItemsEstekhdam/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.Items_Estekhdam.queryById('Items_EstekhdamGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                        ClearItems_Estekhdam();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearItems_Estekhdam() {
+        App.Items_Estekhdam.queryById('fldId').setValue(0);
+        App.Items_Estekhdam.queryById('txtTitle').setValue("");
+        App.Items_Estekhdam.queryById('txtTitleItem').setValue("");
+        App.Items_Estekhdam.queryById('txtTitleType').setValue("");
+        App.Items_Estekhdam.queryById('txtZarib').setValue("");
+        App.Items_Estekhdam.queryById('txtDesc').setValue("");
+    }
+    function EnterNext() {
+        var keyfield = App.Items_Estekhdam.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtTitle") {
+            nextfld = App.Items_Estekhdam.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+    }
+</script>

@@ -1,0 +1,388 @@
+﻿@model IEnumerable<NewFMS.WCF_AnbarAmval.OBJ_InsuranceCompany>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+@*<style>
+        #test legend{
+            text-align:right!important;
+        }
+    </style>*@
+<br />
+@(Html.X().Panel()
+        .ID("SabtInsuranceCompany")
+        .Title("ثبت شرکت های بیمه")
+        .Listeners(li => { li.AfterRender.Handler = "SabtInsuranceCompanySetSize();"; li.Render.Fn = "addKeyMapSabtInsuranceCompany"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+            X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => { l.Click.Handler = "SaveInsuranceCompany();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+            .Listeners(l => { l.Click.Handler = "LoadInsuranceCompany();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+            .Listeners(l => { l.Click.Handler = "DeleteInsuranceCompany();"; })
+           // , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+               // .Listeners(l => { l.Click.Handler = "HelpInsuranceCompany();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.SabtInsuranceCompany.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.FormPanel().Border(false)
+                 .Layout(LayoutType.VBox)
+                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                    X.FieldSet().Border(false)
+                    .Items(
+                        X.FieldSet().Border(true).Title("اطلاعات")
+                         .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                   .Items(
+                    X.FieldSet().Border(false)
+                        .Defaults(new { Margin = 2 })
+                        .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                   .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.Label("نام شرکت:"),
+                    X.TextField()
+                        .ItemID("txtName")
+                        .MaxLength(100)
+                        .EnforceMaxLength(true)
+                        .AllowBlank(false)
+                        .Width(378)
+                        .BlankText("لطفا نام شرکت را وارد کنید.")
+                        .AutoFocus(true)
+                    , X.Label("توضیحات:"),
+                    X.TextField()
+                        .ItemID("txtDesc")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Width(378)
+                    )
+                )
+                     , X.FieldSet().Border(true).Title("لوگو").Height(115)
+                        .Defaults(new { Margin = 2 })
+                        .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                    .Items(
+                     X.FieldSet().Border(false).ColSpan(2).Height(80).Width(300)
+                        .Layout(Ext.Net.LayoutType.VBox)
+                        .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Right })
+                        .Defaults(new { Margin = 3 })
+                    .Items(
+                    X.FileUploadField()
+                        .ItemID("FileUploadField1")
+                        .ButtonOnly(true).ButtonText("انتخاب عکس(حداکثر 100 کیلوبایت)")
+                        .DirectEvents(l =>
+                                {
+                                    l.Change.Action = "Upload";
+                                    l.Change.Success = "hideprogressInC();";
+                                }
+                            )
+                        .Listeners(l => l.Change.Fn = "showFileInC")
+                        .Icon(Ext.Net.Icon.DiskUpload)
+                    , X.Button().Text("حذف عکس").Listeners(l => l.Click.Handler = "DeleteFileInC()").Icon(Ext.Net.Icon.Delete)
+                    , X.Container().Content(@<div id="fi-button-msg" style="display:none;width:195px;"></div>)
+                        )
+                    , X.FieldSet().Border(false).ColSpan(2)
+                        .Layout(Ext.Net.LayoutType.VBox)
+                        .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                        .Defaults(new { Margin = 3 })
+                    .Items(X.Image().ItemID("Image").ImageUrl("~/Content/BlankB.jpg").Width(80).Height(90).Border(true))
+                    )
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("InsuranceCompanyGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                    X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.SabtInsuranceCompany.queryById('InsuranceCompanyGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+                    .View(Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true))
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtInsuranceCompany.queryById('InsuranceCompanyGrid');grid.setHeight(App.AnbarAmvalWin.getHeight() - 428); ";
+
+                     })
+             .ColumnModel(
+                    Html.X().RowNumbererColumn(),
+                    Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                    Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام شرکت").Flex(4),
+                    Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+                           )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+                    )
+           )
+)
+<script type="text/javascript">
+    var ImageId = 0;
+
+    function SabtInsuranceCompanySetSize() {
+        App.SabtInsuranceCompany.setWidth(App.AnbarAmvalWin.getWidth());
+        var grid = App.SabtInsuranceCompany.queryById('InsuranceCompanyGrid');
+        grid.setHeight(App.AnbarAmvalWin.getHeight() - 428);
+    }
+
+    var MojazInC = 0;
+    var sizeeInC = 0;
+    var EndUploadInC = false;
+
+    var CheckInC = setInterval(CheckEndInC, 500);
+
+    function CheckEndInC() {
+        if (EndUploadInC == true) {
+            Ext.net.DirectMethod.request({
+                url: '/AnbarAmval/InsuranceCompany/ShowPicUpload',
+                success: function (data) {
+                    value = "data:image/gif;base64," + data.image;
+                    App.SabtInsuranceCompany.queryById('Image').setImageUrl(value);
+                    Ext.MessageBox.hide();
+                    Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+                    clearInterval(CheckEndInC);
+                    EndUploadInC = false;
+                }
+            });
+        }
+    }
+    var showFileInC = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msg');
+        if (v) {
+            showProgressBarInC();
+            if (v.split('.').pop().toLowerCase() == "jpg" || v.split('.').pop().toLowerCase() == "png") {
+                MojazInC = 1;
+                if (document.getElementById(id).files[0].size <= 102400) {
+                    sizeeInC = 1;
+                }
+                if (sizeeInC == 1) {
+                    el.update('<b>فایل انتخاب شده:</b> ' + v);
+                }
+                else {
+                    el.update('<b>فایل انتخاب شده:</b> ');
+                }
+
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                } else {
+                    el.highlight();
+                }
+            }
+            else {
+                el.update('<b>فایل انتخاب شده:</b> ');
+            }
+        }
+    };
+
+    function hideprogressInC() {
+        if (MojazInC == 1 && sizeeInC == 1) {
+            EndUploadInC = true;
+        }
+        MojazInC = 0;
+        sizeeInC = 0;
+    }
+
+    function showProgressBarInC() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+    function DeleteFileInC() {
+        App.SabtInsuranceCompany.queryById('Image').setImageUrl("/Content/Blank.jpg");
+        Ext.get('fi-button-msg').update('');
+       /* Ext.net.DirectMethod.request({
+            url: '/InsuranceCompany/DeleteFile',
+            success: function (data) {
+            }
+        });*/
+
+    }
+    function LoadInsuranceCompany() {
+        var SelectedRow = App.SabtInsuranceCompany.queryById('InsuranceCompanyGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/AnbarAmval/InsuranceCompany/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtName = App.SabtInsuranceCompany.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var txtDesc = App.SabtInsuranceCompany.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtInsuranceCompany.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    ImageId = data.fldFileId;
+
+                    var fldfile = "data:image/gif;base64," + data.fldImage;
+                    App.SabtInsuranceCompany.queryById('Image').setImageUrl(fldfile);
+
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function HelpInsuranceCompany() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/AnbarAmval/InsuranceCompany/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function SaveInsuranceCompany() {
+        var txtName = App.SabtInsuranceCompany.queryById('txtName');
+        var txtDesc = App.SabtInsuranceCompany.queryById('txtDesc');
+        var fldId = App.SabtInsuranceCompany.queryById('fldId');
+        var er = false;
+
+            if (txtName.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/AnbarAmval/InsuranceCompany/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldName: txtName.getValue(),
+                    fldFileId: ImageId,
+                    fldDesc: txtDesc.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtInsuranceCompany.queryById('InsuranceCompanyGrid').store.load();
+                    if (data.Err != 1)
+                        ClearInsuranceCompany();
+                }
+
+            });
+    }
+    function DeleteInsuranceCompany() {
+        var SelectedRow = App.SabtInsuranceCompany.queryById('InsuranceCompanyGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/AnbarAmval/InsuranceCompany/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtInsuranceCompany.queryById('InsuranceCompanyGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearInsuranceCompany() {
+        App.SabtInsuranceCompany.queryById('txtName').setValue("");
+        App.SabtInsuranceCompany.queryById('fldId').setValue(0);
+        App.SabtInsuranceCompany.queryById('txtDesc').setValue("");
+        App.SabtInsuranceCompany.queryById('Image').setImageUrl("/Content/BlankB.jpg");
+        Ext.get('fi-button-msg').update('<b>فایل انتخاب شده:</b> ');
+    }
+    var addKeyMapSabtInsuranceCompany = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtInsuranceCompany.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtInsuranceCompany.queryById('FileUploadField1');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

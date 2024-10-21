@@ -1,0 +1,674 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using Ext.Net.Utilities;
+@{
+    var X = Html.X();
+}
+
+<style>
+    .borderrpnl{
+      box-shadow:1px 1px 1px 2px #d8d7d7;
+      border-color:white;
+    }
+</style>
+
+@(X.Panel()
+    .Listeners(l => l.AfterRender.Handler = "DashboarddSetSize()")
+    .ID("Dashboardd")
+    .Border(false)
+    .AutoScroll(true)
+    .Title("داشبورد")
+    .Closable(true)
+    .CloseAction(CloseAction.Destroy)
+    .Layout(LayoutType.Table)
+    .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Padding(5)
+            .ColSpan(2)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                    .Defaults(new { Margin=5})
+                    .Items(
+                        X.Label().Text("براساس:").ItemID("lblTypeDate")
+                                                , X.ComboBox()
+                                                    .ItemID("CboTypeDate")
+                                                .TypeAhead(true)
+                                                    .PaddingSpec("0 0 0 10px")
+                                                        .Listeners(l => l.Select.Handler = "CreateChart('defaultTheme');CreateChart2('defaultTheme')")
+                                                        .MarginSpec("0.5px 0 0 0")
+                                                .ForceSelection(true)
+                                                    .BlankText("لطفا نوع تاریخ را انتخاب کنید.")
+                                                .QueryMode(DataLoadMode.Local)
+                                                .TriggerAction(TriggerAction.All)
+                                                .Items(
+                                                    new ListItem("تاریخ پرداخت", "1"),
+                                                    new ListItem("تاریخ واریز", "0")
+                                                    )
+                                                .SelectedItems(new { Value = "1" }),
+                        X.Label("از تاریخ:"),
+                        X.PDateField()
+                            .ItemID("txtAzTarikh")
+                            .Listeners(l=>l.Select.Handler="CreateChart('defaultTheme');CreateChart2('defaultTheme')")
+                            .AllowBlank(false)
+                            .MaskRe("[0-9-/]")
+                            .MinLength(10)
+                            .MaxLength(10)
+                            .EnforceMaxLength(true)
+                            .BlankText("لطفا تاریخ را وارد کنید.")
+                            .Editable(true),
+                        X.Label("تا تاریخ:"),
+                        X.PDateField()
+                            .ItemID("txtTaTarikh")
+                            .Listeners(l => l.Select.Handler = "CreateChart('defaultTheme');CreateChart2('defaultTheme')")
+                            .AllowBlank(false)
+                            .MaskRe("[0-9-/]")
+                            .MinLength(10)
+                            .MaxLength(10)
+                            .EnforceMaxLength(true)
+                            .BlankText("لطفا تاریخ را وارد کنید.")
+                            .Editable(true))
+            ),
+        X.Panel()
+            .Border(true)
+            .Region(Region.North)
+            .BodyCls("borderrpnl")
+            .Padding(5)
+            .ItemID("pnlBar")
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Right })
+                    .Items(
+                        X.Panel()
+                            .Height(30)
+                            .Border(false)
+                            .Layout(LayoutType.HBox)
+                            .Defaults(new { Margin = 5 })
+                            .Items(
+                                X.Button().ToolTip("پرینت").Icon(Icon.Printer).Listeners(l => l.Click.Handler = "chart2.print()"),
+                                X.Button().Icon(Icon.Disk).ToolTip("دانلود فایل").Menu(Html.X().Menu()
+                                    .Items(
+                                        X.MenuItem().Text("دانلود فایل png").Icon(Icon.Picture).Listeners(l => l.Click.Handler = "saveAspngg1();"),
+                                        X.MenuItem().Text("دانلود فایل pdf").Icon(Icon.NoteGo).Listeners(l => l.Click.Handler = "saveAsPDff1();"),
+                                        X.MenuItem().Text("دانلود فایل excel").Icon(Icon.PageExcel).Listeners(l => l.Click.Handler = "saveAsExcel1();")
+                                        )),
+                                X.ComboBox()
+                                    .ItemID("CboTheme2")
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Listeners(l => l.Select.Handler = "changeTheme2()")
+                                    .Items(
+                                        new ListItem("Default", "defaultTheme"),
+                                        new ListItem("Coffee", "coffee"),
+                                        new ListItem("Dark Blue", "darkBlue"),
+                                        new ListItem("Dark Earth", "darkEarth"),
+                                        new ListItem("Light Glamour", "lightGlamour"),
+                                        new ListItem("Dark Provence", "darkProvence"),
+                                        new ListItem("Dark Turquoise", "darkTurquoise"),
+                                        new ListItem("Light Blue", "lightBlue"),
+                                        new ListItem("Light Earth", "lightEarth"),
+                                        new ListItem("Dark Glamour", "darkGlamour"),
+                                        new ListItem("Light Provence", "lightProvence"),
+                                        new ListItem("Light Turquoise", "lightTurquoise"),
+                                        new ListItem("Monochrome", "monochrome"),
+                                        new ListItem("Pastel", "pastel"),
+                                        new ListItem("Morning", "morning"),
+                                        new ListItem("Sea", "sea"),
+                                        new ListItem("Wines", "wines")
+                                        )
+                                    .SelectedItems(new { Value = "defaultTheme" })
+                            )),
+                        X.Panel()
+                            .Border(false)
+                            .ID("BarChart")
+                            .Html(@<div id="containerBar"></div>)
+                ),
+        X.Panel()
+            .Border(true)
+            .Padding(5)
+            .BodyCls("borderrpnl")
+            .ItemID("pnlDanut")
+            .Region(Region.East)
+            .Layout(LayoutType.Fit)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Right })
+                    .Items(
+                        X.Panel()
+                            .Height(30)
+                            .Border(false)
+                            .Layout(LayoutType.HBox)
+                            .Defaults(new { Margin = 5 })
+                            .Items(
+                                X.Button().ToolTip("پرینت").Icon(Icon.Printer).Listeners(l => l.Click.Handler = "chart.print()"),
+                                X.Button().Icon(Icon.Disk).ToolTip("دانلود فایل").Menu(Html.X().Menu()
+                                    .Items(
+                                        X.MenuItem().Text("دانلود فایل png").Icon(Icon.Picture).Listeners(l => l.Click.Handler = "saveAspngg();"),
+                                        X.MenuItem().Text("دانلود فایل pdf").Icon(Icon.NoteGo).Listeners(l => l.Click.Handler = "saveAsPDff();"),
+                                        X.MenuItem().Text("دانلود فایل excel").Icon(Icon.PageExcel).Listeners(l => l.Click.Handler = "saveAsExcel();")
+                                        )),
+                                X.ComboBox()
+                                    .ItemID("CboTheme")
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Listeners(l => l.Select.Handler = "changeTheme()")
+                                    .Items(
+                                        new ListItem("Default", "defaultTheme"),
+                                        new ListItem("Coffee", "coffee"),
+                                        new ListItem("Dark Blue", "darkBlue"),
+                                        new ListItem("Dark Earth", "darkEarth"),
+                                        new ListItem("Light Glamour", "lightGlamour"),
+                                        new ListItem("Dark Provence", "darkProvence"),
+                                        new ListItem("Dark Turquoise", "darkTurquoise"),
+                                        new ListItem("Light Blue", "lightBlue"),
+                                        new ListItem("Light Earth", "lightEarth"),
+                                        new ListItem("Dark Glamour", "darkGlamour"),
+                                        new ListItem("Light Provence", "lightProvence"),
+                                        new ListItem("Light Turquoise", "lightTurquoise"),
+                                        new ListItem("Monochrome", "monochrome"),
+                                        new ListItem("Pastel", "pastel"),
+                                        new ListItem("Morning", "morning"),
+                                        new ListItem("Sea", "sea"),
+                                        new ListItem("Wines", "wines")
+                                        )
+                                    .SelectedItems(new { Value = "defaultTheme" })
+                            ),
+                        X.Panel()
+                            .Border(false)
+                            .ID("DonutChart")
+                            .Html(@<div id="containerDonut"></div>)
+            ))//,
+        @*X.Panel()
+            .Border(true)
+            .Padding(5)
+            .BodyCls("borderrpnl")
+            .Layout(LayoutType.Fit)
+            .ItemID("pnlSecondBar")
+            .Region(Region.West),
+        X.Panel()
+            .Border(true)
+            .Padding(5)
+            .BodyCls("borderrpnl")
+            .ItemID("pnlGauge")
+            .Region(Region.South)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.Panel()
+                            .Height(30)
+                            .Border(false)
+                            .Layout(LayoutType.HBox)
+                            .Defaults(new { Margin=5})
+                            .Items(
+                                X.Button().ToolTip("پرینت").Icon(Icon.Printer).Listeners(l => l.Click.Handler = "chart1.print()"),
+                                X.Button().Icon(Icon.Disk).ToolTip("دانلود فایل").Menu(Html.X().Menu()
+                                    .Items(
+                                        X.MenuItem().Text("دانلود فایل png").Icon(Icon.Picture).Listeners(l=>l.Click.Handler="chart1.saveAsPng();"),
+                                        X.MenuItem().Text("دانلود فایل pdf").Icon(Icon.NoteGo).Listeners(l => l.Click.Handler = "chart1.saveAsPdf();"),
+                                        X.MenuItem().Text("دانلود فایل excel").Icon(Icon.PageExcel).Listeners(l => l.Click.Handler = "chart1.saveAsXlsx();")
+                                        )),
+                                X.ComboBox()
+                                    .ItemID("CboTheme1")
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Listeners(l => l.Select.Handler = "changeTheme1()")
+                                    .Items(
+                                        new ListItem("Default", "defaultTheme"),
+                                        new ListItem("Coffee", "coffee"),
+                                        new ListItem("Dark Blue", "darkBlue"),
+                                        new ListItem("Dark Earth", "darkEarth"),
+                                        new ListItem("Light Glamour", "lightGlamour"),
+                                        new ListItem("Dark Provence", "darkProvence"),
+                                        new ListItem("Dark Turquoise", "darkTurquoise"),
+                                        new ListItem("Light Blue", "lightBlue"),
+                                        new ListItem("Light Earth", "lightEarth"),
+                                        new ListItem("Dark Glamour", "darkGlamour"),
+                                        new ListItem("Light Provence", "lightProvence"),
+                                        new ListItem("Light Turquoise", "lightTurquoise"),
+                                        new ListItem("Monochrome", "monochrome"),
+                                        new ListItem("Pastel", "pastel"),
+                                        new ListItem("Morning", "morning"),
+                                        new ListItem("Sea", "sea"),
+                                        new ListItem("Wines", "wines")
+                                        )
+                                    .SelectedItems(new { Value = "defaultTheme" })
+                            ),
+                        X.Panel()
+                            .Border(false)
+                            .ID("GaugeChart")
+                            .Html(@<div id="containerGauge"></div>)*@
+            ))
+    )
+)
+<script type="text/javascript">
+    var chart;
+    var chart1;
+    var chart2;
+
+    function DashboarddSetSize() {
+        App.Dashboardd.queryById("pnlDanut").setSize((App.DaramadWin.getWidth() - 20) / 2, (App.DaramadWin.getHeight() - 220));
+        App.Dashboardd.queryById("pnlBar").setSize((App.DaramadWin.getWidth() - 20) / 2, (App.DaramadWin.getHeight() - 220));
+        App.Dashboardd.queryById("txtAzTarikh").setValue('@ViewBag.FromDate');
+        App.Dashboardd.queryById("txtTaTarikh").setValue('@ViewBag.curDate');
+
+       /* App.DashboardWin.queryById("pnlGauge").setSize((App.DashboardWin.getWidth()-10) / 2, (App.DashboardWin.getHeight() - 30) / 2);
+        App.DashboardWin.queryById("pnlSecondBar").setSize((App.DashboardWin.getWidth() - 10) / 2, (App.DashboardWin.getHeight() - 30) / 2);*/
+        document.getElementById("containerDonut").style.height = ((App.DaramadWin.getHeight() - 250)) + "px";
+        document.getElementById("containerDonut").style.width = ((App.DaramadWin.getWidth() - 50) / 2) + "px";
+        document.getElementById("containerBar").style.height = ((App.DaramadWin.getHeight() - 250)) + "px";
+        document.getElementById("containerBar").style.width = ((App.DaramadWin.getWidth() - 50) / 2) + "px";
+        CreateChart("defaultTheme");
+        CreateChart2("defaultTheme");
+        Ext.net.Mask.hide();
+    }
+
+    function saveAspngg(chartName) {
+        chart.saveAsPng(
+        {
+            "paperSize": "A4",
+            "landscape": true,
+            "filename": "MyChartPNG"
+        });
+    }
+
+    function saveAspngg1(chartName) {
+        chart2.saveAsPng(
+        {
+            "paperSize": "A4",
+            "landscape": true,
+            "filename": "MyChartPNG"
+        });
+    }
+
+    function saveAsExcel(chartName) {
+        chart.saveAsXlsx(
+        {
+            "paperSize": "A4",
+            "landscape": true,
+            "filename": "MyChartXls"
+        });
+    }
+
+    function saveAsExcel1(chartName) {
+        chart2.saveAsXlsx(
+        {
+            "paperSize": "A4",
+            "landscape": true,
+            "filename": "MyChartXls"
+        });
+    }
+
+    function saveAsPDff(chartName) {
+        chart.saveAsPdf(
+        {
+            "filename": "MyChartPDF"
+        });
+    }
+
+    function saveAsPDff1(chartName) {
+        chart2.saveAsPdf(
+        {
+            "landscape": true,
+            "filename": "MyChartPDF"
+        });
+    }
+    @*anychart.onDocumentReady(function () { CreateChart("defaultTheme"); /*CreateChart1("defaultTheme");*/ /*CreateChart2("defaultTheme");*/ });*@
+
+    function changeTheme() {
+        var select = App.Dashboardd.queryById("CboTheme").getValue();
+        CreateChart(select);
+    }
+
+    function changeTheme1() {
+        var select = App.Dashboardd.queryById("CboTheme1").getValue();
+        CreateChart1(select);
+    }
+
+    function changeTheme2() {
+        var select = App.Dashboardd.queryById("CboTheme2").getValue();
+        CreateChart2(select);
+    }
+
+    function CreateChart(theme) {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });    
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/Dashboard/getDonutData',
+            params:{
+                AzTarikh: App.Dashboardd.queryById("txtAzTarikh").getRawValue(),
+                TaTarikh: App.Dashboardd.queryById("txtTaTarikh").getRawValue(),
+                TypeDate: App.Dashboardd.queryById("CboTypeDate").getValue()
+            },
+            success: function (data) {
+                if (chart != null) chart.dispose();
+                anychart.theme(theme);
+                chart = anychart.pie3d();
+                /*chart.legend(false);*/
+                var dataDanutChart = new Array();
+                for (var i = 0; i < data.data.length; i++) {
+                    if (data.data[i].CodeIncomeCode != "") {
+                        dataDanutChart.push({
+                            x: data.data[i].TitleIncomeCode /*+ "(" + data.data[i].CodeIncomeCode + ")"*/,
+                            value: data.data[i].ValIncomeCode
+                        });
+                    }
+                    else {
+                        dataDanutChart.push({
+                            x: data.data[i].TitleIncomeCode,
+                            value: data.data[i].ValIncomeCode
+                        });
+                    }
+                }
+                chart.height = "200px";
+                chart.data(dataDanutChart);
+                chart.innerRadius("30%");
+                chart.title().enabled(false);
+                chart.title().useHtml(true);
+                chart.title("<div>نمودار درآمدهای وصولی به تفکیک کد درآمد</div>");
+                /*chart.title().background({ enabled: true, cornerType: "round", corners: 10 });*/
+                chart.title().align("center");
+                chart.title().fontFamily("rasaFont");
+                chart.title().fontSize(14);
+                chart.animation(true);
+                chart.tooltip().useHtml(true);
+                chart.tooltip().titleFormat("<div style='text-align:right;'><span style='font-family:rasaFont;font-size:15px;font-weight:bold;'>{%x}</span></div>");
+
+                chart.legend().position("left");
+                chart.legend().align("center");
+                chart.legend().itemsLayout("vertical");
+                chart.legend().itemsFormat(function (e) { return this.Text });
+                chart.legend().fontFamily("rasaFont");
+                chart.legend().textDirection("rtl");
+
+                chart.tooltip().format(function (e) { return "<div style='text-align:right;'><span style='font-family:rasaFont;font-size:15px;'>مبلغ: " + this.value.toLocaleString() +"</br>درصد: "+(100*this.value/this.getStat("sum")).toFixed(1)+"%"+"</span></div>" });
+                chart.sort("desc");
+                chart.tooltip().background().fill({color:"#D3D7B0",opacity:0.7});
+                chart.noData().label().enabled(true);
+                chart.container('containerDonut');
+                chart.draw();
+                Ext.net.Mask.hide();
+            }
+        });
+
+        /*var dataPieChart = new Array();
+        var dataSet = anychart.data.set([50, 320]);*/
+
+        
+        
+        
+        
+
+        /*anychart.theme(theme);
+
+
+
+
+
+
+        /*chart.title().background().fill({ color: "#CEA9A9", opacity: 0.7 });*/
+        /*chart.noData().label().enabled(true);
+
+        for (var i = 1; i < 8; i++) {
+            dataPieChart.push({
+                x: "قسمت شماره "+i,
+                value:i*100
+            });
+        }
+        chart.data(dataPieChart);*/
+        /*chart.data([
+            { x: 'Rouge', value: 80540 },
+            { x: 'Foundation', value: 94190 },
+            { x: 'Mascara', value: 102610 },
+            { x: 'Lip gloss', value: 110430 },
+            { x: 'Pomade', value: 128000 }
+        ]);*/
+        /*chart.container('containerPie');*/
+        /*chart.animation({ enabled: true, duration: 3000 });*/
+        /*chart.draw();*/
+    }
+
+    function CreateChart2(theme) {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/Dashboard/getBarData',
+            params:{
+                AzTarikh: App.Dashboardd.queryById("txtAzTarikh").getRawValue(),
+                TaTarikh: App.Dashboardd.queryById("txtTaTarikh").getRawValue(),
+                TypeDate: App.Dashboardd.queryById("CboTypeDate").getValue()
+            },
+            success: function (data) {
+                if (chart2 != null) chart2.dispose();
+                anychart.theme(theme);
+                chart2 = anychart.column3d();
+                /*chart.legend(false);*/
+                var dataBarChart = new Array();
+                for (var i = 0; i < data.Mablagh.length; i++) {
+                    dataBarChart.push({
+                        x:data.MD[i] /*+ "(" + data.data[i].CodeIncomeCode + ")"*/,
+                        value: parseInt(data.Mablagh[i])
+                    });
+                }
+                chart2.data(dataBarChart);
+                chart2.title().enabled(false);
+                chart2.title().useHtml(true);
+                chart2.title("<div>نمودار درآمدهای وصولی به تفکیک تاریخ</div>");
+                /*chart.title().background({ enabled: true, cornerType: "round", corners: 10 });*/
+                chart2.title().align("center");
+                chart2.title().fontFamily("rasaFont");
+                chart2.title().fontSize(14);
+                chart2.animation(true);
+                chart2.tooltip().useHtml(true);
+                chart2.tooltip().titleFormat("<div style='text-align:right;'><span style='font-family:rasaFont;font-size:15px;font-weight:bold;'>{%x}</span></div>");
+
+                chart2.legend().position("left");
+                chart2.legend().align("center");
+                chart2.legend().itemsLayout("vertical");
+                chart2.legend().itemsFormat(function (e) { return this.Text });
+                chart2.legend().fontFamily("rasaFont");
+                chart2.legend().textDirection("rtl");
+
+                chart2.tooltip().format(function (e) { return "<div style='text-align:right;'><span style='font-family:rasaFont;font-size:15px;'>مبلغ: " + this.value.toLocaleString() + "</br>درصد: " + (100 * this.value / this.getStat("sum")).toFixed(1) + "%" + "</span></div>" });
+                /*chart2.sort("desc");*/
+                chart2.tooltip().background().fill({ color: "#D3D7B0", opacity: 0.7 });
+                chart2.noData().label().enabled(true);
+                chart2.container('containerBar');
+                chart2.draw();
+                Ext.net.Mask.hide();
+            }
+        });
+
+        /*var dataPieChart = new Array();
+        var dataSet = anychart.data.set([50, 320]);*/
+
+
+
+
+
+
+        /*anychart.theme(theme);
+
+
+
+
+
+
+        /*chart.title().background().fill({ color: "#CEA9A9", opacity: 0.7 });*/
+        /*chart.noData().label().enabled(true);
+
+        for (var i = 1; i < 8; i++) {
+            dataPieChart.push({
+                x: "قسمت شماره "+i,
+                value:i*100
+            });
+        }
+        chart.data(dataPieChart);*/
+        /*chart.data([
+            { x: 'Rouge', value: 80540 },
+            { x: 'Foundation', value: 94190 },
+            { x: 'Mascara', value: 102610 },
+            { x: 'Lip gloss', value: 110430 },
+            { x: 'Pomade', value: 128000 }
+        ]);*/
+        /*chart.container('containerPie');*/
+        /*chart.animation({ enabled: true, duration: 3000 });*/
+        /*chart.draw();*/
+    }
+
+    function CreateChart1(theme) {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/Dashboard/getGaugeData',
+            success: function (data) {
+                var spacee = parseInt((data.Max - data.Min) / 12);
+                if (chart1 != null) chart1.dispose();
+                anychart.theme(theme);
+                var dataGaugeChart = new Array();
+                for (var i = 0; i < data.data.length; i++) {
+                    dataGaugeChart.push({
+                        x: data.data[i].TitleIncomeCode /*+ "(" + data.data[i].CodeIncomeCode + ")"*/,
+                        value: data.data[i].ValIncomeCode
+                    });
+                }
+                chart1 = anychart.gauges.circular();
+                chart1.tooltip().enabled(true);
+                chart1.data(dataGaugeChart);
+                chart1.padding("10%");
+                chart1.startAngle(270);
+                chart1.sweepAngle(180);
+
+                /*chart1.range(0, {
+                    from: 0,
+                    to: 30,
+                    position: 'inside',
+                    fill: '#dd2c00 0.4',
+                    startSize: 1,
+                    endSize: 5,
+                    radius: 98
+                });*/
+
+                /*chart1.range(1, {
+                    from: 30,
+                    to: 70,
+                    position: 'inside',
+                    fill: '#ffa000 0.4',
+                    startSize: 5,
+                    endSize: 10,
+                    radius: 98
+                });
+
+                chart1.range(2, {
+                    from: 70,
+                    to: 120,
+                    position: 'inside',
+                    fill: '#009900 0.4',
+                    startSize: 10,
+                    endSize: 15,
+                    radius: 98
+                });*/
+
+
+                var axis = chart1.axis()
+                    .radius(95)
+                    .width(1);
+
+
+                axis.scale()
+            .minimum(data.Min)
+            .maximum(data.Max)
+            .ticks({ interval: spacee })
+            .minorTicks({ interval: 2 });
+
+
+                axis.ticks()
+            .type("trapezium")
+            .length(8);
+
+
+                axis.minorTicks()
+            .enabled(true)
+            .length("1");
+
+
+                /*var axis_1 = chart1.axis(1)
+            .radius(50)
+            .width(3);
+
+
+                axis_1.scale()
+            .minimum(0)
+            .maximum(600)
+            .ticks({ interval: 100 })
+            .minorTicks({ interval: 20 });
+
+
+                axis_1.ticks()
+            .type("trapezium")
+            .length(8);
+
+
+                axis_1.minorTicks()
+            .enabled(true)
+            .length("3");*/
+
+
+                chart1.needle(0)
+            .enabled(true)
+            .startRadius("-5%")
+            .endRadius("80%")
+            .middleRadius(0)
+            .startWidth("0.1%")
+            .endWidth("0.1%")
+            .middleWidth("5%");
+
+
+                chart1.marker(0)
+            .axisIndex(1)
+            .dataIndex(1)
+            .size(5)
+            .type("triangle-down")
+            .position("outside")
+            .radius(50);
+
+                chart1.bar(0)
+            .axisIndex(1)
+            .position("inside")
+            .dataIndex(1)
+            .width(3)
+            .radius(50).fill("red")
+            .zIndex(10);
+
+                chart1.cap()
+            .radius('6%')
+            .enabled(true);
+
+                /*gauge.range()
+                .radius(70)
+                .from(0)
+                .to(50).fill("red")
+                .endSize('18%');*/
+                chart1.fill(["white", "#D3D7B0"], .5, .5, null, 1, 0.3, 0.3);
+                chart1.container("containerGauge").draw();
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+</script>

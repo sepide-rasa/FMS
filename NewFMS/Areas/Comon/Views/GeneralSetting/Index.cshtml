@@ -1,0 +1,417 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_GeneralSetting>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .addicon {
+        margin-right: 123px !important;
+    }
+    .addicon2 {
+        margin-right: 104px !important;
+    }
+</style>
+<script>
+    var ShowValue = function (value, metadata) {
+        if (metadata.record.data.fldTitleCombo != "") {
+            return metadata.record.data.fldTitleCombo;
+        }
+        return value;
+    };
+</script>
+<br />
+@(Html.X().Panel()
+    .ID("SabtGeneralSetting")
+    .Title("ثبت تنظیمات عمومی")
+    .Closable(true)
+    .Listeners(li => { li.AfterRender.Handler = "GeneralSettingSetSize();"; li.Render.Fn = "addKeyMapSabtGeneralSetting"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(
+                X.Label()),
+                X.Panel()
+                    .Border(false)
+                    .Buttons(
+                        X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => { l.Click.Handler = "SaveGeneralSetting();"; }).ItemID("btnSave"),
+                        X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "LoadGeneralSetting();"; }),
+                        X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteGeneralSetting();"; }),
+                        //X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpGeneralSetting();"; }),
+                        X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.SabtGeneralSetting.destroy()")
+                    )
+                    .ButtonAlign(Ext.Net.Alignment.Center)
+                    .Items(
+                        X.Panel()
+                            .Border(false)
+                            .Layout(LayoutType.VBox)
+                            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                            .Items(
+                                X.FieldSet()
+                                    .Title("تنظیمات عمومی")
+                                    .Border(true)
+                                    .Defaults(new { Margin = 2 })
+                                    .Layout(LayoutType.Table)
+                                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                                    .Items(
+                                        X.Hidden()
+                                            .ItemID("fldId")
+                                            .Value(0),
+                                        X.Label("عنوان:"),
+                                        X.TextField()
+                                            .ItemID("txtName")
+                                            .AllowBlank(false)
+                                            .MaxLength(200)
+                                            .EnforceMaxLength(true)
+                                            .BlankText("لطفا عنوان را وارد کنید.")
+                                            .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                                            .AutoFocus(true),
+                                        X.Label("مقدار:"),
+                                        X.ComboBox()
+                                            .ItemID("txtValue")
+                                            .Icon(Icon.Add)
+                                            .DisplayField("fldTtile")
+                                            .ValueField("fldValue")
+                                            .TypeAhead(true)
+                                            .Editable(true)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا مقدار را وارد کنید.")
+                                            .QueryMode(DataLoadMode.Local)
+                                            .HideTrigger(true)
+                                            //.ForceSelection(true)
+                                            .FieldStyle("padding-right:4px;")
+                                            .Listeners(l => {
+                                                l.AfterRender.Handler = "App.SabtGeneralSetting.queryById('txtValue').icon.dom.classList.add('addicon');";
+                                                l.SpecialKey.Fn = "AddValue";
+                                                l.IconClick.Handler = "GotoAddValue()";
+                                            })
+                                            .MaxLength(200)
+                                            .EnforceMaxLength(true)
+                                            .TriggerAction(TriggerAction.All)
+                                            .Store(X.Store()
+                                                .Model(X.Model()
+                                                    .IDProperty("fldValue")
+                                                    .Fields(
+                                                        new ModelField("fldTtile", ModelFieldType.String) { Mapping = "fldTtile" },
+                                                        new ModelField("fldValue", ModelFieldType.String) { Mapping = "fldValue" },
+                                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" }                                                        
+                                                    )
+                                                )
+                                                    //.Proxy(X.AjaxProxy()
+                                                    //    .Url(Url.Action("GetModule_Organ"))
+                                                    //    .Reader(X.JsonReader().Root("data"))
+                                                    //)
+                                            ),
+                                        X.Label("ماژول مربوطه:"),
+                                        X.ComboBox()
+                                            .ItemID("CboModule")
+                                            .DisplayField("fldName")
+                                            .ValueField("fldId")
+                                            .TypeAhead(true)
+                                            .Editable(false)
+                                            .AllowBlank(true)
+                                            .BlankText("لطفا ماژول را انتخاب کنید.")
+                                            .QueryMode(DataLoadMode.Local)
+                                            .ForceSelection(true)
+                                            .TriggerAction(TriggerAction.All)
+                                            .Store(X.Store()
+                                                .Model(X.Model()
+                                                    .IDProperty("fldId")
+                                                    .Fields(
+                                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" },
+                                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" }
+                                                    )
+                                                )
+                                                .Proxy(X.AjaxProxy()
+                                                    .Url(Url.Action("GetModule_Organ"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                                )
+                                            ),
+                                        X.Label("توضیحات:"),
+                                        X.TextField()
+                                            .ItemID("txtDesc")
+                                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                                            .Width(330)
+                                            .ColSpan(3)
+                                    )
+                        )       
+                ),
+                X.GridPanel()
+                    .ItemID("GeneralSettingGrid")
+                    .BottomBar(X.PagingToolbar())
+                    .Store(
+                        X.StoreForModel()
+                            .Listeners(l => l.DataChanged.Handler = "App.SabtGeneralSetting.queryById('GeneralSettingGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .Listeners(l =>
+                    {
+                        l.AfterRender.Handler = "var grid = App.SabtGeneralSetting.queryById('GeneralSettingGrid');grid.setHeight(App.Win.getHeight() - 260); ";
+                    })
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldValue).Text("مقدار").Flex(2).Renderer("ShowValue"),
+                        Html.X().Column().DataIndex(Model, m => m.fldNameModule).Text("نام ماژول").Flex(4).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+        )
+)
+<script type="text/javascript">
+    var comboboxArray = new Array();
+    function GeneralSettingSetSize() {
+        App.SabtGeneralSetting.setWidth(App.Win.getWidth());
+        var grid = App.SabtGeneralSetting.queryById('GeneralSettingGrid');
+        grid.setHeight(App.Win.getHeight() - 280);
+    }
+
+    var AddValue = function (Fieldd, Eventt) {
+        if (Eventt.keyCode == 45) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/GeneralSetting/AddValue',
+                params: {
+                    SettingId: App.SabtGeneralSetting.queryById('fldId').getValue()
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    };
+
+    function GotoAddValue() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/GeneralSetting/AddValue',
+            params: {
+                SettingId: App.SabtGeneralSetting.queryById('fldId').getValue()
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function LoadGeneralSetting() {
+        var SelectedRow = App.SabtGeneralSetting.queryById('GeneralSettingGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/GeneralSetting/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var CboModule = App.SabtGeneralSetting.queryById('CboModule');
+                    CboModule.setValue(data.fldModuleId);
+                    var txtName = App.SabtGeneralSetting.queryById('txtName');
+                    txtName.setValue(data.fldName);                    
+                    var txtDesc = App.SabtGeneralSetting.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtGeneralSetting.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    var txtValue = App.SabtGeneralSetting.queryById('txtValue');                    
+                    if (data.comboboxValues.length>0) {
+                        txtValue.store.loadData(data.comboboxValues);
+                        txtValue.setHideTrigger(false);
+                        App.SabtGeneralSetting.queryById("txtValue").forceSelection = true;
+                        txtValue.icon.dom.classList.remove('addicon');
+                        txtValue.icon.dom.classList.add('addicon2');                        
+                        txtValue.setValue(data.fldValue);
+                        comboboxArray = data.comboboxValues;
+                    }
+                    else {
+                        txtValue.store.loadData("");
+                        txtValue.setHideTrigger(true);
+                        App.SabtGeneralSetting.queryById("txtValue").forceSelection = false;
+                        txtValue.icon.dom.classList.remove('addicon2');
+                        txtValue.icon.dom.classList.add('addicon');
+                        txtValue.setValue(data.fldValue);
+                        comboboxArray = new Array();
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                Name: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveGeneralSetting() {
+        var txtName = App.SabtGeneralSetting.queryById('txtName');
+        var txtValue = App.SabtGeneralSetting.queryById('txtValue');
+        var txtDesc = App.SabtGeneralSetting.queryById('txtDesc');
+        var fldId = App.SabtGeneralSetting.queryById('fldId');
+        var CboModule = App.SabtGeneralSetting.queryById('CboModule');
+        var er = false;
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (CboModule.validate() == false) {
+            er = true;
+        }
+        if (txtValue.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+        else {
+            var data = {
+                fldId:fldId.getValue(),
+                fldName: txtName.getValue(),
+                fldValue: txtValue.getValue(),
+                fldModuleId: CboModule.getValue(),
+                ComboBox: comboboxArray,
+                fldDesc: txtDesc.getValue()
+            };
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            $.ajax({
+                type: "POST",
+                url: '/Comon/GeneralSetting/Save',
+                datatype: "json",
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                success: function (result) {
+                    var ic = Ext.MessageBox.INFO;
+                    if (result.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: result.MsgTitle,
+                        msg: result.Msg,
+                        icon: ic,
+                        closable: false,
+                        buttons: Ext.MessageBox.OK,
+                        fn: function (btn) {
+                            if (btn == "ok") {
+                                App.SabtGeneralSetting.queryById('txtName').focus();
+                            }
+                        }
+                    });
+                    Ext.net.Mask.hide();
+                    if (result.Err != 1) {
+                        App.SabtGeneralSetting.queryById('GeneralSettingGrid').store.load();
+                        ClearGeneralSetting();
+                    }
+                },
+                failure: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+
+    function DeleteGeneralSetting() {
+        var SelectedRow = App.SabtGeneralSetting.queryById('GeneralSettingGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                Name: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/GeneralSetting/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    Name: data.MsgName,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtGeneralSetting.queryById('GeneralSettingGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                        ClearGeneralSetting();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                Name: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearGeneralSetting() {
+        App.SabtGeneralSetting.queryById('fldId').setValue(0);
+        App.SabtGeneralSetting.queryById('txtName').setValue("");
+        App.SabtGeneralSetting.queryById('txtValue').setValue("");
+        App.SabtGeneralSetting.queryById("txtValue").setHideTrigger(true);
+        App.SabtGeneralSetting.queryById("txtValue").forceSelection = false;
+        App.SabtGeneralSetting.queryById('txtValue').icon.dom.classList.add('addicon');
+        App.SabtGeneralSetting.queryById('txtValue').icon.dom.classList.remove('addicon2');
+        App.SabtGeneralSetting.queryById('txtDesc').setValue("");
+        App.SabtGeneralSetting.queryById('CboModule').setValue("");
+        comboboxArray = new Array();
+    }
+    function HelpGeneralSetting() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/GeneralSetting/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var addKeyMapSabtGeneralSetting = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtGeneralSetting.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtGeneralSetting.queryById('btnSave');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

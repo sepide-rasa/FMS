@@ -1,0 +1,627 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window()
+    .Modal(true)
+        //.Listeners(li => li.AfterRender.Handler = "LoadFarzandan();")
+    .Width(530)
+          //.Height(245)
+    .Resizable(false)
+    .Title("ثبت فرد تحت پوشش جدید")
+    .ID("NewFarzandan")
+    .Closable(true)
+    .AutoScroll(false)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel()
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Border(false)
+            .KeyMap(Html.X().KeyMap()
+                .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+                .Binding(b =>
+                {
+                    b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                    .Handler("SaveFarzandan(); ")
+                    );
+
+                }))
+            .DefaultButton("btn")
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+        //.ToolTip("کلید میانبر F8")
+                    .Listeners(l => l.Click.Handler = "SaveFarzandan();")
+                    .ItemID("btnSave"),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .ToolTip("کلید میانبر Esc")
+                    .OnClientClick("App.NewFarzandan.destroy();")
+                    )
+            .Items(
+                X.FieldSet()
+                        .ItemID("Panel").Title("اطلاعات افراد")
+                    .Layout(Ext.Net.LayoutType.Table)
+                    .Border(true)
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                    .Defaults(new { Margin = 2 })
+                        .Items(
+                            X.Hidden().ItemID("fldId"),
+                                X.Hidden().ItemID("fldPersonalId"),
+        //              X.Label().Text("نام و نام خانوادگی:")
+        //, X.TextField()
+        //        .ItemID("txtNameEmp")
+        //    .LabelAlign(Ext.Net.LabelAlign.Top)
+        //    .AllowBlank(true)
+        //    , X.Label().Text("کد ملی:")
+        //    , X.TextField()
+        //    .ItemID("txtNationalCode")
+        //    .LabelAlign(Ext.Net.LabelAlign.Top)
+        //    .AllowBlank(true)
+        //    , X.Label().Text("شماره پرسنلی:")
+        //    , X.TextField()
+        //    .ItemID("txtShomarePersoneli")
+        //    .LabelAlign(Ext.Net.LabelAlign.Top)
+        //    .AllowBlank(true)
+        //  ,
+         X.Label("نسبت:")
+                                , X.ComboBox()
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboNesbat")
+                            .Editable(false)
+                                .TypeAhead(true)
+                        .QueryMode(DataLoadMode.Local)
+                        .BlankText("لطفا نوع نسبت را انتخاب کنید.")
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                        .ValueField("fldId")
+                        .EmptyText(" ...")
+        //.SelectedItems(new { Value = "1" })
+                        .Listeners(l => { l.Select.Handler = "changeNebat()"; })
+                        .Store(X.Store()
+                            .Listeners(l => { l.Load.Handler = "LoadFarzandan()"; })
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                )
+                                    )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetNesbatShakhs"))
+                        .Reader(X.JsonReader().Root("data"))
+                                           .ExtraParams(p => p.Add(new { IdPersonal = @ViewBag.PersonalId }))
+                                    )
+                            )
+                            .AllowBlank(false),
+                                 X.Label("نوع تکفل:")
+                                    , X.ComboBox()
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboTakafol")
+                                .Editable(false)
+                                    .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .BlankText("لطفا نوع نسبت را انتخاب کنید.")
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText(" ...")
+        //.SelectedItems(new { Value = "1" })
+                           // .Listeners(l => { l.Select.Handler = "changeNebat()"; })
+                            .Store(X.Store().AutoLoad(false)
+                            .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                        )
+                            .Proxy(X.AjaxProxy()
+                                .Url(Url.Action("GetNesbat"))
+                            .Reader(X.JsonReader().Root("data"))
+                                               //.ExtraParams(p => p.Add(new { IdPersonal = @ViewBag.PersonalId }))
+                                        )
+                                                            
+                                    )
+                                .AllowBlank(false),
+                        X.Label("نام:"),
+                        X.TextField()
+                        .ItemID("txtName")
+                            .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+        //.FieldLabel("نام")
+        //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AllowBlank(false)
+                        .BlankText("لطفا نام را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .AutoFocus(true),
+                        X.Label("نام خانوادگی:"),
+                        X.TextField()
+                            .ItemID("txtFamily")
+                                .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+        //.FieldLabel("نام")
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AllowBlank(false)
+                            .BlankText("لطفا نام خانوادگی را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        , X.Label("تاریخ تولد:")
+                        , X.PDateField()
+                        .ItemID("txtBirthDate")
+                        .MaskRe("[/0-9//]")
+                        .Listeners(l => {
+                            l.Focus.Handler = "ChangetxtBirthDate();";
+                            l.Change.Handler = "CheckShowMashmoolJavani(1)";
+                        })
+        // .FieldLabel("تاریخ تولد")
+        //   .MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AllowBlank(false)
+                        .BlankText("لطفا تاریخ تولد را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        , X.Label("تاریخ ازدواج:")
+                        .ItemID("lblEzdevaj")
+                    , X.PDateField()
+                    .ItemID("txtEzdevaj")
+                    .MaskRe("[/0-9//]")
+                    .Listeners(l => {
+                        l.Focus.Handler = "ChangetxtEzdevaj();";
+                        l.Change.Handler = "CheckShowMashmoolJavani(2)";
+                    })
+        // .FieldLabel("تاریخ تولد")
+        //   .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا تاریخ ازدواج را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top),
+                    
+                     X.Label("تاریخ طلاق:")
+                        .ItemID("lblDivorce")
+                    , X.PDateField()
+                        .ItemID("txtDivorce")
+                    .MaskRe("[/0-9//]")
+                    .Listeners(l => {
+                        l.Focus.Handler = "ChangetxtDivorce();";
+                    })
+        // .FieldLabel("تاریخ تولد")
+        //   .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(true)
+                    
+                        , X.Label("نام پدر:")
+                        , X.TextField()
+                        .ItemID("txtFatherName")
+        // .FieldLabel("نام پدر")
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AllowBlank(false)
+                        .BlankText("لطفا نام پدر را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                                , X.Label("کد ملی:")
+                        , X.TextField()
+                        .ItemID("txtCodeMeli")
+                        .Listeners(l => l.Change.Handler = "ChangetxtCodeMeli();")
+        //.FieldLabel("کد ملی")
+        //.MsgTarget(Ext.Net.MessageTarget.Side)
+                            .Plugins(X.InputMask()
+                                    .Mask("AAAAAAAAAA")
+                                    .UnmaskOnBlur(true)
+                                    .MaskSymbols(ls =>
+                                    {
+                                        ls.Add(new MaskSymbol { Name = "A", Regex = "[0-9]", Placeholder = "_".ToCharArray()[0] });
+                                    })
+                                )
+                        .AllowBlank(false)
+        //  .Width(140)
+                        .BlankText("لطفا کد ملی را وارد کنید.")
+                        , X.Label("شماره شناسنامه:")
+                        , X.TextField()
+                            .ItemID("txtSh_Shenasname")
+        // .FieldLabel("نام پدر")
+        //.MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AllowBlank(false)
+                        .BlankText("لطفا شماره شناسنامه را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .MaskRe("[/0-9/]")
+                        .Width(146)
+                        .Icon(Ext.Net.Icon.BulletLightning)
+                            .Listeners(li =>
+                        {
+                            li.IconClick.Handler = "App.NewFarzandan.queryById('txtSh_Shenasname').setValue(App.NewFarzandan.queryById('txtCodeMeli').getValue());";
+                        })
+                        , X.Label("وضعیت:")
+                        , X.ComboBox()
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ItemID("CboStatus")
+        //.FieldLabel("وضعیت")
+                        .Editable(false)
+                        .TypeAhead(true)
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .Items(
+                            new ListItem("عادی", "1"),
+                            new ListItem("محصل", "2"),
+                            new ListItem("بیمار", "3")
+                            )
+                            .SelectedItems(new { Value = "1" }),
+                        X.FieldSet()
+                            .Border(false)
+                            .ItemID("FieldsetMashmool")
+                            .Padding(0)
+                            .ColSpan(2)
+                            .Defaults(new { Margin = 2 })
+                            .MarginSpec("0 0 0 78px")
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                            .Items(
+                                X.Checkbox()
+                                    .ItemID("MashmoolJavani")
+                                    .PaddingSpec("7px 0 0 3px")
+                                    .RTL(false),
+                                X.Label("مشمول پاداش جوانی جمعیت")
+                            )
+                                
+        //   .SelectedItems(new { Value = "3" })
+        //                    , X.ComboBox()
+        //                    .LabelAlign(Ext.Net.LabelAlign.Top)
+        //                        .ItemID("CboTakafol")
+        //                    .Editable(false)
+        //                    .TypeAhead(true)
+        //                    .QueryMode(DataLoadMode.Local)
+        //                    .TriggerAction(TriggerAction.All)
+        //                    .Items(
+        //                            new ListItem("فرزند", "1"),
+        //                            new ListItem("همسر", "2"),
+        //                            new ListItem("تحت تکفل", "3")
+        //                        )
+        //.SelectedItems(new { Value = "2" })
+
+                        //, X.Checkbox()
+        //    .ItemID("CheckedMashmul"), X.Label("مشمول حق اولاد")
+
+                        , X.FieldSet()
+                                    .ID("FieldsetDetail")
+                                    .Border(false).Width(200)
+                                    .Layout(LayoutType.HBox)
+                                    .ColSpan(4)
+                                    .Items(
+                                        X.Checkbox()
+                                                .ItemID("CheckedMashmul")
+                                            .PaddingSpec("0 25px 0 7px"),
+                                            X.Label("مشمول حق اولاد")
+                                            .ItemID("lblMashmul")
+                                            )
+        )
+    ))
+)
+
+<script type="text/javascript">
+
+    function CheckShowMashmoolJavani(status) {
+        var txtEzdevaj = App.NewFarzandan.queryById('txtEzdevaj');
+        var txtBirthDate = App.NewFarzandan.queryById('txtBirthDate');
+        var CboNesbat = App.NewFarzandan.queryById('CboNesbat');
+        if (status == 1) {
+            if (CboNesbat.getValue() == "1" && txtBirthDate.validate() && parseInt(txtBirthDate.getRawValue().replace("/", "").replace("/", "")) >= 14030101) {
+                App.NewFarzandan.queryById('FieldsetMashmool').show();
+            }
+            else {
+                App.NewFarzandan.queryById('FieldsetMashmool').hide();
+            }
+        }
+        else {
+            if (txtEzdevaj.validate() && parseInt(txtEzdevaj.getRawValue().replace("/", "").replace("/", "")) >= 14030101) {
+                App.NewFarzandan.queryById('FieldsetMashmool').show();
+            }
+            else {
+                App.NewFarzandan.queryById('FieldsetMashmool').hide();
+            }
+        }
+    }
+
+    function changeNebat() {
+        var CboNesbat = App.NewFarzandan.queryById('CboNesbat');
+        var txtEzdevaj = App.NewFarzandan.queryById('txtEzdevaj');
+        var lblEzdevaj = App.NewFarzandan.queryById('lblEzdevaj');
+        var txtDivorce = App.NewFarzandan.queryById('txtDivorce');
+        var lblDivorce = App.NewFarzandan.queryById('lblDivorce');
+        var txtName = App.NewFarzandan.queryById('txtName');
+        var txtFamily = App.NewFarzandan.queryById('txtFamily');
+        var txtFatherName = App.NewFarzandan.queryById('txtFatherName');
+        var CheckedMashmul = App.NewFarzandan.queryById('CheckedMashmul');
+        var lblMashmul = App.NewFarzandan.queryById('lblMashmul');
+        var txtBirthDate = App.NewFarzandan.queryById('txtBirthDate');
+        var CboTakafol = App.NewFarzandan.queryById('CboTakafol');
+        CboTakafol.getStore().getProxy().setExtraParam('Nesbat', CboNesbat.getValue());
+        CboTakafol.getStore().getProxy().setExtraParam('IdPersonal', '@ViewBag.PersonalId');
+        CboTakafol.store.load();
+        /*CboTakafol.setValue(CboNesbat.getValue());*/
+        App.NewFarzandan.queryById('FieldsetMashmool').hide();
+        if (CboNesbat.getValue() == "2") {
+            txtEzdevaj.show();
+            lblEzdevaj.show();
+            txtEzdevaj.setValue('');
+            txtDivorce.show();
+            lblDivorce.show();
+            txtDivorce.setValue('');
+        }
+        else {
+            txtEzdevaj.hide();
+            lblEzdevaj.hide();
+            txtDivorce.hide();
+            lblDivorce.hide();
+        }
+        if (CboNesbat.getValue() == "1" && '@ViewBag.Id' == '0' && '@ViewBag.Jensiyat' == 'true') {
+            txtFamily.setValue('@ViewBag.Family');
+            txtFatherName.setValue('@ViewBag.Name');
+            txtName.setValue('');
+            CheckedMashmul.show(true);
+            lblMashmul.show(true);
+        }
+        else if (CboNesbat.getValue() == "3" && '@ViewBag.Id' == '0') {
+            txtName.setValue('@ViewBag.FatherName');
+            txtFamily.setValue('@ViewBag.Family');
+            txtFatherName.setValue('');
+            CheckedMashmul.hide(true);
+            lblMashmul.hide(true);
+        }
+        else if (CboNesbat.getValue() == "1") {
+            CheckedMashmul.show(true);
+            lblMashmul.show(true);
+            if (txtBirthDate.validate() && parseInt(txtBirthDate.getRawValue().replace("/", "").replace("/", "")) >= 14030101) {
+                App.NewFarzandan.queryById('FieldsetMashmool').show();
+            }
+        }
+        else if ('@ViewBag.Id' == '0') {
+            txtName.setValue('');
+            txtFamily.setValue('');
+            txtFatherName.setValue('');
+            CheckedMashmul.hide(true);
+            lblMashmul.hide(true);
+        }
+    }
+    function ChangetxtBirthDate() {
+        var txtBirthDate = App.NewFarzandan.queryById('txtBirthDate');
+        var fldTarikh = new Date('@ViewBag.fldTarikh');
+        txtBirthDate.setMaxValue(fldTarikh);
+        txtBirthDate.maxText = "تاریخ تولد نباید بعد از تاریخ امروز  " + "باشد";
+    }
+    function ChangetxtEzdevaj() {
+        var txtEzdevaj = App.NewFarzandan.queryById('txtEzdevaj');
+        var fldTarikh = new Date('@ViewBag.fldTarikh');
+        txtEzdevaj.setMaxValue(fldTarikh);
+        txtEzdevaj.maxText = "تاریخ ازدواج نباید بعد از تاریخ امروز  " + "باشد";
+    }
+    function ChangetxtDivorce() {
+        var txtEzdevaj = App.NewFarzandan.queryById('txtEzdevaj');
+        if (txtEzdevaj.getRawValue() != "") {
+            var txtDivorce = App.NewFarzandan.queryById('txtDivorce');
+            var fldTarikh = new Date('@ViewBag.fldTarikh');
+            txtDivorce.setMaxValue(fldTarikh);
+            txtDivorce.maxText = "تاریخ طلاق نباید بعد از تاریخ امروز  " + "باشد";
+            txtDivorce.setMinValue(txtEzdevaj.getValue());
+            txtDivorce.minText = "تاریخ طلاق نباید قبل از تاریخ ازدواج " + "باشد";
+        }
+    }
+    function ChangetxtCodeMeli() {
+        var txtCodeMeli = App.NewFarzandan.queryById('txtCodeMeli');
+        var txtSh_Shenasname = App.NewFarzandan.queryById('txtSh_Shenasname');
+        var txtBirthDate = App.NewFarzandan.queryById('txtBirthDate').rawValue;
+        if (txtBirthDate.substring(0, 4) >= "1368")
+            txtSh_Shenasname.setValue(txtCodeMeli.getValue());
+    }
+    function LoadFarzandan() {
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/Farzandan/Details',
+                params: {
+                    id: '@ViewBag.Id'
+                },
+                success: function (data) {
+
+                    /*  var txtNameEmp = App.NewFarzandan.queryById('txtNameEmp');
+                      txtNameEmp.setValue(data.fldNameEmployee);
+                      App.NewFarzandan.queryById('txtNameEmp').setReadOnly(true);
+                      var txtNationalCode = App.NewFarzandan.queryById('txtNationalCode');
+                      txtNationalCode.setValue(data.fldNationalCode);
+                      App.NewFarzandan.queryById('txtNationalCode').setReadOnly(true);
+                      var txtShomarePersoneli = App.NewFarzandan.queryById('txtShomarePersoneli');
+                      txtShomarePersoneli.setValue(data.fldShomarePersoneli);
+                      App.NewFarzandan.queryById('txtShomarePersoneli').setReadOnly(true);*/
+                    var CboNesbat = App.NewFarzandan.queryById('CboNesbat');
+                    CboNesbat.setValue(data.fldNesbatShakhs);
+                    changeNebat();
+                    var fldPersonalId = App.NewFarzandan.queryById('fldPersonalId');
+                    fldPersonalId.setValue(data.fldPersonalId);
+                    var txtBirthDate = App.NewFarzandan.queryById('txtBirthDate');
+                    txtBirthDate.setValue(data.fldBirthDate);
+                    var txtEzdevaj = App.NewFarzandan.queryById('txtEzdevaj');
+                    txtEzdevaj.setValue(data.fldTarikhEzdevaj);
+
+                    var txtDivorce = App.NewFarzandan.queryById('txtDivorce');
+                    txtDivorce.setValue(data.fldTarikhTalagh);
+
+                    var txtName = App.NewFarzandan.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var txtFamily = App.NewFarzandan.queryById('txtFamily');
+                    txtFamily.setValue(data.fldFamily);
+                    var txtFatherName = App.NewFarzandan.queryById('txtFatherName');
+                    txtFatherName.setValue(data.fldFatherName);
+                    var txtCodeMeli = App.NewFarzandan.queryById('txtCodeMeli');
+                    txtCodeMeli.setValue(data.fldCodeMeli);
+                    var txtSh_Shenasname = App.NewFarzandan.queryById('txtSh_Shenasname');
+                    txtSh_Shenasname.setValue(data.fldSh_Shenasname);
+                    var CboStatus = App.NewFarzandan.queryById('CboStatus');
+                    CboStatus.setValue(data.fldStatus);
+                    var CboTakafol = App.NewFarzandan.queryById('CboTakafol');
+                    CboTakafol.setValue(data.fldNesbat);
+                    var CheckedMashmul = App.NewFarzandan.queryById('CheckedMashmul');
+                    CheckedMashmul.setValue(data.fldMashmul);
+
+                    var Id = App.NewFarzandan.queryById('fldId');
+                    Id.setValue(data.fldId);
+                    if (App.NewFarzandan.queryById('FieldsetMashmool').isHidden() == false) {
+                        App.NewFarzandan.queryById('MashmoolJavani').setValue(data.fldMashmoolPadash);
+                    }
+
+                }
+            });
+        }
+        else {
+            var fldPersonalId = App.NewFarzandan.queryById('fldPersonalId');
+            fldPersonalId.setValue('@ViewBag.PersonalId');
+
+            /*var CboTakafol = App.NewFarzandan.queryById('CboTakafol');
+            CboTakafol.select(CboTakafol.store.getAt(0));*/
+            var CboNesbat = App.NewFarzandan.queryById('CboNesbat');
+            CboNesbat.select(CboNesbat.store.getAt(0));
+            changeNebat();
+            App.NewFarzandan.queryById('FieldsetMashmool').hide();
+            /* Ext.net.DirectMethod.request({
+                 url: '/Personeli/Farzandan/DetailsHeader',
+                 params: {
+                     Id: 'ViewBag.PersonalId'
+                 },
+                 success: function (data) {
+
+                     var txtNameEmp = App.NewFarzandan.queryById('txtNameEmp');
+                     txtNameEmp.setValue(data.fldName);
+                     App.NewFarzandan.queryById('txtNameEmp').setReadOnly(true);
+                     var txtNationalCode = App.NewFarzandan.queryById('txtNationalCode');
+                     txtNationalCode.setValue(data.fldNationalCode);
+                     App.NewFarzandan.queryById('txtNationalCode').setReadOnly(true);
+                     var txtShomarePersoneli = App.NewFarzandan.queryById('txtShomarePersoneli');
+                     txtShomarePersoneli.setValue(data.fldShomarePersoneli);
+                     App.NewFarzandan.queryById('txtShomarePersoneli').setReadOnly(true);
+                 }
+             });*/
+        }
+    }
+
+    function SaveFarzandan() {
+        var txtBirthDate = App.NewFarzandan.queryById('txtBirthDate');
+        var txtEzdevaj = App.NewFarzandan.queryById('txtEzdevaj');
+        var txtDivorce = App.NewFarzandan.queryById('txtDivorce');
+        var txtName = App.NewFarzandan.queryById('txtName');
+        var txtFamily = App.NewFarzandan.queryById('txtFamily');
+        var txtCodeMeli = App.NewFarzandan.queryById('txtCodeMeli');
+        var txtSh_Shenasname = App.NewFarzandan.queryById('txtSh_Shenasname');
+        var txtFatherName = App.NewFarzandan.queryById('txtFatherName');
+        var CboStatus = App.NewFarzandan.queryById('CboStatus');
+        var CboTakafol = App.NewFarzandan.queryById('CboTakafol');
+        var CheckedMashmul = App.NewFarzandan.queryById('CheckedMashmul');
+        var Id = App.NewFarzandan.queryById('fldId');
+        var PersonalId = App.NewFarzandan.queryById('fldPersonalId');
+        var CboNesbat = App.NewFarzandan.queryById('CboNesbat');
+        var FieldsetMashmool = App.NewFarzandan.queryById('FieldsetMashmool');
+
+        var er = false;
+
+        if (txtBirthDate.validate() == false) {
+            er = true;
+        }
+        if (CboTakafol.getValue() == "2" && txtEzdevaj.validate() == false) {
+            er = true;
+        }
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (txtFamily.validate() == false) {
+            er = true;
+        }
+        if (txtCodeMeli.validate() == false) {
+            er = true;
+        }
+        if (txtSh_Shenasname.validate() == false) {
+            er = true;
+        }
+        if (txtFatherName.validate() == false) {
+            er = true;
+        }
+        if (CboNesbat.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        var MashmolPadash = false;
+        if (FieldsetMashmool.isHidden() == false) {
+            MashmolPadash = App.NewFarzandan.queryById('MashmoolJavani').getValue();
+        }
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/Farzandan/Save',
+            params: {
+                fldId: Id.getValue(),
+                fldBirthDate: txtBirthDate.rawValue,
+                fldTarikhEzdevaj: txtEzdevaj.rawValue,
+                fldTarikhTalagh: txtDivorce.rawValue,
+                fldName: txtName.getValue(),
+                fldFamily: txtFamily.getValue(),
+                fldFatherName: txtFatherName.getValue(),
+                fldCodeMeli: txtCodeMeli.getValue(),
+                fldSh_Shenasname: txtSh_Shenasname.getValue(),
+                fldNesbat: CboTakafol.getValue(),
+                fldStatus: CboStatus.getValue(),
+                fldMashmul: CheckedMashmul.getValue(),
+                fldPersonalId: PersonalId.getValue(),
+                fldNesbatShakhs: CboNesbat.getValue(),
+                fldMashmoolPadash: MashmolPadash
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                if (data.Er == 0) {
+                    ClearFarzandan();
+                    ReloadGridDetail();
+                    /* App.Farzandan.queryById('GridHeader').store.load();
+                     App.Farzandan.queryById('GridDetail').getStore().loadData("");*/
+                }
+
+            }
+
+        });
+    }
+    function ClearFarzandan() {
+        App.NewFarzandan.queryById('txtFamily').setValue("");
+        App.NewFarzandan.queryById('txtFatherName').setValue("");
+        App.NewFarzandan.queryById('txtCodeMeli').setValue("");
+        App.NewFarzandan.queryById('txtSh_Shenasname').setValue("");
+        App.NewFarzandan.queryById('CboTakafol').setValue("1");
+        App.NewFarzandan.queryById('txtBirthDate').setValue("");
+        App.NewFarzandan.queryById('txtEzdevaj').setValue("");
+        App.NewFarzandan.queryById('txtDivorce').setValue("");
+        App.NewFarzandan.queryById('txtName').setValue("");
+        App.NewFarzandan.queryById('CboStatus').setValue("1");
+        App.NewFarzandan.queryById('CheckedMashmul').setValue(0);
+        App.NewFarzandan.queryById('fldId').setValue(0);
+    }
+
+    function EnterNext() {
+        var keyfield = App.NewFarzandan.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "CboTakafol") {
+            nextfld = App.NewFarzandan.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+    }
+
+
+</script>

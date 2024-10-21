@@ -1,0 +1,331 @@
+﻿@model NewFMS.Models.SodorCheck
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();
+ NewFMS.WCF_Common.CommonService servic = new NewFMS.WCF_Common.CommonService();
+ NewFMS.WCF_Common.ClsError Err = new NewFMS.WCF_Common.ClsError();}
+<br />
+<script src="~/Scripts/accounting.js"></script>
+<script>
+    var template = '<span>{0}</span>';
+
+    var Rial = function (value) {
+        return Ext.String.format(template, accounting.formatNumber(value));
+    };
+
+
+</script>
+@(Html.X().Panel()
+        .ID("SodorChek")
+        .Title("صدور چک")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Border(false)
+        .Listeners(li => li.AfterRender.Handler = "SodorChekSetSize();")
+       .Items(
+    X.Panel().Border(false)//.Height(250)
+        .Items(
+                X.GridPanel()
+                        .Listeners(l => l.ItemClick.Handler = "ReloadGridChek();")
+                                .AutoScroll(true)
+                                .ItemID("GridDasteChek")
+                                .BottomBar(X.PagingToolbar())
+                                .Flex(2)
+                                .Store(
+                                                   X.StoreFor(Model.DasteCheck)
+                                        .Proxy(Html.X().AjaxProxy()
+                                                    .Url(Url.Action("ReadDasteChek"))
+                                            .Reader(Html.X().JsonReader().Root("data")))
+                                .PageSize(9)
+                                .RemotePaging(true)
+        .Listeners(l => l.DataChanged.Handler = "App.SodorChek.queryById('GridDasteChek').selModel.refresh();"))
+                                .View(
+                                    Html.X().GridView()
+                                        .LoadingText("در حال بارگذاری...")
+                                        .RTL(true))
+                                .ColumnModel(
+                                    Html.X().RowNumbererColumn(),
+                                        Html.X().Column().DataIndex(Model.DasteCheck, m => m.fldId).Text("کد").Flex(1),
+                                            Html.X().Column().DataIndex(Model.DasteCheck, m => m.fldOlgu).Text("الگو").Flex(5),
+                                            Html.X().Column().DataIndex(Model.DasteCheck, m => m.fldBankName).Text("نام بانک").Hidden(true).Flex(5),
+                                    Html.X().Column().DataIndex(Model.DasteCheck, m => m.fldShomareHesab).Text("شماره حساب").Flex(5),
+                                    Html.X().Column().DataIndex(Model.DasteCheck, m => m.fldMoshakhaseDasteCheck).Text("مشخصه").Flex(5),
+                                    Html.X().Column().DataIndex(Model.DasteCheck, m => m.fldTedadBarg).Text("تعداد برگ").Flex(5),
+                                    Html.X().Column().DataIndex(Model.DasteCheck, m => m.fldShoroeSeriyal).Text("شروع سریال").Flex(5)
+                                )
+                                    .Plugins(X.FilterHeader().Remote(true))
+                                .SelectionModel(
+                                    Html.X().RowSelectionModel()
+                                        .Mode(Ext.Net.SelectionMode.Single)
+                                        //     .Listeners(l =>
+                                        //{
+                                        //    l.Select.Handler = "ReloadCheks();";
+                                        //})
+                                        )
+        ),
+           X.Panel()
+                                .ItemID("PnlGridDetail")
+                                .Title("چک های صادر شده")
+                                .Border(false)
+                                .Layout(Ext.Net.LayoutType.Fit)
+                                .Items(
+                                        X.GridPanel()
+                                            .TopBar(
+                                        Html.X().Toolbar()
+                                            .Items(
+                                              X.Button().Text("جدید").Icon(Ext.Net.Icon.Add)
+                                                .Listeners(li => li.Click.Handler = "NewChek();"),
+                                                     X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                                                        .ItemID("btnEdit")
+                                                        .Listeners(Li => Li.Click.Handler = "EditChek();"),
+                                                X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                                                    .ItemID("btnDelete")
+                                                    .Listeners(de =>
+                                                    {
+                                                        de.Click.Handler = "if (App.SodorChek.queryById('GridChek').selModel.getLastSelected() == null) {Ext.MessageBox.show({ title: 'خطا', msg: 'لطفا یک سطر را انتخاب کنید',icon: Ext.MessageBox.ERROR,buttons: Ext.MessageBox.OK});return false;}else DeleteChek();";
+                                                    }),
+                                                    X.Button().Text("چاپ").Icon(Ext.Net.Icon.Printer)
+                                                    .Listeners(li => li.Click.Handler = "PrintChek();"),
+
+                                                    X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpSodorChek();"; })
+
+                                            ))
+                                              .BottomBar(X.PagingToolbar().HideRefresh(true))
+                                        .AutoScroll(true)
+                                        .ID("GridChek")
+                                        .Flex(2).Height(187)
+        //.Listeners(li => li.ItemClick.Handler = "CheckEdit();")
+                                        .Store(
+                                                     X.StoreFor(Model.Sodor) 
+                                                //           .AutoLoad(false)
+                                                    //            .Proxy(Html.X().AjaxProxy()
+                                                    //.Url(Url.Action("Read"))
+                                                    //.Reader(Html.X().JsonReader().Root("data")))
+                                                .PageSize(9)
+                                                .RemotePaging(true)
+
+                                        .Listeners(l => l.DataChanged.Handler = " App.SodorChek.queryById('GridChek').selModel.refresh();")
+                        )
+                                        .View(
+                                            Html.X().GridView()
+                                                .LoadingText("در حال بارگذاری...")
+                                                .RTL(true)
+                        )
+                                            .ColumnModel(
+                                                Html.X().RowNumbererColumn(),
+                                                Html.X().Column().DataIndex(Model.Sodor, m => m.fldId).Text("کد").Flex(1),
+                                                Html.X().Column().DataIndex(Model.Sodor, m => m.fldMablagh).Text("مبلغ").Renderer("Rial").Flex(4),
+                                                Html.X().Column().DataIndex(Model.Sodor, m => m.fldTarikhVosol).Text("تاریخ وصول").Flex(4),
+                                                Html.X().Column().DataIndex(Model.Sodor, m => m.fldDarVajh).Text("در وجه").Flex(4),
+                                                Html.X().Column().DataIndex(Model.Sodor, m => m.fldBabat).Text("بابت").Flex(4),
+                                                Html.X().Column().DataIndex(Model.Sodor, m => m.fldCodeSerialCheck).Text("سریال چک").Flex(4),
+                                                    Html.X().Column().DataIndex(Model.Sodor, m => m.NameVaziat).Text("وضعیت").Flex(3),
+                                                    Html.X().Column().DataIndex(Model.Sodor, m => m.fldTarikhVaziat).Text("تاریخ وضعیت").Flex(3),
+                                                    Html.X().ImageCommandColumn()
+                                                .Listeners(l => l.Command.Fn = "ActionsInSatus")
+                                                .Flex(1).Commands(
+                                                    Html.X().ImageCommand().CommandName("GoToStatusVosuli").Icon(Ext.Net.Icon.ArrowRefresh).ToolTip(tt => tt.Text = "تعیین وضعیت")
+                                                )
+                                 )
+                                        .Plugins(
+                                            Html.X().CellEditing().ClicksToEdit(1)
+        // ,X.FilterHeader().Remote(true)
+                                            )
+                                        .SelectionModel(
+                                            Html.X().RowSelectionModel()
+                                                .Mode(Ext.Net.SelectionMode.Single)
+                                )
+                    )
+    )
+)
+)
+<script type="text/javascript">
+    var dadat;
+    function HelpSodorChek() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Chek/SodorCheck/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SodorChekSetSize() {
+
+       var grid = App.SodorChek.queryById('GridDasteChek');
+       grid.setHeight((App.ChekWin.getHeight() - 200) / 2);
+       var GridDetail = App.SodorChek.queryById('GridChek');
+       GridDetail.setHeight((App.ChekWin.getHeight() - 200) / 2);
+    }
+    function ReloadGridChek() {
+        var SelectedRow = App.SodorChek.queryById("GridDasteChek").getSelectionModel().getLastSelected();
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Chek/SodorCheck/ReloadChek',
+            params: {
+                DasteChekId: SelectedRow.data.fldId
+            },
+            success: function (result) {
+                App.SodorChek.queryById('GridChek').getStore().loadData(result);
+
+
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function ReloadCheks() {
+        var SelectedRow = App.SodorChek.queryById('GridDasteChek').selModel.getLastSelected();
+
+        App.SodorChek.queryById('GridChek').getStore().getProxy().setExtraParam("DasteChekId", SelectedRow.data.fldId);
+        App.SodorChek.queryById('GridChek').getStore().load();
+
+      /*  Ext.net.DirectMethod.request({
+            url: '/Chek/SodorChek/Rload?PersonalId=' + SelectedRow.data.fldId,
+
+            success: function (result) {
+                App.SodorChek.queryById('GridChek').getStore().loadData(result);
+
+            }
+
+        });*/
+    }
+  
+    function PrintChek() {
+        var SelectedRow = App.SodorChek.queryById('GridChek').selModel.getLastSelected();
+        var SelectedRowD = App.SodorChek.queryById('GridDasteChek').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Chek/SodorCheck/Print',
+                params: {
+                    SodorchekId: SelectedRow.data.fldId,
+                    DasteChekId: SelectedRowD.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function EditChek() {
+        var SelectedRow = App.SodorChek.queryById('GridChek').selModel.getLastSelected();
+        var SelectedRowD = App.SodorChek.queryById('GridDasteChek').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Chek/SodorCheck/new',
+                    params: {
+                        id: SelectedRow.data.fldId,
+                        DasteChekId: SelectedRowD.data.fldId
+                    },
+                    success: function () {
+                        Ext.net.Mask.hide();
+                    }
+                });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+   
+
+    function NewChek() {
+        var SelectedRow = App.SodorChek.queryById('GridDasteChek').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Chek/SodorCheck/New',
+                params: {
+                    id: 0,
+                    DasteChekId: SelectedRow.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteChek() {
+        var SelectedHeaderRow = App.SodorChek.queryById('GridChek').selModel.getLastSelected();
+        if (SelectedHeaderRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Chek/SodorCheck/Delete',
+                            params: {
+                                id: SelectedHeaderRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ico = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ico = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ico,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                ReloadGridChek();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ActionsInSatus(grid, command, record, row) {
+        if (command == 'GoToStatusVosuli') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Chek/SodorCheck/StatusVosuli',
+                params: {
+                    id: record.data.fldId
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+
+            });
+
+        }
+    }
+</script>

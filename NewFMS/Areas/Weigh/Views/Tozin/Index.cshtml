@@ -1,0 +1,239 @@
+﻿@model IEnumerable<NewFMS.WCF_Weigh.OBJ_Tozin>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using NewFMS.Models;
+
+@{ 
+    var X = Html.X();
+}
+<br />
+<style>
+    .margincommandTozin {
+        margin: 0 0 0 12px !important;
+    }
+</style>
+
+@(Html.X().Panel()
+    .ID("RadyabiTozin")
+    .Title("ردیابی توزین")
+    .Listeners(li => { li.AfterRender.Handler = "MainRadyabiTozinSetSize();"; li.Render.Fn = "addKeyMapRadyabiTozin"; })
+        .Closable(true)
+    .AutoScroll(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.VBox)
+    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        .Border(false)
+
+    .Items(
+
+         X.Panel()
+             .Border(false)
+                .Layout(LayoutType.VBox)
+                .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .ItemID("PnlTozin")
+
+                .Items(
+                       X.FieldSet()
+                             .Border(false)
+                            .Layout(LayoutType.HBox)
+                         .Items(
+
+                                X.FieldSet().Title("فیلترها").Width(450)
+                                    .Layout(LayoutType.Table)
+                                    .LayoutConfig(new TableLayoutConfig { Columns = 7 })
+         .Defaults(new { Margin = 2 })
+                                            .Items(
+                                     X.Label("از تاریخ: "),
+                                     X.PDateField()//.MarginSpec("5px 5px 5px 0")
+                                             .ItemID("txtAzTarikhTozin")
+                                         .Width(100)
+                                    .Listeners(l =>
+                                    {
+                                        l.Change.Handler = "setDateAzTozin();";
+                                    })
+                                    , X.Label("تا تاریخ: "),
+                                            X.PDateField().Width(100)//.MarginSpec("5px 5px 5px 0")
+                                            .ItemID("txtTaTarikhTozin")
+                                    .Listeners(l =>
+                                    {
+                                        l.Change.Handler = "setDateTaTozin();";
+                                        l.AfterRender.Handler = "LoadGridTozin();";
+                                    })
+
+                                   ,
+                                X.Button()
+                                    .Text("جستجو")
+                                    .Icon(Ext.Net.Icon.Find)
+                                        .Listeners(li => li.Click.Handler = "FullSearchTozin();")
+                                     , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                                         .Listeners(l => { l.Click.Handler = "HelpTozin();"; })
+                                )
+                            )
+                            ,
+                                  X.GridPanel().AutoScroll(true)
+                                        .Title("لیست توزین").BottomBar(X.PagingToolbar())
+
+                                            .ItemID("GridTozin").Flex(2)
+                                    .Width(500)
+                                    .Store(
+                                        X.StoreForModel().AutoLoad(false)
+                                              .Listeners(l =>
+                                              {
+                                                  l.DataChanged.Handler = "App.RadyabiTozin.queryById('GridTozin').selModel.refresh();";
+                                                  l.BeforeLoad.Handler = "LoadGridTozinWithParam()";
+                                              })
+                                        .Proxy(Html.X().AjaxProxy()
+                                             .Url(Url.Action("ReadTozin"))
+                                         .Reader(Html.X().JsonReader().Root("data"))
+       
+
+                                         )
+                                        .PageSize(200000000)
+                                        .RemoteFilter(true)
+                                        .RemotePaging(true)
+
+                                    )
+                                    .View(
+                                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                                    )
+
+                                .Plugins(X.FilterHeader().Remote(true))
+        //         .SelectionModel(
+        //Html.X().CheckboxSelectionModel().ShowHeaderCheckbox(true)
+        //    .Mode(SelectionMode.Multi).PruneRemoved(false).CheckOnly(true))
+                        .ColumnModel(
+                                Html.X().RowNumbererColumn()
+                                 ,
+                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد توزین").Flex(2).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldNameBaskool).Text("نام باسکول").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.fldMaxW).Text("حداکثر وزن").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldPlaque).Text("پلاک").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldSaat).Text("زمان و ساعت").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.fldTarikhShoroo).Text("تاریخ شروع").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.fldTarikhPayan).Text("تاریخ پایان").Flex(3),
+                                Html.X().ImageCommandColumn()//.PrepareCommand("hidePardakhtPcPos")
+                                    .Listeners(l => l.Command.Fn = "ActionsMostanadat")
+                                    .Flex(1).Commands(
+                                            Html.X().ImageCommand().CommandName("MostanadatTozin").Icon(Ext.Net.Icon.Pictures).ToolTip(tt => tt.Text = "مستندات توزین")
+                                    )
+                                        )
+                    )
+
+
+                    )
+
+)
+
+<script type="text/javascript">
+    var d;
+    function HelpTozin() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Weigh/Tozin/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function LoadGridTozin() {
+        App.RadyabiTozin.queryById('GridTozin').getStore().load();
+    }
+    function LoadGridTozinWithParam() {
+        App.RadyabiTozin.queryById('GridTozin').getStore().getProxy().setExtraParam("AzTarikh", App.RadyabiTozin.queryById("txtAzTarikhTozin").rawValue);
+        App.RadyabiTozin.queryById('GridTozin').getStore().getProxy().setExtraParam("TATarikh", App.RadyabiTozin.queryById("txtTaTarikhTozin").rawValue);
+
+    }
+    function setDateAzTozin() {
+        var txtAzTarikhTozin = App.RadyabiTozin.queryById('txtAzTarikhTozin');
+        var txtTaTarikhTozin = App.RadyabiTozin.queryById('txtTaTarikhTozin');
+        txtTaTarikhTozin.setMinValue(txtAzTarikhTozin.getValue());
+        txtTaTarikhTozin.minText = "تاریخ پایان نباید قبل از تاریخ شروع باشد.";
+    }
+    function setDateTaTozin() {
+        var txtAzTarikhTozin = App.RadyabiTozin.queryById('txtAzTarikhTozin');
+        var txtTaTarikhTozin = App.RadyabiTozin.queryById('txtTaTarikhTozin');
+        txtAzTarikhTozin.setMaxValue(txtTaTarikhTozin.getValue());
+        txtAzTarikhTozin.maxText = "تاریخ شروع نباید بعد از تاریخ پایان باشد.";
+    }
+    function MainRadyabiTozinSetSize() {
+        App.RadyabiTozin.setWidth(App.TasisatWin.getWidth());
+        var PnlTozin = App.RadyabiTozin.queryById('PnlTozin');
+        PnlTozin.setHeight(App.TasisatWin.getHeight() - 180);
+
+        var GridTozin = App.RadyabiTozin.queryById('GridTozin');
+        GridTozin.setWidth(App.TasisatWin.getWidth() - 50);
+
+       
+
+    }
+    var LocalString = function (value) {
+        return value.toLocaleString();
+    };
+
+    
+    function FullSearchTozin() {
+        var txtAzTarikhTozin = App.RadyabiTozin.queryById('txtAzTarikhTozin');
+        var txtTaTarikhTozin = App.RadyabiTozin.queryById('txtTaTarikhTozin');
+
+        Ext.net.Mask.show({ msg: 'در حال جستجو...' });
+        Ext.net.DirectMethod.request({
+            url: '/Weigh/Tozin/FullSearchTozin',
+            params: {
+                AzTarikh: txtAzTarikhTozin.getRawValue(),
+                TaTarikh: txtTaTarikhTozin.getRawValue()
+            },
+            success: function (data) {
+                d = data;
+                App.RadyabiTozin.queryById('GridTozin').store.loadRawData(data);
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function ActionsMostanadat(grid, command, record, row) {
+
+        if (command == 'MostanadatTozin') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Tozin/MostanadatTozin',
+                params: {
+                    TozinId: record.data.fldId,
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+
+        }
+
+    }
+
+
+
+   
+    var addKeyMapRadyabiTozin = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.RadyabiTozin.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    /* if (keyfield.itemId == "txtShSheba") {
+                         nextfld = App.RadyabiTozin.queryById('btnSaveShomareHesabeOmoomi');
+                     }
+                     else {*/
+                    nextfld = keyfield.nextSibling().nextSibling();
+                    nextfld.selectText();
+                    /* }*/
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

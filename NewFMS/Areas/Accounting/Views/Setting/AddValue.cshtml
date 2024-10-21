@@ -1,0 +1,269 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_GeneralSetting_ComboBox>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using Ext.Net.Utilities;
+@{
+    var X = Html.X();
+}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X().Window()
+    .Listeners(li => li.Render.Fn = "addKeyMapComboboxValuesAccounting")
+    .Closable(true)
+    .Title("تعریف مقادیر")
+    .ID("ComboboxValuesAccounting")
+    .Width(540)
+    .Height(400)
+    .AutoScroll(true)
+    .Modal(true)
+    .Resizable(false)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.VBox)
+    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("تأیید")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => l.Click.Handler = "FillcomboboxArrayAccounting()")
+    )
+    .Items(
+        X.FieldSet()
+            .Border(true)
+            .Title("مشخصات مقدار")
+            .Layout(LayoutType.Table)
+            .Defaults(new { Margin = 2 })
+            .LayoutConfig(new TableLayoutConfig { Columns = 5 })
+            .Items(
+                X.Hidden().ItemID("fldId"),
+                X.Label("عنوان:"),
+                X.TextField()
+                    .AutoFocus(true)
+                    .MaxLength(200)
+                    .EnforceMaxLength(true)
+                    .ItemID("txtTitle")
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان را وارد کنید.")
+                    .MaskRe("[آ-ی, ,_,-,0-9]"),
+                X.Label("مقدار:"),
+                X.TextField()
+                    .ItemID("txtValue")
+                    .MaxLength(200)
+                    .EnforceMaxLength(true)
+                    .AllowBlank(false)
+                    .BlankText("لطفا مقدار را وارد کنید."),
+                X.Button()
+                    .Text("افزودن")
+                    .Icon(Ext.Net.Icon.Add)
+                    .Listeners(l => l.Click.Handler = "SaveComboboxValuesAccounting()")
+            ),
+        X.Panel()
+            .Title("لیست مقادیر تعریف شده")
+            .Layout(LayoutType.Fit)
+            .Border(false)
+            .Frame(true)
+            .Items(
+                X.GridPanel()
+                    .AutoScroll(true)
+                    .TopBar(
+                        X.Toolbar()
+                            .Items(
+                                X.Button()
+                                    .Text("ویرایش")
+                                    .Icon(Ext.Net.Icon.Pencil)
+                                    .Listeners(l => l.Click.Handler = "EditComboboxValuesAccounting()"),
+                                X.Button()
+                                    .Text("حذف")
+                                    .Icon(Ext.Net.Icon.Delete)
+                                    .Listeners(l => l.Click.Handler = "DeleteComboboxValuesAccounting()")
+                            )
+                    )
+                    .Border(false)
+                    .ItemID("GridComboboxValuesAccounting")
+                    .Plugins(X.FilterHeader().Remote(false))
+                    .Width(500)
+                    .Height(240)
+                    .Store(
+                        X.StoreForModel()
+                            .Listeners(l =>
+                            {
+                                l.DataChanged.Handler = "App.ComboboxValuesAccounting.queryById('GridComboboxValuesAccounting').selModel.refresh();";
+                                l.Load.Handler = "AddNotSavedValues()";
+                            })
+                            .Proxy(Html.X().AjaxProxy()
+                                .ActionMethods(l => l.Read = Ext.Net.HttpMethod.POST)
+                                .Url(Url.Action("ReadComboboxValuesAccounting"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                .ExtraParams(pa => pa.Add(new { SettingId = ViewBag.SettingId }))
+                            )
+                            .PageSize(100)
+                            .RemoteFilter(false)
+                            .RemotePaging(false)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldTtile).Text("عنوان").Wrap(true).Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldValue).Text("مقدار").Flex(2)
+                    )
+             )
+        )
+)
+
+<script type="text/javascript">
+    function FillcomboboxArrayAccounting() {
+        comboboxArrayAccounting = App.ComboboxValuesAccounting.queryById("GridComboboxValuesAccounting").store.getRecordsValues().slice();
+        if (App.ComboboxValuesAccounting.queryById("GridComboboxValuesAccounting").store.count() > 0) {
+            App.AccountingSetting.queryById("txtValue").getStore().loadData(comboboxArrayAccounting);
+            App.AccountingSetting.queryById("txtValue").setHideTrigger(false);
+            App.AccountingSetting.queryById('txtValue').icon.dom.classList.remove('addicon');
+            App.AccountingSetting.queryById('txtValue').icon.dom.classList.add('addicon2');
+            App.AccountingSetting.queryById("txtValue").clearValue();
+            App.AccountingSetting.queryById("txtValue").validate();
+            App.AccountingSetting.queryById("txtValue").forceSelection=true;
+            App.ComboboxValuesAccounting.destroy();
+            App.AccountingSetting.queryById("txtValue").focus();
+        }
+        else {
+            App.AccountingSetting.queryById("txtValue").clearValue();
+            App.AccountingSetting.queryById("txtValue").getStore().loadData("");
+            App.AccountingSetting.queryById("txtValue").setHideTrigger(true);
+            App.AccountingSetting.queryById('txtValue').icon.dom.classList.add('addicon');
+            App.AccountingSetting.queryById('txtValue').icon.dom.classList.remove('addicon2');
+            App.AccountingSetting.queryById("txtValue").forceSelection=false;
+            App.ComboboxValuesAccounting.destroy();
+            App.AccountingSetting.queryById("txtValue").focus();
+        }
+    }
+
+    function AddNotSavedValues() {
+        var NewValues=comboboxArrayAccounting.filter(l=>l.fldId==0);
+        App.ComboboxValuesAccounting.queryById("GridComboboxValuesAccounting").store.loadData("");
+        for(var i=0;i<comboboxArrayAccounting.length;i++){
+            App.ComboboxValuesAccounting.queryById("GridComboboxValuesAccounting").store.insert(App.ComboboxValuesAccounting.queryById("GridComboboxValuesAccounting").store.count(), {
+                fldId: comboboxArrayAccounting[i].fldId, fldTtile: comboboxArrayAccounting[i].fldTtile, fldValue: comboboxArrayAccounting[i].fldValue
+            });
+        }
+    }
+
+    function SaveComboboxValuesAccounting() {
+        var Id = App.ComboboxValuesAccounting.queryById('fldId');
+        var txtTitle = App.ComboboxValuesAccounting.queryById('txtTitle');
+        var txtValue = App.ComboboxValuesAccounting.queryById('txtValue');
+        var er = false;
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (txtValue.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+        else {
+            if(selectedRecAccounting==null){
+                App.ComboboxValuesAccounting.queryById("GridComboboxValuesAccounting").store.insert(App.ComboboxValuesAccounting.queryById("GridComboboxValuesAccounting").store.count(), {
+                    fldId: Id.getValue(), fldTtile: txtTitle.getValue(), fldValue: txtValue.getValue()
+                });
+            }
+            else{
+                selectedRecAccounting.set("fldTtile",txtTitle.getValue());
+                selectedRecAccounting.set("fldValue",txtValue.getValue());
+                selectedRecAccounting=null;
+            }
+            txtTitle.setValue("").focus();
+            Id.setValue("0");
+            txtValue.setValue("");
+        }
+    }
+    var selectedRecAccounting=null;
+    function EditComboboxValuesAccounting() {
+        var SelectedRow = App.ComboboxValuesAccounting.queryById('GridComboboxValuesAccounting').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            selectedRecAccounting=SelectedRow;
+            var fldId = App.ComboboxValuesAccounting.queryById("fldId");
+            fldId.setValue(SelectedRow.data.fldId);
+            var txtTitle = App.ComboboxValuesAccounting.queryById('txtTitle');
+            txtTitle.setValue(SelectedRow.data.fldTtile);
+            var txtValue = App.ComboboxValuesAccounting.queryById('txtValue');
+            txtValue.setValue(SelectedRow.data.fldValue);
+            txtTitle.focus();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DeleteComboboxValuesAccounting() {
+        var SelectedRow = App.ComboboxValuesAccounting.queryById('GridComboboxValuesAccounting').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        App.ComboboxValuesAccounting.queryById('GridComboboxValuesAccounting').store.remove(SelectedRow);
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    var addKeyMapComboboxValuesAccounting = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.ComboboxValuesAccounting.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtValue") {
+                        SaveComboboxValuesAccounting();
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }
+            }]
+        });
+    };
+</script>
+

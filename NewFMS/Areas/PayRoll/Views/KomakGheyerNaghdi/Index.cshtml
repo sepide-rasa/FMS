@@ -1,0 +1,315 @@
+﻿@model NewFMS.Models.KomakGheyerNaghdi
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("KomakGheyerNaghdi")
+        .Title("ثبت اطلاعات کمک غیرنقدی")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Border(false)
+        .Listeners(li => li.AfterRender.Handler = "KomakGheyerNaghdiSetSize();")
+       .Items(
+    X.Panel().Border(false)//.Height(250)
+        .Items(
+                X.GridPanel()
+                                .AutoScroll(true)
+                                    .Listeners(l => l.ItemClick.Handler = "ReloadGridDetailKomak();")
+        //             .TopBar(
+        //    Html.X().Toolbar()
+        //    .Items(
+        //        X.Button().Text("جدید").Icon(Ext.Net.Icon.Add)//.ToolTip("کلید میانبر F8")
+        //                .Listeners(li => li.Click.Handler = "NewKomakGheyerNaghdi();")
+        //    )
+        //)
+                                .ItemID("GridHeader")
+                                .BottomBar(X.PagingToolbar())
+                                .Flex(2)
+                                .Store(
+                                           X.StoreFor(Model.Personal)
+                                        .Proxy(Html.X().AjaxProxy()
+                                            .Url(Url.Action("Read"))
+                                                        .ExtraParams(p => p.Add(new { OrganId = ViewBag.OrganId }))
+                                            .Reader(Html.X().JsonReader().Root("data")))
+                                .PageSize(9)
+                                .RemotePaging(true)
+        /*.Listeners(l => l.DataChanged.Handler = "App.KomakGheyerNaghdi.queryById('GridHeader').selModel.refresh();")*/)
+                                .View(
+                                    Html.X().GridView()
+                                        .LoadingText("در حال بارگذاری...")
+                                        .RTL(true))
+                                            .Plugins(X.FilterHeader().Remote(true))
+                                    .ColumnModel(
+                                        Html.X().RowNumbererColumn(),
+                                            Html.X().Column().DataIndex(Model.Personal, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                                            Html.X().Column().DataIndex(Model.Personal, m => m.fldName_Father).Text("نام و نام خانوادگی").Flex(5).Wrap(true),
+                                            Html.X().Column().DataIndex(Model.Personal, m => m.fldCodemeli).Text("کد ملی").Flex(2),
+                                            Html.X().Column().DataIndex(Model.Personal, m => m.fldSh_Personali).Text("شماره پرسنلی").Flex(2),
+                                            Html.X().Column().DataIndex(Model.Personal, m => m.fldJobeCode).Text("کد شغلی بیمه").Flex(2),
+                                            Html.X().Column().DataIndex(Model.Personal, m => m.fldStatusId).Text("وضعیت").Hidden(true).Flex(1),/*فعال1:   2:غیرفعال  3:بازنشسته*/
+                                            Html.X().Column().DataIndex(Model.Personal, m => m.fldStatusTitle).Text("وضعیت").Hidden(true).Flex(1)
+                                        )
+                                .SelectionModel(
+                                    Html.X().RowSelectionModel()
+                                        .Mode(Ext.Net.SelectionMode.Single)
+                                        )
+        ),
+           X.Panel()
+                                .ItemID("PnlGridDetail")
+                                .Title("اطلاعات کمک غیر نقدی")
+                                .Border(false)
+                                .Layout(Ext.Net.LayoutType.Fit)
+                                .Items(
+                                        X.GridPanel()
+                                                  .TopBar(
+                                Html.X().Toolbar()
+                                .Items(
+                                X.Button().Text("جدید").Icon(Ext.Net.Icon.Add)//.ToolTip("کلید میانبر F8")
+                                        .Listeners(li => li.Click.Handler = "NewKomakGheyerNaghdi();"),
+                                    X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)//.ToolTip("کلید میانبر F2")
+                                            .Listeners(Li => Li.Click.Handler = "EditKomakGheyerNaghdi();"),
+                                    X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)//.ToolTip("کلید میانبر F9")
+                                        .Listeners(de =>
+                                        {
+                                            de.Click.Handler = "if (App.KomakGheyerNaghdi.queryById('GridHeader').selModel.getLastSelected() == null) {Ext.MessageBox.show({ title: 'خطا', msg: 'لطفا یک سطر را انتخاب کنید',icon: Ext.MessageBox.ERROR,buttons: Ext.MessageBox.OK});return false;}else DeleteKomakGheyerNaghdi();";
+                                        })
+
+                                )
+                            )
+                                              .BottomBar(X.PagingToolbar())
+                                        .AutoScroll(true)
+                                            .ID("GridDetailKomakGheyerNaghdi")
+                                        .Flex(2)//.Height(187)
+                                        .Store(
+                                                           X.StoreFor(Model.Komak).AutoLoad(false)
+                                                        .Proxy(Html.X().AjaxProxy()
+                                                            .Url(Url.Action("ReadKomakGheyerNaghdi"))
+                                                    .Reader(Html.X().JsonReader().Root("data")))
+                                                .PageSize(9)
+                                                .RemotePaging(true)
+        /*.Listeners(l => l.DataChanged.Handler = " App.KomakGheyerNaghdi.queryById('GridDetail').selModel.refresh();")*/
+                        )
+                                        .View(
+                                            Html.X().GridView()
+                                                .LoadingText("در حال بارگذاری...")
+                                                .RTL(true)
+                            )
+                                .Plugins(X.FilterHeader().Remote(true))
+                                        .ColumnModel(
+                                            Html.X().RowNumbererColumn(),
+                                                        Html.X().Column().DataIndex(Model.Komak, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                                                        Html.X().Column().DataIndex(Model.Komak, m => m.fldPersonalId).Text("کد").Hidden(true).Flex(1),
+                                                        Html.X().Column().DataIndex(Model.Komak, m => m.fldNoeMostamer).Text("کد").Hidden(true).Flex(1),
+                                                        Html.X().Column().DataIndex(Model.Komak, m => m.fldYear).Text("سال").Flex(4),
+                                                        Html.X().Column().DataIndex(Model.Komak, m => m.fldMonthName).Text("ماه").Flex(4),
+                                                        Html.X().Column().DataIndex(Model.Komak, m => m.fldNameNoeMostamer).Text("نوع مستمر").Flex(4),
+                                                        Html.X().Column().DataIndex(Model.Komak, m => m.fldMablagh).Text("کسورات").Renderer("Rial").Flex(4),
+                                                        Html.X().Column().DataIndex(Model.Komak, m => m.fldMaliyat).Text("مالیات").Renderer("Rial").Flex(4),
+                                                        Html.X().Column().DataIndex(Model.Komak, m => m.fldKhalesPardakhti).Text("خالص پرداختی").Renderer("Rial").Flex(4),
+                                                        Html.X().Column().DataIndex(Model.Komak, m => m.fldShomareHesab).Text("شماره حساب").Flex(6)
+                                                    )
+                                        .SelectionModel(
+                                            Html.X().RowSelectionModel()
+                                                .Mode(Ext.Net.SelectionMode.Single)
+                                )
+                    )
+    )
+)
+<script type="text/javascript">
+    var dadat;
+    function KomakGheyerNaghdiSetSize() {
+        var grid = App.KomakGheyerNaghdi.queryById('GridHeader');
+        grid.setHeight((App.PayWin.getHeight() - 200) / 2);
+        var GridDetail = App.KomakGheyerNaghdi.queryById('GridDetailKomakGheyerNaghdi');
+        GridDetail.setHeight((App.PayWin.getHeight() - 200) / 2);
+    }
+    function ReloadGridDetailKomak() {
+        var SelectedRow = App.KomakGheyerNaghdi.queryById('GridHeader').selModel.getLastSelected();
+/*
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/KomakGheyerNaghdi/Rload?PersonalId=' + SelectedRow.data.fldId,
+
+            success: function (result) {
+                App.KomakGheyerNaghdi.queryById('GridDetailKomakGheyerNaghdi').getStore().loadData(result);
+            }
+        });*/
+        App.KomakGheyerNaghdi.queryById('GridDetailKomakGheyerNaghdi').getStore().getProxy().setExtraParam("PersonalId", SelectedRow.data.fldId);
+        App.KomakGheyerNaghdi.queryById('GridDetailKomakGheyerNaghdi').getStore().getProxy().setExtraParam("OrganId", '@ViewBag.OrganId');
+
+        App.KomakGheyerNaghdi.queryById('GridDetailKomakGheyerNaghdi').getStore().load();
+    }
+
+    function EditKomakGheyerNaghdi() {
+        var SelectedRow = App.KomakGheyerNaghdi.queryById('GridDetailKomakGheyerNaghdi').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KomakGheyerNaghdi/CheckPardakht',
+                params: {
+                    PersonalId: SelectedRow.data.fldPersonalId,
+                    Year: '@ViewBag.Year',
+                    Month: '@ViewBag.Month',
+                    OrganId: '@ViewBag.OrganId',
+                    NoeMostamer: SelectedRow.data.fldNoeMostamer
+
+                },
+                success: function (data) {
+
+                    if (data.AllowGenerate == 1) {
+             
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KomakGheyerNaghdi/new',
+                params: {
+                    id: SelectedRow.data.fldId,
+                    PersonalId: SelectedRow.data.fldPersonalId,
+                    Year: '@ViewBag.Year',
+                    Month: '@ViewBag.Month',
+                    OrganId: '@ViewBag.OrganId'
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+                    }
+                    else {
+                        Ext.net.Mask.hide();
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "رکورد مورد نظر پرداخت شده است، ویرایش مجاز نیست",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                }
+            });
+
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function NewKomakGheyerNaghdi() {
+        var NoeMostamar = true;
+        if ('@ViewBag.NoeMostamer' == "0")
+            NoeMostamar = false;
+        var SelectedRow = App.KomakGheyerNaghdi.queryById('GridHeader').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldStatusId == 1) {
+               
+                      
+                            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/PayRoll/KomakGheyerNaghdi/new',
+                                params: {
+                                    id: 0,
+                                    PersonalId: SelectedRow.data.fldId,
+                                    Year: '@ViewBag.Year',
+                                    Month: '@ViewBag.Month',
+                                    OrganId: '@ViewBag.OrganId'
+                                },
+                                success: function () {
+                                    Ext.net.Mask.hide();
+                                }
+                            });
+                    
+            }
+
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "وضعیت فرد مورد نظر " + SelectedRow.data.fldStatusTitle + " است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+    
+    }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک پرسنل را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteKomakGheyerNaghdi() {
+        var SelectedHeaderRow = App.KomakGheyerNaghdi.queryById('GridDetailKomakGheyerNaghdi').selModel.getLastSelected();
+        if (SelectedHeaderRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/PayRoll/KomakGheyerNaghdi/CheckPardakht',
+                            params: {
+                                PersonalId: SelectedHeaderRow.data.fldPersonalId,
+                                Year: '@ViewBag.Year',
+                                Month: '@ViewBag.Month',
+                                OrganId: '@ViewBag.OrganId',
+                                NoeMostamer: SelectedHeaderRow.data.fldNoeMostamer
+
+                            },
+                            success: function (data) {
+
+                                if (data.AllowGenerate == 1) {
+
+                                    Ext.net.DirectMethod.request({
+                                        url: '/PayRoll/KomakGheyerNaghdi/Delete',
+                                        params: {
+                                            id: SelectedHeaderRow.data.fldId,
+                                            OrganId: '@ViewBag.OrganId'
+                                        },
+                                        success: function (data) {
+                                            var ic = Ext.MessageBox.INFO;
+                                            if (data.Err == 1)
+                                                ic = Ext.MessageBox.ERROR;
+                                            Ext.MessageBox.show({
+                                                title: data.MsgTitle,
+                                                msg: data.Msg,
+                                                icon: ic,
+                                                buttons: Ext.MessageBox.OK
+                                            });
+                                            ReloadGridDetailKomak();
+                                        }
+                                    });
+                                }
+                                else {
+                                    Ext.net.Mask.hide();
+                                    Ext.MessageBox.show({
+                                        title: "خطا",
+                                        msg: "رکورد مورد نظر پرداخت شده است، ویرایش مجاز نیست",
+                                        icon: Ext.MessageBox.ERROR,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

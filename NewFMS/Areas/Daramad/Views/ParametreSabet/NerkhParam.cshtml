@@ -1,0 +1,249 @@
+﻿@model NewFMS.Models.Nerkh
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+    NewFMS.WCF_Common.CommonService servic = new NewFMS.WCF_Common.CommonService();
+    NewFMS.WCF_Common.ClsError Err = new NewFMS.WCF_Common.ClsError();
+}
+
+@(Html.X().Window().Modal(true)
+.Width(630)//.Height(220)
+        .Title("نرخ پارامترهای ثابت")
+            .ID("NerkhParam")
+           //     .Listeners(li => { li.AfterRender.Fn = "addKeyMapNerkhParam"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+
+    .Items(
+         X.GridPanel().AutoScroll(true)
+                  .Listeners(l => l.ItemClick.Handler = "ReloadGridNerkh();")
+                                    .ItemID("ParametreSabetGrid").Flex(2)
+                                              .TopBar(
+                                    Html.X().Toolbar()
+                                    .Items(
+                                    X.Button().Text("جدید").Icon(Ext.Net.Icon.Add)
+                                                .Listeners(li => li.Click.Handler = "NewNerkhParametreSabet();")
+                                        , X.Button().Text("کپی نرخ از...").IconCls("CopyKoli")
+                                        .Listeners(li => li.Click.Handler = "CopyNerkhFrom();")
+                                        .Hidden(!servic.Permission(754, Convert.ToInt32(Session["OrganId"]), Session["Username"].ToString(), Session["Password"].ToString(), out Err))
+                                            , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                            .Listeners(l => { l.Click.Handler = "HelpNerkhParam();"; })
+                                    )
+                                )
+                            .BottomBar(X.PagingToolbar())
+                            .Height(200)
+        //.ColumnWidth(0.6)
+        //.Layout(Ext.Net.LayoutType.Column)
+                            .Store(
+                                    X.StoreFor(Model.ParametreSabet)
+                                             .Listeners(l => l.DataChanged.Handler = "App.NerkhParam.queryById('ParametreSabetGrid').selModel.refresh();")
+                                .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadParamSabet"))
+                                        .Reader(Html.X().JsonReader().Root("data"))
+                                                .ExtraParams(p => p.Add(new { ShomareHesabCodeDaramadId = @ViewBag.ShomareHesabCodeDaramadId }))
+                                )
+                                .PageSize(5)
+                                .RemoteFilter(true)
+                                .RemotePaging(true)
+
+                            )
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+
+                            .Plugins(X.FilterHeader().Remote(true))
+                            .ColumnModel(
+                                    Html.X().RowNumbererColumn(),
+                                        Html.X().Column().DataIndex(Model.ParametreSabet, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                        Html.X().Column().DataIndex(Model.ParametreSabet, m => m.fldFormulId).Text("فرمول").Flex(1).Hidden(true),
+                                        Html.X().Column().DataIndex(Model.ParametreSabet, m => m.fldDaramadTitle).Text("کد درآمد").Flex(3).Hidden(true),
+                                        Html.X().Column().DataIndex(Model.ParametreSabet, m => m.fldNameParametreFa).Text("نام پارامتر").Flex(3),
+                                        Html.X().Column().DataIndex(Model.ParametreSabet, m => m.NoeName).Text("نوع").Flex(1),
+                                        Html.X().Column().DataIndex(Model.ParametreSabet, m => m.NoeFieldName).Text("نوع فیلد").Flex(1),
+                                        Html.X().Column().DataIndex(Model.ParametreSabet, m => m.fldNoeParametr).Text("نوع").Flex(1),
+                                        Html.X().Column().DataIndex(Model.ParametreSabet, m => m.VaziyatName).Text("وضعیت").Flex(1)
+                                )
+               ,
+                  X.GridPanel().AutoScroll(true)
+                                    .ItemID("NerkhParametreSabetGrid").Flex(2)
+                                    .TopBar(
+                                Html.X().Toolbar()
+                                .Items(
+                                        X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                                                    .Listeners(Li => Li.Click.Handler = "EditNerkhParametreSabet();"),
+                                        X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                                            .Listeners(de =>
+                                            {
+                                                de.Click.Handler = "if (App.NerkhParam.queryById('NerkhParametreSabetGrid').selModel.getLastSelected() == null) {Ext.MessageBox.show({ title: 'خطا', msg: 'لطفا یک سطر را انتخاب کنید',icon: Ext.MessageBox.ERROR,buttons: Ext.MessageBox.OK});return false;}else DeleteNerkhParametreSabet();";
+                                            })
+
+                                )
+                            )
+                        .BottomBar(X.PagingToolbar())
+                        
+                        .Height(200)
+        //.ColumnWidth(0.6)
+        //.Layout(Ext.Net.LayoutType.Column)
+                        .Store(
+                                        X.StoreFor(Model.ParametreSabetNerkh).AutoLoad(false)
+                                         .Listeners(l => l.DataChanged.Handler = "App.NerkhParam.queryById('NerkhParametreSabetGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadNerkhParametr"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(5)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+
+                        )
+                        .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+
+                        .Plugins(X.FilterHeader().Remote(true))
+                        .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                    Html.X().Column().DataIndex(Model.ParametreSabetNerkh, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                        Html.X().Column().DataIndex(Model.ParametreSabetNerkh, m => m.fldTarikhFaalSazi).Text("تاریخ").Flex(3),
+                                        Html.X().Column().DataIndex(Model.ParametreSabetNerkh, m => m.fldValue).Text("مقدار").Flex(3)
+                            )
+        //.Layout(Ext.Net.LayoutType.VBox)
+        //.LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+)
+<script type="text/javascript">
+    function HelpNerkhParam() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/ParametreSabet/HelpNerkhParam',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function ReloadGridNerkh() {
+        var SelectedRow = App.NerkhParam.queryById('ParametreSabetGrid').selModel.getLastSelected();
+
+        App.NerkhParam.queryById('NerkhParametreSabetGrid').getStore().getProxy().setExtraParam("ParametreSabetId", SelectedRow.data.fldId);
+        App.NerkhParam.queryById('NerkhParametreSabetGrid').getStore().load();
+    }
+
+    function NewNerkhParametreSabet() {
+        var SelectedRow = App.NerkhParam.queryById('ParametreSabetGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/ParametreSabet/newNerkh',
+                    params: {
+                        id: 0,
+                        ParamId: SelectedRow.data.fldId
+                    },
+                    success: function () {
+                        Ext.net.Mask.hide();
+                    }
+                });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک پارامتر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function CopyNerkhFrom() {
+        var SelectedRow = App.NerkhParam.queryById('ParametreSabetGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/SearchShomareHesabCodeDaramad/Index',
+                params: {
+                    id: '@ViewBag.ShomareHesabCodeDaramadId',
+                    DaramadTitle: SelectedRow.data.fldNameParametreFa,
+                    State: 3,
+                    ParamId: SelectedRow.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک پارامتر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function EditNerkhParametreSabet() {
+        var SelectedRow = App.NerkhParam.queryById('ParametreSabetGrid').selModel.getLastSelected();
+        var SelectedRow2 = App.NerkhParam.queryById('NerkhParametreSabetGrid').selModel.getLastSelected();
+        if (SelectedRow2 != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/ParametreSabet/newNerkh',
+                params: {
+                    id: SelectedRow2.data.fldId,
+                    ParamId: SelectedRow.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک نرخ را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteNerkhParametreSabet() {
+        var SelectedRow = App.NerkhParam.queryById('NerkhParametreSabetGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/ParametreSabet/DeleteNerkh',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                ReloadGridNerkh();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    </script>

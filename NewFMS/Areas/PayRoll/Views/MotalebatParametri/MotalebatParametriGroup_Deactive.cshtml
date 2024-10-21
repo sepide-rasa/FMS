@@ -1,0 +1,456 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_KosorateParametri_Personal>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+<script src="~/Scripts/accounting.js"></script>
+<style>
+    .x-form-cb-wrap {
+        text-align: center;
+    }
+
+    .x-column-header-text {
+        white-space: pre-wrap;
+    }
+</style>
+
+@(X.Panel()
+    .Title("ثبت گروهی فعال/غیرفعال مطالبات پارامتری")
+    .Border(false)
+    .ID("MotalebatParametriGroup_Deactive")
+    .Closable(true)
+    .AutoScroll(true)
+    .Listeners(l => l.AfterRender.Fn = "addKeyMapMotalebatParametriGroup_Deactive")
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+        //.Height(670)
+    .Layout(LayoutType.Fit)
+    .TopBar(
+        Html.X().Toolbar()
+            .Items(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l =>
+                    {
+                        l.Click.Handler = "SaveMotalebatParametriGroup_Deactive();";
+                    })
+                )
+        )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 6 })
+                            .Defaults(new { Margin = 2 })
+                            .Title("مشخصات کسورات")
+                            .Border(true)
+                            .Items(
+                                X.Label("نوع پارامترها:"),
+                                X.ComboBox()
+                                    .ItemID("CboParametrha")
+                                    .TypeAhead(true)
+                                    .Editable(true)
+                                    .AllowBlank(false)
+                                    .AutoFocus(true)
+                                    .BlankText("لطفا نوع پارامتر را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldParametrName")
+                                    .ValueField("fldId")
+        //.SelectedItems(new { Value = "1" })
+        .Listeners(a =>
+                                        {
+                                            a.Change.Handler = "ReloadMotalebat()";
+                                        })
+                                    .Store(X.Store()
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldParametrName", ModelFieldType.String) { Mapping = "fldParametrName" }
+                                                    )
+                                                )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetMotalebatParametri"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                                .ExtraParams(l => l.Add(new { OrganId=ViewBag.OrganId}))
+                                            )
+
+                                    ),
+                                X.Label("نوع پرداخت:"),
+                                X.ComboBox()
+                                    .ItemID("CboNoePardakht")
+                                    .EmptyText("نوع پرداخت...")
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا نوع پرداخت را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Items(
+                                        new ListItem("تعدادی", "0"),
+                                        new ListItem("دائمی", "1")
+                                        )
+                                    .Listeners(a =>
+                                        {
+                                            a.Change.Handler = "ChangeStatusGroup()";
+                                            a.AfterRender.Handler = "App.MotalebatParametriGroup_Deactive.queryById('CboNoePardakht').setValue('0');";
+                                        }),
+
+                                X.Label("تاریخ پرداخت:"),
+                                X.PDateField()
+                                    .ItemID("txtTrikhePardakht")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا تاریخ پرداخت را وارد کنید.")
+                                    .Listeners(a =>
+                                        {
+                                            a.Change.Handler = "ChangeStatusGroup()";
+                                            a.AfterRender.Handler = "setDateVal()";
+                                        }),
+                                    X.Label("مبلغ:"),
+                                    X.TextField()
+                                        .ItemID("txtMablagh")
+                                        .MaskRe("/[0-9-.]/")
+                                            .Listeners(l => { l.Change.Handler = "App.MotalebatParametriGroup_Deactive.queryById('txtMablagh').setValue(accounting.formatNumber(App.MotalebatParametriGroup_Deactive.queryById('txtMablagh').getValue()));CheckInt(App.MotalebatParametriGroup_Deactive.queryById('txtMablagh'));ReloadMotalebat();"; })
+                                        .AllowBlank(false)
+                                        .BlankText("لطفا مبلغ را وارد کنید."),
+                                X.Label("وضعیت:"),
+                                X.ComboBox()
+                                    .ItemID("CboStatus")
+                                    .EmptyText("وضعیت...")
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا وضعیت را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Items(
+                                        new ListItem("غیر فعال", "0"),
+                                        new ListItem("فعال", "1")
+                                        )
+                                    .Listeners(a =>
+                                        {
+                                            a.Change.Handler = "ChangeStatusGroup()";
+                                            a.AfterRender.Handler = "App.MotalebatParametriGroup_Deactive.queryById('CboStatus').setValue('1');";
+                                        }),
+                                X.Label().Text("تاریخ غیر فعالی:"),
+                                X.FieldSet()
+                                    .Border(false)
+                                    .PaddingSpec("0 0 0 0")
+                                    .Layout(LayoutType.HBox)
+                                    .Items(
+                                        X.Label("ماه:"),
+                                        X.TextField()
+                                            .ItemID("txtMonth")
+                                            .Listeners(l => l.Change.Handler = "if(App.MotalebatParametriGroup_Deactive.queryById('CboStatus').getValue()=='0'&& App.MotalebatParametriGroup_Deactive.queryById('txtMonth').getValue()>12){App.MotalebatParametriGroup_Deactive.queryById('txtMonth').setValue('');}")
+                                            .Text("0")
+                                            .MaskRe("/[0-9]/")
+                                            .Width(30)
+                                            .MaxLength(2)
+                                            .MinLength(2)
+                                            .EnforceMaxLength(true)
+                                            .AllowBlank(false)
+                                            .PaddingSpec("0 0 0 6px")
+                                            .BlankText("لطفا ماه را وارد کنید."),
+                                        X.Label().Text("/").MarginSpec("0 5px 0 0"),
+                                        X.Label("سال:"),
+                                        X.TextField()
+                                            .ItemID("txtYear")
+                                            .MaxLength(4)
+                                            .MinLength(4)
+                                            .EnforceMaxLength(true)
+                                            .Text("0")
+                                            .MaskRe("/[0-9]/")
+                                            .Width(50)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا سال را وارد کنید.")
+                                    )
+
+
+                            )),
+                X.Panel()
+                    .Border(false)
+                    .Items(
+                        X.GridPanel()
+        //.BottomBar(X.PagingToolbar())
+                            .AutoScroll(true)
+
+                            .ItemID("GridGroup")
+                            .Listeners(l => l.AfterRender.Handler = "setHeightGridGroupKG()")
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true).GetRowClass(l => l.Fn = "getRowClassMotalebatParametriGroup_Deactive")
+                            )
+                            .Store(
+                                X.StoreForModel()
+                                    .AutoLoad(false)
+        //.PageSize(20)
+                            )
+                            .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                    Html.X().Column().DataIndex(Model, m => m.fldPersonalId).Hidden(true).Text("کد پرسنل").Flex(1),
+                                Html.X().Column().DataIndex(Model, m => m.fldName_Father).Text("نام و نام خانوادگی").Flex(3).Wrap(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کدملی").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldSh_Personali).Text("شماره پرسنلی").Flex(2)
+        //Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("انواع استخدام").Wrap(true).Flex(2)
+                                )
+        //.Listeners(l =>
+        //{
+        //    l.ViewReady.Handler = "ReloadMotalebat();";
+        //})
+                            .SelectionModel(
+                                Html.X().CheckboxSelectionModel()
+                                    .Mode(Ext.Net.SelectionMode.Multi).CheckOnly(true)
+                            )
+                            .Plugins(Html.X().CellEditing().ClicksToEdit(1))
+                        )
+                )
+
+        )
+)
+
+<script type="text/javascript">
+    var getRowClassMotalebatParametriGroup_Deactive = function (record, rowIndex, rowParams, store) {
+        var color = 'white';
+        if (rowIndex % 2 == 1)
+            color = '#dfe8f6';
+        var clsName = "row" + rowIndex,
+            clsStyle = Ext.String.format(".{0} .x-grid-cell, .{0} .x-grid-rowwrap-div { background-color: {1} !important; })", clsName, color);
+        Ext.net.ResourceMgr.registerCssClass(clsName, clsStyle);
+        return clsName;
+    };
+
+    function setHeightGridGroupKG() {
+        App.MotalebatParametriGroup_Deactive.setHeight(App.PayWin.getHeight() - 100);
+        App.MotalebatParametriGroup_Deactive.queryById("GridGroup").setHeight(App.PayWin.getHeight() - 280);
+    }
+
+    function setDateVal() {
+        App.MotalebatParametriGroup_Deactive.queryById('txtTrikhePardakht').setValue('@ViewBag.TarikhPardakht');
+    }
+
+    function ChangeStatusGroup() {
+        var Status = App.MotalebatParametriGroup_Deactive.queryById('CboStatus');
+        var txtMonth = App.MotalebatParametriGroup_Deactive.queryById('txtMonth');
+        var txtYear = App.MotalebatParametriGroup_Deactive.queryById('txtYear');
+        var TrikhePardakht = App.MotalebatParametriGroup_Deactive.queryById('txtTrikhePardakht');
+
+        if (Status.getValue() == "0") {/*تعدادی و غیرفعال*/
+
+            txtMonth.setValue('@ViewBag.TarikhPardakht'.substr(5, 2));
+            txtMonth.setReadOnly(false);
+            txtYear.setValue('@ViewBag.TarikhPardakht'.substr(0, 4));
+            txtYear.setReadOnly(false);
+        }
+        ReloadMotalebat();
+
+    }
+
+
+
+    function ReloadMotalebat() {
+        var CboParametrha = App.MotalebatParametriGroup_Deactive.queryById('CboParametrha');
+        var txtMablagh = App.MotalebatParametriGroup_Deactive.queryById('txtMablagh');
+        var txtTrikhePardakht = App.MotalebatParametriGroup_Deactive.queryById('txtTrikhePardakht');
+        var CboStatus = App.MotalebatParametriGroup_Deactive.queryById('CboStatus');
+        var txtMonth = App.MotalebatParametriGroup_Deactive.queryById('txtMonth');
+        var txtYear = App.MotalebatParametriGroup_Deactive.queryById('txtYear');
+        var status = "0";
+        if (CboStatus.getValue() == "0")
+            status = "1";
+
+        var er = false;
+        if (CboParametrha.validate() == false) {
+            er = true;
+        }
+
+        if (txtMablagh.validate() == false) {
+            er = true;
+        }
+        if (txtTrikhePardakht.validate() == false) {
+            er = true;
+        }
+
+        if (er == true) {
+            Ext.net.Mask.hide();
+            return;
+        }
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/MotalebatParametri/ReloadKosuratParametriGroupDeactive',
+            params: {
+                Status: status,
+                Parametr: CboParametrha.getValue(),
+                Mablagh: txtMablagh.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                TarikhePardakht: txtTrikhePardakht.getRawValue(),
+                OrganId:'@ViewBag.OrganId'
+            },
+            success: function (result) {
+                App.MotalebatParametriGroup_Deactive.queryById('GridGroup').getStore().loadData(result);
+                App.MotalebatParametriGroup_Deactive.queryById('GridGroup').getSelectionModel().selectAll();
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function SaveMotalebatParametriGroup_Deactive() {
+        var fldPersonalId = "";
+        var CboParametrha = App.MotalebatParametriGroup_Deactive.queryById('CboParametrha');
+        var CboNoePardakht = App.MotalebatParametriGroup_Deactive.queryById('CboNoePardakht');
+        var txtMablagh = App.MotalebatParametriGroup_Deactive.queryById('txtMablagh');
+        var txtTrikhePardakht = App.MotalebatParametriGroup_Deactive.queryById('txtTrikhePardakht');
+        var CboStatus = App.MotalebatParametriGroup_Deactive.queryById('CboStatus');
+        var txtMonth = App.MotalebatParametriGroup_Deactive.queryById('txtMonth');
+        var txtYear = App.MotalebatParametriGroup_Deactive.queryById('txtYear');
+        var SelectedRows = App.MotalebatParametriGroup_Deactive.queryById('GridGroup').getSelectionModel().getSelection();
+        var status = false;
+        var er = false;
+        if (CboStatus.getValue() == "1")
+            status = true;
+
+        if (SelectedRows.length > 0) {
+            for (var i = 0; i < SelectedRows.length ; i++) {
+
+                fldPersonalId = fldPersonalId + SelectedRows[i].data.fldPersonalId + ';'
+
+            }
+
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "هیچ سطری برای ذخیره انتخاب نشده است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+        if (CboParametrha.validate() == false) {
+            er = true;
+        }
+
+        if (txtMablagh.validate() == false) {
+            er = true;
+        }
+        if (txtTrikhePardakht.validate() == false) {
+            er = true;
+        }
+
+        if (txtMonth.getValue() == "0" && CboStatus.getValue() == "0") {
+            er = true;
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "ماه را وارد کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        if (txtYear.validate() == "0" && CboStatus.getValue() == "0") {
+            er = true;
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "سال را وارد کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        if (er == true) {
+            Ext.net.Mask.hide();
+            return;
+        }
+
+        var data = {
+
+            PersonalId: fldPersonalId,
+            fldParametrId: CboParametrha.getValue(),
+            fldNoePardakht: CboNoePardakht.getValue(),
+            fldMablagh: txtMablagh.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+            fldTarikhPardakht: txtTrikhePardakht.getRawValue(),
+            fldDateDeactive: parseInt(txtYear.getValue() + txtMonth.getValue()),
+            fldStatus: status,
+            OrganId: '@ViewBag.OrganId'
+        };
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/PayRoll/MotalebatParametri/SaveGroupDeactive',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (data) {
+                var Message = "";
+                var result = (data);
+                var ic = Ext.MessageBox.INFO;
+                if (result.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                ReloadMotalebat();
+                ClearGroupMotalebat();
+                Ext.net.Mask.hide();
+                for (var i = 0; i < App.FirstTabPay.items.length; i++) {
+                    if (App.FirstTabPay.items.items[i].id == "MotalebatParametriSingle" && App.MotalebatParametriSingle.queryById('GridHeader').getSelectionModel().getSelection().length > 0) {
+                        ReloadMotalebatParametriSingle();
+                    }
+                }
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+        });
+    }
+
+
+    var addKeyMapMotalebatParametriGroup_Deactive = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var nextfld;
+                    if (Ext.Element.getActiveElement().name != "") {
+                        var keyfield = App.MotalebatParametriGroup_Deactive.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        if (keyfield.itemId == "CboStatus") {
+                            if (App.MotalebatParametriGroup_Deactive.queryById('CboStatus').getValue() == "0") {
+                                nextfld = App.MotalebatParametriGroup_Deactive.queryById('txtMonth');
+                            }
+
+                        }
+                        else if (keyfield.itemId == "txtMonth") {
+                            nextfld = App.MotalebatParametriGroup_Deactive.queryById('txtYear');
+                        }
+
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                        }
+                    }
+
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+
+    function ClearGroupMotalebat() {
+        App.MotalebatParametriGroup_Deactive.queryById('txtMablagh').setValue("");
+    }
+
+</script>

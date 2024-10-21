@@ -1,0 +1,247 @@
+﻿@model IEnumerable<NewFMS.WCF_Automation.OBJ_SecurityType>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+                .ID("SecurityType")
+            .Title("ثبت انواع محرمانگی")
+        //.Listeners(li => { li.AfterRender.Handler = "SecurityTypeSetSize();"; li.Render.Fn = "addKeyMapSecurityType"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                    X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveSecurityType")
+                    .Listeners(l => { l.Click.Handler = "SaveSecurityType();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadSecurityType();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteSecurityType();"; })
+        //, X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpSecurityType();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.SecurityType.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("نوع محرمانگی").Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldID"),
+                        X.Label("نوع:"),
+                        X.TextField()
+                        .ItemID("txtType")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                            .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع محرمانگی را وارد کنید.")
+                            .AutoFocus(true)
+                      , X.Label("توضیحات:"),
+                        X.TextField()
+                            .ItemID("txtDesc")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Width(260)
+                )
+            )
+        ),
+        X.GridPanel()
+                    .ItemID("SecurityTypeGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                                .Listeners(l => l.DataChanged.Handler = "App.SecurityType.queryById('SecurityTypeGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SecurityType.queryById('SecurityTypeGrid');grid.setHeight(App.AutomationWin.getHeight() - 260); ";
+
+                     })
+                  .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldID).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldSecurityType).Text("نوع محرمانگی").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+                       )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+           )
+      )
+)
+<script type="text/javascript">
+
+    function HelpSecurityType() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/SecurityType/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SecurityTypeSetSize() {
+        App.SecurityType.setWidth(App.AutomationWin.getWidth());
+        var grid = App.SecurityType.queryById('SecurityTypeGrid');
+        grid.setHeight(App.AutomationWin.getHeight() - 335);
+    }
+    function LoadSecurityType() {
+        var SelectedRow = App.SecurityType.queryById('SecurityTypeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/SecurityType/Details',
+                params: {
+                    Id: SelectedRow.data.fldID
+                },
+                success: function (data) {
+                    var txtType = App.SecurityType.queryById('txtType');
+                    txtType.setValue(data.fldSecurityType);
+                    var txtDesc = App.SecurityType.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldID = App.SecurityType.queryById('fldID');
+                    fldID.setValue(data.fldID);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveSecurityType() {
+        var txtType = App.SecurityType.queryById('txtType');
+        var txtDesc = App.SecurityType.queryById('txtDesc');
+        var fldID = App.SecurityType.queryById('fldID');
+        var er = false;
+
+        if (txtType.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/SecurityType/Save',
+            params: {
+                fldID: fldID.getValue(),
+                fldSecurityType: txtType.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.SecurityType.queryById('SecurityTypeGrid').store.load();
+                if (data.Err != 1)
+                    ClearSecurityType();
+            }
+
+        });
+    }
+    function DeleteSecurityType() {
+        var SelectedRow = App.SecurityType.queryById('SecurityTypeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/SecurityType/Delete',
+                            params: {
+                                id: SelectedRow.data.fldID
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SecurityType.queryById('SecurityTypeGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearSecurityType() {
+        App.SecurityType.queryById('fldID').setValue(0);
+        App.SecurityType.queryById('txtType').setValue("");
+        App.SecurityType.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapSecurityType = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SecurityType.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtType") {
+                        nextfld = App.SecurityType.queryById('btnSaveSecurityType');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

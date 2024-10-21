@@ -1,0 +1,262 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_FishSaderShode>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using Ext.Net.Utilities
+
+@{var X = Html.X();}
+<br />
+<script>
+    var ShowStatus = function (value, record) {
+        var fldRequestType = record.record.data.fldRequestType;
+        var template = '<img src={0} alt="" title={1} />';
+        if (value == 3 && fldRequestType == 1) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/درخواستتقسیطپاسخدادهشده.png")";
+            var ToolTip = "بی" + '&nbsp;' + "پاسخ";
+
+        }
+        else if (value == 1 && fldRequestType == 1) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/تقسیطموافقتشده.png")";
+            var ToolTip = "توافق";
+        }
+        else if (value == 2 && fldRequestType == 1) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/تقسیطابطالشده.png")";
+            var ToolTip = "عدم" + '&nbsp;' + "توافق";
+        }
+        if (value == 3 && fldRequestType == 2) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/درخواستتخفیفپاسخدادهشده.png")";
+            var ToolTip = "بی" + '&nbsp;' + "پاسخ";
+        }
+        else if (value == 1 && fldRequestType == 2) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/تخفیفموافقتشده.png")";
+            var ToolTip = "توافق";
+        }
+        else if (value == 2 && fldRequestType == 2) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/تخفیفابطالشده.png")";
+            var ToolTip = "عدم" + '&nbsp;' + "توافق";
+        }
+        return Ext.String.format(template, Pic, ToolTip);
+    };
+    var ShowMaliyat = function (value, record) {
+        var template4 = '<img src={0} alt="" title={1} />';
+        if (value == "1") {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/دارایارزشافزوده.png")";
+            var ToolTip = "فیش" + '&nbsp;' + "شامل" + '&nbsp;' + "مالیات" + '&nbsp;' + "بر" + '&nbsp;' + "ارزش" + '&nbsp;' + "افزوده" + '&nbsp;' + "میباشد ";
+        }
+        if (value == "0") {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/دارایارزشافزودهنیست.png")";
+            var ToolTip = "فیش" + '&nbsp;' + "شامل" + '&nbsp;' + "مالیات" + '&nbsp;' + "بر" + '&nbsp;' + "ارزش" + '&nbsp;' + "افزوده" + '&nbsp;' + "نمیباشد ";
+        }
+
+        return Ext.String.format(template4, Pic, ToolTip);
+    };
+</script>
+<style>
+    .margincommandFish {
+        margin: 0 0 0 12px !important;
+    }
+</style>
+
+
+@(Html.X().Window()
+    .Modal(true)
+    .Width(800)
+        //.Height(330)
+        .ID("GroupPayIndex")
+    .Title("صدور فیش")
+        .Listeners(li => { li.AfterRender.Handler = "LoadDetail();"; })
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.VBox)
+    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        .Border(false)
+                    .Defaults(new { Margin = 2 })
+    .Items(
+        X.Panel()
+            .Border(false)
+                .Defaults(new { Margin = 5 })
+                .Layout(LayoutType.VBox)
+                .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+            X.FieldSet()
+                     .Title("مشخصات عمومی اعلام عوارض")
+                     .Width(750).Border(true)
+                     .Defaults(new { Margin = 5 })
+                 .Items(
+                    X.FieldSet()
+                        .Layout(LayoutType.HBox)
+                    .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Middle })
+                    .Width(780)
+                    .ColSpan(4)
+                    .Border(false)
+                    .ItemID("DetailMalek")
+                    .Items(
+                     X.Label("نام: ")
+                     .ItemID("lblName")
+                     ,X.Label("نام پدر: ").ItemID("lblFather")
+                     .PaddingSpec("0 0 0 50px"),
+                      X.Label("کد ملی:").ItemID("lblCode_ShenaseMelli")
+                    .PaddingSpec("0 0 0 50px")
+                     
+                    )
+                    ),
+                             X.Panel()
+                         .Width(750).Border(false)
+                 .Items(
+                            X.GridPanel()
+                            .ItemID("GridFishHa")
+                            .Height(200)
+                            .TopBar(
+                               X.Toolbar()
+                              .Border(false)
+                              .Items(
+            X.Button().Text("پرداخت گروهی").Icon(Ext.Net.Icon.Money).Listeners(l => l.Click.Handler = "GroupPay();")
+                                                                         )
+                              )
+                            .Icon(Icon.Table)
+                            .Frame(true)
+                            .AutoScroll(true)
+                            .Title("فیش")
+                                .Store(
+                                            X.StoreForModel()
+                                            .Proxy(Html.X().AjaxProxy()
+                                             .Url(Url.Action("ReadFishElamAvarez"))
+                                             .Reader(Html.X().JsonReader().Root("data"))
+                                                .ExtraParams(l => l.Add(new { ElamAvarezId = ViewBag.ElamAvarezId}))
+                                                            //.ExtraParams(l => l.Add(new { FiscalYearId = ViewBag.FiscalYearId }))
+                                                
+
+                                             )
+                                            .PageSize(200000000)
+                                            .RemoteFilter(true)
+                                            .RemotePaging(true)
+
+                                        )
+     
+              .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                     .SelectionModel(
+            Html.X().CheckboxSelectionModel().ShowHeaderCheckbox(true)
+                .Mode(SelectionMode.Multi).PruneRemoved(false).CheckOnly(true))
+
+
+                                .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                   Html.X().Column().DataIndex(Model, m => m.fldMashmool).Text("مشمول ارزش افزوده").Flex(1).Renderer("ShowMaliyat").Filterable(false),
+                                    Html.X().Column().DataIndex(Model, m => m.fldElamAvarezId).Text("کد شناسایی").Flex(2).Hidden(true),
+                 Html.X().Column().DataIndex(Model, m => m.fldShomareSheba).Text("شماره شبا").Flex(1).Hidden(true),
+                     Html.X().Column().DataIndex(Model, m => m.fldShomareHesabId).Text("شماره حساب").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldPcposUser).Text("کاربرpcpos").Flex(1).Hidden(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد فیش").Flex(1),
+                                        Html.X().Column().DataIndex(Model, m => m.fldTypeAvarez).Text("نوع عوارض").Flex(2).Hidden(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldNoeShakhs).Text("نوع شخص").Flex(2).Hidden(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldNameShakhs).Text("نام").Flex(2).Hidden(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldNationalCode).Text("شناسه/کدملی").Flex(2).Hidden(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldFather_ShomareSabt).Text("نام پدر/شماره ثبت").Flex(2).Hidden(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldTarikh).Text("تاریخ").Flex(2),
+                             Html.X().Column().DataIndex(Model, m => m.fldShomareHesab).Text("شماره حساب").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.fldShenaseGhabz).Text("شناسه قبض").Flex(2).Wrap(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldShenasePardakht).Text("شناسه پرداخت").Flex(2).Wrap(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldJamKol).Text("جمع کل").Renderer("LocalString").Flex(3).Wrap(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldMablaghAvarezGerdShode).Text("مبلغ قابل پرداخت").Renderer("LocalString").Flex(3).Wrap(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldPardakhFish).Text("نوع پرداخت").Flex(3).Hidden(true)
+                                //    Html.X().ImageCommandColumn().PrepareCommand("hidePardakhtPcPos")
+                                //.Listeners(l => l.Command.Fn = "ActionsInGridFish")
+                                //.Flex(3).Commands(
+                                //Html.X().ImageCommand().CommandName("PrintFish").Cls("margincommandFish").Icon(Ext.Net.Icon.Printer).ToolTip(tt => tt.Text = "چاپ فیش")
+                                //, Html.X().ImageCommand().CommandName("SabtPardakht").Cls("margincommandFish").IconCls("SabtPardakht").ToolTip(tt => tt.Text = "ثبت پرداخت")
+                                //, Html.X().ImageCommand().CommandName("PardakhtPcPos").Cls("margincommandFish").IconCls("PardakhtPcPos").ToolTip(tt => tt.Text = "پراخت با PcPos")
+                                //, Html.X().ImageCommand().CommandName("PrintDaraei").Cls("margincommandFish").Icon(Ext.Net.Icon.Report).ToolTip(tt => tt.Text = "گزارش فرم دارایی")
+                                //)
+
+                    )
+        //       .SelectionModel(
+        //    Html.X().RowSelectionModel()
+        //        .Mode(Ext.Net.SelectionMode.Single)
+        //)
+                    )
+        //)
+
+
+
+
+
+
+                )
+)
+)
+<script type="text/javascript">
+    function LoadDetail() {
+        var lblCode_ShenaseMelli = App.GroupPayIndex.queryById("lblCode_ShenaseMelli");
+        var txtCode_ShenaseMelli = App.GroupPayIndex.queryById("txtCode_ShenaseMelli");
+        var lblName = App.GroupPayIndex.queryById('lblName');
+        var lblFather = App.GroupPayIndex.queryById("lblFather");
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/SodurFish/GetElamAvarez',
+            params: {
+                Id: '@ViewBag.ElamAvarezId'
+            },
+            success: function (data) {
+                lblName.setText("نام: " + data.fldNameShakhs);
+                if (data.fldNoeShakhs == "0") {
+                    lblCode_ShenaseMelli.setText("کدملی: " + data.fldShenaseMeli);
+                    lblFather.setText("نام پدر: " + data.fldFather_Sabt);
+                    Ext.net.Mask.hide();
+                }
+                else {
+                    lblCode_ShenaseMelli.setText("شناسه ملی: " + data.fldShenaseMeli);
+                    lblFather.setText("شماره ثبت: " + data.fldFather_Sabt);
+
+                }
+
+            }
+        });
+
+    }
+    function GroupPay() {
+        var FishVal = new Array();
+        var SelectedRows = App.GroupPayIndex.queryById('GridFishHa').getSelectionModel().getSelection();
+        if (SelectedRows.length > 0) {
+            for (var i = 0; i < SelectedRows.length ; i++) {
+                FishVal.push({
+                    fldId: SelectedRows[i].data.fldId,
+                    fldShenaseGhabz: SelectedRows[i].data.fldShenaseGhabz,
+                    fldShenasePardakht: SelectedRows[i].data.fldShenasePardakht,
+                    fldMablaghAvarezGerdShode: SelectedRows[i].data.fldMablaghAvarezGerdShode,
+                    fldShomareSheba: SelectedRows[i].data.fldShomareSheba,
+                    fldShomareHesab: SelectedRows[i].data.fldShomareHesab,
+                    fldShomareHesabId: SelectedRows[i].data.fldShomareHesabId
+                }); 
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "هیچ سطری برای پرداخت انتخاب نشده است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/AnnouncementComplications_Fish/PSPModels',
+            params: {
+                state: 2,
+                FishId: 0,
+                ShGhabz: "",
+                ShPardakht: "",
+                Price: 0,
+                Sheba: ""
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    </script>

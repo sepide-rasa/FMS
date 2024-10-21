@@ -1,0 +1,202 @@
+﻿@model IEnumerable<NewFMS.WCF_Personeli.OBJ_VaziyatEsargari>
+@using Ext.Net.MVC;
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+
+
+
+@(X.Window().Maximized(true).Listeners(li => li.AfterRender.Handler = "VaziyatEsargariMap() ;")
+                                      .ID("VaziyatEsargari")
+            .Closable(true)
+            .AutoScroll(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Items(
+                X.Panel().Border(false)
+                .Border(false)
+                .AutoScroll(true)
+
+                .Items(
+                                             X.TabPanel().ID("VaziyatEsargariTab")
+                    .AutoScroll(true).Height(630).Items(
+                        X.Panel().ItemID("GridPanel")
+                                .Title("وضعیت ایثارگری")
+                        .Items(
+                    X.GridPanel().AutoScroll(true)
+                        .TopBar(
+                        Html.X().Toolbar()
+                        .Items(
+                            X.Button().Text("جدید").Icon(Ext.Net.Icon.Add).ToolTip("کلید میانبر F8")
+                                                            .Listeners(li => li.Click.Handler = "NewVaziyatEsargari();"),
+                            X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).ToolTip("کلید میانبر F2")
+                                                            .Listeners(Li => Li.Click.Handler = "EditVaziyatEsargari();"),
+                            X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).ToolTip("کلید میانبر F9")
+                                .Listeners(de =>
+                                {
+                                    de.Click.Handler = "if (App.VaziyatEsargari.queryById('GridVaziyatEsargari').selModel.getLastSelected() == null) {Ext.MessageBox.show({ title: 'خطا', msg: 'لطفا یک سطر را انتخاب کنید',icon: Ext.MessageBox.ERROR,buttons: Ext.MessageBox.OK});return false;}else DeleteVaziyatEsargari();";
+                                })
+                        )
+                    )
+                                .ItemID("GridVaziyatEsargari").Flex(2)
+                    .BottomBar(X.PagingToolbar())
+                    .Height(600)
+                    .ColumnWidth(0.6)
+                    .Layout(Ext.Net.LayoutType.Column)
+                    .Store(
+                        X.StoreForModel()
+                        .Proxy(Html.X().AjaxProxy()
+                            .Url(Url.Action("Read"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+
+                        )
+                        .PageSize(20)
+                        .RemoteFilter(true)
+                        .RemotePaging(true)
+                                                                .Listeners(l => l.DataChanged.Handler = "App.VaziyatEsargari.queryById('GridVaziyatEsargari').selModel.refresh();")
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                           Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1),
+                           Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("وضعیت ایثارگری").Flex(2),
+                           Html.X().Column().DataIndex(Model, m => m.fldTypeName).Text("نوع وضعیت").Flex(2),
+                           Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+
+                ))
+            )
+        )
+)
+
+<script type="text/javascript">
+
+    function VaziyatEsargariMap() {
+        var k = new Ext.KeyMap(
+            document,
+            [{
+                target: Ext.get('VaziyatEsargari'),
+                scope: this,
+                key: [119],
+                fn: function (key, event) {
+                    if (App.VaziyatEsargari && App.NewVaziyatEsargari) {
+                        if (App.NewVaziyatEsargari.active == false)
+                            NewVaziyatEsargari();
+                    }
+                    else if (App.VaziyatEsargari && !App.NewVaziyatEsargari)
+                        NewVaziyatEsargari();
+                }
+            },
+            {
+                target: App.VaziyatEsargari.getTargetEl(),
+                scope: this,
+                key: [113],
+                fn: function (key, event) {
+                    if (App.VaziyatEsargari && App.NewVaziyatEsargari) {
+                        if (App.VaziyatEsargari.active == false)
+                            EditVaziyatEsargari();
+                    }
+                    else if (App.VaziyatEsargari && !App.NewVaziyatEsargari)
+                        EditVaziyatEsargari();
+                }
+            },
+            {
+                target: App.VaziyatEsargari.getTargetEl(),
+                scope: this,
+                key: [120],
+                fn: function (key, event) {
+                    if (App.VaziyatEsargari && App.NewVaziyatEsargari) {
+                        if (App.NewVaziyatEsargari.active == false)
+                            DeleteVaziyatEsargari();
+                    }
+                    else if (App.VaziyatEsargari && !App.NewVaziyatEsargari)
+                        DeleteVaziyatEsargari();
+                }
+            }]
+            )
+    }
+    function NewVaziyatEsargari() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/VaziyatEsargari/new',
+            params: {
+                id: 0
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function EditVaziyatEsargari() {
+        var SelectedRow = App.VaziyatEsargari.queryById('GridVaziyatEsargari').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/VaziyatEsargari/new',
+                params: {
+                    id: SelectedRow.data.fldId,
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DeleteVaziyatEsargari() {
+        var SelectedHeaderRow = App.VaziyatEsargari.queryById('GridVaziyatEsargari').selModel.getLastSelected();
+        if (SelectedHeaderRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Personeli/VaziyatEsargari/Delete',
+                            params: {
+                                id: SelectedHeaderRow.data.fldId
+                            },
+                            success: function (data) {
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.INFO,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.VaziyatEsargari.queryById('GridVaziyatEsargari').store.load()
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+</script>

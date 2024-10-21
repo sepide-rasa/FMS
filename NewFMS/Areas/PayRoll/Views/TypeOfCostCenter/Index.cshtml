@@ -1,0 +1,220 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_TypeOfCostCenters>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("TypeOfCostCenter")
+        .Title("ویرایش نوع مراکز هزینه")
+                .Listeners(li => { li.AfterRender.Handler = "TypeOfCostCenterSetSize();"; li.Render.Fn = "addKeyMapTypeOfCostCenter"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+        X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false)
+        .Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                .Listeners(l => { l.Click.Handler = "SaveTypeOfCostCenter();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadTypeOfCostCenter();"; })
+            , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+            .Listeners(l => { l.Click.Handler = "HelpTypeOfCostCenter();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.TypeOfCostCenter.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+                         .Layout(LayoutType.VBox)
+                                     .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("نوع مراکز هزینه").Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                            X.Label("عنوان:"),
+                       X.TextField()
+                        .ItemID("txtTitle")
+                            .MaxLength(200)
+                            .EnforceMaxLength(true)
+                                .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                        .BlankText("لطفا عنوان را وارد کنید.")
+                    .AutoFocus(true)
+                    , X.Label("توضیحات:"),
+                        X.TextField()
+                    .ItemID("txtDesc")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(260)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("TypeOfCostCenterGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.TypeOfCostCenter.queryById('TypeOfCostCenterGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.TypeOfCostCenter.queryById('TypeOfCostCenterGrid');grid.setHeight(App.PayWin.getHeight() - 260); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.Win.addListener('resize', function () {
+        App.TypeOfCostCenter.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.TypeOfCostCenter.queryById('TypeOfCostCenterGrid');
+        grid.setHeight(App.Win.getHeight()-260);
+    });*/
+    function TypeOfCostCenterSetSize() {
+        App.TypeOfCostCenter.setWidth(App.PayWin.getWidth());
+        var grid = App.TypeOfCostCenter.queryById('TypeOfCostCenterGrid');
+        grid.setHeight(App.PayWin.getHeight() - 260);
+    }
+    function LoadTypeOfCostCenter() {
+        var SelectedRow = App.TypeOfCostCenter.queryById('TypeOfCostCenterGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/TypeOfCostCenter/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTitle = App.TypeOfCostCenter.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var txtDesc = App.TypeOfCostCenter.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.TypeOfCostCenter.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveTypeOfCostCenter() {
+        var txtTitle = App.TypeOfCostCenter.queryById('txtTitle');
+        var txtDesc = App.TypeOfCostCenter.queryById('txtDesc');
+        var fldId = App.TypeOfCostCenter.queryById('fldId');
+            var er = false;
+
+            if (txtTitle.validate() == false) {
+                er = true;
+            }
+            if (fldId.getValue() == 0 || fldId.getValue()=="") {
+                er = true;
+                Ext.MessageBox.show({
+                    Name: "خطا",
+                    msg: "ثبت نوع مرکز هزینه جدید امکان پذیر نمی باشد، لطفا یک مورد را برای ویرایش انتخاب کنید.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/TypeOfCostCenter/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldTitle: txtTitle.getValue(),
+                    fldDesc: txtDesc.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.TypeOfCostCenter.queryById('TypeOfCostCenterGrid').store.load();
+                    if (data.Er != 1)
+                        ClearTypeOfCostCenter();
+                }
+
+            });
+    }
+    function HelpTypeOfCostCenter() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/TypeOfCostCenter/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function ClearTypeOfCostCenter() {
+        App.TypeOfCostCenter.queryById('fldId').setValue(0);
+        App.TypeOfCostCenter.queryById('txtTitle').setValue("");
+        App.TypeOfCostCenter.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapTypeOfCostCenter = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+        var keyfield = App.TypeOfCostCenter.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtDesc") {
+            nextfld = App.TypeOfCostCenter.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

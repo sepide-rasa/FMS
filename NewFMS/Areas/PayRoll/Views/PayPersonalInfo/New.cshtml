@@ -1,0 +1,655 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+<style>
+    /*td {
+        text-align: left;
+    }*/
+
+    /*.x-rtl .x-textfield-icon {
+        margin-right: 130px;
+    }
+
+    .x-rtl .x-textfield-icon-input {
+        padding-right: 3px;
+    }*/
+
+    .custom-NewPayPersonalInfoicon{
+        margin-right: 129px!important;
+    }
+
+    #fieldsetfile legend {
+        text-align: right;
+        font-family: Tahoma !important;
+    }
+</style>
+
+@(Html.X().Window()
+        //.Listeners(li => li.AfterRender.Handler = "App.NewPayPersonalInfo.queryById('txtShomareBimeT').hide();")
+        .Listeners(li => { li.AfterRender.Handler = "App.NewPayPersonalInfo.queryById('txtShomareBimeT').hide();"; li.Render.Fn = "addKeyMapPayPersonalInfo"; })
+    .Closable(true)
+    .CloseAction(CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Modal(true)
+    .Width(650)
+    .ID("NewPayPersonalInfo")
+    .Title("ثبت مشخصات پرسنل")
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        Html.X().Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SavePayPersonalInfo()"),
+        Html.X().Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => l.Click.Handler = "App.NewPayPersonalInfo.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.PaddingSpec("4px 0 4px 0")
+            .Items(
+                         X.FieldSet().Border(true).Title("اطلاعات پرسنل").Width(600)//.Height(210)
+                         .Defaults(new { Margin = 2 })
+                        .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                        .Items(
+                                X.Hidden().ItemID("fldId"),
+                                X.Hidden().ItemID("PersonalInfoId"),
+                                X.Hidden().ItemID("TabJobId"),
+                                    X.Label("نام و نام خانوادگی (Ins):"),
+                              X.TextField()
+                             .ItemID("txtPersonalInfoKargozini")
+        //  .Icon(Ext.Net.Icon.UserSuitBlack)
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                            .AllowBlank(false)
+                            .ReadOnly(true)
+                            .BlankText("لطفا نام و نام خانوادگی را انتخاب کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                   .Icon(Ext.Net.Icon.Add)
+                            .AutoFocus(true)
+                                .FieldStyle("padding-right:6px;")
+                            .Listeners(li => li.AfterRender.Handler = "App.NewPayPersonalInfo.queryById('txtPersonalInfoKargozini').icon.dom.classList.add('custom-NewPayPersonalInfoicon');")
+                                .DirectEvents(li =>
+                                {
+                                    li.SpecialKey.Url = Url.Action("Index", "SearchPrsPersonalInfo", new { Area = "Personeli" });//"/Personeli/SearchPrsPersonalInfo/Index?State=1";
+                                    li.SpecialKey.ExtraParams.Add(new { OrganId = ViewBag.OrganId });
+                                    li.SpecialKey.ExtraParams.Add(new { State = "1" });
+                                    li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                    li.IconClick.Url = Url.Action("Index", "SearchPrsPersonalInfo", new { Area = "Personeli" });// "/Personeli/SearchPrsPersonalInfo/Index?State=1";
+                                    li.IconClick.ExtraParams.Add(new { OrganId = ViewBag.OrganId });
+                                    li.IconClick.ExtraParams.Add(new { State = "1" });
+                                })
+                                    , X.Label("نوع بیمه:")
+                            , X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboTypeBime")
+                                    .TypeAhead(true)
+                                .Editable(false)
+                                .BlankText("لطفا نوع بیمه را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldTitle")
+                                .ValueField("fldId")
+                                .EmptyText("نوع بیمه")
+                                .SelectedItems(new { Value = "1" })
+                                .Store(X.Store()
+                                    .Model(X.Model()
+                                    .IDProperty("fldId")
+                                        .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetTypeBime"))
+                                        .Reader(X.JsonReader().Root("data"))
+                                    )
+        //.Listeners(li => li.DataChanged.Handler = "LoadPersonalInfo();")
+                                    )
+             .Listeners(li => li.Change.Handler = "ChangeShBime();")
+                                    , X.Label("شماره بیمه:")
+                            , X.TextField()
+                              .ItemID("txtShomareBimeT")
+        // .Icon(Ext.Net.Icon.TextListNumbers)
+        //.MsgTarget(Ext.Net.MessageTarget.Side)
+                            .AllowBlank(false)
+                            .BlankText("لطفا شماره بیمه را وارد کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Plugins(X.InputMask()
+                            .Mask("AAAAAAAAAA")
+                            .UnmaskOnBlur(true)
+                            .ClearWhenInvalid(true)
+                            .MaskSymbols(ls =>
+                            {
+                                ls.Add(new MaskSymbol { Name = "A", Regex = "[0-9 -]", Placeholder = "_".ToCharArray()[0] });
+                            })
+                            )
+                                    , X.TextField()
+                                  .ItemID("txtShomareBime")
+        // .Icon(Ext.Net.Icon.TextListNumbers)
+        //.MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(false)
+                                .BlankText("لطفا شماره بیمه را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+        //.Plugins(X.InputMask()
+        // .Mask("AAAAAAAAAAAAAAA")
+        //.UnmaskOnBlur(true)
+        //.ClearWhenInvalid(true)
+        //.MaskSymbols(ls =>
+        //{
+        //    ls.Add(new MaskSymbol { Name = "A", Regex = "[0-9 -]", Placeholder = "_".ToCharArray()[0] });
+        //})
+        //)
+                                    , X.Label("بیمه عمر:")
+                            , X.ComboBox()
+                                .ItemID("CboBimeOmr")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا بیمه عمر را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .EmptyText("بیمه عمر")
+                                .SelectedItems(new { Value = "1" })
+                                .Items(
+                                    new ListItem("دارد", "1"),
+                                    new ListItem("ندارد", "0")
+                                    )
+                                            , X.Label("بیمه تکمیلی:")
+                                    , X.ComboBox()
+                                .ItemID("CboBimeTakmili")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا بیمه تکمیلی را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .EmptyText("بیمه تکمیلی")
+                                .SelectedItems(new { Value = "1" })
+                                .Items(
+                                    new ListItem("دارد", "1"),
+                                    new ListItem("ندارد", "0")
+                                            )
+                                                , X.Label("مشاغل سخت و زیان اور:")
+                                        , X.ComboBox()
+                                    .ItemID("CboMashagheleSakhtVaZianAvar")
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .EmptyText("مشاغل سخت و زیان اور")
+                                    .SelectedItems(new { Value = "1" })
+                                    .Items(
+                                        new ListItem("هست", "1"),
+                                        new ListItem("نیست", "0")
+                                        )
+                                                , X.Label("مرکز هزینه:")
+                                        , X.ComboBox()
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .ItemID("CboCostCenter")
+                                        .TypeAhead(true)
+                                .Editable(false)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .AllowBlank(false)
+                                        .BlankText("لطفا مرکز هزینه را انتخاب کنید.")
+                                    .TriggerAction(TriggerAction.All)
+                                        .DisplayField("Name")
+                                    .ValueField("ID")
+                                    .EmptyText("مرکز هزینه")
+        //   .SelectedItems(new { Value = "1" })
+
+                                    .Store(X.Store()
+                                        .Model(X.Model()
+                                            .IDProperty("ID")
+                                            .Fields(
+                                            new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                            new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetCostCenter"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                            .ExtraParams(l => l.Add(new { OrganId=ViewBag.OrganId}))
+                                        )
+        //.Listeners(li => li.BeforeLoad.Handler = "LoadPersonalInfo();")
+                                    )
+                                        , X.Label("مازاد 30 سال:")
+                                , X.ComboBox()
+                                .ItemID("CboMazadCSal")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .EmptyText("مازاد 30 سال")
+                                .SelectedItems(new { Value = "1" })
+                                .Items(
+                                    new ListItem("هست", "1"),
+                                    new ListItem("نیست", "0")
+                                    )
+                                            , X.Label("پس انداز:")
+                                , X.ComboBox()
+                                .ItemID("CboPasAndaz")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .EmptyText("پس انداز")
+                            .SelectedItems(new { Value = "1" })
+                            .Items(
+                                new ListItem("دارد", "1"),
+                                new ListItem("ندارد", "0")
+                                )
+                                        , X.Label("سنوات پایان خدمت:")
+                                , X.ComboBox()
+                                .ItemID("CboMasuliyatPayanKhedmat")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .EmptyText("سنوات پایان خدمت")
+                            .SelectedItems(new { Value = "1" })
+                            .Items(
+                                new ListItem("دارد", "1"),
+                                new ListItem("ندارد", "0")
+                                    )
+                                        , X.Label("کد شغلی بیمه (Ins):")
+                                , X.TextField()
+                                   .ItemID("txtJobeCode")
+        //   .IconCls("post")
+        //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(true)
+                                   .Icon(Ext.Net.Icon.Add)
+                                       .FieldStyle("padding-right:6px;")
+                                        .Listeners(li => li.AfterRender.Handler = "App.NewPayPersonalInfo.queryById('txtJobeCode').icon.dom.classList.add('custom-NewPayPersonalInfoicon');")
+                            .BlankText("لطفا کد شغلی را وارد کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .ReadOnly(true)
+                                .DirectEvents(li =>
+                                        {
+                                            li.SpecialKey.Url = "/PayRoll/SearchTabJobOfBime/Index?State=1";
+                                            li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                            li.IconClick.Url = "/PayRoll/SearchTabJobOfBime/Index?State=1";
+                                        })
+        //, X.Label()
+        // .ItemID("lblJobDesc").Cls("color:red;")
+                                                 , X.Label("کارگاه بیمه:")
+                                    , X.ComboBox()
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .ItemID("CboInsuranceWorkShop")
+                                    .AllowBlank(false)
+                                    .TypeAhead(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("WorkShopName")
+                                        .ValueField("ID")
+                                .Editable(false)
+        //.SelectedItems(new { Value = "1" })
+                                    .EmptyText("کارگاه بیمه")
+                                    .Store(X.Store()
+                                        .Model(X.Model()
+                                            .IDProperty("ID")
+                                            .Fields(
+                                            new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                            new ModelField("WorkShopName", ModelFieldType.String) { Mapping = "WorkShopName" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetInsuranceWorkShop"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                                 .ExtraParams(l => l.Add(new { OrganId = ViewBag.OrganId }))
+                                        )
+             .Listeners(li => li.Load.Handler = "LoadPersonalInfo();")
+                                    )
+
+                                , X.Label("همسر کارمند:")
+                                 , X.ComboBox()
+                                .ItemID("CboHamsarKarmand")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .EmptyText("همسر کارمند")
+                                .SelectedItems(new { Value = "0" })
+                                .Items(
+                                    new ListItem("دارد", "1"),
+                                    new ListItem("ندارد", "0")
+                                    )
+                                             , X.Label("وضعیت:").ItemID("lblStatus")
+                                , X.ComboBox()
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .ItemID("CboStatus")
+                                    .TypeAhead(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("Name")
+                                    .ValueField("ID")
+                                    .SelectedItems(new { Value = "1" })
+                                    .EmptyText("وضعیت")
+                                    .Store(X.Store()
+                                        .Model(X.Model()
+                                            .IDProperty("ID")
+                                            .Fields(
+                                            new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                            new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetStatus"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                        )
+                        , X.Label("توضیحات:"),
+                            X.TextArea()
+                        .ItemID("txtDesc")
+        //  .ColSpan(3)
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+        // .Width(375)
+                    )
+            )
+    )
+)
+
+<script type="text/javascript">  
+    function ChangeShBime() {
+        var CboTypeBime = App.NewPayPersonalInfo.queryById('CboTypeBime');
+        var txtShomareBimeT = App.NewPayPersonalInfo.queryById('txtShomareBimeT');
+        var txtShomareBime = App.NewPayPersonalInfo.queryById('txtShomareBime');
+        if (CboTypeBime.getValue() == "1") {
+            txtShomareBimeT.show();
+            txtShomareBime.hide();
+            txtShomareBime.setValue("");
+        }
+        else {
+            txtShomareBimeT.hide();
+            txtShomareBime.show();
+            txtShomareBimeT.setValue("");
+        }
+    }
+    function LoadPersonalInfo() {
+        if ('@ViewBag.Id' != "0") {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/PayPersonalInfo/Details',
+                params: {
+                    Id: '@ViewBag.Id',
+                    OrganId:'@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    var txtPersonalInfoKargozini = App.NewPayPersonalInfo.queryById('txtPersonalInfoKargozini');
+                    txtPersonalInfoKargozini.setValue(data.fldName);
+                    var PayPersonalInfo = App.NewPayPersonalInfo.queryById('PersonalInfoId');
+                    PayPersonalInfo.setValue(data.fldPrs_PersonalInfoId);
+                    var CboTypeBime = App.NewPayPersonalInfo.queryById('CboTypeBime');
+                    CboTypeBime.setValue(data.fldTypeBimeId);
+                    var txtShomareBimeT = App.NewPayPersonalInfo.queryById('txtShomareBimeT');
+                    var txtShomareBime = App.NewPayPersonalInfo.queryById('txtShomareBime');
+                    if (data.fldTypeBimeId == "1") {
+                        txtShomareBimeT.show();
+                        txtShomareBime.hide();
+                        txtShomareBimeT.setValue(data.fldShomareBime);
+                    }
+                    else {
+                        txtShomareBimeT.hide();
+                        txtShomareBime.show();
+                        txtShomareBime.setValue(data.fldShomareBime);
+                    }
+                    var CboBimeOmr = App.NewPayPersonalInfo.queryById('CboBimeOmr');
+                    CboBimeOmr.setValue(data.fldBimeOmr);
+                    var CboBimeTakmili = App.NewPayPersonalInfo.queryById('CboBimeTakmili');
+                    CboBimeTakmili.setValue(data.fldBimeTakmili);
+                    var CboMashagheleSakhtVaZianAvar = App.NewPayPersonalInfo.queryById('CboMashagheleSakhtVaZianAvar');
+                    CboMashagheleSakhtVaZianAvar.setValue(data.fldMashagheleSakhtVaZianAvar);
+                    var CboCostCenter = App.NewPayPersonalInfo.queryById('CboCostCenter');
+                    CboCostCenter.setValue(data.fldCostCenterId);
+                    var CboMazadCSal = App.NewPayPersonalInfo.queryById('CboMazadCSal');
+                    CboMazadCSal.setValue(data.fldMazadCSal);
+                    var CboPasAndaz = App.NewPayPersonalInfo.queryById('CboPasAndaz');
+                    CboPasAndaz.setValue(data.fldPasAndaz);
+                    var CboHamsarKarmand = App.NewPayPersonalInfo.queryById('CboHamsarKarmand');
+                    CboHamsarKarmand.setValue(data.fldHamsarKarmand);
+                    var CboMasuliyatPayanKhedmat = App.NewPayPersonalInfo.queryById('CboMasuliyatPayanKhedmat');
+                    CboMasuliyatPayanKhedmat.setValue(data.fldMasuliyatPayanKhedmat);
+                    var txtJobeCode = App.NewPayPersonalInfo.queryById('txtJobeCode');
+                    txtJobeCode.setValue(data.fldJobeCode + "_" + data.fldJobDesc);
+                    var TabJobId = App.NewPayPersonalInfo.queryById('TabJobId');
+                    TabJobId.setValue(data.fldJobeCode);
+                    var CboInsuranceWorkShop = App.NewPayPersonalInfo.queryById('CboInsuranceWorkShop');
+                    CboInsuranceWorkShop.setValue(data.fldInsuranceWorkShopId);
+                    var CboStatus = App.NewPayPersonalInfo.queryById('CboStatus');
+                    CboStatus.hide();
+                    var lblStatus = App.NewPayPersonalInfo.queryById('lblStatus');
+                    lblStatus.hide();
+                    var txtDesc = App.NewPayPersonalInfo.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var Id = App.NewPayPersonalInfo.queryById('fldId');
+                    Id.setValue(data.fldId);
+
+                    if (data.fldNoeEstekhdamId < 6)/*کارگری*/ {
+                        CboPasAndaz.setValue("0");
+                        CboPasAndaz.setDisabled(true);
+                        CboMasuliyatPayanKhedmat.setDisabled(false);
+                    }
+                    else {
+                        CboPasAndaz.setDisabled(false);
+                        CboMasuliyatPayanKhedmat.setValue("0");
+                        CboMasuliyatPayanKhedmat.setDisabled(true);
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+
+    function SavePayPersonalInfo() {
+        var CboPasAndaz = App.NewPayPersonalInfo.queryById('CboPasAndaz');
+        var txtPersonalInfoKargozini = App.NewPayPersonalInfo.queryById("txtPersonalInfoKargozini");
+        var PersonalInfoId = App.NewPayPersonalInfo.queryById("PersonalInfoId");
+        var CboTypeBime = App.NewPayPersonalInfo.queryById('CboTypeBime');
+        var txtShomareBimeT = App.NewPayPersonalInfo.queryById('txtShomareBimeT');
+        var txtShomareBime = App.NewPayPersonalInfo.queryById('txtShomareBime');
+        var CboBimeOmr = App.NewPayPersonalInfo.queryById('CboBimeOmr');
+        var CboBimeTakmili = App.NewPayPersonalInfo.queryById('CboBimeTakmili');
+        var CboMashagheleSakhtVaZianAvar = App.NewPayPersonalInfo.queryById('CboMashagheleSakhtVaZianAvar');
+        var CboCostCenter = App.NewPayPersonalInfo.queryById('CboCostCenter');
+        var CboMazadCSal = App.NewPayPersonalInfo.queryById('CboMazadCSal');
+        var CboPasAndaz = App.NewPayPersonalInfo.queryById('CboPasAndaz');
+        var CboHamsarKarmand = App.NewPayPersonalInfo.queryById('CboHamsarKarmand');
+        var CboMasuliyatPayanKhedmat = App.NewPayPersonalInfo.queryById('CboMasuliyatPayanKhedmat');
+        var txtJobeCode = App.NewPayPersonalInfo.queryById('txtJobeCode');
+        var TabJobId = App.NewPayPersonalInfo.queryById('TabJobId');
+        var CboInsuranceWorkShop = App.NewPayPersonalInfo.queryById('CboInsuranceWorkShop');
+        var CboStatus = App.NewPayPersonalInfo.queryById('CboStatus');
+        var txtDesc = App.NewPayPersonalInfo.queryById('txtDesc');
+        var Id = App.NewPayPersonalInfo.queryById('fldId');
+        var er = false;
+        
+
+        if (txtPersonalInfoKargozini.validate() == false) {
+            er = true;
+        }
+        if (CboInsuranceWorkShop.validate() == false) {
+            er = true;
+        }
+        if (CboCostCenter.validate() == false) {
+            er = true;
+        }
+
+        if (CboTypeBime.getValue() == "1") {
+            txtJobeCode.allowBlank = false;
+            if (txtJobeCode.validate() == false) {
+                er = true;
+            }
+            if (txtShomareBimeT.validate() == false) {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا شماره بیمه را به درستی وارد نمایید.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                er = true;
+            }
+        }
+        else {
+            txtJobeCode.allowBlank = true;
+            App.NewPayPersonalInfo.queryById('txtJobeCode').validate();
+            if (txtShomareBime.validate() == false) {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا شماره بیمه را به درستی وارد نمایید.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                er = true;
+            }
+        }
+
+        if (er == true)
+            return;
+
+        var shBime = txtShomareBime.getValue();
+        if (CboTypeBime.getValue() == "1")
+            shBime = txtShomareBimeT.getValue();
+
+        var BimeOmr = false;
+        if (CboBimeOmr.getValue() == "1")
+            BimeOmr = true;
+
+        var BimeTakmili = false;
+        if (CboBimeTakmili.getValue() == "1")
+            BimeTakmili = true;
+
+        var MashagheleSakhtVaZianAvar = false;
+        if (CboMashagheleSakhtVaZianAvar.getValue() == "1")
+            MashagheleSakhtVaZianAvar = true;
+
+        var MazadCSal = false;
+        if (CboMazadCSal.getValue() == "1")
+            MazadCSal = true;
+
+        var PasAndaz = false;
+        if (CboPasAndaz.getValue() == "1")
+            PasAndaz = true;
+
+        var HamsarKarmand = false;
+        if (CboHamsarKarmand.getValue() == "1")
+            HamsarKarmand = true;
+
+        var MasuliyatPayanKhedmat = false;
+        if (CboMasuliyatPayanKhedmat.getValue() == "1")
+            MasuliyatPayanKhedmat = true;
+
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/PayPersonalInfo/Save',
+            params: {
+                fldId: Id.getValue(),
+                fldPrs_PersonalInfoId: PersonalInfoId.getValue(),
+                fldTypeBimeId: CboTypeBime.getValue(),
+                fldShomareBime: shBime,
+                fldBimeOmr: BimeOmr,
+                fldBimeTakmili: BimeTakmili,
+                fldMashagheleSakhtVaZianAvar: MashagheleSakhtVaZianAvar,
+                fldCostCenterId: CboCostCenter.getValue(),
+                fldMazadCSal: MazadCSal,
+                fldPasAndaz: PasAndaz,
+                fldHamsarKarmand: HamsarKarmand,
+                fldSanavatPayanKhedmat: MasuliyatPayanKhedmat,
+                fldJobeCode: TabJobId.getValue(),
+                fldInsuranceWorkShopId: CboInsuranceWorkShop.getValue(),
+                fldStatusId: CboStatus.getValue(),
+                fldDesc: txtDesc.getValue(),
+                OrganId:'@ViewBag.OrganId'
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                else
+                    ClearPayPersonalInfo();
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.PayPersonalInfo.queryById('PayPersonalInfoGrid').store.load();
+                if (data.Er != 1)
+                    ClearPayPersonalInfo();
+            }
+
+        });
+    }
+    function ClearPayPersonalInfo() {
+        App.NewPayPersonalInfo.queryById("txtPersonalInfoKargozini").setValue("");
+        App.NewPayPersonalInfo.queryById("PersonalInfoId").setValue(0);
+        App.NewPayPersonalInfo.queryById('CboTypeBime').setValue("");
+        App.NewPayPersonalInfo.queryById('txtShomareBimeT').setValue("");
+        App.NewPayPersonalInfo.queryById('txtShomareBime').setValue("");
+        App.NewPayPersonalInfo.queryById('CboBimeOmr').setValue("");
+        App.NewPayPersonalInfo.queryById('CboBimeTakmili').setValue("");
+        App.NewPayPersonalInfo.queryById('CboMashagheleSakhtVaZianAvar').setValue("");
+        App.NewPayPersonalInfo.queryById('CboCostCenter').setValue("");
+        App.NewPayPersonalInfo.queryById('CboMazadCSal').setValue("");
+        App.NewPayPersonalInfo.queryById('CboPasAndaz').setValue("1");
+        App.NewPayPersonalInfo.queryById('CboHamsarKarmand').setValue("");
+        App.NewPayPersonalInfo.queryById('CboMasuliyatPayanKhedmat').setValue("");
+        App.NewPayPersonalInfo.queryById('txtJobeCode').setValue("");
+        App.NewPayPersonalInfo.queryById("TabJobId").setValue(0);
+        App.NewPayPersonalInfo.queryById('CboInsuranceWorkShop').setValue("");
+        App.NewPayPersonalInfo.queryById('CboStatus').setValue("");
+        App.NewPayPersonalInfo.queryById('txtDesc').setValue("");
+        App.NewPayPersonalInfo.queryById('fldId').setValue(0);
+    }
+    var addKeyMapPayPersonalInfo = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NewPayPersonalInfo.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    var CboTypeBime = App.NewPayPersonalInfo.queryById('CboTypeBime');
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.NewPayPersonalInfo.queryById('btnSave');
+                    }
+                    else if (keyfield.itemId == "CboTypeBime") {
+                            if (CboTypeBime.getValue() == "1")                                 
+                                nextfld = App.NewPayPersonalInfo.queryById('txtShomareBimeT');
+                            else
+                                nextfld = App.NewPayPersonalInfo.queryById('txtShomareBime');
+                    }
+                    else if (keyfield.itemId == "txtShomareBimeT") {
+                        nextfld = App.NewPayPersonalInfo.queryById('CboBimeOmr');
+                    }
+                    else if (keyfield.itemId == "txtShomareBime") {
+                        nextfld = App.NewPayPersonalInfo.queryById('CboBimeOmr');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

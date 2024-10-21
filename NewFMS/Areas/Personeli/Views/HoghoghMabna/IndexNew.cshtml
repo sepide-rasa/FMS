@@ -1,0 +1,299 @@
+﻿@model IEnumerable<NewFMS.WCF_Personeli.OBJ_DetailHoghoghMabna>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("HoghoghMabna")
+            .Title("ثبت حقوق مبنا")
+            .Listeners(li => li.AfterRender.Handler = "HoghoghMabnaSetSize();")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                .Listeners(l => { l.Click.Handler = "SaveHoghoghMabna();"; })
+       , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+        .Listeners(l => { l.Click.Handler = "HelpHoghoghMabna();"; })
+
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.HoghoghMabna.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+            .Layout(LayoutType.VBox)
+                .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Title("حقوق مبنا")
+                        .Height(50)
+                        .Border(true)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 7 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                            X.Label("نوع استخدام:")
+                   , X.ComboBox()
+                        .ItemID("CboType")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Editable(false)
+                        .TypeAhead(true)
+                        .AutoFocus(true)
+                        .AllowBlank(false)
+                        .BlankText("لطفا نوع استخدام را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .EmptyText("نوع استخدام")
+                       // .FieldLabel("نوع استخدام")
+                        .Items(
+                            new ListItem("کارگری", "0"),
+                            new ListItem("کارمندی", "1")
+                            )
+                                //.SelectedItems(new { Value = "0" })
+                                .Listeners(li => li.Change.Handler = "ReloadGridHoghoghMabna();"),
+                        X.Label("سال:")
+                        , X.TextField()
+                        .ItemID("txtYear")
+                        //.FieldLabel(":سال")
+                            .RTL(false).LabelCls("text-align: right;").LabelSeparator("")
+                        .Plugins(X.InputMask()
+                            .Mask("1CCC")
+                            .MaskSymbols(ls =>
+                            {
+                                ls.Add(new MaskSymbol { Name = "C", Regex = "[0-9]", Placeholder = "_".ToCharArray()[0] });
+                            })
+                        )
+                        .MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AllowBlank(false)
+                        .Width(150)
+                        .BlankText("لطفا سال را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                                            .Listeners(li => li.Change.Handler = "if(parseInt(App.HoghoghMabna.queryById('txtYear').getValue()).toString().length==4 && App.HoghoghMabna.queryById('CboType').getValue()!=null)ReloadGridHoghoghMabna();")
+                            ,
+                        X.Label("تعداد گروه:")
+                        , X.TextField()
+                            .Width(150)
+                                 .MaskRe("/[0-9]/")
+                        .ItemID("txtTedad")
+                        //.FieldLabel("تعداد گروه")
+                        .MsgTarget(Ext.Net.MessageTarget.Side)
+                            //.Plugins(X.InputMask()
+                            //    .Mask("AA")
+                            //    .UnmaskOnBlur(true)
+                            //    .ClearWhenInvalid(false)
+                            //    .MaskSymbols(ls =>
+                            //    {
+                            //        ls.Add(new MaskSymbol { Name = "A", Regex = "[0-9]", Placeholder = "_".ToCharArray()[0] });
+                            //    })
+                            //)
+                        .AllowBlank(false)
+                        .BlankText("لطفا تعداد گروه را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                            , X.Button().Text("درج").Icon(Ext.Net.Icon.Add).ItemID("btnDarj")
+                             .Listeners(li => li.Click.Handler = "okHoghoghMabna();")
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("HoghoghMabnaGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.HoghoghMabna.queryById('HoghoghMabnaGrid').selModel.refresh();")
+
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+        // .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.HoghoghMabna.queryById('HoghoghMabnaGrid');grid.setHeight(App.PersoneliWin.getHeight() - 260); ";
+
+                     })
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                             Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldGroh).Text("گروه").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldMablagh).Text("مبلغ").Flex(15).Editor(
+                                Html.X().TextField()
+                                .ItemID("txtMablagh")
+                                                 //    .Listeners(l => { l.Change.Handler = "App.HoghoghMabna.queryById('txtMablagh').setValue(accounting.formatNumber(App.HoghoghMabna.queryById('txtMablagh').getValue()));"; })
+                                )
+                        ).Plugins(
+                            Html.X().CellEditing().ClicksToEdit(1)
+                            )
+    )
+)
+<script type="text/javascript">
+
+   /* App.PersoneliWin.addListener('resize', function () {
+        App.HoghoghMabna.setWidth(App.PersoneliWin.getWidth());
+    });
+    App.PersoneliWin.addListener('resize', function () {
+        var grid = App.HoghoghMabna.queryById('HoghoghMabnaGrid');
+        grid.setHeight(App.PersoneliWin.getHeight() - 240);
+    });*/
+
+    function HoghoghMabnaSetSize() {
+        App.HoghoghMabna.setWidth(App.PersoneliWin.getWidth());
+        var grid = App.HoghoghMabna.queryById('HoghoghMabnaGrid');
+        grid.setHeight(App.PersoneliWin.getHeight() - 260);
+    }
+
+    function okHoghoghMabna() {
+
+        var CboType = App.HoghoghMabna.queryById('CboType');
+        var txtYear = App.HoghoghMabna.queryById('txtYear');
+        var txtTedad = App.HoghoghMabna.queryById('txtTedad');
+
+        var er = false;
+        if (CboType.validate() == false) {
+            er = true;
+        }
+        if (txtYear.validate() == false) {
+            er = true;
+        }
+        if (txtTedad.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        var Type = false;
+        if (CboType.getValue() == "1")
+            Type = true;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/HoghoghMabna/Reload?Group=' + txtTedad.getValue() + "&Sal=" + txtYear.getValue() + "&Estekhdam=" + Type,
+
+            success: function (result) {
+                App.HoghoghMabna.queryById('HoghoghMabnaGrid').getStore().loadData(result);
+                Ext.net.Mask.hide();
+
+            }
+
+        });
+    }
+    
+    function HelpHoghoghMabna() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/HoghoghMabna/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function ReloadGridHoghoghMabna() {
+        var CboType = App.HoghoghMabna.queryById('CboType').getValue();
+        var txtYear = App.HoghoghMabna.queryById('txtYear').getValue();
+
+        if (CboType != "") {
+            if (CboType == "1")
+                CboType = true;
+            else
+                CboType = false;
+            if (txtYear != "") {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Personeli/HoghoghMabna/ReloadGrid?Sal=' + txtYear + "&Estekhdam=" + CboType,
+
+                    success: function (result) {
+                        App.HoghoghMabna.queryById('HoghoghMabnaGrid').getStore().loadData(result);
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+    }
+    function SaveHoghoghMabna() {
+        var Type = App.HoghoghMabna.queryById('CboType');
+        var Year = App.HoghoghMabna.queryById('txtYear');
+        var Id = App.HoghoghMabna.queryById('fldId');
+
+        var TypeVal = true;
+        if (Type.getValue() == "0")
+            TypeVal = false;
+
+        var HoghVal = new Array();
+        var Mablagh;
+        var Groh;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+
+        var SelectedRow = App.HoghoghMabna.queryById('HoghoghMabnaGrid');
+        for (var i = 0; i < SelectedRow.selModel.store.count() ; i++) {
+            row = SelectedRow.selModel.store.data.items[i];
+            var MMablagh = row.data.fldMablagh;
+            var MGroh = row.data.fldGroh;
+
+            HoghVal.push({
+                'fldMablagh': MMablagh,
+                'fldGroh': MGroh,
+                'fldHoghoghMabnaId': Id.getValue()
+            });
+        }
+
+        if (HoghVal.length == 0) {
+            Ext.net.Mask.hide();
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "ابتدا دکمه درج را بزنید.",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else {
+            var data = {
+                HoghVal: HoghVal,
+                fldYear: Year.getValue(),
+                fldType: TypeVal,
+                fldId: Id.getValue()
+            };
+            $.ajax({
+                type: "POST",
+                url: '/Personeli/HoghoghMabna/Save',
+                datatype: "json",
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                success: function (result) {
+                    var data = result;/*JSON.parse(result);*/
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    Ext.net.Mask.hide();
+                },
+                failure: function (data) {
+                    alert(data.data);
+                }
+            });
+        }
+    }
+    function EnterNext() {
+        var keyfield = App.HoghoghMabna.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+         if (keyfield.itemId == "txtTedad") {
+            nextfld = App.HoghoghMabna.queryById('btnDarj');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+    }
+</script>

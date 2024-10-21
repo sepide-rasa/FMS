@@ -1,0 +1,381 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_PcPosIP>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+    .ID("PcPosIP")
+    .Listeners(li =>
+    {
+        li.AfterRender.Handler = "PcPosIPSetSize();";
+        li.Render.Fn = "addKeyMapPcPosIP";
+    })
+    .Title("تعریف کاربران PcPos")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .ButtonAlign(Alignment.Center)
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Icon.Disk)
+                    .Listeners(li => li.Click.Handler = "SavePcPosIP()"),
+                X.Button()
+                    .Text("ویرایش")
+                    .Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(Li => Li.Click.Handler = "LoadPcPosIP()"),
+                X.Button()
+                    .Text("حذف")
+                    .Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => l.Click.Handler = "DeletePcPosIP()"),
+                X.Button()
+                 .Text("راهنما")
+                 .Icon(Ext.Net.Icon.Help)
+                 .Listeners(l => { l.Click.Handler = "HelpPcPosIP()"; }),
+                Html.X().Button()
+                    .Text("خروج")
+                    .Icon(Icon.DoorOut)
+                    .OnClientClick("App.PcPosIP.destroy()")
+            )
+            .Items(
+                X.Hidden().ItemID("fldId"),
+                    X.Hidden().ItemID("fldIdUsers"),
+                        X.Hidden().ItemID("fldPcPosUserIds"),
+                X.FieldSet()
+                    .Border(true)
+                    .Title("مشخصات PcPos")
+                    .Layout(LayoutType.Table)
+                    .Defaults(new { margin = 2 })
+                    .MarginSpec("2px 2px 12px 2px")
+                    .PaddingSpec("5px 5px 8px 5px")
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                    .Items(
+                        X.Label("شرکت PSP:"),
+                        X.ComboBox()
+                            .ItemID("CboPSP_Organ")
+                            .Width(400)
+                            .ColSpan(3)
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا شرکت PSP را انتخاب کنید.")
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("شرکت PSP ...")
+                            .Listeners(l => l.AfterRender.Handler = "App.PcPosIP.queryById('CboPSP_Organ').validate();")
+                            .AutoFocus(true)
+                            .Store(X.Store()
+                                .Listeners(l => l.Load.Handler = "setDefaultCboPSP_Organ()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldID" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" },
+                                        new ModelField("fldOrganId", ModelFieldType.String) { Mapping = "fldOrganId" }
+                                            )
+                                    )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetPcPosInfo"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            ),
+                    X.Label("شماره سریال دستگاه:"),
+                    X.TextField()
+                        .ItemID("txtSerial")
+                        .Listeners(l => l.AfterRender.Handler = "App.PcPosIP.queryById('txtSerial').validate();")
+                        .MaxLength(50)
+                        .Width(167)
+                        .MaskRe("[a-z,A-Z,-,.,_,/,0-9]")
+                        .EnforceMaxLength(true)
+                        .AllowBlank(false)
+                        .BlankText("لطفا شماره سریال دستگاه را وارد کنید."),
+                    X.Label("IP دستگاه:"),
+                    X.TextField()
+                        .ItemID("txtIP")
+                        .MaxLength(50)
+                        .Width(167)
+                        .Listeners(l => l.AfterRender.Handler = "App.PcPosIP.queryById('txtIP').validate();")
+                        .EnforceMaxLength(true)
+                        .MaskRe("[0-9 .]")
+                        .Regex(@"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$")
+                        .RegexText("IP صحیح نیست.")
+                        .AllowBlank(false)
+                        .BlankText("لطفا IP دستگاه را وارد کنید."),
+                    X.Label("توضیحات:"),
+                    X.TextField()
+                        .ItemID("txtDesc")
+                        .Width(400)
+                        .ColSpan(3),
+                    X.Button()
+                        .Text("انتخاب کاربر")
+                        .ItemID("btnselectUser")
+                        .Icon(Icon.UserAdd)
+                        .Listeners(l=>l.Click.Handler="selectUser()"),
+                    X.TextArea()
+                        .ReadOnly(true)
+                        .Listeners(l => l.AfterRender.Handler = "App.PcPosIP.queryById('txtUsers').validate();")
+                        .ItemID("txtUsers")
+                        .ColSpan(3)
+                        .Width(400)
+                        .AllowBlank(false)
+                        .BlankText("لطفا کاربر/کاربران مورد نظر را انتخاب نمایید.")
+                    )),
+            X.GridPanel()
+                .AutoScroll(true)
+                .ItemID("PcPosIPGrid")
+                .BottomBar(X.PagingToolbar())
+                .Store(
+                    X.StoreForModel()
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+
+                    )
+                    .PageSize(15)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                    .Listeners(l => l.DataChanged.Handler = "App.PcPosIP.queryById('PcPosIPGrid').selModel.refresh();")
+                )
+                .View(
+                    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                .Plugins(X.FilterHeader().Remote(true))
+                    .Listeners(l =>
+                             {
+                                 l.AfterRender.Handler = "var grid = App.PcPosIP.queryById('PcPosIPGrid');grid.setHeight(App.DaramadWin.getHeight() - 395); ";
+
+                             })
+                .ColumnModel(
+                    Html.X().RowNumbererColumn(),
+                    Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.fldPcPosInfoId).Text("کد PcPosInfo").Hidden(true).Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.fldOrganName).Text("نام سازمان").Flex(6),
+                    Html.X().Column().DataIndex(Model, m => m.fldPspName).Text("نام شرکت PSP").Flex(6),                    
+                    Html.X().Column().DataIndex(Model, m => m.fldSerial).Text("شماره سریال").Flex(3),
+                    Html.X().Column().DataIndex(Model, m => m.fldIp).Text("IP دستگاه").Flex(3),
+                    Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(7)
+                    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+                )
+    )
+)
+<script type="text/javascript">
+
+    function PcPosIPSetSize() {
+        App.PcPosIP.setWidth(App.DaramadWin.getWidth());
+        App.PcPosIP.queryById('PcPosIPGrid').setHeight(App.DaramadWin.getHeight() - 395);
+    }
+
+    function setDefaultCboPSP_Organ() {
+        App.PcPosIP.queryById('CboPSP_Organ').setValue(App.PcPosIP.queryById('CboPSP_Organ').store.getAt(0).data.fldId);
+    }
+
+    function selectUser() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/SearchUser/Index',
+            params: {
+                State:1,
+                Organ: App.PcPosIP.queryById('CboPSP_Organ').findRecordByValue(App.PcPosIP.queryById('CboPSP_Organ').getValue()).data.fldOrganId
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function SavePcPosIP() {
+        var Id = App.PcPosIP.queryById('fldId');
+        var CboPSP_Organ = App.PcPosIP.queryById("CboPSP_Organ");
+        var txtSerial = App.PcPosIP.queryById("txtSerial");
+        var txtIP = App.PcPosIP.queryById("txtIP");
+        var txtDesc = App.PcPosIP.queryById("txtDesc");
+        var fldIdUsers = App.PcPosIP.queryById("fldIdUsers");
+        var txtUsers = App.PcPosIP.queryById("txtUsers");
+
+        var er = false;
+        if (CboPSP_Organ.validate() == false) {
+            er = true;
+        }
+        if (txtSerial.validate() == false) {
+            er = true;
+        }
+        if (txtIP.validate() == false) {
+            er = true;
+        }
+        if (txtUsers.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/PcPosIP/Save',
+            params: {
+                fldId: Id.getValue(),
+                fldPcPosInfoId: CboPSP_Organ.getValue(),
+                fldSerial: txtSerial.getValue(),
+                fldIp: txtIP.getValue(),
+                fldDesc: txtDesc.getValue(),
+                fldIdUsers: fldIdUsers.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+                if (data.Er != 1) {
+                    App.PcPosIP.queryById('PcPosIPGrid').store.load();
+                    ClearPcPosIP();
+                }
+            }
+        });
+    }
+
+    function LoadPcPosIP() {
+        var Row=App.PcPosIP.queryById('PcPosIPGrid').getSelectionModel().getLastSelected();
+        if (Row != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/PcPosIP/Details',
+                params: {
+                    Id: Row.data.fldId
+                },
+                success: function (data) {
+                    App.PcPosIP.queryById("fldIdUsers").setValue("");
+                    App.PcPosIP.queryById("txtUsers").setValue("");
+                    for (var i = 0; i < data.UserIds.length; i++) {
+                        App.PcPosIP.queryById('fldIdUsers').setValue(App.PcPosIP.queryById('fldIdUsers').getValue() + data.UserIds[i] + ";");
+                        App.PcPosIP.queryById('txtUsers').setValue(App.PcPosIP.queryById('txtUsers').getValue() + data.NameUser[i] + "،");
+                    }
+                    App.PcPosIP.queryById('fldId').setValue(data.fldId);
+                    App.PcPosIP.queryById("CboPSP_Organ").setValue(data.fldPcPosInfoId);
+                    App.PcPosIP.queryById("txtIP").setValue(data.fldIp);
+                    App.PcPosIP.queryById("txtSerial").setValue(data.fldSerial);
+                    App.PcPosIP.queryById("txtDesc").setValue(data.fldDesc); 
+                    App.PcPosIP.queryById("fldPcPosUserIds").setValue(data.UserPcPosSelectedIds);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function HelpPcPosIP() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/PcPosIP/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function DeletePcPosIP() {
+        var Row = App.PcPosIP.queryById('PcPosIPGrid').getSelectionModel().getLastSelected();
+        if (Row != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/PcPosIP/Delete',
+                            params: {
+                                Id: Row.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1) {
+                                    ic = Ext.MessageBox.ERROR;
+                                }
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                if (data.Er != 1) {
+                                    if (App.PcPosIP.queryById('fldId').getValue() == Row.data.fldId) {
+                                        ClearPcPosIP();
+                                    }
+                                    App.PcPosIP.queryById('PcPosIPGrid').store.load();
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearPcPosIP() {
+        App.PcPosIP.queryById('fldId').setValue(0);
+        App.PcPosIP.queryById('txtSerial').setValue("");
+        App.PcPosIP.queryById('txtIP').setValue("");
+        App.PcPosIP.queryById('txtDesc').setValue("");
+        App.PcPosIP.queryById("fldIdUsers").setValue("");
+        App.PcPosIP.queryById("txtUsers").setValue("");
+    }
+
+    var addKeyMapPcPosIP = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.PcPosIP.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.PcPosIP.queryById("btnselectUser");
+                        selectUser();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

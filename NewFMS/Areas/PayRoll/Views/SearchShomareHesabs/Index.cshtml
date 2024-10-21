@@ -1,0 +1,105 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_ShomareHesabs>
+@using Ext.Net.MVC;
+@{
+
+    var X = Html.X();
+}
+@(Html.X().Window().Modal(true)
+            .Width(600).Height(360)
+            .Title("کارگاه های بیمه")
+                    .ID("SearchShomareHesabs")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Items(
+                X.Panel().Border(false)
+                .Border(false)
+                .AutoScroll(true)
+                .Items(
+
+                        X.GridPanel().AutoScroll(true).Border(false)
+                        .TopBar(
+                            Html.X().Toolbar()
+                            .Items(
+                                    X.Button().Text("انتخاب").Icon(Ext.Net.Icon.ArrowRedo)
+                                                    .Listeners(li => li.Click.Handler = "NextSearchShomareHesabs();")
+
+                            )
+                        )
+                                .ItemID("GridSearchShomareHesabs").Flex(2)
+                    .BottomBar(X.PagingToolbar())
+                    .Height(330)
+                    .ColumnWidth(0.6)
+                    .Layout(Ext.Net.LayoutType.Column)
+                    .Store(
+                        X.StoreForModel()
+                        .Proxy(Html.X().AjaxProxy()
+                            .Url(Url.Action("Read"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+                                .ExtraParams(x => x.Add(new { PersonalId = @ViewBag.PersonalId }))
+                                        .ExtraParams(x => x.Add(new { OrganId = @ViewBag.OrganId }))
+                                
+                        )
+                        .PageSize(10)
+                        .RemoteFilter(true)
+                        .RemotePaging(true)
+
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(true))
+                        .ColumnModel(
+                            Html.X().RowNumbererColumn(),
+                              Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام").Flex(6),
+                               // Html.X().Column().DataIndex(Model, m => m.fldSh_Personali).Text("شماره کارگاه").Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.fldTypeHesabName).Text("نوع حساب").Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.fldBankName).Text("نام بانک").Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.fldShomareHesab).Text("شماره حساب").Flex(6),
+                                Html.X().Column().DataIndex(Model, m => m.fldShomareKart).Text("شماره کارت").Flex(6)
+                    )
+                            .Listeners(a => a.CellDblClick.Handler = "NextSearchShomareHesabs();")
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+
+            )
+        )
+)
+
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+    function NextSearchShomareHesabs() {
+        var SelectedRow = App.SearchShomareHesabs.queryById('GridSearchShomareHesabs').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            if (State == 1) {
+                App.NewKomakGheyerNaghdi.queryById('txtShomareHesab').setValue(SelectedRow.data.fldShomareHesab);
+                ShomareHesabId = SelectedRow.data.fldId;
+            }
+            else if (State == 2) {
+                var Grid = App.GroupKomakGheyerNaghdi.queryById("GroupKomakGheyerNaghdiGrid");
+                var k = Grid.store.find('fldPersonalInfoId',  '@ViewBag.PersonalId');
+                if (k >= 0) {
+                    var row = Grid.selModel.store.data.items[k];
+                    row.set('fldShomareHesab', SelectedRow.data.fldShomareHesab);
+                    row.set('fldShomareHesabId', SelectedRow.data.fldId);
+                }
+            }
+
+            App.SearchShomareHesabs.destroy();
+        }
+
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+
+</script>

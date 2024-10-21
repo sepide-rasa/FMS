@@ -1,0 +1,264 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_Roonevesht>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true)
+.Width(480)//.Height(220)
+        .Title("تعریف رونوشت نامه")
+        .ID("Roonevesht")
+              .Listeners(li => { li.AfterRender.Fn = "addKeyMapRoonevesht"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+
+    .Items(
+            X.Panel()
+                 .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                .Border(false)
+                .Buttons(
+                            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveRoonevesht")
+                    .Listeners(l => { l.Click.Handler = "SaveRoonevesht();"; })
+                , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadRoonevesht();"; })
+                , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteRoonevesht();"; })
+                , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                     .Listeners(l => { l.Click.Handler = "HelpRoonevesht();"; })
+                , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.Roonevesht.destroy()")
+                    )
+                .ButtonAlign(Ext.Net.Alignment.Center)
+                .Items(
+        //X.Panel()
+        //    .Border(true)
+        //        .Layout(Ext.Net.LayoutType.VBox)
+        //    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+        //    .Items(
+                            X.FieldSet()
+                            .Title("تعریف رونوشت")
+                               // .Border(false)
+                            //    .Width(550)
+         .Defaults(new { Margin = 2 })
+                                .Layout(LayoutType.Table)
+                                .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                                .Items(
+                        X.Hidden().ItemID("fldId"),
+                        X.Label("کد درآمد:"),
+                            X.TextField()
+                           //        .Margin(10)
+          .Width(360)
+                            .ReadOnly(true)
+                            .Text(@ViewBag.DaramadTitle)
+                            ,
+                             X.Label().Text("عنوان:")
+                                    , X.TextField()
+                                    .AutoFocus(true)
+                                         .Width(360)
+                                .ItemID("txtTitle").MaxLength(400)
+                            .AllowBlank(false)//.Width(170)
+                                .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                                .BlankText("لطفا عنوان را وارد کنید.")
+                            , X.Label("توضیحات:"),
+                                X.TextArea()
+                            .ItemID("txtDesc")
+
+                            .Width(360)
+                        )
+        //)
+        ),
+                  X.GridPanel().AutoScroll(true)
+                                .ItemID("RooneveshtGrid").Flex(2)
+                        .BottomBar(X.PagingToolbar())
+                        .Height(200)
+        //.ColumnWidth(0.6)
+        //.Layout(Ext.Net.LayoutType.Column)
+                        .Store(
+                            X.StoreForModel()
+                                 .Listeners(l => l.DataChanged.Handler = "App.Roonevesht.queryById('RooneveshtGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                            .Url(Url.Action("Read"))
+                                        .Reader(Html.X().JsonReader().Root("data"))
+                                                .ExtraParams(p => p.Add(new { ShomareHesabCodeDaramadId = @ViewBag.ShomareHesabCodeDaramadId }))
+
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+
+                        )
+                        .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+
+                        .Plugins(X.FilterHeader().Remote(true))
+                        .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldShomareHesabCodeDaramadId).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(6)
+                            )
+        //.Layout(Ext.Net.LayoutType.VBox)
+        //.LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+)
+
+<script type="text/javascript">
+    function HelpRoonevesht() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/Roonevesht/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function LoadRoonevesht() {
+        var SelectedRow = App.Roonevesht.queryById('RooneveshtGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/Roonevesht/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTitle = App.Roonevesht.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var txtDesc = App.Roonevesht.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.Roonevesht.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveRoonevesht() {
+        var txtTitle = App.Roonevesht.queryById('txtTitle');
+        var txtDesc = App.Roonevesht.queryById('txtDesc');
+        var fldId = App.Roonevesht.queryById('fldId');
+        var er = false;
+
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/Roonevesht/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldShomareHesabCodeDaramadId: '@ViewBag.ShomareHesabCodeDaramadId',
+                fldTitle: txtTitle.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.Roonevesht.queryById('RooneveshtGrid').store.load();
+                if (data.Er != 1)
+                    ClearRoonevesht();
+            }
+
+        });
+    }
+    function DeleteRoonevesht() {
+        var SelectedRow = App.Roonevesht.queryById('RooneveshtGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/Roonevesht/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.Roonevesht.queryById('RooneveshtGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearRoonevesht() {
+        App.Roonevesht.queryById('fldId').setValue(0);
+        App.Roonevesht.queryById('txtTitle').setValue("");
+        App.Roonevesht.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapRoonevesht = function (cmp) {
+
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.Roonevesht.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.Roonevesht.queryById('btnSaveRoonevesht');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

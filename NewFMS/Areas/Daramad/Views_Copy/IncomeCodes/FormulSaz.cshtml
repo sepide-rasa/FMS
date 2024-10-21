@@ -1,0 +1,400 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_ParametreSabet>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<style>
+    .test{
+        border-radius:5px;
+    }
+</style>
+
+@(Html.X().Window()
+    .Modal(true)
+    .Listeners(li => li.AfterRender.Handler = "FormulSazDSetSize();LoadFormulSazD()")
+    .Title("فرمول ساز")
+    .ID("FormulSazD")
+    .Closable(true)
+    .CloseAction(CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .ButtonAlign(Ext.Net.Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l =>
+            {
+                l.Click.Handler = "SaveFormulDaramad();";
+            })
+                , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                     .Listeners(l => { l.Click.Handler = "HelpFormulSazD();"; })
+            ,
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.FormulSazD.destroy()"))
+    .Items(
+        X.Panel()
+            .Border(false)            
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Stretch })
+                    .Items(
+                        /*X.Hidden().ItemID("fldFId"),*/
+                        X.Hidden().ItemID("CurrentText"),
+                        X.Hidden().ItemID("EnFormul"),
+                        X.TextArea()
+                            .ItemID("txtBoxFormul")
+                            .Margin(5)
+                            .AutoScroll(true)
+                            .ReadOnly(true)
+                            //.EnableKeyEvents(true)
+                            //.Listeners(l=>l.KeyDown.Fn="NewLine")
+                            .Height(100),
+                        X.Panel()
+                            .Border(false)
+                            .ItemID("pnlLow")
+                            .Defaults(new { margin=5})
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                            .Items(
+                                X.GridPanel()
+                                    .Title("پارامترهای ثابت")
+                                    .TitleAlign(TitleAlign.Right)
+                                    .ItemID("StaticParameter")
+                                    .Height(300)
+                                    .AutoScroll(true)
+                                    .Store(
+                                        X.StoreForModel()
+                                            .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadStaticParam"))
+                                                .Reader(Html.X().JsonReader().Root("data"))
+                                                        .ExtraParams(x => x.Add(new { ShomareHesabCodeDaramadId = @ViewBag.ShomareHesabCodeDaramadId }))
+                                            )
+                                        )
+                                    .View(
+                                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                                    )
+                                    .ColumnModel(
+                                        Html.X().RowNumbererColumn(),
+                                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد پارامتر").Flex(1),
+                                        Html.X().Column().DataIndex(Model, m => m.fldNameParametreFa).Text("عنوان پارامتر").Flex(4)
+                                    )
+                                    .Listeners(a => a.CellDblClick.Handler = "SetStaticParamText();"),
+                                X.GridPanel()
+                                    .Title("پارامترهای عمومی")
+                                    .TitleAlign(TitleAlign.Right)
+                                    .ItemID("GeneralParameter")
+                                    .Height(300)
+                                    .AutoScroll(true)
+                                    .Store(
+                                        X.StoreForModel()
+                                            .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadGeneralParam"))
+                                                .Reader(Html.X().JsonReader().Root("data"))
+                                            )
+                                        )
+                                    .View(
+                                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                                    )
+                                    .ColumnModel(
+                                        Html.X().RowNumbererColumn(),
+                                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد پارامتر").Flex(1),
+                                        Html.X().Column().DataIndex(Model, m => m.fldNameParametreFa).Text("عنوان پارامتر").Flex(4)
+                                    )
+                                    .Listeners(a => a.CellDblClick.Handler = "SetGeneralParamText();"),
+                                X.Panel()
+                                    .Height(300)
+                                    .BodyStyle("background-color:#dfe8f6 !important;border-radius:10px;")
+                                    .Items(
+                                        X.Panel()
+                                            .Title("")
+                                            .ItemID("Calculator")
+                                            .PaddingSpec("8px 2px 2px 2px")                                            
+                                            .BodyStyle("background-color:#dfe8f6 !important;border-radius:10px;")                                            
+                                            .Border(false)
+                                            .Width(230)
+                                            .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 5 })
+                                            .Defaults(new { Margin = 2.5, Width = 38, Height = 30 })
+                                            .Items(
+                                                X.TextField()
+                                                    .ItemID("txtBox")
+                                                    .FieldStyle("background-color:yellow;background-image:none;")
+                                                    .ColSpan(5)
+                                                    .Width(220),
+                                                X.Button()
+                                                    .Text("محاسبه")
+                                                    .ToolTip("صحت فرمول تعریف شده بررسی شده و سپس فرمول محاسبه می شود.")
+                                                    .ItemID("btnCalc")
+                                                    .ColSpan(2)
+                                                    .Width(85)
+                                                    .OnClientClick("CalcIncomeCodes();"),
+                                                X.Button()
+                                                    .Text("حذف فرمول")
+                                                    .ItemID("btnDel")
+                                                    .ColSpan(3)
+                                                    .Width(130)
+                                                    .OnClientClick("App.FormulSazD.queryById('txtBoxFormul').setValue('');App.FormulSazD.queryById('txtBox').setValue('');App.FormulSazD.queryById('CurrentText').setValue('');App.FormulSazD.queryById('EnFormul').setValue('');"),
+                                                X.Button()
+                                                    .Text("اگر")
+                                                    .ItemID("btnIf")
+                                                    .OnClientClick("SetFormulTextD('اگر(','if(')"),
+                                                X.Button()
+                                                    .Text("آنگاه")
+                                                    .ItemID("btnThen")
+                                                    .OnClientClick("SetFormulTextD('آنگاه ','then')"),
+                                                X.Button()
+                                                    .Text("درغیراین صورت")
+                                                    .ItemID("btnElse")
+                                                    .ColSpan(3)
+                                                    .Width(130)
+                                                    .OnClientClick("SetFormulTextD('در غیر این صورت ','else')"),
+                                                X.Button()
+                                                    .Text("-")
+                                                    .ItemID("btnMinus")
+                                                    .OnClientClick("SetFormulTextD('-',0)"),
+                                                X.Button()
+                                                    .Text("+")
+                                                    .ItemID("btnPlus")
+                                                    .OnClientClick("SetFormulTextD('+',0)"),
+                                                X.Button()
+                                                    .Text("3")
+                                                    .ItemID("btnThree")
+                                                    .OnClientClick("SetFormulTextD('3',0)"),
+                                                X.Button()
+                                                    .Text("2")
+                                                    .ItemID("btnTwo")
+                                                    .OnClientClick("SetFormulTextD('2',0)"),
+                                                X.Button()
+                                                    .Text("1")
+                                                    .ItemID("btnOne")
+                                                    .OnClientClick("SetFormulTextD('1',0)"),
+                                                X.Button()
+                                                    .Text("÷")
+                                                    .ItemID("btnDiv")
+                                                    .OnClientClick("SetFormulTextD('÷',0)"),
+                                                X.Button()
+                                                    .Text("×")
+                                                    .ItemID("btnMul")
+                                                    .OnClientClick("SetFormulTextD('*',0)"),
+                                                X.Button()
+                                                    .Text("6")
+                                                    .ItemID("btnSix")
+                                                    .OnClientClick("SetFormulTextD('6',0)"),
+                                                X.Button()
+                                                    .Text("5")
+                                                    .ItemID("btnFive")
+                                                    .OnClientClick("SetFormulTextD('5',0)"),
+                                                X.Button()
+                                                    .Text("4")
+                                                    .ItemID("btnFour")
+                                                    .OnClientClick("SetFormulTextD('4',0)"),
+                                                X.Button()
+                                                    .Text("<")
+                                                    .ItemID("btnLess")
+                                                    .OnClientClick("SetFormulTextD('<',0)"),
+                                                X.Button()
+                                                    .Text(">")
+                                                    .ItemID("btnBig")
+                                                    .OnClientClick("SetFormulTextD('>',0)"),
+                                                X.Button()
+                                                    .Text("9")
+                                                    .ItemID("btnNine")
+                                                    .OnClientClick("SetFormulTextD('9',0)"),
+                                                X.Button()
+                                                    .Text("8")
+                                                    .ItemID("btnEight")
+                                                    .OnClientClick("SetFormulTextD('8',0)"),
+                                                X.Button()
+                                                    .Text("7")
+                                                    .ItemID("btnSeven")
+                                                    .OnClientClick("SetFormulTextD('7',0)"),
+                                                X.Button()
+                                                    .Text("=!")
+                                                    .ItemID("btnNotEqual")
+                                                    .OnClientClick("SetFormulTextD('=!',0)"),
+                                                X.Button()
+                                                    .Text("=")
+                                                    .ItemID("btnEqual")
+                                                    .OnClientClick("SetFormulTextD('=',0)"),
+                                                X.Button()
+                                                    .Text("%")
+                                                    .ItemID("btnPercent")
+                                                    .OnClientClick("SetFormulTextD('%',0)"),
+                                                X.Button()
+                                                    .Text(".")
+                                                    .ItemID("btnDot")
+                                                    .OnClientClick("SetFormulTextD('.',0)"),
+                                                X.Button()
+                                                    .Text("O")                                                    
+                                                    .ItemID("btnZero")
+                                                    .OnClientClick("SetFormulTextD('0',0)"),
+                                                X.Button()
+                                                    .Text("→")
+                                                    .ItemID("btnClear")
+                                                    .OnClientClick("SetClearD()"),
+                                                X.Button()
+                                                    .Text("[")
+                                                    .ItemID("btnOpenBracket")
+                                                    .OnClientClick("SetFormulTextD('[',0)"),
+                                                X.Button()
+                                                    .Text("]")
+                                                    .ItemID("btnCloseBracket")
+                                                    .OnClientClick("SetFormulTextD(']',0)"),
+                                                X.Button()
+                                                    .Text("(")
+                                                    .ItemID("btnOpenParenthesis")
+                                                    .OnClientClick("SetFormulTextD('(',0);"),
+                                                X.Button()
+                                                    .Text(")")
+                                                    .ItemID("btnCloseParenthesis")
+                                                    .OnClientClick("SetFormulTextD(')',0);")
+                                        ))
+                                )
+                        )
+            )
+        )
+)
+
+<script>
+    function HelpFormulSazD() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/IncomeCodes/HelpFormulSaz',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function LoadFormulSazD() {
+        if ('@ViewBag.Formul' != '') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/IncomeCodes/DetailsFormul',
+                params: {
+                    ShomareHesabCodeDaramadId: '@ViewBag.ShomareHesabCodeDaramadId'
+                },
+                success: function (data) {
+                    App.FormulSazD.queryById('txtBoxFormul').setValue(data.Formul);
+                    App.FormulSazD.queryById('CurrentText').setValue(data.CurrentText);
+                    App.FormulSazD.queryById('EnFormul').setValue(data.EnFormul);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+
+    function FormulSazDSetSize() {
+        App.FormulSazD.setWidth(App.DaramadWin.getWidth() - 500);
+        App.FormulSazD.queryById("StaticParameter").setWidth((App.DaramadWin.getWidth() - 777) / 2);
+        App.FormulSazD.queryById("GeneralParameter").setWidth((App.DaramadWin.getWidth() - 777) / 2);
+    }
+
+    /*var NewLine = function (key, e) {
+        if (e.keyCode == 13) {
+            App.FormulSazD.queryById('txtBoxFormul').setValue(App.FormulSazD.queryById('txtBoxFormul').getValue() + "\n");
+        }
+    };*/
+
+    function SetStaticParamText() {
+        var SelectedRow = App.FormulSazD.queryById('StaticParameter').selModel.getLastSelected();
+        var TextFa = SelectedRow.data.fldNameParametreFa;
+        var TextEn = SelectedRow.data.fldNameParametreEn;
+        App.FormulSazD.queryById('txtBoxFormul').setValue(App.FormulSazD.queryById('txtBoxFormul').getValue() + TextFa);
+        App.FormulSazD.queryById('CurrentText').setValue(App.FormulSazD.queryById('CurrentText').getValue() + TextFa + ';');
+        App.FormulSazD.queryById('EnFormul').setValue(App.FormulSazD.queryById('EnFormul').getValue() + TextEn + ';');
+    }
+
+    function SetGeneralParamText() {
+        var SelectedRow = App.FormulSazD.queryById('GeneralParameter').selModel.getLastSelected();
+        var TextFa = SelectedRow.data.fldNameParametreFa;
+        var TextEn = SelectedRow.data.fldNameParametreEn;
+        App.FormulSazD.queryById('txtBoxFormul').setValue(App.FormulSazD.queryById('txtBoxFormul').getValue() + TextFa);
+        App.FormulSazD.queryById('CurrentText').setValue(App.FormulSazD.queryById('CurrentText').getValue() + TextFa + ';');
+        App.FormulSazD.queryById('EnFormul').setValue(App.FormulSazD.queryById('EnFormul').getValue() + TextEn + ';');
+    }
+
+    function SetFormulTextD(Text, X) {
+        App.FormulSazD.queryById('txtBoxFormul').setValue(App.FormulSazD.queryById('txtBoxFormul').getValue() + Text);
+        App.FormulSazD.queryById('CurrentText').setValue(App.FormulSazD.queryById('CurrentText').getValue() + Text + ';');
+        if (X == 0)
+            App.FormulSazD.queryById('EnFormul').setValue(App.FormulSazD.queryById('EnFormul').getValue() + Text + ';');
+        else
+            App.FormulSazD.queryById('EnFormul').setValue(App.FormulSazD.queryById('EnFormul').getValue() + X + ';');
+    }
+
+    function SetClearD() {
+        var k = App.FormulSazD.queryById('txtBoxFormul').getValue().length;
+        var z1 = App.FormulSazD.queryById('CurrentText').getValue().length;
+        var En1 = App.FormulSazD.queryById('EnFormul').getValue().length;
+        var z = App.FormulSazD.queryById('CurrentText').getValue().split(';');
+        var En = App.FormulSazD.queryById('EnFormul').getValue().split(';');
+        var s = z[z.length - 2];
+        var s2 = En[En.length - 2];
+        App.FormulSazD.queryById('txtBoxFormul').setValue(App.FormulSazD.queryById('txtBoxFormul').getValue().substring(0, k - s.length));
+        App.FormulSazD.queryById('CurrentText').setValue(App.FormulSazD.queryById('CurrentText').getValue().substring(0, z1 - s.length - 1));
+        App.FormulSazD.queryById('EnFormul').setValue(App.FormulSazD.queryById('EnFormul').getValue().substring(0, En1 - s2.length - 1));
+    }
+
+    function CalcIncomeCodes() {
+        Ext.net.Mask.show({ msg: 'در حال محاسبه...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/IncomeCodes/CalcFormul',
+            params: {
+                Formul: App.FormulSazD.queryById('EnFormul').getValue(),
+                ShomareHesabCodeDaramadId: '@ViewBag.ShomareHesabCodeDaramadId',
+                ElamAvarezId:""
+            },
+            success: function (data) {
+                if (data.Er == 1) {
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    Ext.net.Mask.hide();
+                }
+                else {
+                    App.FormulSazD.queryById('txtBox').setValue(data.FResult);
+                    Ext.net.Mask.hide();
+                }
+            }
+        });
+    }
+
+    function SaveFormulDaramad() {
+        var txtFormul = App.FormulSazD.queryById('EnFormul').getValue();
+        /*var fldFId = App.FormulSazD.queryById('fldFId').getValue();*/
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/IncomeCodes/SaveFormul',
+            params: {
+                fldId: '@ViewBag.ShomareHesabCodeDaramadId',
+                fldFormolsaz: txtFormul
+                /*fldId: fldFId*/
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                if(data.Er!=1){
+                   /* var n = App.TreeDaramad.getRootNode().findChild("id", 'ViewBag.ShomareHesabCodeDaramadId');
+                    App.TreeDaramad.getStore().load({ node: n.parentNode });*/
+                    ChangeOrgan();
+                }
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+</script>

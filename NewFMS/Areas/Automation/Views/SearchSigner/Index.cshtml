@@ -1,0 +1,129 @@
+﻿@model IEnumerable<NewFMS.WCF_Automation.OBJ_Commision>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{
+    var X = Html.X();
+}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+
+@(Html.X().Window()
+    .Width(600)
+    .Height(300)
+    .Title("امضا کنندگان")
+    .ID("SearchSigner")
+    .Closable(true)
+    .Modal(true)
+    .Layout(Ext.Net.LayoutType.Fit)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .AutoScroll(true)
+            .Layout(Ext.Net.LayoutType.Fit)
+            .Items(
+                X.GridPanel()//.Height(300)
+                    .AutoScroll(true)
+                    .Border(false)
+                    .TopBar(
+                        Html.X().Toolbar()
+                            .Items(
+                                X.Button()
+                                    .Text("انتخاب")
+                                    .Icon(Ext.Net.Icon.ArrowRedo)
+                                    .Listeners(li => li.Click.Handler = "NextSearchSigner();")
+                                )
+                        )
+                    .ItemID("GridSearchSigner")
+                    .Store(
+                        X.StoreForModel()
+
+                    .Listeners(l => l.Load.Handler = "LoadSavedData();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                                   // .ExtraParams(x => x.Add(new { CommId = @ViewBag.CommId, SearchType = @ViewBag.SearchType }))
+                        )
+                        .PageSize(20000)
+                        .RemoteFilter(true)
+                        .RemotePaging(true)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+            .Plugins(X.FilterHeader().Remote(false))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                                 Html.X().Column().DataIndex(Model, m => m.fldID).Text("کد").Hidden(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام").Flex(2),
+                                        Html.X().Column().DataIndex(Model, m => m.fldO_postEjraee_Title).Text("پست سازمانی").Flex(2)
+                    )
+                    .Listeners(a => a.CellDblClick.Handler = "NextSearchSigner();")
+                    .SelectionModel(
+                        Html.X().CheckboxSelectionModel().CheckOnly(true)
+                            .Mode(Ext.Net.SelectionMode.Multi)
+                    )
+
+            )
+        )
+)
+
+<script type="text/javascript">
+
+    function LoadSavedData() {
+        var CommSelected = "";
+        if ('@ViewBag.State' == "1")
+            CommSelected = App.PnlAsliLetter.queryById('SignerSelected').getValue();
+
+        if (CommSelected != "") {
+            var u = CommSelected.split(";");
+            for (var j = 0; j < u.length-1; j++) {
+                var index = App.SearchSigner.queryById('GridSearchSigner').getStore().findExact("fldID", parseInt(u[j]));
+                App.SearchSigner.queryById('GridSearchSigner').getSelectionModel().select(index, true);
+            }
+        }
+    }
+    function NextSearchSigner() {
+        var SelectedRow = App.SearchSigner.queryById('GridSearchSigner').getSelectionModel().getSelection();
+
+        if (SelectedRow != null) {
+            if ('@ViewBag.State' == "1") {
+                App.PnlAsliLetter.queryById('SignerSelected').setValue("");
+                App.PnlAsliLetter.queryById('txtSigner').setValue("");
+                for (var i = 0; i < SelectedRow.length; i++) {
+                    App.PnlAsliLetter.queryById('SignerSelected').setValue(App.PnlAsliLetter.queryById('SignerSelected').getValue() + SelectedRow[i].data.fldID + ";");
+                    App.PnlAsliLetter.queryById('txtSigner').setValue(App.PnlAsliLetter.queryById('txtSigner').getValue() + SelectedRow[i].data.fldName +"("+ SelectedRow[i].data.fldO_postEjraee_Title + ")،");
+                }
+
+            }
+          
+            App.SearchSigner.destroy();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا امضا کننده مورد نظر را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

@@ -1,0 +1,952 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_ItemsEstekhdam_MoteghayerHoghoghi>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+<style>
+    .NewMoteghayerhaHoghoghi-icon {
+        margin-right: 107px!important;
+    }
+    /*.x-rtl .x-textfield-icon {
+        margin-right: 105px;
+    }
+
+    .x-rtl .x-textfield-icon-input {
+        padding-right: 3px;
+    }*/
+
+    .x-fieldset-header {
+        text-align: right!important;
+    }
+
+    /*#txtSaateKari x-textfield-icon {
+        margin-right: 90px;
+    }*/
+</style>
+
+<script src="~/Scripts/accounting.js"></script>
+
+@(Html.X().Window()
+    .Closable(true)
+    .CloseAction(CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Modal(true)
+    .Width(610)
+    .Height(520)
+    .ID("NewMoteghayerhaHoghoghi")
+    .Title("ثبت متغیرهای حقوقی")
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        Html.X().Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveMoteghayerhaHoghoghi()"),
+        Html.X().Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => l.Click.Handler = "App.NewMoteghayerhaHoghoghi.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .AutoScroll(true)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.PaddingSpec("4px 0 4px 0")
+            .Items(
+                X.Hidden().ItemID("fldId"),
+                Html.X().FieldSet()
+                    .Border(true)
+                    .ItemID("fieldsetEstekhdam")
+                    .Defaults(new { Margin = 2 })
+                    .Title("مشخصات استخدام")
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                    .Items(
+                        X.Label("تاریخ صدور:"),
+                        X.PDateField()
+                                .ItemID("txtTarikheSodor")
+                                .MaskRe("/[0-9 /]/")
+                                .MaxLength(10)
+                                .EnforceMaxLength(true)
+                            .AutoFocus(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا تاریخ صدور را وارد کنید.")
+                            .Editable(true),
+                        X.Label("تاریخ اجرا:"),
+                        X.PDateField()
+                                .ItemID("txtTarikheEjra")
+                                .MaskRe("/[0-9 /]/")
+                                .MaxLength(10)
+                                .EnforceMaxLength(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا تاریخ اجرا را وارد کنید.")
+                            .Editable(true),
+                        X.Label("نوع استخدام:"),
+                        X.ComboBox()
+                            .ItemID("CboAnvaeEstekhdam")
+                            .Listeners(l => l.Change.Handler = "ReloadItem()")
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع استخدام را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("Name")
+                            .ValueField("ID")
+                            .EmptyText("نوع استخدام...")
+                            .Store(X.Store().Listeners(l => l.Load.Handler = "LoadMoteghayerhaHoghoghi();setDefaultValue()")
+                                .Model(X.Model()
+                                    .IDProperty("ID")
+                                    .Fields(
+                                        new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                        new ModelField("Name", ModelFieldType.String) { Mapping = "Name" },
+                                        new ModelField("TypeNoeEstekhdam", ModelFieldType.String) { Mapping = "fldNoeEstekhdamId" }
+                                        )
+                                    )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetAnvaeEstekhdam"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                    )
+                            ),
+                        X.Label("نوع بیمه:"),
+                        X.ComboBox()
+                            .ItemID("CboTypeBime")
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع بیمه را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("Name")
+                            .ValueField("ID")
+                            .EmptyText("نوع بیمه...")
+                            .Listeners(l => l.Select.Handler = "ChangeTypeBime()")
+                            //.SelectedItems(new { value="1"})
+                            .Store(X.Store().Listeners(l => l.Load.Handler = "setDefaultValueBime()")
+                                .Model(X.Model()
+                                    .IDProperty("ID")
+                                    .Fields(
+                                    new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                    new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetTypeBime"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                    )
+                                ),
+                        X.Label("درصد بیمه پرسنل:"),
+                        X.NumberField()
+                            .ItemID("txtBimePersonel")
+                            .IconCls("Percent")
+                            .AllowBlank(false)
+                            .Value(0)
+                            .MaxValue(100)
+                            .MinValue(0)
+                            //.MaxLength(7)
+                            .EnforceMaxLength(true)
+                            .FieldStyle("padding-right:6px;")
+                            .AllowExponential(false)
+                            .BlankText("لطفا درصد بیمه پرسنل را وارد کنید.")
+                            .AllowDecimals(true)
+                            .DecimalSeparator(".")
+                            .Listeners(l => {
+                                l.Change.Handler = "setMaxLength(App.NewMoteghayerhaHoghoghi.queryById('txtBimePersonel'))";
+                                l.AfterRender.Handler = "App.NewMoteghayerhaHoghoghi.queryById('txtBimePersonel').icon.dom.classList.add('NewMoteghayerhaHoghoghi-icon');";
+                            })
+                            .DecimalPrecision(4),
+                        X.Label("درصد بیمه کارفرما:"),
+                        X.NumberField()
+                            .ItemID("txtBimeKarfarma")
+                            .IconCls("Percent")
+                            .AllowBlank(false)
+                            .FieldStyle("padding-right:6px;")
+                            .EnforceMaxLength(true)
+                            .MaxValue(100)
+                            .AllowExponential(false)
+                            .Value(0)
+                            //.MaxLength(7)
+                            .MinValue(0)
+                            .BlankText("لطفا درصد بیمه کارفرما را وارد کنید.")
+                            .AllowDecimals(true)
+                            .DecimalSeparator(".")
+                            .Listeners(l => {
+                                l.Change.Handler = "setMaxLength(App.NewMoteghayerhaHoghoghi.queryById('txtBimeKarfarma'))";
+                                l.AfterRender.Handler = "App.NewMoteghayerhaHoghoghi.queryById('txtBimeKarfarma').icon.dom.classList.add('NewMoteghayerhaHoghoghi-icon');";                                
+                            })
+                            .DecimalPrecision(4),
+                        X.Label("درصد بیمه بیکاری:"),
+                        X.NumberField()
+                            .ItemID("txtBimeBikari")
+                            .IconCls("Percent")
+                            .Value(0)
+                            .AllowBlank(false)
+                            .FieldStyle("padding-right:6px;")
+                            .EnforceMaxLength(true)
+                            //.MaxLength(7)
+                            .AllowExponential(false)
+                            .MaxValue(100)
+                            .MinValue(0)
+                            .BlankText("لطفا درصد بیمه بیکاری را وارد کنید.")
+                            .AllowDecimals(true)
+                            .DecimalSeparator(".")
+                            .Listeners(l => {
+                                l.Change.Handler = "setMaxLength(App.NewMoteghayerhaHoghoghi.queryById('txtBimeBikari'))";
+                                l.AfterRender.Handler = "App.NewMoteghayerhaHoghoghi.queryById('txtBimeBikari').icon.dom.classList.add('NewMoteghayerhaHoghoghi-icon');";
+                            })
+                            .DecimalPrecision(4),
+                        X.Label("درصد بیمه مشاغل سخت:"),
+                        X.NumberField()
+                            .ItemID("txtBimeMashaghelesakht")
+                            .AllowBlank(false)
+                            .IconCls("Percent")
+                            .FieldStyle("padding-right:6px;")
+                            .MaxValue(100)
+                            .Value(0)
+                            .AllowExponential(false)
+                            //.MaxLength(6)
+                            .MinValue(0)
+                            .EnforceMaxLength(true)
+                            .BlankText("لطفا درصد بیمه مشاغل سخت را وارد کنید.")
+                            .AllowDecimals(true)
+                            .DecimalSeparator(".")
+                            .Listeners(l => {
+                                l.Change.Handler = "setMaxLength(App.NewMoteghayerhaHoghoghi.queryById('txtBimeMashaghelesakht'))";
+                                l.AfterRender.Handler = "App.NewMoteghayerhaHoghoghi.queryById('txtBimeMashaghelesakht').icon.dom.classList.add('NewMoteghayerhaHoghoghi-icon');";
+                            })
+                            .DecimalPrecision(4),
+                        X.Label("درصد بیمه جانبازان:"),
+                        X.NumberField()
+                            .ItemID("txtBimeJanbazan")
+                            .AllowBlank(false)
+                            .AllowExponential(false)
+                            .IconCls("Percent")
+                            .FieldStyle("padding-right:6px;")
+                            .MaxValue(100)
+                            .Value(0)
+                            .MinValue(0)
+                            .DecimalSeparator(".")
+                            .Listeners(l => {
+                                l.Change.Handler = "setMaxLength(App.NewMoteghayerhaHoghoghi.queryById('txtBimeJanbazan'))";
+                                l.AfterRender.Handler = "App.NewMoteghayerhaHoghoghi.queryById('txtBimeJanbazan').icon.dom.classList.add('NewMoteghayerhaHoghoghi-icon');";
+                            })
+                            //.MaxLength(7)
+                            .EnforceMaxLength(true)
+                            .BlankText("لطفا درصد بیمه جانبازان را وارد کنید.")
+                            .AllowDecimals(true)
+                            .DecimalPrecision(4),
+                        X.Label("توضیحات:"),
+                        X.TextField()
+                            .ItemID("txtDesc")),
+                Html.X().FieldSet()
+                    .Border(true)
+                    .ItemID("fieldsetKarmand")
+                    .Defaults(new { Margin = 1 })
+                    .Title("کارمندی")
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                    .Items(
+                        X.Label("حق درمان کارمند:"),
+                        X.NumberField()
+                            .ItemID("txtDarmanKarmand")
+                            .AllowBlank(false)
+                            .AllowExponential(false)
+                            .MaxValue(9999.9999)
+                            //.MaxValue(100)
+                            .Listeners(l => l.Change.Handler = "setMaxLength(App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarmand'))")
+                            .Value(0)
+                            .MinValue(0)
+                            .DecimalSeparator(".")
+                            //.MaxLength(7)
+                            .EnforceMaxLength(true)
+                            .BlankText("لطفا حق درمان کارمند را وارد کنید.")
+                            .AllowDecimals(true)
+                            .DecimalPrecision(4),
+                        X.Label("حق درمان کارفرما:"),
+                        X.NumberField()
+                            .ItemID("txtDarmanKarfarma")
+                            .AllowBlank(false)
+                            .AllowExponential(false)
+                            .MaxValue(9999.9999)
+                            //.MaxValue(100)
+                            .Listeners(l => l.Change.Handler = "setMaxLength(App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarfarma'))")
+                            .Value(0)
+                            .MinValue(0)
+                            .DecimalSeparator(".")
+                            //.MaxLength(7)
+                            .EnforceMaxLength(true)
+                            .BlankText("لطفا حق درمان کارفرما را وارد کنید.")
+                            .AllowDecimals(true)
+                            .DecimalPrecision(4),
+                        X.Label("حق درمان دولت:"),
+                        X.NumberField()
+                            .ItemID("txtDarmanDolat")
+                            .AllowBlank(false)
+                            .AllowExponential(false)
+                            .MaxValue(9999.9999)
+                            //.MaxValue(100)
+                            .Listeners(l => l.Change.Handler = "setMaxLength(App.NewMoteghayerhaHoghoghi.queryById('txtDarmanDolat'))")
+                            .Value(0)
+                            .MinValue(0)
+                            .DecimalSeparator(".")
+                            .MaxLength(7)
+                            .EnforceMaxLength(true)
+                            .BlankText("لطفا حق درمان دولت را وارد کنید.")
+                            .AllowDecimals(true)
+                            .DecimalPrecision(4),
+                        X.Label("حق درمان تحت تکفل:"),
+                        X.NumberField()
+                            .ItemID("txtDarmanTakafol")
+                            .AllowBlank(false)
+                            .Value(0)
+                            .AllowExponential(false)
+                            .Listeners(l => l.Change.Handler = "CheckInt2(App.NewMoteghayerhaHoghoghi.queryById('txtDarmanTakafol'));")
+                            .MinValue(0)
+                            .BlankText("لطفا حق درمان افراد تحت تکفل را وارد کنید.")
+                            .AllowDecimals(false),
+                        X.Label("حق درمان مازاد:"),
+                        X.NumberField()
+                            .ItemID("txtDarmanMazad")
+                            .AllowBlank(false)
+                            .Value(0)
+                            .AllowExponential(false)
+                            .Listeners(l => l.Change.Handler = "CheckInt2(App.NewMoteghayerhaHoghoghi.queryById('txtDarmanMazad'));")
+                            .MinValue(0)
+                            .BlankText("لطفا حق درمان دولت را وارد کنید.")
+                            .AllowDecimals(false),
+                        X.Label("سقف حق درمان:"),
+                        X.NumberField()
+                            .ItemID("txtMaxHagheDarman")
+                            .Value(0)
+                            .AllowBlank(false)
+                            .AllowExponential(false)
+                            .Listeners(l => l.Change.Handler = "CheckInt2(App.NewMoteghayerhaHoghoghi.queryById('txtMaxHagheDarman'));")
+                            .MinValue(0)
+                            .BlankText("لطفا سقف حق درمان را وارد کنید.")
+                            .AllowDecimals(false),
+                        X.Label("ضریب حقوقی سال:"),
+                        X.NumberField()
+                            .ItemID("txtZarib")
+                            .AllowBlank(false)
+                            .Value(0)
+                            .AllowExponential(false)
+                            .ColSpan(3)
+                            .Listeners(l => l.Change.Handler = "CheckInt2(App.NewMoteghayerhaHoghoghi.queryById('txtZarib'))")
+                            .MinValue(0)
+                            .BlankText("لطفا ضریب حقوقی سال را وارد کنید.")
+                            .AllowDecimals(false),
+                        Html.X().FieldSet()
+                            .Border(true)
+                            .ItemID("fieldsetEzafe")
+                            .ColSpan(4)
+                            .Defaults(new { Margin = 2 })
+                            .Title("آیتم های اضافه کاری کارمندی")
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 1 })
+                            .Items(
+                                Html.X().FieldSet()
+                                    .Border(false)
+                                    .Defaults(new { Margin = 2 })
+                                    .Layout(LayoutType.Table)
+                                    .Items(
+                                        Html.X().Checkbox().ItemID("Hoghough"),
+                                        Html.X().Label("حقوق"),
+                                        Html.X().Checkbox().ItemID("fogholadeShoghl").PaddingSpec("0 17px 0 0"),
+                                        Html.X().Label("فوق العاده شغل"),
+                                        Html.X().Checkbox().ItemID("Tatbigh").PaddingSpec("0 17px 0 0"),
+                                        Html.X().Label("تفاوت تطبیق"),
+                                        Html.X().Checkbox().ItemID("FoghTalash").PaddingSpec("0 17px 0 0"),
+                                        Html.X().Label("فوق العاده تلاش"),
+                                        Html.X().Checkbox().ItemID("fogholadeVizhe").PaddingSpec("0 17px 0 0"),
+                                        Html.X().Label("فوق العاده ویژه")),
+                                Html.X().FieldSet()
+                                    .Border(false)
+                                    .Defaults(new { Margin = 2 })
+                                    .Layout(LayoutType.Table)
+                                    .Items(
+                                        Html.X().Checkbox().ItemID("tadil"),
+                                        Html.X().Label("تعدیل"),
+                                        Html.X().Checkbox().ItemID("barjestegi").PaddingSpec("0 19px 0 0"),
+                                        Html.X().Label("برجستگی"),
+                                        Html.X().Checkbox().ItemID("sanavat").PaddingSpec("0 47px 0 0"),
+                                        Html.X().Label("سنوات"),
+                                        Html.X().Checkbox().ItemID("jazb").PaddingSpec("0 46px 0 0"),
+                                        Html.X().Label("حق جذب")
+                                        ))),
+                Html.X().FieldSet()
+                    .Border(true)
+                    .ItemID("fieldsetKargar")
+                    .Defaults(new { Margin = 2 })
+                    .Title("کارگری")
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                    .Items(
+                        X.Label("ضریب اضافه کار:").PaddingSpec("0 0 0 10px"),
+                        X.NumberField()
+                            .ItemID("txtZaribEzafeKar")
+                            .AllowBlank(false)
+                            .AllowExponential(false)
+                            .PaddingSpec("0 0 0 62px")
+                            .Value(140)
+                            .Listeners(l => l.Change.Handler = "CheckInt2(App.NewMoteghayerhaHoghoghi.queryById('txtZaribEzafeKar'))")
+                            .MinValue(0)
+                            .BlankText("لطفا ضریب اضافه کار را وارد کنید.")
+                            .AllowDecimals(false),
+                        X.Label("ساعت کاری:"),
+                        X.NumberField()
+                            .ItemID("txtSaateKari")
+                            .Icon(Icon.ClockStart)
+                            //.IconCls("clock")
+                            .AllowBlank(false)
+                            .FieldStyle("padding-right:6px;")
+                            .Value(7.33)
+                            .AllowExponential(false)
+                            .MinValue(0)
+                            .MaxValue(9999.9999)
+                            .DecimalSeparator(".")
+                            //.MaxLength(7)
+                            .EnforceMaxLength(true)
+                            .BlankText("لطفا ساعت کاری را وارد کنید.")
+                            .AllowDecimals(true)
+                            .DecimalPrecision(4)
+                            .Listeners(l =>{
+                                l.Change.Handler = "setMaxLength(App.NewMoteghayerhaHoghoghi.queryById('txtSaateKari'))";
+                                l.AfterRender.Handler = "App.NewMoteghayerhaHoghoghi.queryById('txtSaateKari').icon.dom.classList.add('NewMoteghayerhaHoghoghi-icon');";                                
+                            })
+                    ),
+                X.GridPanel()
+                    .ItemID("GridMashmooliBime")
+                    .Title("مشمولی های بیمه")
+                    .AutoScroll(true)
+                    .Listeners(l => l.ViewReady.Handler = "App.NewMoteghayerhaHoghoghi.queryById('GridMashmooliBime').setWidth(App.NewMoteghayerhaHoghoghi.queryById('fieldsetEstekhdam').getWidth());")
+                    .Height(240)
+        //.Width(500)
+        //.BottomBar(X.PagingToolbar())
+                    .Store(Html.X().StoreForModel())
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn().Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان").Flex(5),
+                        X.CheckColumn().Text("مزایای مشمول").DataIndex(Model, m => m.fldMazayaMashmool).Editable(true).Flex(3)
+                    )
+                    .SelectionModel(
+                                Html.X().CheckboxSelectionModel().PruneRemoved(false).CheckOnly(true)
+                            .Mode(Ext.Net.SelectionMode.Multi)
+                    )
+            )
+    )
+)
+
+<script type="text/javascript">
+
+    function CheckInt2(txt) {
+        var t = String(txt.getValue()).replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', '');
+        if (parseInt(t) > 2147483647) {
+            txt.blankText = "مقدار وارد شده بیشتر از حد مجاز است.";
+            alert("مقدار وارد شده بیشتر از حد مجاز است.");
+            txt.setValue("");
+        }
+    }
+
+    function setMaxLength(field) {
+        if (field == App.NewMoteghayerhaHoghoghi.queryById('txtSaateKari') || field == App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarmand')
+            || field == App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarfarma') || field == App.NewMoteghayerhaHoghoghi.queryById('txtDarmanDolat')) {
+            if (String(field.getValue()).split('.')[1] != undefined) {
+                if (String(field.getValue()).split('.')[0].length == 1) {
+                    field.inputEl.set({ maxLength: 6 });
+                }
+                else if (String(field.getValue()).split('.')[0].length == 2) {
+                    field.inputEl.set({ maxLength: 7 });
+                }
+                else if (String(field.getValue()).split('.')[0].length == 3) {
+                    field.inputEl.set({ maxLength: 8 });
+                }
+                else if (String(field.getValue()).split('.')[0].length == 4) {
+                    field.inputEl.set({ maxLength: 9 });
+                }
+            }
+        }
+        else{
+            if (String(field.getValue()).split('.')[1] != undefined) {
+                if (String(field.getValue()).split('.')[0].length == 1) {
+                    field.inputEl.set({ maxLength: 6 });
+                }
+                else if (String(field.getValue()).split('.')[0].length == 2) {
+                    field.inputEl.set({ maxLength: 7 });
+                }
+            }
+            else {
+                field.inputEl.set({ maxLength: 8 });
+            }
+        }
+    }
+
+    function setDefaultValue() {
+        if('@ViewBag.Id'=='0'){
+            App.NewMoteghayerhaHoghoghi.queryById('CboAnvaeEstekhdam').setValue(App.NewMoteghayerhaHoghoghi.queryById('CboAnvaeEstekhdam').store.getAt(0));
+            ChangeTypeBime();
+        }
+    }
+
+    function setDefaultValueBime() {
+        if ('@ViewBag.Id' == '0') {
+            App.NewMoteghayerhaHoghoghi.queryById('CboTypeBime').setValue(App.NewMoteghayerhaHoghoghi.queryById('CboTypeBime').store.getAt(0));
+        }
+    }
+
+    function ReloadItem() {
+        var CboAnvaeEstekhdam = App.NewMoteghayerhaHoghoghi.queryById('CboAnvaeEstekhdam');
+        var NoeEstekhdamId = CboAnvaeEstekhdam.findRecordByValue(CboAnvaeEstekhdam.getValue()).data.TypeNoeEstekhdam;
+        if (NoeEstekhdamId == "1") {
+            App.NewMoteghayerhaHoghoghi.queryById('fieldsetKarmand').hide();
+            App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarmand').setValue(0);
+            App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarfarma').setValue(0);
+            App.NewMoteghayerhaHoghoghi.queryById('txtDarmanDolat').setValue(0);
+            App.NewMoteghayerhaHoghoghi.queryById('txtDarmanTakafol').setValue(0);
+            App.NewMoteghayerhaHoghoghi.queryById('txtDarmanMazad').setValue(0);
+            App.NewMoteghayerhaHoghoghi.queryById('txtMaxHagheDarman').setValue(0);
+            App.NewMoteghayerhaHoghoghi.queryById('txtZarib').setValue(0);
+            App.NewMoteghayerhaHoghoghi.queryById('Hoghough').setValue(false);
+            App.NewMoteghayerhaHoghoghi.queryById('fogholadeShoghl').setValue(false);
+            App.NewMoteghayerhaHoghoghi.queryById('Tatbigh').setValue(false);
+            App.NewMoteghayerhaHoghoghi.queryById('fogholadeVizhe').setValue(false);
+            App.NewMoteghayerhaHoghoghi.queryById('jazb').setValue(false);
+            App.NewMoteghayerhaHoghoghi.queryById('tadil').setValue(false);
+            App.NewMoteghayerhaHoghoghi.queryById('barjestegi').setValue(false);
+            App.NewMoteghayerhaHoghoghi.queryById('sanavat').setValue(false);
+            App.NewMoteghayerhaHoghoghi.queryById('FoghTalash').setValue(false);
+
+            App.NewMoteghayerhaHoghoghi.queryById('fieldsetKargar').show();
+            App.NewMoteghayerhaHoghoghi.queryById('fieldsetKargar').setWidth(App.NewMoteghayerhaHoghoghi.queryById('fieldsetEstekhdam').getWidth());
+        }
+        else {
+            App.NewMoteghayerhaHoghoghi.queryById('fieldsetKargar').hide();
+            App.NewMoteghayerhaHoghoghi.queryById('txtSaateKari').setValue(7.33);
+            App.NewMoteghayerhaHoghoghi.queryById('txtZaribEzafeKar').setValue(140);
+            App.NewMoteghayerhaHoghoghi.queryById('fieldsetKarmand').show();
+        }
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/MoteghayerhaHoghoghi/ReloadItems',
+            params: {
+                EstekhdamId: App.NewMoteghayerhaHoghoghi.queryById('CboAnvaeEstekhdam').getValue(),
+                HeaderId: '@ViewBag.Id'
+            },
+            success: function (data) {
+                App.NewMoteghayerhaHoghoghi.queryById('GridMashmooliBime').getStore().loadData(data.data);
+                if ('@ViewBag.Id' != 0) {
+                    for (var i = 0; i < data.CheckID.length; i++) {
+                        var index = App.NewMoteghayerhaHoghoghi.queryById('GridMashmooliBime').getStore().findExact("fldId", parseInt(data.CheckID[i]));
+                        App.NewMoteghayerhaHoghoghi.queryById('GridMashmooliBime').getSelectionModel().select(index, true);
+                    }
+                   
+                }
+            }
+        });
+    }
+
+    /*function setMaxMinDate() {
+        var nowdate = 'ViewBag.Date';
+        var txtTarikhEstekhdam = App.NewPersonalInfo.queryById('txtTarikhEstekhdam');
+        var txtTarikhMajavezEstekhdam = App.NewPersonalInfo.queryById('txtTarikhMajavezEstekhdam');
+        var txtTarikhTavalod = App.NewPersonalInfo.queryById('txtTarikhTavalod');
+        var date = new Date(nowdate);
+        txtTarikhEstekhdam.setMaxValue(date);
+        txtTarikhMajavezEstekhdam.setMaxValue(date);
+        txtTarikhEstekhdam.maxText = "تاریخ استخدام نمی تواند بعد از امروز باشد.";
+        txtTarikhTavalod.maxText = "تاریخ تولد نمی تواند بعد از امروز باشد.";
+        txtTarikhMajavezEstekhdam.maxText = "تاریخ مجوز استخدام نمی تواند بعد از امروز باشد.";
+    }*/
+
+    App.PayWin.addListener('resize', function () {
+        App.NewMoteghayerhaHoghoghi.setWidth(App.PayWin.getWidth() - 536);
+    });
+
+    function ChangeTypeBime() {
+        var CboTypeBime = App.NewMoteghayerhaHoghoghi.queryById('CboTypeBime');
+        var CboAnvaeEstekhdam = App.NewMoteghayerhaHoghoghi.queryById('CboAnvaeEstekhdam');
+        var txtDarmanKarmand = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarmand');
+        var txtDarmanKarfarma = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarfarma');
+        var txtDarmanDolat = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanDolat');
+        var txtDarmanTakafol = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanTakafol');
+        var txtDarmanMazad = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanMazad');
+        var txtMaxHagheDarman = App.NewMoteghayerhaHoghoghi.queryById('txtMaxHagheDarman');
+
+        if (CboTypeBime.getValue() == "1" && CboAnvaeEstekhdam.findRecordByValue(CboAnvaeEstekhdam.getValue()).data.TypeNoeEstekhdam != "1") {
+            txtDarmanKarmand.setReadOnly(true);
+            txtDarmanKarfarma.setReadOnly(true);
+            txtDarmanDolat.setReadOnly(true);
+            txtDarmanTakafol.setReadOnly(true);
+            txtDarmanMazad.setReadOnly(true);
+            txtMaxHagheDarman.setReadOnly(true);
+        }
+        else {
+            txtDarmanKarmand.setReadOnly(false);
+            txtDarmanKarfarma.setReadOnly(false);
+            txtDarmanDolat.setReadOnly(false);
+            txtDarmanTakafol.setReadOnly(false);
+            txtDarmanMazad.setReadOnly(false);
+            txtMaxHagheDarman.setReadOnly(false);
+        }
+    }
+
+    function LoadMoteghayerhaHoghoghi() {
+        if('@ViewBag.Id' !="0"){
+            Ext.net.Mask.show({ msg: 'در حال بارگزاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/MoteghayerhaHoghoghi/Details',
+                params: {
+                    Id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    var CboAnvaeEstekhdam = App.NewMoteghayerhaHoghoghi.queryById('CboAnvaeEstekhdam');
+                    CboAnvaeEstekhdam.setValue(data.fldEstekhdamTypeId);
+                    /*CboAnvaeEstekhdam.setReadOnly(true);
+                    CboAnvaeEstekhdam.setFieldStyle("background-image:none;background-color:#dfe8f6");*/
+
+                    var CboTypeBime = App.NewMoteghayerhaHoghoghi.queryById('CboTypeBime');
+                    CboTypeBime.setValue(data.fldTypeBimeId);
+                    ChangeTypeBime();
+                    /*CboTypeBime.setReadOnly(true);
+                    CboTypeBime.setFieldStyle("background-image:none;background-color:#dfe8f6");*/
+
+                    var txtTarikheEjra = App.NewMoteghayerhaHoghoghi.queryById('txtTarikheEjra');
+                    txtTarikheEjra.setValue(data.fldTarikhEjra);
+
+                    var txtTarikheSodor = App.NewMoteghayerhaHoghoghi.queryById('txtTarikheSodor');
+                    txtTarikheSodor.setValue(data.fldTarikhSodur);
+
+                    var txtBimePersonel = App.NewMoteghayerhaHoghoghi.queryById('txtBimePersonel');
+                    txtBimePersonel.setValue(data.fldDarsadBimePersonal);
+
+                    var txtBimeKarfarma = App.NewMoteghayerhaHoghoghi.queryById('txtBimeKarfarma');
+                    txtBimeKarfarma.setValue(data.fldDarsadbimeKarfarma);
+
+                    var txtBimeBikari = App.NewMoteghayerhaHoghoghi.queryById('txtBimeBikari');
+                    txtBimeBikari.setValue(data.fldDarsadBimeBikari);
+
+                    var txtBimeJanbazan = App.NewMoteghayerhaHoghoghi.queryById('txtBimeJanbazan');
+                    txtBimeJanbazan.setValue(data.fldDarsadBimeJanbazan);
+
+                    var txtBimeMashaghelesakht = App.NewMoteghayerhaHoghoghi.queryById('txtBimeMashaghelesakht');
+                    txtBimeMashaghelesakht.setValue(data.fldDarsadBimeMashagheleZiyanAvar);
+
+                    var txtDesc = App.NewMoteghayerhaHoghoghi.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+
+                    var fldId = App.NewMoteghayerhaHoghoghi.queryById('fldId');
+                    fldId.setValue(data.fldId);
+
+                    if (data.typeEstekhamId == "1") {/*کارگری*/
+                        var txtZaribEzafeKar = App.NewMoteghayerhaHoghoghi.queryById('txtZaribEzafeKar');
+                        txtZaribEzafeKar.setValue(data.fldZaribEzafeKar);
+
+                        var txtSaateKari = App.NewMoteghayerhaHoghoghi.queryById('txtSaateKari');
+                        txtSaateKari.setValue(data.fldSaatKari);
+                    }
+                    else {/*کارمندی*/
+                        var txtDarmanKarmand = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarmand');
+                        txtDarmanKarmand.setValue(data.fldHaghDarmanKarmand);
+
+                        var txtDarmanKarfarma = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarfarma');
+                        txtDarmanKarfarma.setValue(data.fldHaghDarmanKarFarma);
+
+                        var txtDarmanDolat = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanDolat');
+                        txtDarmanDolat.setValue(data.fldHaghDarmanDolat);
+
+                        var txtDarmanMazad = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanMazad');
+                        txtDarmanMazad.setValue(data.fldHaghDarmanMazad);
+
+                        var txtDarmanTakafol = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanTakafol');
+                        txtDarmanTakafol.setValue(data.fldHaghDarmanTahteTakallof);
+
+                        var txtMaxHagheDarman = App.NewMoteghayerhaHoghoghi.queryById('txtMaxHagheDarman');
+                        txtMaxHagheDarman.setValue(data.fldMaxHaghDarman);
+
+                        var txtZarib = App.NewMoteghayerhaHoghoghi.queryById('txtZarib');
+                        txtZarib.setValue(data.fldZaribHoghoghiSal);
+
+                        var Hoghough = App.NewMoteghayerhaHoghoghi.queryById('Hoghough');
+                        Hoghough.setValue(data.fldHoghogh);
+
+                        var fogholadeShoghl = App.NewMoteghayerhaHoghoghi.queryById('fogholadeShoghl');
+                        fogholadeShoghl.setValue(data.fldFoghShoghl);
+
+                        var Tatbigh = App.NewMoteghayerhaHoghoghi.queryById('Tatbigh');
+                        Tatbigh.setValue(data.fldTafavotTatbigh);
+
+                        var fogholadeVizhe = App.NewMoteghayerhaHoghoghi.queryById('fogholadeVizhe');
+                        fogholadeVizhe.setValue(data.fldFoghVizhe);
+
+                        var jazb = App.NewMoteghayerhaHoghoghi.queryById('jazb');
+                        jazb.setValue(data.fldHaghJazb);
+
+                        var tadil = App.NewMoteghayerhaHoghoghi.queryById('tadil');
+                        tadil.setValue(data.fldTadil);
+
+                        var barjestegi = App.NewMoteghayerhaHoghoghi.queryById('barjestegi');
+                        barjestegi.setValue(data.fldBarJastegi);
+
+                        var sanavat = App.NewMoteghayerhaHoghoghi.queryById('sanavat');
+                        sanavat.setValue(data.fldSanavat);
+
+                        var FoghTalash = App.NewMoteghayerhaHoghoghi.queryById('FoghTalash');
+                        FoghTalash.setValue(data.fldFoghTalash);
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.net.Mask.hide();
+        }
+    }
+
+    function SaveMoteghayerhaHoghoghi() {
+        var ItemEstekhdamIds = "";
+        var SelectedRow = App.NewMoteghayerhaHoghoghi.queryById('GridMashmooliBime').getSelectionModel().getSelection();
+        var items = new Array();
+        for (var i = 0; i < SelectedRow.length ; i++) {
+            ItemEstekhdamIds = ItemEstekhdamIds + SelectedRow[i].data.fldId + "," + SelectedRow[i].data.fldMazayaMashmool + ";";
+            items.push({
+                'fldItemEstekhdamId': SelectedRow[i].data.fldId,
+                'fldMazayaMashmool': SelectedRow[i].data.fldMazayaMashmool
+            });
+        }
+        if (items.length == 0) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا آیتم های مشمول بیمه را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+            }
+        var txtTarikheEjra = App.NewMoteghayerhaHoghoghi.queryById('txtTarikheEjra');
+        var txtTarikheSodor = App.NewMoteghayerhaHoghoghi.queryById('txtTarikheSodor');
+        var CboAnvaeEstekhdam = App.NewMoteghayerhaHoghoghi.queryById('CboAnvaeEstekhdam');
+        var CboTypeBime = App.NewMoteghayerhaHoghoghi.queryById('CboTypeBime');
+        var txtBimePersonel = App.NewMoteghayerhaHoghoghi.queryById('txtBimePersonel');
+        var txtBimeKarfarma = App.NewMoteghayerhaHoghoghi.queryById('txtBimeKarfarma');
+        var txtBimeBikari = App.NewMoteghayerhaHoghoghi.queryById('txtBimeBikari');
+        var txtBimeMashaghelesakht = App.NewMoteghayerhaHoghoghi.queryById('txtBimeMashaghelesakht');
+        var txtBimeJanbazan = App.NewMoteghayerhaHoghoghi.queryById('txtBimeJanbazan');
+        var txtDesc = App.NewMoteghayerhaHoghoghi.queryById('txtDesc');
+        var Id = App.NewMoteghayerhaHoghoghi.queryById('fldId');
+        var txtDarmanKarmand = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarmand');
+        var txtDarmanKarfarma = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarfarma');
+        var txtDarmanDolat = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanDolat');
+        var txtDarmanTakafol = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanTakafol');
+        var txtDarmanMazad = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanMazad');
+        var txtMaxHagheDarman = App.NewMoteghayerhaHoghoghi.queryById('txtMaxHagheDarman');
+        var txtZarib = App.NewMoteghayerhaHoghoghi.queryById('txtZarib');
+        var Hoghough = App.NewMoteghayerhaHoghoghi.queryById('Hoghough');
+        var fogholadeShoghl = App.NewMoteghayerhaHoghoghi.queryById('fogholadeShoghl');
+        var Tatbigh = App.NewMoteghayerhaHoghoghi.queryById('Tatbigh');
+        var fogholadeVizhe = App.NewMoteghayerhaHoghoghi.queryById('fogholadeVizhe');
+        var jazb = App.NewMoteghayerhaHoghoghi.queryById('jazb');
+        var tadil = App.NewMoteghayerhaHoghoghi.queryById('tadil');
+        var barjestegi = App.NewMoteghayerhaHoghoghi.queryById('barjestegi');
+        var sanavat = App.NewMoteghayerhaHoghoghi.queryById('sanavat'); 
+        var FoghTalash = App.NewMoteghayerhaHoghoghi.queryById('FoghTalash');
+
+        var txtSaateKari = App.NewMoteghayerhaHoghoghi.queryById('txtSaateKari');
+        var txtZaribEzafeKar = App.NewMoteghayerhaHoghoghi.queryById('txtZaribEzafeKar');        
+        var er = false;
+
+
+        if (txtTarikheEjra.validate() == false) {
+            er = true;
+        }
+        if (txtTarikheSodor.validate() == false) {
+            er = true;
+        }
+        if (CboAnvaeEstekhdam.validate() == false) {
+            er = true;
+        }
+        if (CboTypeBime.validate() == false) {
+            er = true;
+        }
+        if (txtBimePersonel.validate() == false) {
+            er = true;
+        }
+        if (txtBimeKarfarma.validate() == false) {
+            er = true;
+        }
+        if (txtBimeBikari.validate() == false) {
+            er = true;
+        }
+        if (txtBimeJanbazan.validate() == false) {
+            er = true;
+        }
+        if (txtBimeMashaghelesakht.validate() == false) {
+            er = true;
+        }
+
+        if (CboAnvaeEstekhdam.findRecordByValue(CboAnvaeEstekhdam.getValue()).data.TypeNoeEstekhdam != "1") {
+            if (txtDarmanKarmand.validate() == false) {
+                er = true;
+            }
+            if (txtDarmanKarfarma.validate() == false) {
+                er = true;
+            }
+            if (txtDarmanDolat.validate() == false) {
+                er = true;
+            }
+            if (txtDarmanMazad.validate() == false) {
+                er = true;
+            }
+            if (txtDarmanTakafol.validate() == false) {
+                er = true;
+            }
+            if (txtMaxHagheDarman.validate() == false) {
+                er = true;
+            }
+            if (txtZarib.validate() == false) {
+                er = true;
+            }
+        }
+        else {
+            if (txtZaribEzafeKar.validate() == false) {
+                er = true;
+            }
+            if (txtSaateKari.validate() == false) {
+                er = true;
+            }
+        }
+        
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        var data = {
+            ItemEstekhdamIds: ItemEstekhdamIds.substring(0, ItemEstekhdamIds.length-1),
+            fldId: Id.getValue(),
+            fldTarikhEjra: txtTarikheEjra.rawValue,
+            fldTarikhSodur: txtTarikheSodor.rawValue,
+            fldAnvaeEstekhdamId:CboAnvaeEstekhdam.getValue(),
+            fldTypeBimeId: CboTypeBime.getValue(),
+            fldDarsadBimePersonal:txtBimePersonel.getValue(),
+            fldDarsadbimeKarfarma:txtBimeKarfarma.getValue(),
+            fldDarsadBimeBikari:txtBimeBikari.getValue(),
+            fldDarsadBimeJanbazan: txtBimeJanbazan.getValue(),
+            fldDarsadBimeMashagheleZiyanAvar:txtBimeMashaghelesakht.getValue(),
+            fldHaghDarmanKarmand: txtDarmanKarmand.getValue(),
+            fldHaghDarmanKarfarma: txtDarmanKarfarma.getValue(),
+            fldHaghDarmanDolat: txtDarmanDolat.getValue(),
+            fldHaghDarmanMazad: txtDarmanMazad.getValue(),
+            fldHaghDarmanTahteTakaffol: txtDarmanTakafol.getValue(),
+            fldMaxHaghDarman: txtMaxHagheDarman.getValue(),
+            fldZaribHoghoghiSal: txtZarib.getValue(),
+            fldHoghogh: Hoghough.getValue(),
+            fldFoghShoghl: fogholadeShoghl.getValue(),
+            fldFoghVizhe: fogholadeVizhe.getValue(),
+            fldTafavotTatbigh: Tatbigh.getValue(),
+            fldHaghJazb: jazb.getValue(),
+            fldTadil: tadil.getValue(),
+            fldBarJastegi: barjestegi.getValue(),
+            fldSanavat: sanavat.getValue(),
+            fldZaribEzafeKar: txtZaribEzafeKar.getValue(),
+            fldFoghTalash:FoghTalash.getValue(),
+            fldSaatKari: txtSaateKari.getValue(),
+            fldDesc: txtDesc.getValue(),
+            items: items
+        };
+
+        $.ajax({
+            type: "POST",
+            url: '/PayRoll/MoteghayerhaHoghoghi/Save',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (data) {
+                var result = data;/* JSON.parse(data);*/
+                var ic = Ext.MessageBox.INFO;
+                if (result.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if ('@ViewBag.Id' != 0 &&  result.Er!=1 && btn == "ok") {
+                            App.NewMoteghayerhaHoghoghi.destroy();
+                        }
+                    }
+                });
+                /*App.NewMoteghayerhaHoghoghi.queryById('GridMashmooliBime').store.load();*/
+                App.MoteghayerhaHoghoghi.queryById('GridHeader').store.load();
+                if (result.Er != 1) {
+                    ClearMoteghayerhaHoghoghi();
+                }
+                Ext.net.Mask.hide();
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+        });
+    }
+
+    function ClearMoteghayerhaHoghoghi() {
+        App.NewMoteghayerhaHoghoghi.queryById('txtTarikheEjra').setRawValue("");
+        App.NewMoteghayerhaHoghoghi.queryById('txtTarikheSodor').setRawValue("");
+        App.NewMoteghayerhaHoghoghi.queryById('CboAnvaeEstekhdam').setValue(App.NewMoteghayerhaHoghoghi.queryById('CboAnvaeEstekhdam').store.getAt(0));
+        App.NewMoteghayerhaHoghoghi.queryById('CboTypeBime').setValue("1");
+        App.NewMoteghayerhaHoghoghi.queryById('txtBimePersonel').setValue(0);
+        App.NewMoteghayerhaHoghoghi.queryById('txtBimeKarfarma').setValue(0);
+        App.NewMoteghayerhaHoghoghi.queryById('txtBimeBikari').setValue(0);
+        App.NewMoteghayerhaHoghoghi.queryById('txtBimeMashaghelesakht').setValue(0);
+        App.NewMoteghayerhaHoghoghi.queryById('txtBimeJanbazan').setValue(0);
+        App.NewMoteghayerhaHoghoghi.queryById('fldId').setValue(0);
+        App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarmand').setValue(0);
+        App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarfarma').setValue(0);
+        App.NewMoteghayerhaHoghoghi.queryById('txtDarmanDolat').setValue(0);
+        App.NewMoteghayerhaHoghoghi.queryById('txtDarmanTakafol').setValue(0);
+        App.NewMoteghayerhaHoghoghi.queryById('txtDarmanMazad').setValue(0);
+        App.NewMoteghayerhaHoghoghi.queryById('txtMaxHagheDarman').setValue(0);
+        App.NewMoteghayerhaHoghoghi.queryById('txtZarib').setValue(0);
+        App.NewMoteghayerhaHoghoghi.queryById('Hoghough').setValue(false);
+        App.NewMoteghayerhaHoghoghi.queryById('fogholadeShoghl').setValue(false);
+        App.NewMoteghayerhaHoghoghi.queryById('Tatbigh').setValue(false);
+        App.NewMoteghayerhaHoghoghi.queryById('fogholadeVizhe').setValue(false);
+        App.NewMoteghayerhaHoghoghi.queryById('jazb').setValue(false);
+        App.NewMoteghayerhaHoghoghi.queryById('tadil').setValue(false);
+        App.NewMoteghayerhaHoghoghi.queryById('barjestegi').setValue(false);
+        App.NewMoteghayerhaHoghoghi.queryById('sanavat').setValue(false);
+        App.NewMoteghayerhaHoghoghi.queryById('FoghTalash').setValue(false);
+        App.NewMoteghayerhaHoghoghi.queryById('txtDesc').setValue("");
+        App.NewMoteghayerhaHoghoghi.queryById('txtSaateKari').setValue(7.33);
+        App.NewMoteghayerhaHoghoghi.queryById('txtZaribEzafeKar').setValue(140);
+        App.NewMoteghayerhaHoghoghi.queryById('GridMashmooliBime').getSelectionModel().deselectAll();
+    }
+
+    function EnterNext() {
+        var keyfield = App.NewMoteghayerhaHoghoghi.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        if (keyfield.itemId == "txtDesc") {
+            var CboAnvaeEstekhdam = App.NewMoteghayerhaHoghoghi.queryById('CboAnvaeEstekhdam');
+            if (CboAnvaeEstekhdam.findRecordByValue(CboAnvaeEstekhdam.getValue()).data.TypeNoeEstekhdam == "1") {
+                nextfld = App.NewMoteghayerhaHoghoghi.queryById('txtZaribEzafeKar');
+            }
+            else {
+                nextfld = App.NewMoteghayerhaHoghoghi.queryById('txtDarmanKarmand');
+            }
+        }
+        else if (keyfield.itemId == "txtSaateKari" || keyfield.itemId == "txtZarib") {
+            return;
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+        }
+        nextfld.focus();
+        nextfld.selectText();
+    }
+
+</script>

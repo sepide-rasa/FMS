@@ -1,0 +1,571 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_Parametrs>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("Parametrs")
+            .Title("ثبت پارامترها")
+                .Listeners(li => { li.AfterRender.Handler = "ParametrsSetSize();"; li.Render.Fn = "addKeyMapParametrs"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                .Listeners(l => { l.Click.Handler = "SaveParametrs();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadParametrs();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteParametrs();"; })
+            ,X.Button().Text("فرمول").Icon(Ext.Net.Icon.LayoutContent).ItemID("btnFormul")
+                    .Listeners(Li => Li.Click.Handler = "GotoFormul();")
+           , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                    .Listeners(l => { l.Click.Handler = "HelpParametrs();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.Parametrs.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("اطلاعات پارامتر").Height(100)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                        X.Hidden().ItemID("fldId"), X.Hidden().ItemID("fldId"),
+                             X.Label("سازمان:"),
+                             X.ComboBox()
+                                    .ItemID("CboOrgan")
+                                    .TypeAhead(true)
+                                        //.ColSpan(3)
+                                    .AutoFocus(true)
+                                    .Editable(true)
+                                         .QueryMode(DataLoadMode.Local)
+                                                .TriggerAction(TriggerAction.All)
+                                        .BlankText("لطفا سازمان را انتخاب کنید.")
+                                                .Listeners(l => l.Change.Handler = "ChangeCboOrgan()")
+                                        .AllowBlank(false)
+                                    .ForceSelection(true)
+                                        .DisplayField("fldTitle")
+                                    .ValueField("fldId")
+                                        .EmptyText("سازمان ...")
+                                    //.Width(375)
+                                    .Store(X.Store()
+                                    .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                        new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                            )
+                                                )
+                                    .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetOrgan"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                                    )
+                        .Listeners(l => l.Load.Handler = "setdefaultValueParam()")
+                                            ),
+                                X.Label("عنوان:"),
+                       X.TextField()
+                        .ItemID("txtTitle")
+                            .MaxLength(200)
+                            .EnforceMaxLength(true)
+                                //.MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                            .BlankText("لطفا عنوان را وارد کنید.")
+                    .AutoFocus(true)
+                            , X.Label("نوع پارامتر:")
+                       , X.ComboBox()
+                    .ItemID("CboTypeParametr")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Editable(false)
+                    .TypeAhead(true)
+                    .BlankText("لطفا نوع پارامتر را انتخاب کنید.")
+                    .QueryMode(DataLoadMode.Local)
+                    .TriggerAction(TriggerAction.All)
+                    .EmptyText("نوع پارامتر")
+                    .SelectedItems(new { Value = "0" })
+                    .Items(
+                        new ListItem("مطالبات", "0"),
+                        new ListItem("کسورات", "1")
+                        )
+
+                        , X.Label("نوع مبلغ:")
+                        , X.ComboBox()
+                        .ItemID("CboTypeMablagh")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Editable(false)
+                        .TypeAhead(true)
+                        .BlankText("لطفا نوع مبلغ را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .EmptyText("نوع مبلغ")
+                        .SelectedItems(new { Value = "1" })
+                        .Items(
+                            new ListItem("عدد ثابت", "0"),
+                            new ListItem("تابع فرمول", "1")
+                            )
+                            .Listeners(l=>l.Select.Handler="ChangeMablagh()")
+                            , X.Label("نوع استخدام:").ItemID("LblTypeEstekhdam")
+                            , X.ComboBox()
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Editable(true)
+                    .ItemID("CboTypeEstekhdam")
+                    .TypeAhead(true)
+                            .BlankText("لطفا نوع استخدام را انتخاب کنید.")
+                            .AllowBlank(false)
+                    .QueryMode(DataLoadMode.Local)
+                    .ForceSelection(true)
+                    .TriggerAction(TriggerAction.All)
+                    .DisplayField("fldTitle")
+                    .ValueField("fldId")
+                    .SelectedItems(new { Value = "1" })
+                    .Store(X.Store()
+                    .Model(X.Model()
+                    .IDProperty("fldId")
+                    .Fields(
+                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                        new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                            )
+                                )
+                    .Proxy(X.AjaxProxy()
+                    .Url(Url.Action("GetTypeEstekhdam"))
+                    .Reader(X.JsonReader().Root("data"))
+                            )
+                            ),
+                        //   ,X.Label().ItemID("LblTest").ColSpan(2)
+                             X.Label("نوع حساب:")
+                     ,X.ComboBox()
+                            .ItemID("CboHesabType")
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع حساب را انتخاب کنید.")
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("نوع حساب...")
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.Int) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Timeout(200000000)
+                                    .Url(Url.Action("GetHesabType"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            )
+                                , X.Label("وضعیت:")
+                                 , X.ComboBox()
+                        .ItemID("CboActive")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Editable(false)
+                        .TypeAhead(true)
+                        .BlankText("لطفا وضعیت را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .EmptyText("")
+                        .SelectedItems(new { Value = "1" })
+                        .Items(
+                            new ListItem("فعال", "1"),
+                            new ListItem("غیرفعال", "0")
+                            )
+                                , X.Label("نوع دسترسی:")
+                                 , X.ComboBox()
+                        .ItemID("CboPrivate")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Editable(false)
+                        .TypeAhead(true)
+                        .BlankText("لطفا نوع دسترسی را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .EmptyText("نوع دسترسی")
+                        .SelectedItems(new { Value = "1" })
+                        .Items(
+                            new ListItem("خصوصی", "0"),
+                            new ListItem("عمومی", "1")
+                            )
+                        , X.Label("نوع پرداختی:")
+                                    , X.ComboBox()
+                        .ItemID("CboMostamar")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Editable(false)
+                        .TypeAhead(true)
+                            .BlankText("لطفا نوع پرداختی را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                            .EmptyText("نوع پرداختی")
+                        .SelectedItems(new { Value = "2" })
+                        .Items(
+                            new ListItem("مستمر", "1"),
+                            new ListItem("غیرمستمر", "2")
+                            )       
+                    , X.Label("توضیحات:"),
+                        X.TextField()
+                    .ItemID("txtDesc")
+                    .ColSpan(3)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    //.Width(345)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("ParametrsGrid")
+            .Listeners(l => l.ItemClick.Handler = "CheckBtnFormul();")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                                X.StoreForModel().AutoLoad(false)
+                             .Listeners(l => l.DataChanged.Handler = "App.Parametrs.queryById('ParametrsGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .Parameters(ps => ps.Add(new StoreParameter("OrganId", "App.Parametrs.queryById('CboOrgan').getValue()", ParameterMode.Raw)))
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.Parametrs.queryById('ParametrsGrid');grid.setHeight(App.PayWin.getHeight() - 310); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldNoeParametrName).Text("نوع پارامتر").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldNoeMablaghName).Text("نوع مبلغ").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.TypeEstekhdamName).Text("نوع استخدام").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldHesabTypeParamName).Text("نوع حساب").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldActiveName).Text("وضعیت پارامتر").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldPrivateName).Text("نوع دسترسی").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldMostamarName).Text("نوع پرداختی").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(15),
+                        Html.X().Column().DataIndex(Model, m => m.fldFormulId).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldTypeMablagh).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldTypeParametr).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldTypeEstekhdamId).Hidden(true)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    function ChangeCboOrgan() {
+        if (App.Parametrs.queryById('CboOrgan').getValue() != null) {
+            App.Parametrs.queryById('ParametrsGrid').store.load();
+        }
+    }
+
+    function setdefaultValueParam() {
+        App.Parametrs.queryById('CboOrgan').select(App.Parametrs.queryById('CboOrgan').store.getAt(0));
+    }
+
+    function CheckBtnFormul() {
+        var SelectedRow = App.Parametrs.queryById('ParametrsGrid').selModel.getLastSelected();
+        var btnFormul= App.Parametrs.queryById('btnFormul');
+        if (SelectedRow.data.fldTypeMablagh)
+            btnFormul.enable(true);
+        else
+            btnFormul.disable(true);
+    }
+    function ChangeMablagh() {
+        var CboTypeMablagh = App.Parametrs.queryById('CboTypeMablagh');
+        var CboTypeEstekhdam = App.Parametrs.queryById('CboTypeEstekhdam');
+        var LblTypeEstekhdam = App.Parametrs.queryById('LblTypeEstekhdam');
+        /*var LblTest = App.Parametrs.queryById('LblTest');*/
+        if (CboTypeMablagh.getValue() == 0) {
+            CboTypeEstekhdam.setDisabled(true);
+          /*  LblTest.hide();
+            LblTest.show();*/
+        }
+        else {
+            CboTypeEstekhdam.setDisabled(false);
+          /*  LblTest.hide();*/
+        }
+    }
+    function ParametrsSetSize() {
+        App.Parametrs.setWidth(App.PayWin.getWidth());
+        var grid = App.Parametrs.queryById('ParametrsGrid');
+        grid.setHeight(App.PayWin.getHeight() - 310);
+
+      /*  var LblTest = App.Parametrs.queryById('LblTest');
+        LblTest.hide();*/
+    }
+    function HelpParametrs() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Parametrs/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function LoadParametrs() {
+        var SelectedRow = App.Parametrs.queryById('ParametrsGrid').selModel.getLastSelected();
+        var CboOrgan = App.Parametrs.queryById('CboOrgan');
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Parametrs/Details',
+                params: {
+                    Id: SelectedRow.data.fldId,
+                    OrganId: CboOrgan.getValue()
+                },
+                success: function (data) {
+                    var txtTitle = App.Parametrs.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var CboTypeParametr = App.Parametrs.queryById('CboTypeParametr');
+                    CboTypeParametr.setValue(data.fldTypeParametr);
+                    var CboTypeMablagh = App.Parametrs.queryById('CboTypeMablagh');
+                    CboTypeMablagh.setValue(data.fldTypeMablagh);
+                    ChangeMablagh();
+                    var CboTypeEstekhdam = App.Parametrs.queryById('CboTypeEstekhdam');
+                    CboTypeEstekhdam.setValue(data.fldTypeEstekhdamId);
+                    var CboHesabType = App.Parametrs.queryById('CboHesabType');
+                    CboHesabType.setValue(data.fldHesabTypeParam);
+                    var CboActive = App.Parametrs.queryById('CboActive');
+                    CboActive.setValue(data.Active);
+                    var CboPrivate = App.Parametrs.queryById('CboPrivate');
+                    CboPrivate.setValue(data.Private);
+                    var CboMostamar = App.Parametrs.queryById('CboMostamar');
+                    CboMostamar.setValue(data.fldIsMostamar);
+                    var txtDesc = App.Parametrs.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.Parametrs.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveParametrs() {
+        var CboOrgan = App.Parametrs.queryById('CboOrgan');
+        var txtTitle = App.Parametrs.queryById('txtTitle');
+        var CboTypeEstekhdam = App.Parametrs.queryById('CboTypeEstekhdam');
+        var CboTypeParametr = App.Parametrs.queryById('CboTypeParametr');
+        var CboTypeMablagh = App.Parametrs.queryById('CboTypeMablagh');
+        var CboHesabType = App.Parametrs.queryById('CboHesabType');
+        var CboActive = App.Parametrs.queryById('CboActive');
+        var CboPrivate = App.Parametrs.queryById('CboPrivate');
+        var CboMostamar = App.Parametrs.queryById('CboMostamar');
+        var txtDesc = App.Parametrs.queryById('txtDesc');
+        var fldId = App.Parametrs.queryById('fldId');
+            var er = false;
+
+            if (txtTitle.validate() == false) {
+                er = true;
+            }
+            if (CboTypeEstekhdam.validate() == false) {
+                er = true;
+            }
+            if (CboTypeParametr.validate() == false) {
+                er = true;
+            }
+            if (CboTypeMablagh.validate() == false) {
+                er = true;
+            }
+            if (CboHesabType.validate() == false) {
+                er = true;
+            }
+            if (CboActive.validate() == false) {
+                er = true;
+            }
+            if (CboPrivate.validate() == false) {
+                er = true;
+            }
+            if (CboMostamar.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            var TypeParametr = false;
+            if (CboTypeParametr.getValue() == 1)
+                TypeParametr = true;
+            var TypeMablagh = false;
+            if (CboTypeMablagh.getValue() == 1)
+                TypeMablagh = true;
+            var Active = false;
+            if (CboActive.getValue()=="1")
+                Active = true;
+            var Private =false;
+            if (CboPrivate.getValue()=="1")
+                Private = true;
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Parametrs/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldTitle: txtTitle.getValue(),
+                    fldTypeEstekhdamId: CboTypeEstekhdam.getValue(),
+                    fldTypeParametr: TypeParametr,
+                    fldTypeMablagh: TypeMablagh,
+                    fldDesc: txtDesc.getValue(),
+                    fldHesabTypeParam:CboHesabType.getValue(),
+                    fldActive:Active,
+                    fldPrivate:Private,
+                    OrganId: CboOrgan.getValue(),
+                    fldIsMostamar: CboMostamar.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.Parametrs.queryById('ParametrsGrid').store.load();
+                    if (data.Er != 1)
+                        ClearParametrs();
+                }
+
+            });
+    }
+    function DeleteParametrs() {
+        var SelectedRow = App.Parametrs.queryById('ParametrsGrid').selModel.getLastSelected();
+        var CboOrgan = App.Parametrs.queryById('CboOrgan');
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Parametrs/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId,
+                                OrganId: CboOrgan.getValue()
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.Parametrs.queryById('ParametrsGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearParametrs() {
+        App.Parametrs.queryById('fldId').setValue(0);
+        App.Parametrs.queryById('txtTitle').setValue("");
+        App.Parametrs.queryById('CboTypeEstekhdam').setValue("");
+        App.Parametrs.queryById('CboTypeParametr').setValue("0");
+        App.Parametrs.queryById('CboTypeMablagh').setValue("0");
+        App.Parametrs.queryById('txtDesc').setValue("");
+    }
+    function GotoFormul() {
+        var SelectedRow = App.Parametrs.queryById('ParametrsGrid').selModel.getLastSelected();
+        var CboOrgan = App.Parametrs.queryById('CboOrgan');
+
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldTypeMablagh) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/PayRoll/Parametrs/Formul',
+                    params: {
+                        ParamId: SelectedRow.data.fldId,
+                        TypeEstekhdam: SelectedRow.data.fldTypeEstekhdamId,
+                        FormulId: SelectedRow.data.fldFormulId
+                    },
+                    success: function () {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            /* else {
+                 Ext.MessageBox.show({
+                     title: "خطا",
+                     msg: "نوع مبلغ رکورد انتخاب شده عدد ثابت می باشد.",
+                     icon: Ext.MessageBox.ERROR,
+                     buttons: Ext.MessageBox.OK
+                 });
+             }*/
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    var addKeyMapParametrs = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.Parametrs.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.Parametrs.queryById('btnSave');
+                    } 
+                    if (keyfield.itemId == "CboTypeEstekhdam") {
+                        nextfld = App.Parametrs.queryById('txtDesc');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

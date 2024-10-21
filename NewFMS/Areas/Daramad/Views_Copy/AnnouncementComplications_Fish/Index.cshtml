@@ -1,0 +1,726 @@
+﻿
+@model IEnumerable<NewFMS.WCF_Daramad.OBJ_FishSaderShode>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using NewFMS.Models;
+
+@{ var X = Html.X();
+   NewFMS.WCF_Common.CommonService servic = new NewFMS.WCF_Common.CommonService();
+   string IP = System.Web.HttpContext.Current.Request.ServerVariables["REMOTE_HOST"];
+   NewFMS.WCF_Common.ClsError Err = new NewFMS.WCF_Common.ClsError();
+   var PerPardakht = 0;
+   if (Permission.haveAccess(554, Session["Username"].ToString(), Session["Password"].ToString(), Convert.ToInt32(Session["OrganId"])))
+   {
+       PerPardakht = 1;
+   }
+   var PerEbtalPardakht = 0;
+   if (Permission.haveAccess(726, Session["Username"].ToString(), Session["Password"].ToString(), Convert.ToInt32(Session["OrganId"])))
+   {
+       PerEbtalPardakht = 1;
+   }
+   }
+<br />
+<script>
+    var ShowStatus = function (value, record) {
+        var fldRequestType = record.record.data.fldRequestType;
+        var template = '<img src={0} alt="" title={1} />';
+        if (value == 3 && fldRequestType == 1) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/درخواستتقسیطپاسخدادهشده.png")";
+            var ToolTip = "بی" + '&nbsp;' + "پاسخ";
+
+        }
+        else if (value == 1 && fldRequestType == 1) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/تقسیطموافقتشده.png")";
+            var ToolTip = "توافق";
+        }
+        else if (value == 2 && fldRequestType == 1) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/تقسیطابطالشده.png")";
+            var ToolTip = "عدم" + '&nbsp;' + "توافق";
+        }
+        if (value == 3 && fldRequestType == 2) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/درخواستتخفیفپاسخدادهشده.png")";
+            var ToolTip = "بی" + '&nbsp;' + "پاسخ";
+        }
+        else if (value == 1 && fldRequestType == 2) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/تخفیفموافقتشده.png")";
+            var ToolTip = "توافق";
+        }
+        else if (value == 2 && fldRequestType == 2) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/تخفیفابطالشده.png")";
+            var ToolTip = "عدم" + '&nbsp;' + "توافق";
+        }
+        return Ext.String.format(template, Pic, ToolTip);
+    };
+    var ShowMaliyat = function (value, record) {
+        var template4 = '<img src={0} alt="" title={1} />';
+        if (value == "1") {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/دارایارزشافزوده.png")";
+            var ToolTip = "فیش" + '&nbsp;' + "شامل" + '&nbsp;' + "مالیات" + '&nbsp;' + "بر" + '&nbsp;' + "ارزش" + '&nbsp;' + "افزوده" + '&nbsp;' + "میباشد ";
+        }
+        if (value == "0") {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/دارایارزشافزودهنیست.png")";
+            var ToolTip = "فیش" + '&nbsp;' + "شامل" + '&nbsp;' + "مالیات" + '&nbsp;' + "بر" + '&nbsp;' + "ارزش" + '&nbsp;' + "افزوده" + '&nbsp;' + "نمیباشد " ;
+        }
+        
+        return Ext.String.format(template4, Pic, ToolTip);
+    };
+</script>
+<style>
+     .margincommandFish {
+        margin: 0 0 0 12px !important;
+    }
+</style>
+@*<style>
+        .x-rtl .x-textfield-icon {
+            margin-right: 120px;
+        }
+
+        .x-rtl .x-textfield-icon-input {
+            padding-right: 5px;
+        }
+
+        .rowheight {
+            height: 40px;
+        }
+    </style>*@
+
+@(Html.X().Panel()
+    .ID("AnnouncementComplication_Fish")
+    .Title("فیش های صادر شده")
+    .Listeners(li => { li.AfterRender.Handler = "MainAnnouncementComplication_FishSetSize();"; li.Render.Fn = "addKeyMapAnnouncementComplication_Fish"; })
+        .Closable(true)
+    .AutoScroll(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.VBox)
+    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        .Border(false)
+                       
+        // .Defaults(new { Margin = 20 })
+    .Items(
+
+         X.Panel()//.Title("فیش هاfdg")
+             .Border(false)
+                .Layout(LayoutType.VBox)
+                .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .ItemID("PnlFish")
+     
+                .Items(
+                       X.FieldSet()
+        //.Width(600)
+                             .Border(false)
+                                     .Layout(LayoutType.HBox)
+        //.LayoutConfig(new TableLayoutConfig { Columns = 2 })
+        // .Defaults(new { Margin = 5 })
+                         .Items(
+
+                                X.FieldSet().Title("فیلترها")//.Height(50)
+                                    .Layout(LayoutType.Table)
+                                    .LayoutConfig(new TableLayoutConfig { Columns = 7 })
+         .Defaults(new { Margin = 2 })
+                                            .Items(
+                                     X.Label("از تاریخ: "),
+                                     X.PDateField().MarginSpec("5px 5px 5px 0")
+                                         .ItemID("txtAzTarikhFish")
+                                         .Width(100)
+                                    .Listeners(l =>
+                                    {
+                                        l.Change.Handler = "setDateAzFish();";
+                                    })
+                                    , X.Label("تا تاریخ: "),
+                                            X.PDateField().Width(100).MarginSpec("5px 5px 5px 0")
+                                        .ItemID("txtTaTarikhFish")
+                                    .Listeners(l =>
+                                    {
+                                        l.Change.Handler = "setDateTaFish();";
+                                        l.AfterRender.Handler = "LoadFishGrid();";
+                                    })
+
+                                   ,
+        /*X.Label("فیلتر براساس: "), X.ComboBox().MarginSpec("5px 5px 5px 0")
+     .ItemID("CboStatus")
+     .Editable(false)
+     .TypeAhead(true)
+     .BlankText("لطفا نوع فیلتر را انتخاب نمایید.")
+     .QueryMode(DataLoadMode.Local)
+     .TriggerAction(TriggerAction.All)
+     .AllowBlank(false)
+     .Items(
+         new ListItem("تسویه نقدی", "1"),
+         new ListItem("تسویه اقساط", "2"), 
+         new ListItem("همه موارد", "0")
+         )
+     .SelectedItems(new { Value = "0" }),*/
+                                X.Button()
+                                    .Text("جستجو")
+                                    .Icon(Ext.Net.Icon.Find)
+                                    .Listeners(li => li.Click.Handler = "FullSearchFish();")
+                                     , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                                     .Listeners(l => { l.Click.Handler = "HelpFish();"; })
+                                )
+                            )
+                            ,
+                                  X.GridPanel().AutoScroll(true)
+                                        .Title("فیش های صادر شده")
+        //.Padding(5)        
+            .BottomBar(X.PagingToolbar())
+                            .TopBar(
+                             X.Toolbar()
+                            .Border(false)//.Frame(true).Width(300).Height(50)
+                            .Defaults(new { Margin = 5 })
+                            .Items(
+                                    X.Button().Text("ثبت با بارکد").IconCls("NewElameAvarez").Listeners(l => l.Click.Handler = "Barcode();")
+                                      //  X.Button().Text("پرداخت گروهی").Icon(Ext.Net.Icon.Money).Listeners(l => l.Click.Handler = "GroupPay();")
+                                                                       )
+                            )
+                                            .ItemID("FishGrid").Flex(2)
+                                    .Width(500)
+                                    .Store(
+                                        X.StoreForModel().AutoLoad(false)
+                                              .Listeners(l =>
+                                              {
+                                                  l.DataChanged.Handler = "App.AnnouncementComplication_Fish.queryById('FishGrid').selModel.refresh();";
+                                                  l.BeforeLoad.Handler = "LoadFishGridWithParam()";
+                                              })
+                                        .Proxy(Html.X().AjaxProxy()
+                                         .Url(Url.Action("ReadFish"))
+                                         .Reader(Html.X().JsonReader().Root("data"))
+                                        // .ExtraParams(l => l.Add(new { AzTarikh = App.AnnouncementComplication_Fish.queryById("txtAzTarikhFish").getValue(), TATarikh = App.AnnouncementComplication_Fish.queryById("txtTaTarikhFish").getValue() }))
+                                           
+                                         )
+                                        .PageSize(200000000)
+                                        .RemoteFilter(true)
+                                        .RemotePaging(true)
+
+                                    )
+                                    .View(
+                                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                                    )
+
+                                .Plugins(X.FilterHeader().Remote(true))
+                                //         .SelectionModel(
+                                //Html.X().CheckboxSelectionModel().ShowHeaderCheckbox(true)
+                                //    .Mode(SelectionMode.Multi).PruneRemoved(false).CheckOnly(true))
+                        .ColumnModel(
+                                Html.X().RowNumbererColumn()
+                                 ,
+                                Html.X().Column().DataIndex(Model, m => m.fldMashmool).Text("مشمول ارزش افزوده").Flex(1).Renderer("ShowMaliyat").Filterable(false),
+                                Html.X().Column().DataIndex(Model, m => m.fldElamAvarezId).Text("کد شناسایی").Flex(2),//.Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldShomareSheba).Text("شماره شبا").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldPcposUser).Text("کاربرpcpos").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد فیش").Flex(1),
+                                Html.X().Column().DataIndex(Model, m => m.fldTypeAvarez).Text("نوع عوارض").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldNoeShakhs).Text("نوع شخص").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldNameShakhs).Text("نام").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldNationalCode).Text("شناسه/کدملی").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldFather_ShomareSabt).Text("نام پدر/شماره ثبت").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldTarikh).Text("تاریخ").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldShenaseGhabz).Text("شناسه قبض").Flex(2).Wrap(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldShenasePardakht).Text("شناسه پرداخت").Flex(2).Wrap(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldJamKol).Text("جمع کل").Renderer("LocalString").Flex(3).Wrap(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldMablaghAvarezGerdShode).Text("مبلغ قابل پرداخت").Renderer("LocalString").Flex(3).Wrap(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldPardakhFish).Text("نوع پرداخت").Flex(3),
+                                        Html.X().Column().DataIndex(Model, m => m.fldTarikhPardakhFish).Text("تاریخ پرداخت").Flex(2),
+                                Html.X().ImageCommandColumn().PrepareCommand("hidePardakhtPcPos")
+                                    .Listeners(l => l.Command.Fn = "ActionsInGridFish")
+                                    .Flex(4).Commands(
+                                        Html.X().ImageCommand().CommandName("PrintFish").Cls("margincommandFish").Icon(Ext.Net.Icon.Printer).ToolTip(tt => tt.Text = "چاپ فیش").Hidden(!servic.Permission(743, Convert.ToInt32(Session["OrganId"]), Session["Username"].ToString(), Session["Password"].ToString(), out Err))
+                                        , Html.X().ImageCommand().CommandName("EbtalPardakht").Cls("margincommandFish").IconCls("EbtalPardakht").ToolTip(tt => tt.Text = "ابطال پرداخت")
+                                        , Html.X().ImageCommand().CommandName("SabtPardakht").Cls("margincommandFish").IconCls("SabtPardakht").ToolTip(tt => tt.Text = "ثبت پرداخت")
+                                    , Html.X().ImageCommand().CommandName("PardakhtPcPos").Cls("margincommandFish").IconCls("PardakhtPcPos").ToolTip(tt => tt.Text = "پراخت با PcPos")
+                                    , Html.X().ImageCommand().CommandName("PrintDaraei").Cls("margincommandFish").Icon(Ext.Net.Icon.Report).ToolTip(tt => tt.Text = "گزارش فرم دارایی")
+                                    )
+                                        )
+                    )
+
+
+                    )
+
+)
+
+<script type="text/javascript">
+    var d;
+    function HelpFish(){
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/AnnouncementComplications_Fish/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var hidePardakhtPcPos = function (grid, command, record, row) {
+        if (command.command == 'PardakhtPcPos') {
+            if (record.data.fldPcposUser != 0 && record.data.fldPardakhFish == "پرداخت نشده") {
+                command.disabled = false;
+                command.hideMode = 'visibility';
+            }
+            else {
+                command.disabled = true;
+                command.hideMode = 'visibility';
+            }
+        }
+        if (command.command == 'PrintDaraei') {
+            if (record.data.fldMashmool == "1" && record.data.fldPardakhFish != "پرداخت نشده") {
+                command.disabled = false;
+                command.hideMode = 'visibility';
+            }
+            else {
+                command.disabled = true;
+                command.hideMode = 'visibility';
+            }
+        }
+        if (command.command == 'SabtPardakht') {
+            if (@PerPardakht==1) {
+                command.disabled = false;
+                command.hideMode = 'visibility';
+            }
+            else {
+                command.disabled = true;
+                command.hideMode = 'visibility';
+            }
+        }
+        if (command.command == 'EbtalPardakht') {
+            if (@PerEbtalPardakht==1) {
+                if(record.data.fldPardakhFish == "پرداخت نشده"){
+                    command.disabled = true;
+                    command.hideMode = 'visibility';
+                }
+                else{                    
+                    command.disabled = false;
+                    command.hideMode = 'visibility';
+                }
+            }
+            else {
+                command.disabled = true;
+                command.hideMode = 'visibility';
+            }
+        }        
+    };
+    function LoadFishGrid() {
+        /*App.AnnouncementComplication_Fish.queryById('FishGrid').getStore().getProxy().setExtraParam("AzTarikh", App.AnnouncementComplication_Fish.queryById("txtAzTarikhFish").getValue());
+        App.AnnouncementComplication_Fish.queryById('FishGrid').getStore().getProxy().setExtraParam("TATarikh", App.AnnouncementComplication_Fish.queryById("txtTaTarikhFish").getValue());*/
+        App.AnnouncementComplication_Fish.queryById('FishGrid').getStore().load();
+    }
+    function LoadFishGridWithParam() {
+        App.AnnouncementComplication_Fish.queryById('FishGrid').getStore().getProxy().setExtraParam("AzTarikh", App.AnnouncementComplication_Fish.queryById("txtAzTarikhFish").rawValue);
+        App.AnnouncementComplication_Fish.queryById('FishGrid').getStore().getProxy().setExtraParam("TATarikh", App.AnnouncementComplication_Fish.queryById("txtTaTarikhFish").rawValue);
+     
+    }
+    function setDateAzFish() {
+        var txtAzTarikhFish = App.AnnouncementComplication_Fish.queryById('txtAzTarikhFish');
+        var txtTaTarikhFish = App.AnnouncementComplication_Fish.queryById('txtTaTarikhFish');
+        txtTaTarikhFish.setMinValue(txtAzTarikhFish.getValue());
+        txtTaTarikhFish.minText = "تاریخ پایان نباید قبل از تاریخ شروع باشد.";
+    }
+    function setDateTaFish() {
+        var txtAzTarikhFish = App.AnnouncementComplication_Fish.queryById('txtAzTarikhFish');
+        var txtTaTarikhFish = App.AnnouncementComplication_Fish.queryById('txtTaTarikhFish');
+        txtAzTarikhFish.setMaxValue(txtTaTarikhFish.getValue());
+        txtAzTarikhFish.maxText = "تاریخ شروع نباید بعد از تاریخ پایان باشد.";
+    }
+    function MainAnnouncementComplication_FishSetSize() {
+        App.AnnouncementComplication_Fish.setWidth(App.DaramadWin.getWidth());
+        var PnlFish = App.AnnouncementComplication_Fish.queryById('PnlFish');
+        PnlFish.setHeight(App.DaramadWin.getHeight() - 180);
+        /*var PnlEjraiiat = App.AnnouncementComplication_Fish.queryById('PnlEjraiiat');
+        PnlEjraiiat.setHeight(App.DaramadWin.getHeight() - 220);*/
+        /*var PnlSodurFish = App.AnnouncementComplication_Fish.queryById('PnlSodurFish');
+        PnlSodurFish.setHeight(App.DaramadWin.getHeight() - 220);*/
+
+        var FishGrid = App.AnnouncementComplication_Fish.queryById('FishGrid');
+        FishGrid.setWidth(App.DaramadWin.getWidth() - 50);
+
+       /* Ext.net.DirectMethod.request({
+            url: '/Daramad/AnnouncementComplications_Ejraiyat/Index?containerId=MainAnnouncementComplicationTab',
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });*/
+
+    }
+    var LocalString = function (value) {
+        return value.toLocaleString();
+    };
+
+    function Barcode() {
+        Ext.net.Mask.hide();
+        Ext.MessageBox.show({
+            title: "خطا",
+            msg: "دسترسی به این آیتم امکانپذیر نمی باشد.",
+            icon: Ext.MessageBox.ERROR,
+            buttons: Ext.MessageBox.OK
+        });
+    }
+    function FullSearchFish() {
+        var txtAzTarikhFish = App.AnnouncementComplication_Fish.queryById('txtAzTarikhFish');
+        var txtTaTarikhFish = App.AnnouncementComplication_Fish.queryById('txtTaTarikhFish');
+
+        Ext.net.Mask.show({ msg: 'در حال جستجو...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/AnnouncementComplications_Fish/FullSearchFish',
+            params: {
+                AzTarikh: txtAzTarikhFish.getRawValue(),
+                TaTarikh: txtTaTarikhFish.getRawValue()
+            },
+            success: function (data) {
+                d = data;
+                App.AnnouncementComplication_Fish.queryById('FishGrid').store.loadRawData(data);
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function ActionsInGridFish(grid, command, record, row) {
+        /*var Id = record.data.fldId;*/
+
+        if (command == 'PrintFish') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/AnnouncementComplications_Fish/Print',
+                            params: {
+                                FishId: record.data.fldId,
+                                ElamAvarezId: record.data.fldElamAvarezId
+                            },
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+             
+        }
+        else if (command == 'SabtPardakht') {
+           
+            if (record.data.fldPardakhFish == "پرداخت نشده") {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/AnnouncementComplications_Fish/SabtPardakht',
+                    params: {
+                        FishId: record.data.fldId,
+                        Mablagh: record.data.fldMablaghAvarezGerdShode
+                    },
+                    success: function () {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else
+            {
+                Ext.MessageBox.show({
+                    title: "هشدار",
+                    msg: "اطلاعات پرداخت ثبت شده است، آیا مایل به ویرایش اطلاعات ثبت می باشید؟",
+                    icon: Ext.MessageBox.WARNING,
+                    buttons: Ext.MessageBox.YESNO,
+                    fn: function (btn) {
+                        if (btn == 'yes') {
+                            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Daramad/AnnouncementComplications_Fish/SabtPardakht',
+                                params: {
+                                    FishId: record.data.fldId,
+                                    Mablagh: record.data.fldMablaghAvarezGerdShode
+                                },
+                                success: function () {
+                                    Ext.net.Mask.hide();
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        }
+        else if(command == "EbtalPardakht"){
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "اطلاعات پرداخت ثبت شده است، آیا مایل به ابطال پرداخت می باشید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/AnnouncementComplications_Fish/EbtalPardakht',
+                            params: {
+                                FishId: record.data.fldId
+                            },
+                            success: function (data) {
+                                Ext.net.Mask.hide();
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.Msg,
+                                    msg: data.MsgTitle,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+
+                                if(data.Er==0)
+                                    App.AnnouncementComplication_Fish.queryById('FishGrid').store.load();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else if (command == 'PardakhtPcPos') {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای پرداخت مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/AnnouncementComplications_Fish/PSPModels',
+                            params: {
+                                state:1,
+                                FishId: record.data.fldId,
+                                ShGhabz: record.data.fldShenaseGhabz,
+                                ShPardakht: record.data.fldShenasePardakht,
+                                Price: record.data.fldMablaghAvarezGerdShode,
+                                Sheba: record.data.fldShomareSheba
+                            },
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                        
+                    }
+                }
+            });
+        }
+        else if (command == 'PrintDaraei') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            /*if (record.data.fldMashmool == "1") {*/
+            /*if (record.data.fldPardakhFish != "پرداخت نشده") {*/
+           
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/AnnouncementComplications_Fish/DetailMoadi',
+                params: {
+                    fldAshakhasID: record.data.fldAshakhasID
+                },
+                success: function (data) {
+                    if (data.Status == 1) {
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/AnnouncementComplications_Fish/PrintDaraei',
+                            params: {
+                                FishId: record.data.fldId,
+                                ElamAvarezId: record.data.fldElamAvarezId
+                            },
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                    else if (data.MoadiType==0)
+                    {
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/Employee/EmployeeDetails',
+                            params: {
+                                Id: data.Id,
+                                flag: 1,
+                                FishId: record.data.fldId,
+                                ElamAvarezId: record.data.fldElamAvarezId
+                            },
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                    else if (data.MoadiType == 1) {
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/AshkhaseHoghoghi/AshkhasHoghoghiDetails',
+                            params: {
+                                Id: data.Id,
+                                flag: 1,
+                                FishId: record.data.fldId,
+                                ElamAvarezId: record.data.fldElamAvarezId
+                            },
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            });
+               
+            /*}
+            else {
+                Ext.net.Mask.hide();
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "فیش انتخاب شده پرداخت نشده است، لذا امکان چاپ گزارش فرم دارایی وجود ندارد",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }*/
+            /* }
+             else {
+                 Ext.net.Mask.hide();
+                 Ext.MessageBox.show({
+                     title: "خطا",
+                     msg: "فیش انتخاب شده ارزش افزوده ندارد، لذا امکان چاپ گزارش فرم دارایی وجود ندارد",
+                     icon: Ext.MessageBox.ERROR,
+                     buttons: Ext.MessageBox.OK
+                 });
+             }*/
+        }
+    }
+
+    
+    /* function PrintFish(record) {
+             Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+             Ext.net.DirectMethod.request({
+                 url: '/Daramad/AnnouncementComplications_Fish/ChecKHaveFish',
+                 params: {
+                     Id: record.data.fldId
+                 },
+                 success: function (data) {
+                     if (data.HaveFish == 0) {
+                         Ext.net.DirectMethod.request({
+                             url: '/Daramad/AnnouncementComplications_Fish/Index',
+                             params: {
+                                 containerId: 'FirstTabDaramad',
+                                 Id: record.data.fldId
+                             },
+                             success: function () {
+                                 Ext.net.Mask.hide();
+                             }
+                         });
+                     }
+                     else {
+                         Ext.net.Mask.hide();
+                         Ext.MessageBox.show({
+                             title: "خطا",
+                             msg: "برای رکورد انتخاب شده فیش ثبت شده و امکان ویرایش وجود ندارد.",
+                             icon: Ext.MessageBox.ERROR,
+                             buttons: Ext.MessageBox.OK
+                         });
+                     }
+                 }
+             });
+     }
+     function Pardakht(record) {
+         Ext.MessageBox.show({
+             title: "هشدار",
+             msg: "آیا برای حذف مطمئن هستید؟",
+             icon: Ext.MessageBox.WARNING,
+             buttons: Ext.MessageBox.YESNO,
+             fn: function (btn) {
+                 if (btn == 'yes') {
+                     Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                     Ext.net.DirectMethod.request({
+                         url: '/Daramad/AnnouncementComplications_Fish/ChecKHaveFish',
+                         params: {
+                             Id: record.data.fldId
+                         },
+                         success: function (data) {
+                             if (data.HaveFish == 0) {
+                                 Ext.net.DirectMethod.request({
+                                     url: '/Daramad/AnnouncementComplications_Fish/Pardakht',
+                                     params: {
+                                         id: record.data.fldId
+                                     },
+                                     success: function (data) {
+                                         var ic = Ext.MessageBox.INFO;
+                                         if (data.Er == 1)
+                                             ic = Ext.MessageBox.ERROR;
+                                         Ext.MessageBox.show({
+                                             title: data.MsgTitle,
+                                             msg: data.Msg,
+                                             icon: ic,
+                                             buttons: Ext.MessageBox.OK
+                                         });
+                                         App.AnnouncementComplication_Fish.queryById('FishGrid').store.load();
+                                     }
+                                 });
+                                 Ext.net.Mask.hide();
+                             }
+                             else {
+                                 Ext.net.Mask.hide();
+                                 Ext.MessageBox.show({
+                                     title: "خطا",
+                                     msg: "برای رکورد انتخاب شده فیش ثبت شده و امکان حذف وجود ندارد.",
+                                     icon: Ext.MessageBox.ERROR,
+                                     buttons: Ext.MessageBox.OK
+                                 });
+                             }
+                         }
+                     });
+                 }
+             }
+         });
+     }*/
+    
+    function GroupPay() {
+        var FishVal = new Array();
+        var SelectedRows = App.AnnouncementComplication_Fish.queryById('FishGrid').getSelectionModel().getSelection();
+        if (SelectedRows.length > 0) {
+            for (var i = 0; i < SelectedRows.length ; i++) {
+                FishVal.push({
+                    fldId: SelectedRows[i].data.fldId,
+                    fldShenaseGhabz: SelectedRows[i].data.fldShenaseGhabz,
+                    fldShenasePardakht: SelectedRows[i].data.fldShenasePardakht,
+                    fldMablaghAvarezGerdShode: SelectedRows[i].data.fldMablaghAvarezGerdShode,
+                    fldShomareSheba: SelectedRows[i].data.fldShomareSheba
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "هیچ سطری برای پرداخت انتخاب نشده است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        $.ajax({
+            type: "POST",
+            url: '/Daramad/AnnouncementComplications_Fish/PSPModels',
+            datatype: "json",
+            params: {
+                state: 2,
+                FishId: 0,
+                ShGhabz: "",
+                ShPardakht: "",
+                Price: 0,
+                Sheba: ""
+            },
+            contentType: 'application/json',
+            success: function () {
+                Ext.net.Mask.hide();
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+        });
+    }
+    var addKeyMapAnnouncementComplication_Fish = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.AnnouncementComplication_Fish.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    /* if (keyfield.itemId == "txtShSheba") {
+                         nextfld = App.AnnouncementComplication_Fish.queryById('btnSaveShomareHesabeOmoomi');
+                     }
+                     else {*/
+                    nextfld = keyfield.nextSibling().nextSibling();
+                    nextfld.selectText();
+                    /* }*/
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

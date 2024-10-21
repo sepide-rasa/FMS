@@ -1,0 +1,319 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_Plaque>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .color {
+        color: red;
+    }
+</style>
+<br />
+@(Html.X().Panel()
+        .ID("SabtPlaque")
+        .Title("تعریف پلاک خودرو")
+            .Listeners(li => { li.AfterRender.Handler = "PlaqueSetSize();"; li.Render.Fn = "addKeyMapPlaque"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                   X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSavePlaque")
+                    .Listeners(l => { l.Click.Handler = "SavePlaque();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadPlaque();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeletePlaque();"; })
+                    , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpPlaque();"; }),
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.SabtPlaque.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                 X.FieldSet().Border(false).Items(
+                    X.FieldSet().Border(true).Title("پلاک خودرو").Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.TextField().Width(30)
+                    .BlankText("لطفا سریال را وارد کنید.")
+                    .AllowBlank(false)
+                    .AllowBlank(false)
+                    .ItemID("txtSerialPelak")
+                        .MaskRe("[0-9]").MaxLength(2),
+                        
+                    X.TextField()
+                    .BlankText("لطفا پلاک را وارد کنید.")
+                    .AllowBlank(false).Width(50)
+                    .AllowBlank(false)
+                        .ItemID("txtpelak_3").MaxLength(3)
+                    .MaskRe("[0-9]"),
+                    
+                        
+                        X.ComboBox()
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .ItemID("CboCharacterPelak").Width(40)
+                        .TypeAhead(true)
+                        .Editable(false)
+                        .QueryMode(DataLoadMode.Local)
+                        .BlankText("لطفا حروف پلاک را انتخاب کنید.")
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldName")
+                        .EmptyText("حروف پلاک ...")
+                        .Store(X.Store()
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                )
+                                    )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetCharacterPelak"))
+                        .Reader(X.JsonReader().Root("data"))
+                                )
+                                )
+                            .AllowBlank(false),
+                    X.TextField()
+                    .AutoFocus(true)
+                    .ItemID("txtpelak_2")
+                    .AllowBlank(false)
+                    .Width(30)
+                    .BlankText("لطفا پلاک را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .MaxLength(2)
+                        .MaskRe("[0-9]")
+                    .EnforceMaxLength(true)
+                )
+             )
+            )
+        ),
+        X.GridPanel()
+                .ItemID("PlaqueGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                        X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.SabtPlaque.queryById('PlaqueGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtPlaque.queryById('PlaqueGrid');grid.setHeight(App.Win.getHeight() - 275); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                                Html.X().Column().DataIndex(Model, m => m.fldSerial_Plaque).Text("پلاک").Flex(10).Wrap(true)
+               )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+          )
+    )
+)
+<script type="text/javascript">
+    function HelpPlaque() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Plaque/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function PlaqueSetSize() {
+        App.SabtPlaque.setWidth(App.Win.getWidth());
+        var grid = App.SabtPlaque.queryById('PlaqueGrid');
+        grid.setHeight(App.Win.getHeight() - 275);
+    }
+
+    function LoadPlaque() {
+        ReplaceArabic();
+        var SelectedRow = App.SabtPlaque.queryById('PlaqueGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/Plaque/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtSerialPelak = App.SabtPlaque.queryById('txtSerialPelak');
+                    txtSerialPelak.setValue(data.fldSerialPlaque);
+                    var CboCharacterPelak = App.SabtPlaque.queryById('CboCharacterPelak');
+                    CboCharacterPelak.setValue(data.charcterPelak);
+                    var txtpelak_3 = App.SabtPlaque.queryById('txtpelak_3');
+                    txtpelak_3.setValue(data.fldPlaque);
+                    var txtpelak_2 = App.SabtPlaque.queryById('txtpelak_2');
+                    txtpelak_2.setValue(data.Pelak_2);
+                    var fldId = App.SabtPlaque.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SavePlaque() {
+        var txtSerialPelak = App.SabtPlaque.queryById('txtSerialPelak');
+        var CboCharacterPelak = App.SabtPlaque.queryById('CboCharacterPelak');
+        var txtpelak_3 = App.SabtPlaque.queryById('txtpelak_3');
+        var txtpelak_2 = App.SabtPlaque.queryById('txtpelak_2');
+        var fldId = App.SabtPlaque.queryById('fldId');
+            var er = false;
+            if (CboCharacterPelak.validate() == false) {
+                er = true;
+            }
+            if (txtSerialPelak.validate() == false) {
+                er = true;
+            }
+            if (txtpelak_3.validate() == false) {
+                er = true;
+            }
+            if (txtpelak_2.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+            var Pelak = ""; 
+        /*Pelak = txtpelak_2.getValue() + " - " + txtpelak_3.getValue() + " " + CboCharacterPelak.getValue();*/
+            Ext.net.Mask.show({ msg: 'در حال دخیره سازی...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/Plaque/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    harf: CboCharacterPelak.getValue(),
+                    fldPlaque3: txtpelak_3.getValue(),
+                    fldPlaque2: txtpelak_2.getValue(),
+                    fldSerialPlaque: txtSerialPelak.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtPlaque.queryById('PlaqueGrid').store.load();
+                    if (data.Err != 1)
+                        ClearPlaque();
+                }
+
+            });
+    }
+    function DeletePlaque() {
+        var SelectedRow = App.SabtPlaque.queryById('PlaqueGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/Plaque/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtPlaque.queryById('PlaqueGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearPlaque() {
+        App.SabtPlaque.queryById('fldId').setValue(0);
+        App.SabtPlaque.queryById('txtSerialPelak').setValue("");
+        App.SabtPlaque.queryById('txtpelak_3').setValue("");
+        App.SabtPlaque.queryById('txtpelak_2').setValue("");
+    }
+    var addKeyMapPlaque = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtPlaque.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtpelak_2") {
+                        nextfld = App.SabtPlaque.queryById('CboCharacterPelak');
+                    }
+                    else if (keyfield.itemId == "CboCharacterPelak") {
+                        nextfld = App.SabtPlaque.queryById('txtpelak_3');
+                    }
+                    else if (keyfield.itemId == "txtpelak_3") {
+                        nextfld = App.SabtPlaque.queryById('txtSerialPelak');
+                    }
+                    else if (keyfield.itemId == "txtSerialPelak") {
+                        
+                        nextfld = App.SabtPlaque.queryById('btnSavePlaque');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

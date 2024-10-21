@@ -1,0 +1,215 @@
+﻿@model IEnumerable<NewFMS.WCF_Common_Pay.OBJ_ComputationFormula>
+@using Ext.Net.MVC;
+@using Ext.Net.Utilities;
+@using Hogaf;
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+<style>
+    .Araybi1 {
+        background-image: url("/Content/icons/mini/حکم.png");
+        background-size: cover !important;
+    }
+
+    .Araybi2 {
+        background-image: url("/Content/icons/mini/حقوق.png");
+        background-size: cover !important;
+    }
+</style>
+
+
+@(X.Window()
+    .ID("OrganList")
+    .AutoScroll(true)
+    .Border(false)
+    .Modal(true)
+    .Height(650)
+    .Maximized(true)
+    .Title("لیست سازمان ها")
+    .Layout(Ext.Net.LayoutType.Fit)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .AutoScroll(true)
+            .Layout(Ext.Net.LayoutType.Fit)
+            .Items(
+                X.GridPanel()
+                         .TopBar(
+                            Html.X().Toolbar()
+                            .Items(
+                                X.Button().Text("جدید").Icon(Ext.Net.Icon.Add).ToolTip("کلید میانبر F8")
+                                            .Listeners(li => li.Click.Handler = "NewFormul();"),
+                                X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).ToolTip("کلید میانبر F2")
+                                            .Listeners(Li => Li.Click.Handler = "EditOrganList();"),
+                                X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).ToolTip("کلید میانبر F9")
+                                    .Listeners(de =>
+                                    {
+                                        de.Click.Handler = "if (App.OrganList.queryById('GridOrganList').selModel.getLastSelected() == null) {Ext.MessageBox.show({ title: 'خطا', msg: 'لطفا یک سطر را انتخاب کنید',icon: Ext.MessageBox.ERROR,buttons: Ext.MessageBox.OK});return false;}else DeleteOrganList();";
+                                    })
+                              
+                            )
+                        )
+                    .AutoScroll(true)
+                    .ItemID("GridOrganList")
+                    .BottomBar(X.PagingToolbar())
+                    .Store(
+                        X.StoreForModel()
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                        )
+        //.Listeners(l => l.DataChanged.Handler = "App.StakeholderManagementSystem.queryById('GridStakeholderManagementSystem').selModel.refresh();")
+                            .PageSize(25)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                .View(
+                    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+        // .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldOrganId).Text("کد").Hidden(true).Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.NameOrgan).Text("عنوان سازمان").Flex(9).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldTypeName).Text("نوع فرمول").Flex(5),
+                        Html.X().Column().DataIndex(Model, m => m.fldAzTarikh).Text("از تاریخ").Flex(5),
+                        //Html.X().ComponentColumn().Filterable(false).Align(Alignment.Center).ID("MenuArzyabi").Flex(1).Text("انتخاب نوع فرمول")
+                        //    .Component(Html.X().CycleButton().ShowText(true).ItemID("btnArzyabi").Menu(X.Menu().Items(X.MenuItem().Text("احکام").IconCls("Araybi1"),
+                        //        X.MenuItem().Text("حقوق").IconCls("Araybi2"))
+                        //)),
+                        Html.X().ComponentColumn().Flex(1).ItemID("buttonFormula")
+                            .Component(Html.X().Button().ItemID("btnbindFormula").Text("ادامه...").Listeners(l => l.Click.Handler = "GotoFormula()")).Filterable(false)
+                        )
+            )
+        )
+)
+
+
+<script type="text/javascript">
+    function NewFormul() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/WritingFormula/new',
+            params: {
+                id: 0
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function EditOrganList() {
+        var SelectedRow = App.OrganList.queryById('GridOrganList').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/WritingFormula/new',
+                params: {
+                    id: SelectedRow.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DeleteOrganList() {
+        var SelectedHeaderRow =  App.OrganList.queryById('GridOrganList').selModel.getLastSelected();
+        if (SelectedHeaderRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/WritingFormula/Delete',
+                            params: {
+                                id: SelectedHeaderRow.data.fldId
+                            },
+                            success: function (data) {
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.INFO,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.OrganList.queryById('GridOrganList').store.load()
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function GotoFormula() {
+        var OrganId = "";
+        var RankingType ;
+        var grid = App.OrganList.queryById("GridOrganList");
+        var column = App.OrganList.queryById("GridOrganList").columnManager.columns[2];
+        var record = App.OrganList.queryById("buttonFormula").activeRecord.record;
+        OrganId = record.data.fldId;
+
+        var cell = grid.getView().getCell(record, column);
+        if (cell.dom.textContent == "احکام") {
+            RankingType = 0;
+        }
+        else {
+            RankingType = 1;
+        }
+
+        openWindowWithPost("/WritingFormula/Formula", {
+            ID: 0,
+            FieldName:"",
+            FormulId: record.data.fldId,
+            RankingType: RankingType,
+            OrganId: record.data.fldOrganId,
+            OrganName: record.data.fldTypeName+' ' + record.data.NameOrgan,
+            AzTarikh: record.data.fldAzTarikh
+        });
+    }
+
+    function openWindowWithPost(url, data) {
+        var form = document.createElement("form");
+        form.target = "_blank";
+        form.method = "POST";
+        form.action = url;
+        form.style.display = "none";
+
+        for (var key in data) {
+            var input = document.createElement("input");
+            input.type = "hidden";
+            input.name = key;
+            input.value = data[key];
+            form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    }
+
+</script>

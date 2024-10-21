@@ -1,0 +1,265 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_MadrakTahsili>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+    .ID("SabtMadrakTahsili")
+        .Title("ثبت مقاطع تحصیلی")
+            .Listeners(li => { li.AfterRender.Handler = "MadrakTahsiliSetSize();"; li.Render.Fn = "addKeyMapSabtMadrakTahsili"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .Buttons(
+                    X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => { l.Click.Handler = "SaveMadrakTahsili();"; }).ItemID("btnSave"),
+                X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "LoadMadrakTahsili();"; }),
+                X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteMadrakTahsili();"; }),
+                       X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpMadrakTahsili();"; }),
+
+                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.SabtMadrakTahsili.destroy()")
+                )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                          .Layout(LayoutType.VBox)
+                                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                                .Title("مقاطع تحصیلی")
+                                .Height(50)
+                                .Border(true)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                        .Items(
+                            X.Hidden()
+                                .ItemID("fldId"),
+                            X.Label("عنوان:"),
+                            X.TextField()
+                                .ItemID("txtTitle")
+                              //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(false)
+                                .MaxLength(100)
+                                .EnforceMaxLength(true)
+                                .BlankText("لطفا عنوان را وارد کنید.")
+                                .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                                .AutoFocus(true),
+                            X.Label("توضیحات:"),
+                            X.TextField()
+                                .ItemID("txtDesc")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Width(380)
+                                .ColSpan(3)
+                        )
+                    )
+        ),
+        X.GridPanel()
+            .ItemID("MadrakTahsiliGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                        .Listeners(l => l.DataChanged.Handler = "App.SabtMadrakTahsili.queryById('MadrakTahsiliGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+            .Plugins(X.FilterHeader().Remote(true))
+            .Listeners(l =>
+            {
+                l.AfterRender.Handler = "var grid = App.SabtMadrakTahsili.queryById('MadrakTahsiliGrid');grid.setHeight(App.Win.getHeight() - 260); ";
+            })
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+ /*   App.PersoneliWin.addListener('resize', function () {
+        App.MadrakTahsili.setWidth(App.PersoneliWin.getWidth());
+    });
+    App.PersoneliWin.addListener('resize', function () {
+        var grid = App.MadrakTahsili.queryById('MadrakTahsiliGrid');
+        grid.setHeight(App.PersoneliWin.getHeight() - 240);
+    });*/
+    function HelpMadrakTahsili() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/MadrakTahsili/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function MadrakTahsiliSetSize() {
+        App.SabtMadrakTahsili.setWidth(App.Win.getWidth());
+        var grid = App.SabtMadrakTahsili.queryById('MadrakTahsiliGrid');
+        grid.setHeight(App.Win.getHeight() - 260);
+    }
+    function LoadMadrakTahsili() {
+        var SelectedRow = App.SabtMadrakTahsili.queryById('MadrakTahsiliGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/MadrakTahsili/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTitle = App.SabtMadrakTahsili.queryById('txtTitle');
+                    txtTitle.setValue(data.fldName);
+                    var txtDesc = App.SabtMadrakTahsili.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtMadrakTahsili.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveMadrakTahsili() {
+        var txtTitle = App.SabtMadrakTahsili.queryById('txtTitle');
+        var txtDesc = App.SabtMadrakTahsili.queryById('txtDesc');
+        var fldId = App.SabtMadrakTahsili.queryById('fldId');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/MadrakTahsili/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldTitle: txtTitle.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.SabtMadrakTahsili.queryById('MadrakTahsiliGrid').store.load();
+                if (data.Err != 1)
+                    ClearMadrakTahsili();
+            }
+
+        });
+    }
+    function DeleteMadrakTahsili() {
+        var SelectedRow = App.SabtMadrakTahsili.queryById('MadrakTahsiliGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Personeli/MadrakTahsili/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtMadrakTahsili.queryById('MadrakTahsiliGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                        ClearMadrakTahsili();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearMadrakTahsili() {
+        App.SabtMadrakTahsili.queryById('fldId').setValue(0);
+        App.SabtMadrakTahsili.queryById('txtTitle').setValue("");
+        App.SabtMadrakTahsili.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapSabtMadrakTahsili = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtMadrakTahsili.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtMadrakTahsili.queryById('btnSave');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

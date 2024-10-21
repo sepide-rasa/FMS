@@ -1,0 +1,1121 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_DocumentRecord_Details>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+
+<script src="~/Scripts/accounting.min.js"></script>
+<style>
+    .custom-NoteRegister_Detailsicon {
+        margin-right: 253px !important;
+    }
+
+    .custom-NoteRegister_Detailsicon2 {
+        margin-right: 268px !important;
+    }
+
+    .custom-NoteRegister_Detailsicon3 {
+        margin-right: 575px !important;
+    }
+
+    .custom-NoteRegister_Detailsicon4 {
+        margin-right: 125px !important;
+    }
+
+    .custom-NoteRegister_Detailsicon5 {
+        margin-right: 142px !important;
+    }
+</style>
+
+@(Html.X().Window()
+    .Modal(true)
+    .ID("NoteRegister_Details")
+    .Title("ثبت یادداشت")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l =>
+    {
+        l.Render.Fn = "addKeyMapNoteRegister_Details";
+        l.AfterRender.Handler = "App.NoteRegister_Details.setWidth(Ext.getBody().getViewSize().width - 20);";
+    })
+    .Border(false)
+    .Layout(LayoutType.Fit)
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("ثبت")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveNoteRegister_Details();"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.NoteRegister_Details.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet()
+                    .Title("مشخصات سند")
+                    .Border(true)
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 8 })
+                    .Items(
+                        X.Hidden()
+                            .ItemID("fldHeaderId"),
+                        X.Label("ســـال:"),
+                        X.ComboBox()
+                            .ItemID("CboYear")
+                            .AutoFocus(true)
+                            .DisplayField("fldYear")
+                            .ValueField("fldId")
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا سال را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .Listeners(l =>
+                            {
+                                l.Blur.Handler = "SetDefaultNum_Atf()";
+                                l.Change.Handler = "if(App.NoteRegister_Details.queryById('CboYear').value!=null){App.NoteRegister_Details.queryById('NoteRegister_DetailsGrid').getView().refresh();SetValidateDocDate();}";
+                            })
+                            .Store(X.Store()
+                                .Listeners(l => l.Load.Handler = "setDefaultYearNoteRegister_Details()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" },
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" }                                        
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetSal"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            ),
+                        X.Label("شماره عطف:"),
+                        X.TextField()
+                            .ItemID("txtAtfNum")
+                            .AllowBlank(false)
+                            .ReadOnly(true),
+                        X.Label("شماره بایگانی:"),
+                        X.TextField()
+                            .ItemID("txtArchiveNum")
+                            .Listeners(l => l.Focus.Handler = "SetDefaultNum_Atf()")
+                            .AllowBlank(false)
+                            .BlankText("لطفا شماره بایگانی را وارد کنید")
+                            .MaxLength(50)
+                            .EnforceMaxLength(true),
+                        X.Label("تاریخ ثبت سند:"),
+                        X.PDateField()
+                            .ItemID("txtDocDate")
+                            .AllowBlank(false)
+                            .Editable(true)
+                            .MaskRe("/[0-9 /]/")
+                            .Listeners(l =>
+                            {
+                                l.AfterRender.Handler = "SetDefaulttxtDocDate()";
+                                l.Change.Handler = "SetValidateDocDate()";
+                            })
+                            .BlankText("لطفا تاریخ ثبت سند را وارد کنید.")
+                            .MaxLength(10)
+                            .EnforceMaxLength(true),
+                        X.Label("شرح سند:"),
+                        X.TextArea()
+                            .ItemID("txtDescDoc")
+                            .Icon(Icon.CalendarSelectDay)
+                            .AllowBlank(false)
+                            .AllowOnlyWhitespace(false)
+                            .BlankText("لطفا شرح سند را وارد کنید.")
+                            .ColSpan(7)
+                            .Width(596)
+                            .FieldStyle("padding-right:5px;")
+                            .Listeners(l =>
+                            {
+                                l.SpecialKey.Handler = "SelectDescDoc(e.getKey());";
+                                l.Focus.Handler = "App.NoteRegister_Details.queryById('txtDescDoc').setFieldStyle('background-color:yellow;');";
+                                l.Blur.Handler = "App.NoteRegister_Details.queryById('txtDescDoc').setFieldStyle('background-color:white;');App.ColHeadLineNote.getComponent(0).focus();";
+                                l.IconClick.Handler = "GotoSearchDescDoc()";
+                                l.AfterRender.Handler = "App.NoteRegister_Details.queryById('txtDescDoc').icon.dom.classList.add('custom-NoteRegister_Detailsicon3');";
+                            })
+                    ),
+                X.GridPanel()
+                    .Listeners(l =>
+                    {
+                        l.ViewReady.Handler = "ShowHeaderCheckbox()";
+                        l.AfterRender.Handler = "App.NoteRegister_Details.queryById('NoteRegister_DetailsGrid').setSize(Ext.getBody().getViewSize().width - 40,Ext.getBody().getViewSize().height - 200);";
+                    })
+                    .ItemID("NoteRegister_DetailsGrid")
+                    .Frame(true)
+                    .Title("آیتم های سند")
+                    .Features(Html.X().Summary().ID("summaryDocumentsNote").Dock(SummaryDock.Bottom))
+                    .TopBar(
+                        Html.X().Toolbar()
+                            .Items(
+                                X.Button()
+                                    .Text("افزودن سطر جدید")
+                                    .Icon(Ext.Net.Icon.BulletPlus)
+                                    .Listeners(l => l.Click.Handler = "AddRowDocRegister();")
+                            )
+                    )
+                    .Store(
+                        X.StoreForModel()
+                            .AutoLoad(false)
+                            .Listeners(l => l.DataChanged.Handler = "App.NoteRegister_Details.queryById('NoteRegister_DetailsGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("ReadDocRegister_Details"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .Parameters(ps => ps.Add(new StoreParameter("HeaderId", ViewBag.HeaderId, ParameterMode.Raw)))
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Listeners(l => l.ItemMouseEnter.Fn = "createTooltipHeadLine")
+        //.Plugins(Html.X().CellEditing()/*.ClicksToEdit(1).Listeners(l => l.Edit.Fn = "nextcellRowNoteRegister_Details")*/)
+                    .BottomBar(X.PagingToolbar())
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldSourceId).Text("کد پرونده").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldCaseTypeId).Text("کد نوع پرونده").Hidden(true).Flex(1),
+                        Html.X().ComponentColumn().ID("ColHeadLineNote").DataIndex(Model, m => m.fldCodingId)
+                            .Listeners(l =>
+                            {
+                                l.Bind.Fn = "setValueHeadLine";
+                                //l.Edit.Fn = "loadCboCostCenter";
+                            })
+                            .Flex(7).Editor(true).Sortable(false).Text("عنوان سرفصل")
+                            .Component(
+                                X.ComboBox()
+                                    .ItemID("CboHeadLine")
+                                    .TypeAhead(true)
+                                    .Editable(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا عنوان سرفصل را انتخاب کنید.")
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                    .EnableKeyEvents(true)
+                                    .ForceSelection(true)
+                                    .Icon(Icon.Add)
+                                    .FieldStyle("padding-right:5px;")
+                                    .Listeners(l =>
+                                    {
+                                        l.BeforeQuery.Fn = "SearchMatch";
+                                        l.KeyDown.Fn = "GotoNextField";
+                                        l.SpecialKey.Fn = "SelectCodingDetails";
+                                        l.IconClick.Fn = "GotoCodingDetails";
+                                        l.Change.Fn = "loadCboCostCenter";
+                                    })
+                                    .EmptyText("عنوان سرفصل...")
+                                    .Store(X.Store()
+                                        .AutoLoad(false)
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.Int) { Mapping = "fldId" },
+                                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" },
+                                                new ModelField("fldMahiyatId", ModelFieldType.String) { Mapping = "fldMahiyatId" }
+                                                )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Timeout(200000000)
+                                            .Url(Url.Action("GetHeadLines"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                )
+                            ),
+                        Html.X().ComponentColumn().ID("ColDescriptionNote").DataIndex(Model, m => m.fldDescription)
+                            .Listeners(l => l.Bind.Fn = "AddIcoDescription").Flex(7).Editor(true).Sortable(false).Text("شرح")
+                            .Component(
+                                Html.X().TextField().Icon(Icon.Add)
+                                .ItemID("txtDescription").FieldStyle("padding-right:5px;").EnableKeyEvents(true).Listeners(l =>
+                                {
+                                    l.SpecialKey.Fn = "SelectDescDoc2";
+                                    l.IconClick.Fn = "GotoSearchDescDoc2";
+                                    l.KeyDown.Fn = "GotoNextField2";
+                                    l.Focus.Fn = "resetValuee";
+                                })
+                            ),
+                        Html.X().ComponentColumn().ID("ColBedNote").DataIndex(Model, m => m.fldBedehkar).SummaryType(SummaryType.Sum).SummaryRenderer(new Renderer { Handler = "sumColBed" })
+                            .Flex(4).Renderer("SepearateNoteRegister_Details").Editor(true).Sortable(false).Text("بدهکار")
+                            .Component(
+                                Html.X().TextField().ItemID("txtBed").MaskRe("[0-9,*,/]").EnableKeyEvents(true)
+                                .Listeners(l =>
+                                {
+                                    l.Change.Fn = "setSeperate";
+                                    l.KeyDown.Fn = "GotoNextField3";
+                                    l.Blur.Handler = "refreshFeature()";
+                                })
+                            ),
+                        Html.X().ComponentColumn().ID("ColBesNote").DataIndex(Model, m => m.fldBestankar).SummaryType(SummaryType.Sum).SummaryRenderer(new Renderer { Handler = "sumColBes" })
+                            .Flex(4).Renderer("SepearateNoteRegister_Details").Editor(true).Sortable(false).Text("بستانکار")
+                            .Component(
+                                Html.X().TextField().ItemID("txtBes").EnableKeyEvents(true).MaskRe("[0-9,*,/]")
+                                .Listeners(l =>
+                                {
+                                    l.Change.Fn = "setSeperate";
+                                    l.KeyDown.Fn = "GotoNextField4";
+                                    l.Blur.Handler = "refreshFeature()";
+                                })
+                            ),
+                        Html.X().ComponentColumn().ID("ColCostCenterNote").DataIndex(Model, m => m.fldCenterCoId)
+                            .Listeners(l => l.Bind.Fn = "AddIcoCostCenter").Flex(4).Editor(true).Sortable(false).Text("مرکز هزینه")
+                            .Component(
+                                X.ComboBox()
+                                    .ItemID("CboCostCenter")
+                                    .TypeAhead(true)
+                                    .Editable(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا مرکز هزینه را انتخاب کنید.")
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                    .EnableKeyEvents(true)
+                                    .ForceSelection(true)
+                                    .Icon(Icon.Add)
+                                    .FieldStyle("padding-right:5px;")
+                                    .Listeners(l =>
+                                    {
+                                        l.BeforeQuery.Fn = "SearchMatch";
+                                        l.KeyDown.Fn = "GotoNextField6";
+                                        l.SpecialKey.Fn = "SelectCostCenter";
+                                        l.IconClick.Fn = "GotoSearchCostCenter";
+                                    })
+                                    .EmptyText("مرکز هزینه...")
+                                    .Store(X.Store()
+                                        .AutoLoad(false)
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.Int) { Mapping = "fldId" },
+                                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Timeout(200000000)
+                                            .Url(Url.Action("GetCostCenter"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                )
+                            ),
+                        Html.X().ComponentColumn().ID("ColFileNote").DataIndex(Model, m => m.fldName).SummaryRenderer(new Renderer { Handler = "SetRemain" })
+                            .Listeners(l => l.Bind.Fn = "AddIcoFile").Flex(4).Editor(true).Sortable(false).Text("پرونده")
+                            .Component(
+                                Html.X().TextField().Icon(Icon.Add)
+                                .ItemID("txtFile").FieldStyle("padding-right:5px;").EnableKeyEvents(true).ReadOnly(true)
+                                .Listeners(l =>
+                                {
+                                    l.SpecialKey.Fn = "SelectFile";
+                                    l.IconClick.Fn = "GotoFile";
+                                    l.KeyDown.Fn = "GotoNextField5";
+                                })
+                            ),
+                        Html.X().ImageCommandColumn().PrepareCommand("HideCmpDel").Listeners(l => l.Command.Fn = "DeleteDelNoteRegister_Details").Flex(1)
+                        .Commands(
+                            Html.X().ImageCommand().CommandName("CmpDel").Icon(Ext.Net.Icon.Delete).ToolTip(tt => tt.Text = "حذف")
+                        )
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+            )
+        )
+)
+<script type="text/javascript">
+    /*var HintEnterNoteRegister_Details = 0;
+
+    function checkhintkeyDR_D(e) {
+        if (e == 13) {
+            HintEnterNoteRegister_Details = 1;
+        }
+    };*/
+    function AddRowDocRegister() {
+        var index = App.NoteRegister_Details.queryById('NoteRegister_DetailsGrid').getStore().count();
+        App.NoteRegister_Details.queryById('NoteRegister_DetailsGrid').store.insert(index, {
+            fldId: 0, fldSourceId: 0, fldCaseTypeId: 0, fldCodingId: 0,
+            fldDescription: "", fldBedehkar: 0, fldBestankar: 0,
+            fldCenterCoId: 0, fldName: ""
+        });
+        App.ColHeadLineNote.getComponent(index).focus();
+    }
+
+    var HideCmpDel = function (grid, command, record, row) {
+        if (command.command == 'CmpDel') {
+            if (App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(record) == 0 || App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(record) == 1) {
+                command.hidden = true;
+                command.hideMode = 'visibility';
+            }
+            else {
+                command.hidden = false;
+                command.hideMode = 'visibility';
+            }
+        }
+    };
+
+    function refreshFeature() {
+        App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").getView().getFeature("summaryDocumentsNote").onStoreUpdate();
+    }
+
+    function sumColBes() {
+        var store = App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store;
+        var summaryRec = App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").getView().getFeature("summaryDocumentsNote").summaryRecord;
+        var sum = 0;
+        store.each(function (rec) {
+            sum += rec.get('fldBestankar');
+        });
+        if (sum == summaryRec.data.fldBedehkar) {
+            return "<div style='display:inline;'>جمع بس: </div>" + "<div style='display:inline;color:#167747;'>" + sum.toLocaleString() + "</div>";
+        }
+        else {
+            return "<div style='display:inline;'>جمع بس: </div>" + "<div style='display:inline;color:red;'>" + sum.toLocaleString() + "</div>";
+        }
+    }
+
+    function sumColBed() {
+        var store = App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store;
+        var summaryRec = App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").getView().getFeature("summaryDocumentsNote").summaryRecord;
+        var sum = 0;
+        store.each(function (rec) {
+            sum += rec.get('fldBedehkar');
+        });
+        if (sum == summaryRec.data.fldBestankar) {
+            return "<div style='display:inline;'>جمع بد: </div>" + "<div style='display:inline;color:#167747;'>" + sum.toLocaleString() + "</div>";
+        }
+        else {
+            return "<div style='display:inline;'>جمع بد: </div>" + "<div style='display:inline;color:red;'>" + sum.toLocaleString() + "</div>";
+        }
+    }
+
+    function SetRemain() {
+        var summaryRec = App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").getView().getFeature("summaryDocumentsNote").summaryRecord;
+        if (parseFloat(summaryRec.data.fldBedehkar) == parseFloat(summaryRec.data.fldBestankar)) {
+            return "<div style='display:inline;color:#167747;'>تراز می باشد.</div>";
+        }
+        else {
+            var Mande = parseFloat(summaryRec.data.fldBedehkar) - parseFloat(summaryRec.data.fldBestankar);
+            if (Mande < 0) {/*مانده بستانکاری*/
+                return "<div style='display:inline;'>مانده :</div>" + "<div style='display:inline;color:red;'>" + (Mande*-1).toLocaleString() + " بد</div>";
+            }
+            else {
+                return "<div style='display:inline;'>مانده :</div>" + "<div style='display:inline;color:red;'>" + Mande.toLocaleString() + " بس</div>";
+            }
+        }
+    }
+
+    function SetValidateDocDate() {
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DocRegistration/GetFirst_LastOfYear',
+            params: {
+                Year: App.NoteRegister_Details.queryById("CboYear").getDisplayValue()
+            },
+            success: function (data) {
+                App.NoteRegister_Details.queryById("txtDocDate").setMinValue(new Date(data.MinDate));
+                App.NoteRegister_Details.queryById("txtDocDate").setMaxValue(new Date(data.MaxDate));
+                App.NoteRegister_Details.queryById("txtDocDate").validate();
+                App.NoteRegister_Details.queryById("txtDocDate").minText='تاریخ ثبت سند باید در محدوده سال مالی باشد.';
+                App.NoteRegister_Details.queryById("txtDocDate").maxText='تاریخ ثبت سند باید در محدوده سال مالی باشد.';
+            }
+        });
+    }
+
+    function SetDefaulttxtDocDate() {
+        if ('@ViewBag.HeaderId' == "0") {
+            App.NoteRegister_Details.queryById("txtDocDate").setRawValue('@ViewBag.CurrentDate');
+        }
+    }
+
+    function ShowHeaderCheckbox() {
+        App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").headerCt.child().container.dom.style.marginRight = "18px";
+    }
+
+    function setDefaultYearNoteRegister_Details() {
+        if ('@ViewBag.HeaderId' == "0") {
+            App.NoteRegister_Details.queryById("CboYear").setValue(App.NoteRegister_Details.queryById("CboYear").findRecordByDisplay(String('@ViewBag.CurrentYear')).data.fldId);
+        }
+        LoadNoteRegister_Details();
+    }
+
+    var setSeperate = function (Fieldd, value, c) {
+        Fieldd.setValue(accounting.formatNumber(value.split("*").join("000").split("/").join("00")));
+        if (value != 0) {
+            if (Fieldd.itemId == "txtBes") {
+                if (Ext.getCmp("ColBedNote").getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/) != null) {
+                    Ext.getCmp("ColBedNote").getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).setValue(0);
+                }
+            }
+            else {
+                if (Ext.getCmp("ColBesNote").getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/) != null) {
+                    Ext.getCmp("ColBesNote").getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).setValue(0);
+                }
+            }
+        }
+    };
+
+    var SepearateNoteRegister_Details = function (value) {
+        return value.toLocaleString();
+    };
+
+    @*var nextcellRowNoteRegister_Details = function (a, b) {
+        if (HintEnterNoteRegister_Details == 1) {
+            HintEnterNoteRegister_Details = 0;
+            App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").editingPlugin.startEdit(b.rowIdx, b.colIdx+1);
+
+        }
+    };*@
+
+    var loadCboCostCenter = function (Fieldd, value, c) {
+        var index = App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record);/*opt.record.index;*/
+        if (Ext.getCmp("ColHeadLineNote").getComponent(index).value != null) {
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/DocRegistration/IsCostCenter',
+                params: {
+                    CodingId: Ext.getCmp("ColHeadLineNote").getComponent(index).value
+                },
+                success: function (data) {
+                    if (data.Flag == 1) {
+                        Ext.getCmp("ColCostCenterNote").getComponent(index).enable();
+                        Ext.getCmp("ColCostCenterNote").getComponent(index).icon.show();
+                        Ext.getCmp("ColCostCenterNote").getComponent(index).store.load();
+                    }
+                    else {
+                        Ext.getCmp("ColCostCenterNote").getComponent(index).store.removeAll();
+                        Ext.getCmp("ColCostCenterNote").getComponent(index).clearValue();
+                        Ext.getCmp("ColCostCenterNote").getComponent(index).disable();
+                        Ext.getCmp("ColCostCenterNote").getComponent(index).icon.hide();
+                    }
+                }
+            });
+
+            if (Ext.getCmp("ColHeadLineNote").getComponent(index).valueModels[0].data.fldMahiyatId/*.findRecordByValue(opt.record.data.fldCodingId).data.fldMahiyatId*/ == 1) {
+                App.ColBesNote.getComponent(index).disable();/*بدهکار*/
+                App.ColBesNote.getComponent(index).setValue(0);
+                App.ColBedNote.getComponent(index).enable();/*بدهکار*/
+            }
+            else if (Ext.getCmp("ColHeadLineNote").getComponent(index).valueModels[0].data.fldMahiyatId/*.findRecordByValue(opt.record.data.fldCodingId).data.fldMahiyatId*/ == 2) {/*بستانکار*/
+                App.ColBedNote.getComponent(index).disable();/*بستانکار*/
+                App.ColBedNote.getComponent(index).setValue(0);
+                App.ColBesNote.getComponent(index).enable();
+            }
+            else if (Ext.getCmp("ColHeadLineNote").getComponent(index).valueModels[0].data.fldMahiyatId == 3) {/*خنثی*/
+                App.ColBedNote.getComponent(index).disable();/*بستانکار*/
+                App.ColBedNote.getComponent(index).setValue(0);
+                App.ColBesNote.getComponent(index).disable();
+                App.ColBesNote.getComponent(index).setValue(0);
+            }
+            else {
+                App.ColBedNote.getComponent(index).enable();/*هیچکدام*/
+                App.ColBesNote.getComponent(index).enable();
+            }
+        }
+        else {
+            App.ColBedNote.getComponent(index).enable();
+            App.ColBesNote.getComponent(index).enable();
+        }
+    };
+
+    @*var loadCboCostCenter = function (column, opt) {
+        var index = App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(opt.record);/*opt.record.index;*/
+        if (Ext.getCmp("ColHeadLineNote").getComponent(index).value != null) {
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/DocRegistration/IsCostCenter',
+                params: {
+                    CodingId: Ext.getCmp("ColHeadLineNote").getComponent(index).value
+                },
+                success: function (data) {
+                    if (data.Flag == 1) {
+                        Ext.getCmp("ColCostCenterNote").getComponent(index).enable();
+                        Ext.getCmp("ColCostCenterNote").getComponent(index).store.load();
+                    }
+                    else {
+                        Ext.getCmp("ColCostCenterNote").getComponent(index).store.removeAll();
+                        Ext.getCmp("ColCostCenterNote").getComponent(index).clearValue();
+                        Ext.getCmp("ColCostCenterNote").getComponent(index).disable();
+                    }
+                }
+            });
+
+            if (Ext.getCmp("ColHeadLineNote").getComponent(index).valueModels[0].data.fldMahiyatId/*.findRecordByValue(opt.record.data.fldCodingId).data.fldMahiyatId*/ == 1) {
+                App.ColBesNote.getComponent(index).disable();/*بدهکار*/
+                App.ColBesNote.getComponent(index).setValue(0);
+                App.ColBedNote.getComponent(index).enable();/*بدهکار*/
+            }
+            else if (Ext.getCmp("ColHeadLineNote").getComponent(index).valueModels[0].data.fldMahiyatId/*.findRecordByValue(opt.record.data.fldCodingId).data.fldMahiyatId*/ == 2) {/*بستانکار*/
+                App.ColBedNote.getComponent(index).disable();/*بستانکار*/
+                App.ColBedNote.getComponent(index).setValue(0);
+                App.ColBesNote.getComponent(index).enable();
+            }
+            else {
+                App.ColBedNote.getComponent(index).enable();/*هیچکدام*/
+                App.ColBesNote.getComponent(index).enable();
+            }
+        }
+        else {
+            App.ColBedNote.getComponent(index).enable();
+            App.ColBesNote.getComponent(index).enable();
+        }
+    };*@
+
+    function GotoSearchDescDoc() {
+        App.NoteRegister_Details.body.mask("در حال بارگذاری");
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/SearchDescDoc/Index',
+            params: {
+                State: 3,
+                rowIdx: 0
+            },
+            success: function () {
+                App.NoteRegister_Details.body.mask().hide();
+            }
+        });
+    }
+
+    var GotoSearchDescDoc2 = function (Fieldd, Event, html) {
+        App.NoteRegister_Details.body.mask("در حال بارگذاری");
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/SearchDescDoc/Index',
+            params: {
+                State: 4,
+                rowIdx: App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/
+            },
+            success: function () {
+                App.NoteRegister_Details.body.mask().hide();
+            }
+        });
+    };
+
+    var GotoCodingDetails = function (Fieldd, Event, html) {
+        App.NoteRegister_Details.body.mask("در حال بارگذاری");
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/Coding/Coding',
+            params: {
+                HeaderId: 0,
+                Year: App.NoteRegister_Details.queryById("CboYear").getDisplayValue(),
+                Status: 3,
+                rowIdx: App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/
+            },
+            success: function () {
+                App.NoteRegister_Details.body.mask().hide();
+            }
+        });
+    };
+
+    var GotoSearchCostCenter = function (Fieldd, Event, html) {
+        App.NoteRegister_Details.body.mask("در حال بارگذاری");
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/SearchCenterCost/Index',
+            params: {
+                State: 3,
+                rowIdx: App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)
+            },
+            success: function () {
+                App.NoteRegister_Details.body.mask().hide();
+            }
+        });
+    };
+
+    var GotoFile = function (Fieldd, Event, html) {
+        App.NoteRegister_Details.body.mask("در حال بارگذاری");
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DocRegistration/ListFiles',
+            params: {
+                rowIdx: App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record),/*Fieldd.record.index*/
+                State: 2
+            },
+            success: function () {
+                App.NoteRegister_Details.body.mask().hide();
+            }
+        });
+    };
+
+    var SelectFile = function (Fieldd, Eventt) {
+        if (Eventt.keyCode == 45) {
+            App.NoteRegister_Details.body.mask("در حال بارگذاری");
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/DocRegistration/ListFiles',
+                params: {
+                    rowIdx: App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record),/*Fieldd.record.index*/
+                    State:2
+                },
+                success: function () {
+                    App.NoteRegister_Details.body.mask().hide();
+                }
+            });
+        }
+    };
+
+    var SelectCodingDetails = function (Fieldd, Eventt) {
+        if (Eventt.keyCode == 45) {
+            App.NoteRegister_Details.body.mask("در حال بارگذاری");
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/Coding/Coding',
+                params: {
+                    HeaderId: 0,
+                    Year: App.NoteRegister_Details.queryById("CboYear").getDisplayValue(),
+                    Status: 3,
+                    rowIdx: App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/
+                },
+                success: function () {
+                    App.NoteRegister_Details.body.mask().hide();
+                }
+            });
+        }
+    };
+
+    var SelectCostCenter = function (Fieldd, Eventt) {
+        if (Eventt.keyCode == 45) {
+            App.NoteRegister_Details.body.mask("در حال بارگذاری");
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/SearchCenterCost/Index',
+                params: {
+                    State: 3,
+                    rowIdx: App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)
+                },
+                success: function () {
+                    App.NoteRegister_Details.body.mask().hide();
+                }
+            });
+        }
+    };
+
+    function SelectDescDoc(key) {
+        if (key == 45) {
+            App.NoteRegister_Details.body.mask("در حال بارگذاری");
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/SearchDescDoc/Index',
+                params: {
+                    State: 3,
+                    rowIdx: 0
+                },
+                success: function () {
+                    App.NoteRegister_Details.body.mask().hide();
+                }
+            });
+        }
+    }
+
+    var SelectDescDoc2 = function (Fieldd, Eventt) {
+        if (Eventt.keyCode == 45) {
+            App.NoteRegister_Details.body.mask("در حال بارگذاری");
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/SearchDescDoc/Index',
+                params: {
+                    State: 4,
+                    rowIdx: App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/
+                },
+                success: function () {
+                    App.NoteRegister_Details.body.mask().hide();
+                }
+            });
+        }
+    };
+
+    function SetDefaultNum_Atf() {
+        if ('@ViewBag.HeaderId' == "0") {
+            if (App.NoteRegister_Details.queryById("CboYear").validate()) {
+                Ext.net.DirectMethod.request({
+                    url: '/Accounting/DocRegistration/GetDefaultNum_Atf',
+                    params: {
+                        Year: App.NoteRegister_Details.queryById("CboYear").getDisplayValue()
+                    },
+                    success: function (data) {
+                        App.NoteRegister_Details.queryById("txtAtfNum").setValue(data.fldAtfNum);
+                    }
+                });
+            }
+        }
+    }
+
+    var SearchMatch = function (record) {
+        return record.query = new RegExp(record.query.replace("(","[(]").replace(")","[)]"), 'i');
+    };
+
+    var resetValuee = function (Fieldd, Eventt) {
+        if (App.ColHeadLineNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)).value == null) {
+            if (App.ColHeadLineNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)).getPicker().highlightedItem == undefined) {
+                App.ColHeadLineNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)).reset();
+                App.ColHeadLineNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)).validate();
+            }
+        }
+    };
+
+    function GotoNextField(Fieldd, Eventt) {
+        if (Eventt.keyCode == 13) {
+            App.ColDescriptionNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).focus();
+            /*else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا سرفصل مورد نظر را انتخاب کنید.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK,
+                    closable: false,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            App.ColHeadLineNote.getComponent(Fieldd.record.index).focus();
+                        }
+                    }
+                });
+            }*/
+        }
+    }
+
+    function GotoNextField2(Fieldd, Eventt) {
+        if (Eventt.keyCode == 13) {
+            if (App.ColBedNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).disabled == true) {
+                App.ColBesNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).focus();
+            }
+            else {
+                App.ColBedNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).focus();
+            }
+        }
+    }
+
+    function GotoNextField3(Fieldd, Eventt) {
+        if (Eventt.keyCode == 13) {
+            if (App.ColBesNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).disabled == true) {
+                if (App.ColCostCenterNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).disabled == true) {
+                    App.ColFileNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).focus();
+                }
+                else {
+                    App.ColCostCenterNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).focus();
+                }
+            }
+            else {
+                App.ColBesNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).focus();
+            }
+        }
+    }
+
+    function GotoNextField4(Fieldd, Eventt) {
+        if (Eventt.keyCode == 13) {
+            if (App.ColCostCenterNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).disabled == true) {
+                App.ColFileNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).focus();
+            }
+            else {
+                App.ColCostCenterNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).focus();
+            }
+        }
+    }
+
+    function GotoNextField5(Fieldd, Eventt) {
+        if (Eventt.keyCode == 13) {
+            if (App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.count() - 1 == App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/) {/*رکورد جدید insert*/
+                App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.insert(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/ + 1, {
+                    fldId: 0, fldSourceId: 0, fldCaseTypeId: 0, fldCodingId: 0,
+                    fldDescription: "", fldBedehkar: 0, fldBestankar: 0,
+                    fldCenterCoId: 0, fldName: ""
+                });
+                App.ColHeadLineNote.getComponent((App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/) + 1).focus();
+            }
+            else {
+                App.ColHeadLineNote.getComponent((App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/) + 1).focus();
+            }
+        }
+    }
+
+    function GotoNextField6(Fieldd, Eventt) {
+        if (Eventt.keyCode == 13) {
+            App.ColFileNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)/*Fieldd.record.index*/).focus();
+            if (App.ColCostCenterNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)).value == null) {
+                if (App.ColCostCenterNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)).getPicker().highlightedItem == undefined) {
+                    App.ColCostCenterNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)).reset();
+                    App.ColCostCenterNote.getComponent(App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.indexOf(Fieldd.record)).validate();
+                }
+            }
+        }
+    }
+
+    function LoadNoteRegister_Details() {
+        if ('@ViewBag.HeaderId' != "0") {
+            Ext.net.Mask.show({ msg: 'در حال بارگزاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/DocRegistration/Details',
+                params: {
+                    HeaderId: '@ViewBag.HeaderId'
+                },
+                success: function (data) {
+                    App.NoteRegister_Details.queryById("fldHeaderId").setValue(data.fldId);
+                    App.NoteRegister_Details.queryById("CboYear").setValue(App.NoteRegister_Details.queryById("CboYear").findRecordByDisplay(String(data.fldYear)).data.fldId);
+                    App.NoteRegister_Details.queryById("txtAtfNum").setValue(data.fldAtfNum);
+                    App.NoteRegister_Details.queryById("txtArchiveNum").setValue(data.fldArchiveNum);
+                    App.NoteRegister_Details.queryById("txtDescDoc").setValue(data.fldDescriptionDocu);
+                    App.NoteRegister_Details.queryById("txtDocDate").setRawValue(data.fldTarikhDocument);
+                    App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.load();
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            App.NoteRegister_Details.queryById("txtDescDoc").validate();
+            App.NoteRegister_Details.queryById("txtArchiveNum").validate();
+            App.NoteRegister_Details.queryById("txtDocDate").validate();
+            App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.load();
+        }
+    }
+
+    var setValueHeadLine = function (columnn, component, record, rowIndex) {
+        component.icon.dom.classList.add('custom-NoteRegister_Detailsicon');
+        if (App.NoteRegister_Details.queryById('CboYear').validate()) {
+            component.getStore().getProxy().setExtraParam("Year", App.NoteRegister_Details.queryById('CboYear').getDisplayValue());
+            component.getStore().load();
+            component.validate();
+        }
+    };
+
+    var AddIcoDescription = function (columnn, component, record, rowIndex) {
+        component.icon.dom.classList.add('custom-NoteRegister_Detailsicon2');
+    };
+
+    var AddIcoCostCenter = function (columnn, component, record, rowIndex) {
+        component.icon.dom.classList.add('custom-NoteRegister_Detailsicon4');
+    };
+
+    var AddIcoFile = function (columnn, component, record, rowIndex) {
+        component.icon.dom.classList.add('custom-NoteRegister_Detailsicon5');
+    };
+
+    var createTooltipHeadLine = function (view, record, item) {
+        if (record.get('fldCodingId') != 0 && record.get('fldCodingId') != null) {
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/DocRegistration/GetCodingDetails_Tooltip',
+                params: {
+                    fldCodingId: record.get('fldCodingId'),
+                    fldYear: App.NoteRegister_Details.queryById('CboYear').getDisplayValue()
+                },
+                success: function (data) {
+                    var tip = "<div style='display: inline-block';><p><strong>جمع بدهکاری: " +
+                    data.fldBedehkar.toLocaleString() + "</strong></p><p><strong>جمع بستانکاری: " + data.fldBestankar.toLocaleString() +
+                    "</strong></p>" + "<p><strong>مانده حساب: " + data.MandehHeasb.toLocaleString() + "</strong></p><p><strong>گردش حساب: " + data.GardeshHesab.toLocaleString() + "</div>";
+                    var target = item.cells[1];
+                    Ext.fly(target).set({ 'data-qtip': tip, 'anchor': true });
+                }
+            });
+        }
+    };
+
+    function SaveNoteRegister_Details() {
+        var fldHeaderId = App.NoteRegister_Details.queryById('fldHeaderId');
+        var CboYear = App.NoteRegister_Details.queryById('CboYear');
+        var txtAtfNum = App.NoteRegister_Details.queryById('txtAtfNum');
+        var txtArchiveNum = App.NoteRegister_Details.queryById('txtArchiveNum');
+        var txtDocDate = App.NoteRegister_Details.queryById('txtDocDate');
+        var txtDescDoc = App.NoteRegister_Details.queryById('txtDescDoc');
+        var NoteRegister_DetailsGrid = App.NoteRegister_Details.queryById('NoteRegister_DetailsGrid');
+        var summaryRec = App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").getView().getFeature("summaryDocumentsNote").summaryRecord;
+        var DocumentRecord_DetailsArray = new Array();
+        var er = false;
+
+        if (CboYear.validate() == false) {
+            er = true;
+        }
+        if (txtAtfNum.validate() == false) {
+            er = true;
+        }
+        if (txtArchiveNum.validate() == false) {
+            er = true;
+        }
+        if (txtDocDate.validate() == false) {
+            er = true;
+        }
+        if (txtDescDoc.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        for (var i = 0; i < NoteRegister_DetailsGrid.getStore().count() ; i++) {
+            if (i!=0 && i!=1 &&(App.ColHeadLineNote.getComponent(i).getValue() == null || App.ColHeadLineNote.getComponent(i).getValue() == "")
+                && (App.ColDescriptionNote.getComponent(i).getValue() == null || App.ColDescriptionNote.getComponent(i).getValue() == "")
+                && App.ColBedNote.getComponent(i).getValue() == 0 && App.ColBesNote.getComponent(i).getValue() == 0) {
+                continue;
+            }
+            else {
+                if (App.ColHeadLineNote.getComponent(i).getValue() == null || App.ColHeadLineNote.getComponent(i).getValue() == "") {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا عنوان سرفصل را وارد کنید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    return;
+                }
+                else if (App.ColDescriptionNote.getComponent(i).getValue() == null || App.ColDescriptionNote.getComponent(i).getValue() == "")
+                {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا شرح مربوط به سرفصل را وارد کنید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    return;
+                }
+                else if (App.ColBedNote.getComponent(i).enabled == true && App.ColBedNote.getComponent(i).getValue() == 0) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا مقدار بدهکاری را وارد کنید..",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    return;
+                }
+                else if (App.ColBesNote.getComponent(i).enabled == true && App.ColBesNote.getComponent(i).getValue() == 0) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا مقدار بستانکاری را وارد کنید..",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    return;
+                }
+                else {
+                    DocumentRecord_DetailsArray.push({
+                        fldId: NoteRegister_DetailsGrid.store.data.items[i].data.fldId,
+                        fldCodingId: App.ColHeadLineNote.getComponent(i).getValue(),
+                        fldDescription:App.ColDescriptionNote.getComponent(i).getValue(),
+                        fldBedehkar: App.ColBedNote.getComponent(i).getValue().split(",").join(""),
+                        fldBestankar: App.ColBesNote.getComponent(i).getValue().split(",").join(""),
+                        fldCenterCoId: App.ColCostCenterNote.getComponent(i).getValue(),
+                        fldCaseTypeId: NoteRegister_DetailsGrid.store.data.items[i].data.fldCaseTypeId,
+                        fldSourceId: NoteRegister_DetailsGrid.store.data.items[i].data.fldSourceId
+                    });
+                }
+            }
+        }
+        var data = {
+            fldId:fldHeaderId.getValue(),
+            fldDocumentNum: null,
+            fldAtfNum:txtAtfNum.getValue(),
+            fldArchiveNum:txtArchiveNum.getValue(),
+            fldDescriptionDocu:txtDescDoc.getValue(),
+            fldTarikhDocument: txtDocDate.getRawValue(),
+            Type:2,
+            DocumentRecord_DetailsArray: DocumentRecord_DetailsArray
+        };
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Accounting/DocRegistration/Save',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (result) {
+                var ic = Ext.MessageBox.INFO;
+                if (result.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+                if (result.Er != 1) {
+                    App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.load();
+                    clearDocRegistration();
+                }
+            },
+            failure: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function clearDocRegistration() {
+        App.NoteRegister_Details.queryById('fldHeaderId').setValue(0);
+        App.NoteRegister_Details.queryById('CboYear').setValue(App.NoteRegister_Details.queryById('CboYear').findRecordByDisplay(String('@ViewBag.CurrentYear')).data.fldId);
+        App.NoteRegister_Details.queryById('txtAtfNum').setValue();
+        App.NoteRegister_Details.queryById('txtArchiveNum').setValue();
+        App.NoteRegister_Details.queryById('txtDocDate').setValue('@ViewBag.CurrentDate');
+        App.NoteRegister_Details.queryById('txtDescDoc').setValue("");
+        App.NoteRegister_Details.queryById('NoteRegister_DetailsGrid').getStore().getProxy().setExtraParam("HeaderId", 0);
+        App.NoteRegister_Details.queryById('NoteRegister_DetailsGrid').store.load();
+    }
+
+    function DeleteDelNoteRegister_Details(grid, command, record, row) {
+        if (command == 'CmpDel') {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        if (record.data.fldId == 0) {
+                            App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.remove(record);
+                        }
+                        else {
+                            Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Accounting/DocRegistration/DeleteDetail',
+                                params: {
+                                    Id: record.data.fldId
+                                },
+                                success: function (data) {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Er == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    if (data.Er != 1) {
+                                        App.NoteRegister_Details.queryById("NoteRegister_DetailsGrid").store.remove(record);
+                                    }
+                                    Ext.net.Mask.hide();
+                                }
+                            });
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    var addKeyMapNoteRegister_Details = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NoteRegister_Details.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "CboYear") {
+                        nextfld = App.NoteRegister_Details.queryById("txtArchiveNum");
+                    }
+                    else if (keyfield.itemId == "txtDescDoc") {
+                        /*nextfld=App.ColHeadLineNote.getComponent(0);*/
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        if (nextfld.itemId == "txtDescDoc") {
+                            nextfld.el.swallowEvent(['keypress', 'keydown']);
+                        }
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>
+

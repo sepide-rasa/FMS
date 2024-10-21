@@ -1,0 +1,204 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+@(Html.X()
+    .Window()
+    .Modal(true)
+    .Width(470)
+    .Title("تعریف شرح سند")
+    .ID("NewDescriptionDoc")
+    .Listeners(l => {
+        l.Render.Fn = "addKeyMapNewDescriptionDoc";
+        l.Destroy.Handler = "App.SearchDescDoc.queryById('GridSearchDescDoc').getView().focus();";
+        l.AfterRender.Handler = "setCboType()";
+    })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Resizable(false)
+    .ButtonAlign(Ext.Net.Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveNewDescDoc()"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.NewDescriptionDoc.destroy()"))
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Padding(5)
+            .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .Defaults(new { Margin = 2 })
+                    .Title("مشخصات شرح سند")
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                    .Items(
+                        X.Hidden().ItemID("fldId"),
+                        X.Label("عنوان:"),
+                        X.TextField()
+                            .ItemID("txtName")
+                            //.Width(345)
+                            .AutoFocus(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا عنوان را وارد کنید.")
+                            .MaxLength(150)
+                            .EnforceMaxLength(true)
+                            .MaskRe("[a-z,A-Z,آ-ی, ,_,-]"),
+                                X.Label("دسته:"),
+                            X.ComboBox()
+                                .ItemID("CboType")
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .AllowBlank(false)
+                                .BlankText("لطفا دسته را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .Items(
+                                    new ListItem("شرح کلی", "1"),
+                                    new ListItem("شرح آرتیکل", "0")
+                                ),
+                        X.Label("شرح سند:"),
+                        X.TextArea()
+                            .AllowBlank(false)
+                            .ColSpan(3)
+                            .BlankText("لطفا شرح سند را وارد کنید.")
+                            .Listeners(l => l.Blur.Handler = "checkDesc2()")
+                            .ItemID("txtDocDesc")
+                            .Width(330)
+                    )
+        )
+    )
+)
+
+<script type="text/javascript">
+    var AllowSave2 = false;
+    function setCboType() {
+        if ('@ViewBag.State' == 1 || '@ViewBag.State' == 3) {/*شرح سند*/
+            App.NewDescriptionDoc.queryById('CboType').setValue("1");
+        }
+        else {/*شرح آرتیکل*/
+            App.NewDescriptionDoc.queryById('CboType').setValue("0");
+
+        }
+        App.NewDescriptionDoc.queryById('CboType').disable();
+
+    }
+    function checkDesc2() {
+        var txtDocDesc = App.NewDescriptionDoc.queryById('txtDocDesc');
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DescriptionDocument/Check',
+            params: {
+                Value: txtDocDesc.getValue()
+            },
+            success: function (data) {
+                if (data.Msg != "") {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "فرمت پارامتر وارد شده نادرست است",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    AllowSave2 = true;
+                }
+                else
+                    AllowSave2 = false;
+            }
+        });
+    }
+
+    function SaveNewDescDoc() {
+        var txtName = App.NewDescriptionDoc.queryById('txtName');
+        var txtDocDesc = App.NewDescriptionDoc.queryById('txtDocDesc');
+        var CboType = App.NewDescriptionDoc.queryById('CboType');
+        var er = false;
+        if (AllowSave2 == true) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "فرمت پارامتر وارد شده نادرست است",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (txtDocDesc.validate() == false) {
+            er = true;
+        }
+        if (CboType.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        var Flag = false;
+        if (CboType.getValue() == 1) {
+            Flag = true;
+        }
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DescriptionDocument/Save',
+            params: {
+                fldId: 0,
+                fldName: txtName.getValue(),
+                fldDocDesc: txtDocDesc.getValue(),
+                fldFlag: Flag
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                if (data.Err == 1) {
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+                else {
+                    App.SearchDescDoc.queryById('GridSearchDescDoc').store.load();
+                    App.NewDescriptionDoc.destroy();
+                }
+            }
+
+        });
+    }
+
+    var addKeyMapNewDescriptionDoc = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NewDescriptionDoc.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDocDesc") {
+                        SaveNewDescDoc();
+                        return;
+                    }
+                    else if (keyfield.itemId == "txtName") {
+                        nextfld = App.NewDescriptionDoc.queryById("txtDocDesc");
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

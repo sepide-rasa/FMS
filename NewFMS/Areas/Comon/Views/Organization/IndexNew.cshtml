@@ -1,0 +1,711 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_Organization>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+<style>
+    td{
+        text-align:left;
+    }
+     .x-grid-cell {
+        background-color: transparent;
+    }
+</style>
+@(Html.X().Panel().AutoScroll(true)
+                .ID("Organization")
+                
+                            .Listeners(li => li.AfterRender.Handler = "OrganizationSetSize();")
+        .Title("سازمان ها")
+        .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+                 .Layout(LayoutType.VBox)
+                             .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        .Border(false)
+       .Items(
+        //    X.Panel().AutoScroll(true).Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l => { l.Click.Handler = "SaveOrganization();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadOrganization();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteOrganization();"; })
+                , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpOrganization();"; })
+
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.Organization.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+                        X.FormPanel().Border(false)
+                            .Layout(LayoutType.VBox)
+                            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(false)
+                        .Items(
+                    X.FieldSet().Border(true).Title("اطلاعات سازمان")//.Height(130)
+                    .Width(680)
+                     .Defaults(new { Margin = 2 }) 
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                       X.Hidden().ItemID("fldId"),
+                                X.Hidden().ItemID("fldFatherId"),
+                                    X.Hidden().ItemID("Ashkhas_HId"),
+                                    X.Hidden().ItemID("Ashkhas_DetailId")
+                                               , X.Label("شخص حقوقی (INS):")
+                                    , X.TextField().Width(125)
+                                        .Icon(Ext.Net.Icon.Add)
+                                    .ItemID("txtAshkhasHoghoghi")
+                                .AllowBlank(false)
+                                .BlankText("لطفا شخص حقوقی را وارد کنید.")
+                                    .ReadOnly(true)
+                                        .Listeners(l =>
+                                        {
+                                            l.IconClick.Handler = "SearchAshkhasHoghoghi(45);";
+                                            l.SpecialKey.Handler = "SearchAshkhasHoghoghi(e.getKey());";
+                                        }
+                            )
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                , X.Label("شناسه ملی:"),
+                                X.TextField()
+                                    .Width(125)
+                                    .ItemID("txtNationalID")
+                                    .MaxLength(11)
+                                    .MinLength(11)
+                                    .EnforceMaxLength(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا شناسه ملی را وارد کنید.")
+                                    .Weight(50)
+                                    .MaskRe("[0-9]"),
+                                X.Label("شماره ثبت:"),
+                                X.TextField()
+                                    .Width(125)
+                                    .ItemID("txtRegistrationNum")
+                                    .MaxLength(20)
+                                    .EnforceMaxLength(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا شماره ثبت را وارد کنید.")
+                                    .Weight(50)
+                                    .MaskRe("[0-9]")
+                                , X.Label("عنوان:")
+                              , X.TextField()
+                                      .MaxLength(300)
+                                    .EnforceMaxLength(true)
+                                .ItemID("txtTitle")
+                                    .Width(523)
+                                    .ColSpan(6)
+        //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(false)
+                                .AutoFocus(true)
+                                .BlankText("لطفا عنوان را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                   , X.Label("کد پستی:")
+                               , X.TextField().Width(125)
+                                    .ItemID("txtPostalCode")
+                                        .MaxLength(10)
+                                        .EnforceMaxLength(true)
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا کد پستی را وارد کنید.")
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .Weight(50)
+                                        .MaskRe("[0-9]")
+                                        .Plugins(X.InputMask()
+                                    .Mask("AAAAAAAAAA")
+                                    .UnmaskOnBlur(true)
+                                    .ClearWhenInvalid(true)
+                                    .MaskSymbols(ls =>
+                                    {
+                                        ls.Add(new MaskSymbol { Name = "A", Regex = "[0-9]", Placeholder = "_".ToCharArray()[0] });
+                                    })
+                                ),
+                                    X.Label("کد اقتصادی:"),
+                                    X.TextField()
+                                        .Width(125)
+                                        .ItemID("txtEconomicCode")
+                                        .ReadOnly(false)
+                                    .MaxLength(20)
+                                .MaskRe("[0-9]")
+                                .EnforceMaxLength(true)
+                                .BlankText("لطفا کداقتصادی را وارد کنید.")
+                                        .Weight(50)
+                                        .MaskRe("[0-9]"),
+                                        X.Label("تلفن:")
+                                    , X.TextField().Width(125)
+                                              .MinLength(11)
+                                    .MaxLength(11)
+                                    .EmptyText("02111111111")
+                                    .EnforceMaxLength(true)
+                                        .MaskRe("[0-9]")
+                                    .ItemID("txtTelphon")
+                                .AllowBlank(false)
+                                .BlankText("لطفا تلفن را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top),
+                                X.Label("شهرستان:")
+                                    , X.ComboBox().Width(125)
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .ItemID("CboCity")
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .ForceSelection(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .BlankText("لطفا شهرستان را انتخاب کنید.")
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("شهرستان ...")
+        //.SelectedItems(new { Value = "1" })
+                            .Store(X.Store()
+                            .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                        )
+                            .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetCity"))
+                            .Reader(X.JsonReader().Root("data"))
+                                    )
+        //.Listeners(li => li.DataChanged.Handler = "LoadTeacherTakmili();")
+                                    )
+                            .AllowBlank(false),
+                                 
+                                X.Label("کد انفورماتیک:"),
+                                X.TextField()
+                                    .Width(125)
+                                    .ItemID("txtInformaticsCode")
+                                    .MaxLength(3)
+                                    .MinLength(3)
+                                    .EnforceMaxLength(true)
+                                    //.AllowBlank(false)
+                                    .BlankText("لطفا کد انفورماتیک را وارد کنید.")
+                                    .Weight(50)
+                                    .MaskRe("[0-9]"),
+                                X.Label("کد خدمت:"),
+                                X.ComboBox()
+                                    .ItemID("CboServiceCode")
+                                    .Width(125)
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .AllowBlank(false)
+                                    .ForceSelection(true)
+                                    .BlankText("لطفا کد خدمت را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .EmptyText("کد خدمت...")
+                                    //.Listeners(l => l.AfterRender.Handler = "App.Organization.queryById('CboServiceCode').setValue('6');")
+                                    /*.DisplayField("Name")
+                                    .ValueField("ID")
+                                    .Store(
+                                        X.Store()
+                                        .Data(new { ID="6",Name="7"})
+                                            .Model(
+                                                X.Model()
+                                                    .Fields(
+                                                        new ModelField("ID", ModelFieldType.String),
+                                                        new ModelField("Name", ModelFieldType.String)
+                                                    )
+                                        )
+                                        ),*/
+                                    .Items(
+                                        new ListItem("6", "6"),
+                                        new ListItem("7", "7")
+                                        ),
+                                X.Label("آدرس:")
+                                        , X.TextField()
+                                        .ItemID("txtAddress")
+                                    .AllowBlank(false)
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Width(523).ColSpan(6)
+                                        , X.Label("توضیحات:")
+                                , X.TextField()
+                                .ItemID("txtDesc").Width(523).ColSpan(6)
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+        //.Width(160)
+        )
+                               , X.FieldSet().Border(true).Title("لوگو سازمان").Height(115).Width(680)
+                        .Defaults(new { Margin = 2 })
+                        .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                    .Items(
+                                 X.FieldSet().ItemID("btnfieldset").Border(false).Height(80)//.Width(600)
+                                    .Listeners(l => l.AfterRender.Handler = "App.Organization.queryById('btnfieldset').setWidth(App.Win.getWidth() - 1090)")
+                                 
+        // .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                                            .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Right })
+                                .Defaults(new { Margin = 3 })
+                            .Items(
+                             X.FileUploadField()
+                            .ItemID("FileUploadField1")
+                                .ButtonOnly(true).ButtonText("انتخاب عکس(حداکثر 100 کیلوبایت)")
+                            .DirectEvents(l =>
+                                    {
+                                        l.Change.Action = "Upload";
+                                        l.Change.Success = "hideprogressOrg();";
+                                    }
+                                )
+                            .Listeners(l => l.Change.Fn = "showFileOrg")
+                                    .Icon(Ext.Net.Icon.DiskUpload)
+                                                , X.Button().Text("حذف عکس").Listeners(l => l.Click.Handler = "DeleteFileOrg()").Icon(Ext.Net.Icon.Delete)
+                                  , X.FieldSet().Layout(LayoutType.Fit).Width(400).Border(false).Html(@<div id="fi-button-msgOrg" style="direction:rtl;text-align:right;display:none;width:auto;"></div>)
+                            )
+                                 ,
+                                      X.FieldSet().Border(false)
+        // .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                                            .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                                .Defaults(new { Margin = 3 })
+                            .Items(X.Image().ItemID("Image").ImageUrl("~/Content/BlankB.jpg").Width(80).Height(90).Border(true))
+                            )
+                )
+            )
+        )
+                                 ,
+                                     X.Panel().Border(false).AutoScroll(true)
+                                         .Layout(LayoutType.Fit)
+                                     .ItemID("pnlOrganTree").Items(
+                                 X.TreePanel()
+                                    .ID("OrganTree")
+                                            .AutoScroll(true)
+                                            .Width(300)
+                                            .ColSpan(2)
+                                            //.Height(50)
+                                            .UseArrows(true)
+                                            .Border(false)
+                                                .Store(
+                            Html.X().TreeStore()
+                                .Proxy(
+                                            Html.X().AjaxProxy().Url(Url.Action("Node"))
+                                )
+                        )
+
+                                            .Listeners(a =>
+                                            {
+                                                a.ItemClick.Handler = "GetId(record)";
+                                                a.BeforeLoad.Fn = "nodeLoad";
+                                                a.AfterRender.Handler = "this.getRootNode().expand();";
+                                            })
+                               .Root(Html.X().Node().NodeID("0").Text("سازمان ها"))
+
+                                            .View(
+                                            X.TreeView()
+                                            .Plugins(
+                                            X.TreeViewDragDrop().AppendOnly(true).ContainerScroll(true)
+
+                                        )
+                         )
+                         )
+    )
+)
+<script type="text/javascript">
+    /*App.Win.addListener('resize', function () {
+        App.Organization.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.Organization.queryById('OrganTree');
+        grid.setHeight(App.Win.getHeight() - 240);
+    });*/
+    var IsDelOrg = 0;
+    function OrganizationSetSize() {
+       /* App.Organization.setWidth(App.Win.getWidth());*/
+        var grid = App.Organization.queryById('pnlOrganTree');
+        grid.setHeight(App.Win.getHeight() - 530);
+       /* var OrganTree = App.Organization.queryById('OrganTree');
+        OrganTree.setHeight(App.Win.getHeight() - 540);*/
+        var txtRegistrationNum = App.Organization.queryById('txtRegistrationNum');
+        txtRegistrationNum.setFieldStyle("background-image:none;background-color:#dfe8f6");
+        var txtNationalID = App.Organization.queryById('txtNationalID');
+        txtNationalID.setFieldStyle("background-image:none;background-color:#dfe8f6");
+        var txtAshkhasHoghoghi = App.Organization.queryById('txtAshkhasHoghoghi');
+        txtAshkhasHoghoghi.setFieldStyle("background-image:none;background-color:#dfe8f6");
+    }
+    function SearchAshkhasHoghoghi(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/comon/SearchAshkhasHoghoghi/Index',
+                params: {
+                    State: 1,
+                }
+            });
+        }
+    }
+    var NodeId;
+    var id;
+    var newParentid;
+    var fldFatherId;
+    var fldId;
+    var UserImageId = 0;
+    var UsersId = 0;
+    var MojazORG = 0;
+    var sizeeOrg = 0;
+    var EndUploadOrg = false;
+    var descDetail="";
+    function hideprogressOrg() {
+        if (MojazORG == 1 && sizeeOrg == 1) {
+            EndUploadOrg = true;
+        }
+        MojazORG = 0;
+        sizeeOrg = 0;
+    }
+    var Check = setInterval(CheckEndOrg, 500);
+
+    function CheckEndOrg() {
+        if (EndUploadOrg == true) {
+            Ext.net.DirectMethod.request({
+                url: '/Organization/ShowPicUpload',
+                success: function (data) {
+                    value = "data:image/gif;base64," + data.image;
+                    App.Organization.queryById('Image').setImageUrl(value);
+                }
+            });
+            Ext.MessageBox.hide();
+            Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+            clearInterval(CheckEndOrg);
+            EndUploadOrg = false;
+        }
+    }
+    var showFileOrg = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msgOrg');
+        if (v) {
+            showProgressBar();
+            if (v.split('.').pop().toLowerCase() == "jpg" || v.split('.').pop().toLowerCase() == "jpeg" || v.split('.').pop().toLowerCase() == "png" || v.split('.').pop().toLowerCase() == "gif") {
+                MojazORG = 1;
+                if (document.getElementById(id).files[0].size <= 102400) {
+                    sizeeOrg = 1;
+                }
+                if (sizeeOrg == 1) {
+                    el.update('<b>فایل انتخاب شده:</b> ' + v);
+                    IsDelOrg = 0;
+                }
+                else {
+                    el.update("");
+                }
+
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                } else {
+                    el.highlight();
+                }
+            }
+            else {
+                el.update("");
+            }
+        }
+    };
+    function showProgressBar() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+    function Download() {
+        window.location.href = '@Url.Content("~/Comon/Organization/Download?FileId=")' + UserImageId;
+
+    }
+    function DeleteFileOrg() {
+        App.Organization.queryById('Image').setImageUrl("/Content/Blank.jpg");
+        Ext.get('fi-button-msgOrg').update('');
+        IsDelOrg = 1;
+    }
+    var nodeLoad = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Organization/NodeLoad',
+            params: {
+                nod: node.getId()
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+
+    function Reload() {
+        App.OrganTree.store.load();
+    };
+
+    function GetId(record) {
+        NodeId = record.getId();
+    };
+    function LoadOrganization() {
+       
+        if (NodeId != null && NodeId != 0) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/Organization/Details',
+                params: {
+                    id: NodeId
+                },
+                success: function (data) {
+
+                    var CboCity = App.Organization.queryById("CboCity");
+                    CboCity.setValue(data.fldCityId);
+                    /*var txtCodeEghtesadi = App.Organization.queryById('txtCodeEghtesadi');
+                    txtCodeEghtesadi.setValue(data.fldCodeEghtesadi);*/
+                    var fldTitle = App.Organization.queryById('txtTitle');
+                    fldTitle.setValue(data.fldName);
+                    var txtPostalCode = App.Organization.queryById('txtPostalCode');
+                    txtPostalCode.setValue(data.fldCodePosti);
+                    var txtTelphon = App.Organization.queryById('txtTelphon');
+                    txtTelphon.setValue(data.fldTelphon);
+                    var txtAddress = App.Organization.queryById('txtAddress');
+                    txtAddress.setValue(data.fldAddress);
+                    var txtDesc = App.Organization.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var FatherId = App.Organization.queryById('fldFatherId');
+                    FatherId.setValue(data.fldPId);
+                    var txtInformaticsCode = App.Organization.queryById('txtInformaticsCode');
+                    txtInformaticsCode.setValue(data.fldCodAnformatic);
+                    var CboServiceCode = App.Organization.queryById('CboServiceCode');
+                    CboServiceCode.setValue(data.fldCodKhedmat);
+                    var txtEconomicCode = App.Organization.queryById('txtEconomicCode');
+                    txtEconomicCode.setValue(data.fldCodEghtesadi);
+                    var txtNationalID = App.Organization.queryById('txtNationalID');
+                    txtNationalID.setValue(data.fldShenaseMelli);
+                    var txtRegistrationNum = App.Organization.queryById('txtRegistrationNum');
+                    txtRegistrationNum.setValue(data.fldShomareSabt);
+                    var Id = App.Organization.queryById('fldId');
+                    Id.setValue(data.fldId);
+                    var txtAshkhasHoghoghi = App.Organization.queryById('txtAshkhasHoghoghi');
+                    txtAshkhasHoghoghi.setValue(data.FldNameAshkhaseHoghoghi);
+                    var Ashkhas_HId = App.Organization.queryById('Ashkhas_HId');
+                    Ashkhas_HId.setValue(data.fldAshkhaseHoghoghiId);
+                    App.Organization.queryById('Ashkhas_DetailId').setValue(data.AshkhaseHoghoghiDetailId);
+                    var el = Ext.get('fi-button-msgOrg');
+                    el.update("");
+                    Ext.net.Mask.hide();
+                    UserImageId = data.fldFileId;
+                    UsersId = data.fldId;
+                    descDetail = data.Desc;
+                   /* var url = '/Comon/Organization/ShowPic';
+                    var antiCachePart = (new Date()).getTime();
+                    var g = url + '?FileId=' + data.fldFileId + '&dc=' + antiCachePart;;
+                    var k = App.Organization.queryById('Image');
+                    k.setImageUrl(g);*/
+                    var fldfile = "data:image/gif;base64," + data.fldImage;
+                    App.Organization.queryById('Image').setImageUrl(fldfile);
+                }
+            });
+
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک گزینه از سازمان ها را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SaveOrganization() {
+        var AshkhaseHoghoghiDetailId = App.Organization.queryById('Ashkhas_DetailId');
+        var Id = App.Organization.queryById('fldId');
+        var CboCity = App.Organization.queryById("CboCity");
+        var FatherId = App.Organization.queryById("fldFatherId");
+       /* var txtCodeEghtesadi = App.Organization.queryById('txtCodeEghtesadi');*/
+        var txtTitle = App.Organization.queryById('txtTitle');
+        var txtPostalCode = App.Organization.queryById('txtPostalCode');
+        var txtTelphon = App.Organization.queryById('txtTelphon');
+        var txtInformaticsCode = App.Organization.queryById('txtInformaticsCode');
+        var CboServiceCode = App.Organization.queryById('CboServiceCode');
+        var txtEconomicCode = App.Organization.queryById('txtEconomicCode');
+        var txtNationalID = App.Organization.queryById('txtNationalID');
+        var txtRegistrationNum = App.Organization.queryById('txtRegistrationNum');
+        var txtAddress = App.Organization.queryById('txtAddress');
+        var txtDesc = App.Organization.queryById('txtDesc');
+        var txtAshkhasHoghoghi = App.Organization.queryById('txtAshkhasHoghoghi');
+        var Ashkhas_HId = App.Organization.queryById('Ashkhas_HId');
+        var er = false;
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (txtPostalCode.getValue().length < 10) {
+            alert("کد پستی وارد شده نامعتبر است.");
+        }
+        if (txtPostalCode.validate() == false) {
+            er = true;
+        }
+        if (CboCity.validate() == false) {
+            er = true;
+        }
+        if (txtInformaticsCode.validate() == false) {
+            er = true;
+        }
+        if (CboServiceCode.validate() == false) {
+            er = true;
+        }
+        if (txtEconomicCode.validate() == false) {
+            er = true;
+        }
+        if (txtNationalID.validate() == false) {
+            er = true;
+        }
+        if (txtRegistrationNum.validate() == false) {
+            er = true;
+        }
+        if (txtAshkhasHoghoghi.validate() == false) {
+            er = true;
+        }
+        if (txtTelphon.validate() == false) {
+            er = true;
+        }
+        if (txtAddress.validate() == false) {
+            er = true;
+        }
+        if (Id.getValue() == '' || Id.getValue() == 0) {
+            fldFatherId = NodeId;
+            fldId = Id.getValue();
+        }
+        else {
+            fldFatherId = FatherId.getValue();
+            fldId = Id.getValue();
+        }
+        if (er == true)
+            return;
+        if (fldFatherId == 0)
+            fldFatherId = null;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Organization/Save',
+            params: {
+                fldId: fldId,
+                fldPId: fldFatherId,
+                fldName: txtTitle.getValue(),
+                fldCityId: CboCity.getValue(),
+                fldAddress: txtAddress.getValue(),
+                fldTelphon: txtTelphon.getValue(),
+                fldAshkhaseHoghoghiId: Ashkhas_HId.getValue(),
+                fldCodePosti: txtPostalCode.getValue(),
+                fldCodAnformatic: txtInformaticsCode.getValue(),
+                fldCodKhedmat: CboServiceCode.getValue(),
+                fldShenaseMelli: txtNationalID.getValue(),
+                fldCodEghtesadi: txtEconomicCode.getValue(),
+                fldShomareSabt: txtRegistrationNum.getValue(),
+                fldFileId: UserImageId,
+                fldDesc: txtDesc.getValue(),
+                IsDelOrg: IsDelOrg,
+                AshkhaseHoghoghiDetailId: AshkhaseHoghoghiDetailId.getValue(),
+                Desc:descDetail
+            },
+            success: function (data) {
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: Ext.MessageBox.INFO,
+                    buttons: Ext.MessageBox.OK
+                });
+                Reload(),
+               ClearOrganization()
+            }
+
+        });
+    }
+    function HelpOrganization() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/comon/Organization/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function DeleteOrganization() {
+        if (NodeId != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/Organization/Delete',
+                            params: {
+                                id: NodeId
+                            },
+                            success: function (data) {
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.INFO,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                Reload();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک گزینه از سازمان ها را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearOrganization() {         
+        App.Organization.queryById('fldId').setValue(0);
+        App.Organization.queryById("CboCity").setValue('');
+        App.Organization.queryById('Ashkhas_HId').setValue(0);
+        App.Organization.queryById("txtAshkhasHoghoghi").setValue('');
+        App.Organization.queryById("txtAddress").setValue('');
+        App.Organization.queryById("fldFatherId").setValue(0);
+        App.Organization.queryById('txtTelphon').setValue('');
+        App.Organization.queryById('txtTitle').setValue('');
+        /*App.Organization.queryById('txtCodeEghtesadi').setValue('');*/
+        App.Organization.queryById('txtPostalCode').setValue('');
+        App.Organization.queryById('txtDesc').setValue('');
+        App.Organization.queryById('txtInformaticsCode').setValue('');
+        App.Organization.queryById('txtEconomicCode').setValue('');
+        App.Organization.queryById('txtNationalID').setValue('');
+        App.Organization.queryById('txtRegistrationNum').setValue('');
+        NodeId = 0;
+
+        App.Organization.queryById('Image').setImageUrl("/Content/BlankB.jpg");
+        Ext.get('fi-button-msgOrg').update('<b>فایل انتخاب شده:</b> ');
+
+    }
+    function EnterNext() {
+        var keyfield = App.Organization.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtDesc") {
+            nextfld = App.Organization.queryById('FileUploadField1');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+    }
+</script>

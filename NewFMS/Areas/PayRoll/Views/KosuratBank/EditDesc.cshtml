@@ -1,0 +1,100 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(l => l.AfterRender.Handler = "LoadEditDescKosurat()")
+.Width(500)//.Height(220)
+            .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                .Listeners(l =>
+                {
+                    l.Click.Handler = "SaveDescKosurat();";
+
+                })
+                    .ItemID("btnSave")
+
+            ,
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                    .OnClientClick("App.EditDescKosurat.destroy()")
+            ).ButtonAlign(Ext.Net.Alignment.Center)
+    .Title("ویرایش توضیحات")
+            .ID("EditDescKosurat")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        
+            .Border(false)
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+        .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false).MarginSpec("3px 0 0 0")
+                .Center()
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                                .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Label("توضیحات:")
+                       ,X.TextArea()
+                        .ItemID("txtDescKosurat")
+                        .AllowBlank(false)
+                        .BlankText("لطفا توضیحات را وارد کنید.")
+                        .Width(395)
+                    )
+
+            )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+        )
+)
+<script type="text/javascript">
+    function LoadEditDescKosurat() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/KosuratBank/LoadDescKosurat',
+            params: {
+                Id: '@ViewBag.Id',
+                OrganId:'@ViewBag.OrganId'
+            },
+            success: function (data) {
+                var txtDescKosurat=App.EditDescKosurat.queryById("txtDescKosurat");
+                txtDescKosurat.setValue(data.fldDesc);
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SaveDescKosurat() {
+        var txtDescKosurat = App.EditDescKosurat.queryById("txtDescKosurat");
+        var er = false;
+        if (txtDescKosurat.validate() == false)
+            er = true;
+        if (er == true)
+            return;
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/KosuratBank/SaveDescKosurat',
+            params: {
+                Id: '@ViewBag.Id',
+                Desc: txtDescKosurat.getValue(),
+                OrganId: '@ViewBag.OrganId'
+            },
+            success: function (data) {
+                var ico = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ico = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ico,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+</script>

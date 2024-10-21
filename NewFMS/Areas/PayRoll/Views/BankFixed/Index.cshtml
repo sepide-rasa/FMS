@@ -1,0 +1,387 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_BankFixed>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+@*<style>
+        #test legend{
+            text-align:right!important;
+        }
+    </style>*@
+<br />
+@(Html.X().Panel()
+        .ID("BankFixed")
+                .Title("ثبت بانک")
+                            .Listeners(li => { li.AfterRender.Handler = "BankFixedSetSize();"; li.Render.Fn = "addKeyMapBankFixed"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+            X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                .Listeners(l => { l.Click.Handler = "SaveBankFixed();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadBankFixed();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteBankFixed();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.BankFixed.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.FormPanel().Border(false)
+                 .Layout(LayoutType.VBox)
+                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                        X.FieldSet().Border(false)
+
+                    .Items(
+                        X.FieldSet().Border(true).Title("نام بانک")
+                         .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .Items(
+                                    X.FieldSet().Border(false)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                        X.Label("نام بانک:"),
+                       X.TextField()
+                        .ItemID("txtBankName")
+                            .MaxLength(100)
+                        .EnforceMaxLength(true)
+                    .AllowBlank(false)
+                    .BlankText("لطفا نام بانک را وارد کنید.")
+                    .AutoFocus(true)
+                    , X.Label("توضیحات:"),
+                        X.TextField()
+                    .ItemID("txtDesc")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(260)
+                    )
+                    )
+                            , X.FieldSet().Border(true).Title("لوگو بانک").Height(115)
+                        .Defaults(new { Margin = 2 })
+                        .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                    .Items(
+                                 X.FieldSet().Border(false).ColSpan(2).Height(50).Width(400)
+        // .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                                            .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Right })
+                                .Defaults(new { Margin = 3 })
+                            .Items(
+                             X.FileUploadField()
+                            .ItemID("FileUploadField1")
+                                .ButtonOnly(true).ButtonText("انتخاب عکس(حداکثر 100 کیلوبایت)")
+                            .DirectEvents(l =>
+                                    {
+                                        l.Change.Action = "Upload";
+                                        l.Change.Success = "hideprogressB();";
+                                    }
+                                )
+                            .Listeners(l => l.Change.Fn = "showFileB")
+                                    .Icon(Ext.Net.Icon.DiskUpload)
+                                  , X.Container().Content(@<div id="fi-button-msg" style="display:none;width:195px;"></div>)//.ColSpan(3)
+                            //, X.Button()
+                            //.ID("ShowButton")
+                            //.Text("دانلود عکس")
+                            //.Listeners
+                            //(l =>
+                            //    {
+        //        l.Click.Handler = "Download();";
+                            //    }
+                            //)
+
+                            //, X.Label()
+                            //    .Text("حداکثر حجم مجاز برای بارگذاری 100 کیلوبایت می باشد.")
+                            )
+                                 ,
+                                      X.FieldSet().Border(false).ColSpan(2)
+                               // .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                                            .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                                .Defaults(new { Margin = 3 })
+                            .Items(X.Image().ItemID("Image").ImageUrl("~/Content/BlankB.jpg").Width(80).Height(90).Border(true))
+                            )
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("BankFixedGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.BankFixed.queryById('BankFixedGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.BankFixed.queryById('BankFixedGrid');grid.setHeight(App.PayWin.getHeight() - 405); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldBankName).Text("نام بانک").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    var ImageId = 0;
+
+
+    function BankFixedSetSize() {
+        App.BankFixed.setWidth(App.PayWin.getWidth());
+        var grid = App.BankFixed.queryById('BankFixedGrid');
+        grid.setHeight(App.PayWin.getHeight() - 405);
+    }
+
+    var sss;
+    var MojazB = 0;
+    var sizeeB = 0;
+    var EndUploadB = false;
+
+    var CheckB = setInterval(CheckEndB, 500);
+
+    function CheckEndB() {
+        if (EndUploadB == true) {
+            Ext.net.DirectMethod.request({
+                url: '/BankFixed/ShowPicUpload',
+                success: function (data) {
+                    value = "data:image/gif;base64," + data.image;
+                    sss = data.image;
+                    App.BankFixed.queryById('Image').setImageUrl(value);
+                }
+            });
+
+            Ext.MessageBox.hide();
+            Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+            clearInterval(CheckEndB);
+            EndUploadB = false;
+        }
+    }
+    var showFileB = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msg');
+        if (v) {
+            showProgressBarB();
+            if (v.split('.').pop().toLowerCase() == "jpg" || v.split('.').pop().toLowerCase() == "png") {
+                MojazB = 1;
+                if (document.getElementById(id).files[0].size <= 102400) {
+                    sizeeB = 1;
+                }
+                if (sizeeB == 1) {
+                    el.update('<b>فایل انتخاب شده:</b> ' + v);
+                }
+                else {
+                    el.update('<b>فایل انتخاب شده:</b> ');
+                }
+
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                } else {
+                    el.highlight();
+                }
+            }
+            else {
+                el.update('<b>فایل انتخاب شده:</b> ');
+            }
+        }
+    };
+
+    function hideprogressB() {
+        if (MojazB == 1 && sizeeB == 1) {
+            EndUploadB = true;
+        }
+        MojazB = 0;
+        sizeeB = 0;
+    }
+
+    function showProgressBarB() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+
+    function LoadBankFixed() {
+        var SelectedRow = App.BankFixed.queryById('BankFixedGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/BankFixed/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtBankName = App.BankFixed.queryById('txtBankName');
+                    txtBankName.setValue(data.fldBankName);
+                    var txtDesc = App.BankFixed.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.BankFixed.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    ImageId = data.fldFileId;
+
+                    var fldfile = "data:image/gif;base64," + data.fldImage;
+                    App.BankFixed.queryById('Image').setImageUrl(fldfile);
+
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveBankFixed() {
+        var txtBankName = App.BankFixed.queryById('txtBankName');
+        var txtDesc = App.BankFixed.queryById('txtDesc');
+        var fldId = App.BankFixed.queryById('fldId');
+            var er = false;
+
+            if (txtBankName.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/BankFixed/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldBankName: txtBankName.getValue(),
+                    fldFileId: ImageId,
+                    fldDesc: txtDesc.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.BankFixed.queryById('BankFixedGrid').store.load();
+                    if (data.Er != 1)
+                        ClearBankFixed();
+                }
+
+            });
+    }
+    function DeleteBankFixed() {
+        var SelectedRow = App.BankFixed.queryById('BankFixedGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/BankFixed/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Err == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.BankFixed.queryById('BankFixedGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearBankFixed() {
+        App.BankFixed.queryById('fldId').setValue(0);
+        App.BankFixed.queryById('txtBankName').setValue("");
+        App.BankFixed.queryById('txtDesc').setValue("");
+        App.BankFixed.queryById('Image').setImageUrl("/Content/BlankB.jpg");
+        Ext.get('fi-button-msg').update('<b>فایل انتخاب شده:</b> ');
+    }
+    var addKeyMapBankFixed = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+        var keyfield = App.BankFixed.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtDesc") {
+            nextfld = App.BankFixed.queryById('FileUploadField1');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

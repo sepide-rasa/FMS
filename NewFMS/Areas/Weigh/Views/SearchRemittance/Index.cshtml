@@ -1,0 +1,110 @@
+﻿@model IEnumerable<NewFMS.WCF_Weigh.OBJ_Remittance_Header>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+@(Html.X().Window().Modal(true)
+            .Width(700).Height(340)
+            .Title("لیست حواله ها")
+                        .ID("SearchRemittance")
+                            .Listeners(l => l.Destroy.Handler = "setfocustextHavale()")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Items(
+                X.Panel().Border(false)
+                .Border(false)
+                .AutoScroll(true)
+                .Items(
+                         X.GridPanel().AutoScroll(true).Height(330)//.Listeners(l => l.AfterRender.Handler = "Reload()")
+                                        .ID("GridHavale").Flex(2)
+                                    .Store(
+                                            X.StoreForModel()//.AutoLoad(false)
+                                            .Proxy(Html.X().AjaxProxy()
+                                                    .Url(Url.Action("Read"))
+                                            .Reader(Html.X().JsonReader().Root("data"))
+
+                                        )
+                                        .PageSize(200000000)
+                                        .RemoteFilter(true)
+                                            .RemotePaging(true)
+
+                                    )
+                                    .View(
+                                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                                    )
+                                             .Plugins(X.FilterHeader().Remote(true))
+                                        .TopBar(X.Toolbar().Items(
+                                                    X.Button().Text("انتخاب").Icon(Icon.ArrowRedo).Listeners(l => l.Click.Handler = "NextSearchRemittance()")
+                                        ))
+                                        .ColumnModel(
+                                            Html.X().RowNumbererColumn(),
+                                                    Html.X().Column().DataIndex(Model, m => m.fldFileId).Text("fldFileId").Hidden(true).Flex(1),
+                                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                                        Html.X().Column().DataIndex(Model, m => m.fldAshkhasiId).Text("fldAshkhasiId").Hidden(true).Flex(3),
+                                            Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان حواله").Flex(3),
+                                        Html.X().Column().DataIndex(Model, m => m.fldFamilyName).Text("نام").Flex(3),
+                                        Html.X().Column().DataIndex(Model, m => m.fldKalaName).Text("نام کالا").Flex(3),
+                                        Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کد/شناسه ملی").Flex(2),
+                                        Html.X().Column().DataIndex(Model, m => m.fldStartDate).Text("تاریخ شروع").Flex(2),
+                                        Html.X().Column().DataIndex(Model, m => m.fldEndDate).Text("تاریخ پایان").Flex(2),
+                                        Html.X().Column().DataIndex(Model, m => m.fldStatusName).Text("وضعیت").Flex(2)
+                                        )
+                                                .Listeners(a => a.CellDblClick.Handler = "NextSearchRemittance();")
+        //    .Root(Html.X().Node().NodeID("1").AttributesObject(new { fldDaramadCode = "", fldMashmooleArzesheAfzoode = false, fldMashmooleKarmozd = false,  fldNameVahed = "", fldDaramadTitle = "کدهای درآمد" }).Expanded(true))
+
+            )
+        )
+)
+
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+    function setfocustextHavale() {
+        if (State == 1) {
+            App.Vazn_Baskool.queryById('txtHavale').focus();
+        }
+    }
+    var hidecheck = function (value, metaData, record, rowIndex, colIndex, store) {
+        if (record.data.id != 1)
+            return Ext.ux.CheckColumn.prototype.renderer.apply(this, arguments);
+    };
+
+    var GetParamTreeDaramad = function (store, operation, eOpts) {
+        var nodeId = operation.node.getId();
+        operation.params.nod = nodeId;
+
+    };
+ 
+    function NextSearchRemittance() {
+        var SelectedRow = App.GridHavale.getSelectionModel().getLastSelected();
+        if (SelectedRow != null) {
+                if (State == 1) {
+                    if (SelectedRow.data.fldFileId == '0' || SelectedRow.data.fldFileId == null)
+                        App.Vazn_Baskool.queryById('btnDlHavale').hide();
+                    else {
+                        App.Vazn_Baskool.queryById('HavaleFileId').setValue(SelectedRow.data.fldFileId);
+                        App.Vazn_Baskool.queryById('btnDlHavale').show();
+                    }
+
+                    App.Vazn_Baskool.queryById('HavaleId').setValue(SelectedRow.data.fldId);
+                    App.Vazn_Baskool.queryById('txtHavale').setValue(SelectedRow.data.fldFamilyName + "(" + SelectedRow.data.fldCodemeli+")");
+                    App.SearchRemittance.destroy();
+                }
+
+
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+
+    }
+
+
+</script>

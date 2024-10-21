@@ -1,0 +1,176 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(li => li.AfterRender.Handler = "LoadVaziyatEsargari();")
+    .Width(400)
+    .Title("ثبت وضعیت جدید")
+                        .ID("NewVaziyatEsargari")
+                    .Resizable(false)
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+
+        .DefaultButton("btn")
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+               .Buttons(X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ToolTip("کلید میانبر F8")
+                           .Listeners(l =>
+                           {
+                               l.Click.Handler = "SaveVaziyatEsargari();";
+
+                           })
+                           .ItemID("btnSave")
+                            ,
+                            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                                                    .OnClientClick("App.NewVaziyatEsargari.destroy();"))
+
+
+                .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                    .Defaults(new { Margin = 10 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                     X.TextField()
+                    .ItemID("txtTitle")
+                   .FieldLabel("نام وضعیت")
+                    .AutoFocus(true)
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا نام وضعیت را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                   
+                    , X.ComboBox()
+                    .ItemID("CmbStatus")
+                    .FieldLabel("نوع وضعیت")
+                      .EmptyText("نوع وضعیت ...")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .Items(
+                    new ListItem("عادی","0"),
+                    new ListItem("معاف از بیمه و مالیات","1")
+                    )
+                     .AllowBlank(false)
+                    .BlankText("لطفا نوع وضعیت را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Editable(false)
+                    , X.TextArea()
+                    .ItemID("txtDesc")
+                    .FieldLabel("توضیحات")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(160).ColSpan(3)
+                        )
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+)
+        )
+)
+@(Html.X().KeyMap()
+                      .ID("NewVaziyatEsargariMap")
+                                 .Target("={App.NewVaziyatEsargari.getTargetEl()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("if(App.BasicInfTab.activeTab.id=='VaziyatEsargari')SaveVaziyatEsargari();")
+                );
+
+            }))
+
+
+
+<script type="text/javascript">
+    function LoadVaziyatEsargari() {
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/VaziyatEsargari/Details',
+                params: {
+                    id: '@ViewBag.Id'
+                },
+                success: function (data) {
+
+                    var txtTitle = App.NewVaziyatEsargari.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var CmbStatus = App.NewVaziyatEsargari.queryById('CmbStatus');
+                    CmbStatus.setValue(data.fldType);
+                    var txtDesc = App.NewVaziyatEsargari.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.NewVaziyatEsargari.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                }
+            });
+        }
+    }
+
+    function SaveVaziyatEsargari() {
+
+        var txtTitle = App.NewVaziyatEsargari.queryById('txtTitle');
+        var CmbStatus = App.NewVaziyatEsargari.queryById('CmbStatus');
+        var txtDesc = App.NewVaziyatEsargari.queryById('txtDesc');
+        var fldId = App.NewVaziyatEsargari.queryById('fldId');
+        var er = false;
+        var status = false;
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (CmbStatus.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        if(CmbStatus.getValue()=="1")
+            status = true;
+       
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/VaziyatEsargari/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldTitle: txtTitle.getValue(),
+                fldType: status,
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.VaziyatEsargari.queryById('GridVaziyatEsargari').store.load();
+                if (data.Err == 0)
+                    ClearVaziyatEsargari();
+            }
+
+        });
+    }
+    function ClearVaziyatEsargari() {
+        App.NewVaziyatEsargari.queryById('fldId').setValue(0);
+        App.NewVaziyatEsargari.queryById('txtTitle').setValue("");
+        App.NewVaziyatEsargari.queryById('CmbStatus').setValue("");
+        App.NewVaziyatEsargari.queryById('txtDesc').setValue("");
+    }
+    function EnterNext() {
+        var keyfield = App.NewVaziyatEsargari.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+
+    }
+</script>

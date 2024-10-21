@@ -1,0 +1,197 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_ShomareHesabCodeDaramad_Fomula>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+@(Html.X().Window()
+    .Modal(true)
+    .Width(500)
+    .Height(360)
+    .Title("لیست فرمول های ثبت شده")
+    .ID("ListFormuls")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Items(
+        X.GridPanel()
+            .AutoScroll(true)
+            .Border(false)
+            .TopBar(
+                Html.X().Toolbar()
+                .Items(
+                    X.Button()
+                        .Text("جدید")
+                        .Icon(Ext.Net.Icon.Add)
+                        .Listeners(li => li.Click.Handler = "NewListFormuls();")
+                )
+            )
+            .ItemID("GridListFormuls")
+            .Store(
+                X.StoreForModel()
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("ReadAllFormul"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                        .ExtraParams(l => l.Add(new { fldShomareHesab_CodeId = ViewBag.ShomareHesabCodeDaramadId }))
+                    )
+                    .PageSize(1000)
+                    .RemoteFilter(false)
+                    .RemotePaging(false)
+                    )
+                    .BottomBar(Html.X().PagingToolbar())
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(Html.X().CellEditing().ClicksToEdit(1))
+                    .Listeners(l=>{
+                        //l.Edit.Fn="CheckValidateDate";
+                        l.BeforeEdit.Fn = "disableEditor";
+                    })
+                    .ColumnModel(
+                        X.RowNumbererColumn(),
+                        X.Column().Text("کد").DataIndex(Model, m => m.fldId).Hidden(true).Wrap(true).Flex(1),
+                        X.Column().Text("تاریخ اجرا").DataIndex(Model, m => m.fldTarikhEjra).Wrap(true).Flex(7).Editor(
+                            Html.X().TextField().MaskRe("/[0-9,/]/").MaxLength(10).MinLength(10).Regex("^[1-9]").AllowBlank(false)),
+                        X.ComponentColumn()
+                            .Filterable(false)
+                            .Align(Alignment.Center)
+                            .ItemID("FormulMenu2")
+                            .Flex(3)
+                            .Component(Html.X().Button().Flat(true).Text("فرمول محاسبات")
+                                .Menu(Html.X().Menu().Items(Html.X().MenuItem().Listeners(l => l.Click.Handler = "ActionFormulsaz1();").Text("فرمول ساز").IconCls("Formul1"), 
+                                Html.X().MenuItem().Listeners(l => l.Click.Handler = "ActionFormulNevis1();").Text("فرمول نویس").IconCls("Formul2"))))
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+        )
+)
+<script type="text/javascript">
+    function NewListFormuls() {
+        App.ListFormuls.queryById("GridListFormuls").store.insert(0, {
+            fldId: 0,
+            fldShomareHesab_CodeId: '@ViewBag.ShomareHesabCodeDaramadId',
+            fldFormolsaz: "",
+            fldFormulKoliId: 0,
+            fldFormulMohasebatId: 0,
+            fldTarikhEjra: '@ViewBag.CurrDate'
+        });
+    }
+
+    var disableEditor = function (editor, e, eOpts) {
+        if (e.record.data.fldId != 0) {            
+            return false;
+        }
+    };
+
+    @*var CheckValidateDate = function (a, b) {
+        if (b.field == "fldTarikhEjra") {
+            if (parseInt(b.value.replace("/", "").replace("/", "")) > parseInt('@ViewBag.CurrDate'.replace("/", "").replace("/", ""))) {
+                b.record.set("fldTarikhEjra", '@ViewBag.CurrDate');
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "مقدار وارد شده غیرمجاز است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK,
+                    closable: false,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            App.ListFormuls.queryById("GridListFormuls").editingPlugin.startEdit(b.rowIdx, 1);
+                            a.getEditor(b.row, b.column).field.selectText();
+                        }
+                    }
+                });
+            }
+        }
+    };*@
+
+    var ActionFormulsaz1 = function () {/*فرمول ساز*/
+        var columnn = App.ListFormuls.queryById("FormulMenu2");
+        if (columnn.activeRecord.record.data.fldFormulMohasebatId != 0) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "برای کد درآمد انتخاب شده در قسمت فرمول نویس، فرمولی ثبت شده است. در صورت ثبت فرمول در قسمت فرمول ساز، فرمول قبلی حذف خواهد شد. آیا مایل به ادامه عملیات هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/IncomeCodes/FormulSaz',
+                            params: {
+                                ShomareHesabCodeDaramadId: '@ViewBag.ShomareHesabCodeDaramadId',
+                                Formul: columnn.activeRecord.record.data.fldFormolsaz,
+                                @*FiscalYearId: '@ViewBag.FiscalYearId',*@
+                                Id: columnn.activeRecord.record.data.fldId,
+                                Tarikh: columnn.activeRecord.record.data.fldTarikhEjra
+                            },
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/IncomeCodes/FormulSaz',
+                params: {
+                    ShomareHesabCodeDaramadId: '@ViewBag.ShomareHesabCodeDaramadId',
+                    Formul: columnn.activeRecord.record.data.fldFormolsaz,
+                    @*FiscalYearId: '@ViewBag.FiscalYearId',*@
+                    Id: columnn.activeRecord.record.data.fldId,
+                    Tarikh: columnn.activeRecord.record.data.fldTarikhEjra
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    };
+
+    var ActionFormulNevis1 = function () {/*فرمول نویس*/
+        var columnn = App.ListFormuls.queryById("FormulMenu2");
+        if (columnn.activeRecord.record.data.fldFormolsaz != '') {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "برای کد درآمد انتخاب شده در قسمت فرمول ساز، فرمولی ثبت شده است. در صورت ثبت فرمول در قسمت فرمول نویس، فرمول قبلی حذف خواهد شد. آیا مایل به ادامه عملیات هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        openWindowWithPost("/WritingFormula/Formula", {
+                            ID: '@ViewBag.ShomareHesabCodeDaramadId',
+                            TableId: columnn.activeRecord.record.data.fldId,
+                            FieldName: "formulMohasebat",
+                            FiscalYearId: '@ViewBag.FiscalYearId',
+                            FormulId: columnn.activeRecord.record.data.fldFormulMohasebatId,
+                            RankingType: null,
+                            OrganId: null,
+                            OrganName: "کدهای درآمد(" + columnn.activeRecord.record.data.fldDaramadTitle + ")",
+                            AzTarikh: columnn.activeRecord.record.data.fldTarikhEjra
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            openWindowWithPost("/WritingFormula/Formula", {
+                ID: '@ViewBag.ShomareHesabCodeDaramadId',
+                TableId: columnn.activeRecord.record.data.fldId,
+                FieldName: "formulMohasebat",
+                FormulId: columnn.activeRecord.record.data.fldFormulMohasebatId,
+                FiscalYearId: '@ViewBag.FiscalYearId',
+                RankingType: null,
+                OrganId: null,
+                OrganName: "کدهای درآمد(" + columnn.activeRecord.record.data.fldDaramadTitle + ")",
+                AzTarikh: columnn.activeRecord.record.data.fldTarikhEjra
+            });
+        }
+    };
+    
+    
+</script>

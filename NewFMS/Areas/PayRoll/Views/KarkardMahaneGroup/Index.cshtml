@@ -1,0 +1,575 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+
+@(Html.X().Window()//.Listeners(l=>l.AfterRender.Handler="SetHideItem();")
+    .Closable(true)
+    .CloseAction(CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Modal(true)
+    .Width(530)
+    .ID("KarkardMahaneWin")
+        //.Title("سایر پرداخت ها")
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        Html.X().Button()
+            .Text("ادامه")
+            .Icon(Ext.Net.Icon.PageGo)
+            .Listeners(l => l.Click.Handler = "NextKarkardMahane()"),
+          X.Button().Text("راهنما")
+          .Icon(Ext.Net.Icon.Help)
+              .Listeners(l => { l.Click.Handler = "HelpKarkardMahane()"; }),
+
+        Html.X().Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => l.Click.Handler = "App.KarkardMahaneWin.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .PaddingSpec("4px 12px 4px 12px")
+            .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .Title("مشخصات پرداخت")
+                    .PaddingSpec("0 7px 7px 7px")
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Label("سازمان:"),
+                    X.ComboBox()
+                                    .ItemID("CboOrgan")
+                                    .TypeAhead(true)
+                                    .AutoFocus(true)
+                                    .Editable(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .BlankText("لطفا سازمان را انتخاب کنید.")
+                                    .Listeners(l => l.Change.Handler = "if(App.KarkardMahaneWin.queryById('CboCostCenter').getValue()==2){App.KarkardMahaneWin.queryById('CboCostCenterType').getStore().load();}")
+                                    .AllowBlank(false)
+                                    .ForceSelection(true)
+                                    .DisplayField("fldTitle")
+                                    .ValueField("fldId")
+                                    .EmptyText("سازمان ...")
+                                    .ColSpan(3)
+                                    .Width(345)
+                                    .Store(X.Store()
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")                                    
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetOrgan"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                        .Listeners(l => l.Load.Handler = "setdefaultValueKarkardMahaneWin()")
+                                        ),
+                        X.Label("سال:"),
+                        X.ComboBox()
+                            .ItemID("CboYear")
+                            .Editable(false)
+                            .TypeAhead(true)
+                                .AllowBlank(false)
+                                .Listeners(l =>
+                                {
+                                    l.AfterRender.Handler = "setValueYear()";
+                                    l.Change.Handler = "setYearClass()";
+                                })
+                            .BlankText("لطفا سال را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Items(
+                                new ListItem("1387", "1387"),
+                                new ListItem("1388", "1388"),
+                                new ListItem("1389", "1389"),
+                                new ListItem("1390", "1390"),
+                                new ListItem("1391", "1391"),
+                                new ListItem("1392", "1392"),
+                                new ListItem("1393", "1393"),
+                                new ListItem("1394", "1394"),
+                                new ListItem("1395", "1395"),
+                                new ListItem("1396", "1396"),
+                                new ListItem("1397", "1397"),
+                                new ListItem("1398", "1398"),
+                                new ListItem("1399", "1399"),
+                                new ListItem("1400", "1400"),
+                                new ListItem("1401", "1401"),
+                                    new ListItem("1402", "1402"),
+                                        new ListItem("1403", "1403")
+                        ),
+                        X.Label("ماه:").ItemID("lblMonth"),
+                        X.ComboBox()
+                            .ItemID("CboMonth")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                                .BlankText("لطفا ماه را انتخاب کنید.")
+                                .Listeners(l =>
+                                {
+                                    l.AfterRender.Handler = "setValueMonth()";
+                                    l.Change.Handler = "setMonthClass()";
+                                })
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Items(
+                                new ListItem("فروردین", "01"),
+                                new ListItem("اردیبهشت", "02"),
+                                new ListItem("خرداد", "03"),
+                                new ListItem("تیر", "04"),
+                                new ListItem("مرداد", "05"),
+                                new ListItem("شهریور", "06"),
+                                new ListItem("مهر", "07"),
+                                new ListItem("آبان", "08"),
+                                new ListItem("آذر", "09"),
+                                new ListItem("دی", "10"),
+                                new ListItem("بهمن", "11"),
+                                new ListItem("اسفند", "12")
+                            ),
+                        X.Label("نوبت پرداخت:").ItemID("lblNobatePardakht"),
+                        X.ComboBox()
+                            .ItemID("CboNobatePardakht")
+                            .Editable(false)
+                            .TypeAhead(true)
+                                .AllowBlank(false)
+                                .Listeners(l =>
+                                {
+                                    l.AfterRender.Handler = "setValueNobatePardakht()";
+                                    l.Change.Handler = "setNobatePardakhtCalss()";
+                                })
+                            .BlankText("لطفا نوبت پرداخت را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Items(
+                                new ListItem("یک", "1"),
+                                new ListItem("دو", "2"),
+                                new ListItem("سه", "3"),
+                                new ListItem("چهار", "4"),
+                                new ListItem("پنج", "5")
+                                )//.SelectedItems(new { Value = "1" })
+                                ,
+                        X.Label("نوع فیلتر:").ItemID("lblCostCenter"),
+                        X.ComboBox()
+                            .ItemID("CboCostCenter")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا مراکز هزینه را انتخاب نمایید.")
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("Name")
+                            .ValueField("ID")
+                            .EmptyText("مراکز هزینه")
+                            .Listeners(ls =>
+                                {
+                                    ls.AfterRender.Handler = "setValueCostCenter()";
+                                    ls.Select.Handler = "setCostClass()";
+                                    ls.Change.Handler = "if(App.KarkardMahaneWin.queryById('CboCostCenter').getValue()==2){App.KarkardMahaneWin.queryById('CboCostCenterType').getStore().load();}ChangeCostCenterS()";
+                                })
+                            .ValueNotFoundText("مراکز هزینه...")
+                            .Items(
+                                new ListItem("تمام پرسنل", "1"),
+                                new ListItem("براساس مرکز هزینه", "2"),
+                                new ListItem("براساس محل خدمت", "3")
+                                )//.SelectedItems(new { Value = "1" })
+                                ,
+                        X.Label("نوع مراکز هزینه:").ItemID("lblCostCenterType"),
+                        X.ComboBox()
+                            .ItemID("CboCostCenterType")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("نوع مراکز هزینه")
+                                .ValueNotFoundText("...")
+                                .Listeners(l => l.Select.Handler = "setCostClass();")
+                            .Store(X.Store()
+                                    .AutoLoad(false)
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    
+                                    .Url(Url.Action("GetCostCenter"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                                .Parameters(ps =>
+                                    ps.Add(new StoreParameter("ID", "App.KarkardMahaneWin.queryById('CboCostCenter').getValue()", ParameterMode.Raw))
+                                )
+                                    .Parameters(ps =>
+                                        ps.Add(new StoreParameter("OrganId", "App.KarkardMahaneWin.queryById('CboOrgan').getValue()", ParameterMode.Raw))
+                                    )
+                            )
+                            ,
+                             X.TreePanel()
+                                .ID("TreeKarkardMahaneWin")
+                                    .AutoScroll(true)
+                                    .Width(300)
+                                    .ColSpan(4)
+                                    .Height(200)
+                                    .UseArrows(true)
+                                    .Border(false)
+                                        .Store(
+                    Html.X().TreeStore()
+                        .Proxy(
+                                    Html.X().AjaxProxy().Url(Url.Action("Node"))
+                        )
+                )
+
+                                    .Listeners(a =>
+                                    {
+                                        a.ItemClick.Handler = "GetIdChartOrgan(record)";
+                                        a.AfterRender.Handler = "this.getRootNode().expand();";
+                                       a.BeforeLoad.Fn = "nodeLoad";
+                                    })
+                       .Root(Html.X().Node().NodeID("0").Text("چارت سازمانی"))
+
+                                    .View(
+                                    X.TreeView()
+                                    .Plugins(
+                                    X.TreeViewDragDrop().AppendOnly(true).ContainerScroll(true)
+
+                                )
+                        )
+                        )
+            )
+    )
+)
+
+<script type="text/javascript">
+    function setdefaultValueKarkardMahaneWin() {
+        App.KarkardMahaneWin.queryById('CboOrgan').select(App.KarkardMahaneWin.queryById('CboOrgan').store.getAt(0));
+    }
+    var NodeId=0;
+    var nodeLoad = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/KarkardMahaneGroup/NodeLoad',
+            params: {
+                nod: node.getId()
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+    function GetIdChartOrgan(record) {
+        NodeId = record.getId();
+    };
+    function HelpKarkardMahane() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/KarkardMahaneGroup/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function setYearClass() {
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Pardakhtha/SetYearClass',
+            params: {
+                Year: App.KarkardMahaneWin.queryById("CboYear").getValue()
+            }
+        });
+    }
+
+    function setMonthClass() {
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Pardakhtha/SetMonthClass',
+            params: {
+                Month: App.KarkardMahaneWin.queryById("CboMonth").getValue()
+            }
+        });
+    }
+
+    function setCostClass() {
+        var value = "";
+        if (App.KarkardMahaneWin.queryById('CboCostCenter').getValue() == "1") {
+            value = "";
+        }
+        else {
+            value = App.KarkardMahaneWin.queryById('CboCostCenterType').getValue();
+        }
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Pardakhtha/SetCostClass',
+            params: {
+                Value: value
+            }
+        });
+    }
+
+    function setNobatePardakhtCalss() {
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Pardakhtha/setNobatePardakhtCalss',
+            params: {
+                NobatePardakht: App.KarkardMahaneWin.queryById("CboNobatePardakht").getValue()
+            }
+        });
+    }
+    function setValueYear() {
+        var CboYear = App.KarkardMahaneWin.queryById('CboYear');
+        CboYear.setValue('@ViewBag.Year');
+    }
+
+    function setValueNobatePardakht() {
+        var CboNobatePardakht = App.KarkardMahaneWin.queryById('CboNobatePardakht');
+        CboNobatePardakht.setValue('@ViewBag.nobatePardakht');
+    }
+    function setValueMonth() {
+        var CboMonth = App.KarkardMahaneWin.queryById('CboMonth');
+        CboMonth.setValue('@ViewBag.Month');
+    }
+
+    function setValueCostCenter() {
+        var CboCostCenter = App.KarkardMahaneWin.queryById('CboCostCenter');
+        var CboCostCenterType = App.KarkardMahaneWin.queryById('CboCostCenterType');
+
+        if ('@ViewBag.CostCenter' == "") {
+            CboCostCenter.setValue("1");
+        }
+        else {
+            CboCostCenter.setValue("2");
+            CboCostCenterType.setValue('@ViewBag.CostCenter');
+        }
+    }
+  
+
+    function SetHideItem() {
+        App.KarkardMahaneWin.queryById('CboCostCenterType').allowBlank = true;
+        App.KarkardMahaneWin.queryById('CboCostCenterType').validate();
+        App.KarkardMahaneWin.queryById('CboCostCenterType').hide();
+        App.KarkardMahaneWin.queryById('lblCostCenterType').hide();
+        App.KarkardMahaneWin.queryById('TreeKarkardMahaneWin').hide();
+    }
+
+    function ChangeCostCenterS() {
+        var CostCenter = App.KarkardMahaneWin.queryById('CboCostCenter').getValue();
+        if (CostCenter == 2) {
+            App.KarkardMahaneWin.queryById('CboCostCenterType').allowBlank = false;
+            App.KarkardMahaneWin.queryById('CboCostCenterType').validate();
+            App.KarkardMahaneWin.queryById('CboCostCenterType').show();
+            App.KarkardMahaneWin.queryById('lblCostCenterType').show();
+            App.KarkardMahaneWin.queryById('TreeKarkardMahaneWin').hide();
+        }
+        else if (CostCenter == 3) {
+            App.KarkardMahaneWin.queryById('CboCostCenterType').allowBlank = true;
+            App.KarkardMahaneWin.queryById('CboCostCenterType').validate();
+            App.KarkardMahaneWin.queryById('CboCostCenterType').hide();
+            App.KarkardMahaneWin.queryById('lblCostCenterType').hide();
+            App.KarkardMahaneWin.queryById('TreeKarkardMahaneWin').show();
+        }
+        else {
+            App.KarkardMahaneWin.queryById('CboCostCenterType').allowBlank = true;
+            App.KarkardMahaneWin.queryById('CboCostCenterType').validate();
+            App.KarkardMahaneWin.queryById('CboCostCenterType').hide();
+            App.KarkardMahaneWin.queryById('lblCostCenterType').hide();
+            App.KarkardMahaneWin.queryById('TreeKarkardMahaneWin').hide();
+        }
+    }
+
+    function NextKarkardMahane() {
+        var CboYear = App.KarkardMahaneWin.queryById('CboYear').getValue();
+        var CboMonth = App.KarkardMahaneWin.queryById('CboMonth').getValue();
+        var nobatPardakht = App.KarkardMahaneWin.queryById('CboNobatePardakht');
+        var CboCostCenter = App.KarkardMahaneWin.queryById('CboCostCenter');
+        var CboCostCenterType = App.KarkardMahaneWin.queryById('CboCostCenterType');
+        var CboOrgan = App.KarkardMahaneWin.queryById('CboOrgan');
+
+
+        
+
+        var valid = true;
+        if (nobatPardakht.validate() == false)
+            valid = false;
+        if (CboCostCenter.validate() == false)
+            valid = false;
+        if (CboOrgan.validate() == false)
+            valid = false;
+
+        var FieldName = "";
+        var CostCenter_ChartId = "";
+        if (CboCostCenter.getValue() == 2) {
+            if (CboCostCenterType.validate() == false)
+                valid = false;
+
+            FieldName = "fldCostCenterId";
+            CostCenter_ChartId = CboCostCenterType.getValue();
+        }
+        else if (CboCostCenter.getValue() == 3) {
+            if (NodeId == 0)
+                valid = false;
+
+            FieldName = "fldChartOrganId";
+            CostCenter_ChartId=NodeId;
+        }
+
+        if (valid == false) {
+            Ext.net.Mask.hide();
+            return;
+        }
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/KarkardMahane/CheckStatusFlagEdit',
+            params: {
+                Year: CboYear,
+                Month: CboMonth,
+                NobatPardakht: nobatPardakht.getValue(),
+                fldPayPersonalId: null,
+                fldNoePardakht: 1,
+                MonthName: App.KarkardMahaneWin.queryById('CboMonth').getDisplayValue(),
+                OrganId: CboOrgan.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                if (data.Flag == 3) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "کاربر گرامی به دلیل بسته شدن حقوق شما مجاز به عملیات نمی باشید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+                else if (data.Flag == 4) {
+
+                    Ext.MessageBox.show({
+                        title: data.MsgTitl,
+                        msg: data.Msg,
+                        icon: Ext.MessageBox.WARNING,
+                        buttons: Ext.MessageBox.YESNO,
+                        fn: function (btn) {
+                            if (btn == 'yes') {
+                                Ext.net.DirectMethod.request({
+                                    url: '/PayRoll/KarkardMahane/CheckCloseHoghough',
+                                    params: {
+                                        Year: CboYear,
+                                        Month: CboMonth,
+                                        OrganId: CboOrgan.getValue()
+                                    },
+                                    success: function (data) {
+                                        if (data.FlagC == false) {/*حقوق بسته نشده داشتیم*/
+                                            Ext.MessageBox.show({
+                                                title: "هشدار",
+                                                msg: "حقوق ماه های گذشته بسته نشده است.آیا تمایل به بسته شدن آن دارید؟",
+                                                icon: Ext.MessageBox.WARNING,
+                                                buttons: Ext.MessageBox.YESNO,
+                                                fn: function (btn) {
+                                                    if (btn == 'yes') {
+                                                        App.KarkardMahaneWin.destroy();
+                                                        Ext.net.DirectMethod.request({
+                                                            url: '/PayRoll/KarkardMahaneGroup/IndexGroup?containerId=FirstTabPay&FieldName=' + FieldName + '&Sal=' +
+                                                                CboYear + '&Mah=' + CboMonth + '&NobatPardakht=' + nobatPardakht.getValue() + '&CostCenter_ChartId=' +
+                                                                CostCenter_ChartId + "&Flag=true" + "&DelCalc=" + 1 + "&OrganId=" + CboOrgan.getValue(),
+                                                            success: function () {
+                                                                /*Ext.net.Mask.hide();*/
+                                                            }
+                                                        });
+                                                    }
+                                                    else if (btn == 'no') {
+                                                        Ext.net.Mask.hide();
+                                                    }
+                                                }
+                                            });
+                                        }
+                                        else {
+                                            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                                            App.KarkardMahaneWin.destroy();
+                                            Ext.net.DirectMethod.request({
+                                                url: '/PayRoll/KarkardMahaneGroup/IndexGroup?containerId=FirstTabPay&FieldName=' + FieldName + '&Sal=' + CboYear + '&Mah=' + CboMonth + '&NobatPardakht=' +
+                                                    nobatPardakht.getValue() + '&CostCenter_ChartId=' + CostCenter_ChartId + "&Flag=false" + "&DelCalc=" + 1 + "&OrganId=" + CboOrgan.getValue(),
+                                                success: function () {
+                                                    /*Ext.net.Mask.hide();*/
+                                                }
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+                else {
+                    Ext.net.DirectMethod.request({
+                        url: '/PayRoll/KarkardMahane/CheckCloseHoghough',
+                        params: {
+                            Year: CboYear,
+                            Month: CboMonth,
+                            OrganId: CboOrgan.getValue()
+                        },
+                        success: function (data) {
+                            if (data.FlagC == false) {/*حقوق بسته نشده داشتیم*/
+                                Ext.MessageBox.show({
+                                    title: "هشدار",
+                                    msg: "حقوق ماه های گذشته بسته نشده است.آیا تمایل به بسته شدن آن دارید؟",
+                                    icon: Ext.MessageBox.WARNING,
+                                    buttons: Ext.MessageBox.YESNO,
+                                    fn: function (btn) {
+                                        if (btn == 'yes') {
+                                            App.KarkardMahaneWin.destroy();
+                                            Ext.net.DirectMethod.request({
+                                                url: '/PayRoll/KarkardMahaneGroup/IndexGroup?containerId=FirstTabPay&FieldName=' + FieldName + '&Sal=' + CboYear +
+                                                    '&Mah=' + CboMonth + '&NobatPardakht=' + nobatPardakht.getValue() + '&CostCenter_ChartId=' + CostCenter_ChartId +
+                                                    "&Flag=true" + "&DelCalc=" + 0 + "&OrganId=" + CboOrgan.getValue(),
+                                                success: function () {
+                                                    /*Ext.net.Mask.hide();*/
+                                                }
+                                            });
+                                        }
+                                        else if (btn == 'no') {
+                                            Ext.net.Mask.hide();
+                                        }
+                                    }
+                                });
+                            }
+                            else {
+                                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                                App.KarkardMahaneWin.destroy();
+                                Ext.net.DirectMethod.request({
+                                    url: '/PayRoll/KarkardMahaneGroup/IndexGroup?containerId=FirstTabPay&FieldName=' + FieldName + '&Sal=' + CboYear + '&Mah=' + CboMonth
+                                        + '&NobatPardakht=' + nobatPardakht.getValue() + '&CostCenter_ChartId=' + CostCenter_ChartId +
+                                        "&Flag=false" + "&DelCalc=" + 0 + "&OrganId=" + CboOrgan.getValue(),
+                                    success: function () {
+                                        /*Ext.net.Mask.hide();*/
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+            }
+        });
+       
+    }
+
+</script>

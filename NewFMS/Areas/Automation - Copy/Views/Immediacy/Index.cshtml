@@ -1,0 +1,493 @@
+﻿@model IEnumerable<NewFMS.WCF_Automation.OBJ_Immediacy>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+@*<style>
+        #test legend{
+            text-align:right!important;
+        }
+    </style>*@
+<br />
+@(Html.X().Panel()
+            .ID("SabtImmediacy")
+            .Title("ثبت انواع فوریت")
+            .Listeners(li => { li.AfterRender.Handler = "SabtImmediacySetSize();"; li.Render.Fn = "addKeyMapSabtImmediacy"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+            X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                        .Listeners(l => { l.Click.Handler = "SaveImmediacy();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                        .Listeners(l => { l.Click.Handler = "LoadImmediacy();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                        .Listeners(l => { l.Click.Handler = "DeleteImmediacy();"; })
+               , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                   .Listeners(l => { l.Click.Handler = "HelpImmediacy();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.SabtImmediacy.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.FormPanel().Border(false)
+                 .Layout(LayoutType.VBox)
+                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                        X.FieldSet().Border(false)
+
+                    .Items(
+                        X.FieldSet().Border(true).Title("انواع فوریت")
+                         .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .Items(
+                                    X.FieldSet().Border(false)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                        X.Label("نوع فوریت:"),
+                       X.TextField()
+                        .ItemID("txtName")
+                            .MaxLength(50)
+                        .EnforceMaxLength(true)
+                    .AllowBlank(false)
+                    .BlankText("لطفا نوع فوریت را وارد کنید.")
+                    .AutoFocus(true)
+                    , X.Label("توضیحات:"),
+                        X.TextField()
+                    .ItemID("txtDesc")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(378)
+                    .ColSpan(4)
+                    )
+                    )
+                    , X.FieldSet()
+                            .Border(true)
+                            .AutoScroll(true)
+                            .Height(130)
+                            .ColSpan(4)
+                                        .Title("عکس 16*16 با پسوند های png,jpg,jpeg,tif,tiff (حداکثر حجم مجاز: 300KB)")
+                            .ID("fieldsetfile")
+                            .Layout(LayoutType.HBox)
+                            .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Middle })
+                            .Items(
+                              
+                                X.FormPanel()
+                                    .Border(false)
+                                    .Layout(LayoutType.VBox)
+                                    .ItemID("fieldsetShowFile")
+                                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Right })
+                                    .Width(346)
+        //.Listeners(l => l.AfterRender.Handler = "App.NewHuman.queryById('fieldsetShowFile').setWidth(App.BasicInfWin.getWidth() - 1050)")
+                                    .Items(
+                                        X.FileUploadField()
+                                            .MarginSpec("0 10px 10px 0")
+                                            .Icon(Ext.Net.Icon.DiskUpload)
+                                            .ButtonOnly(true)
+                                            .ButtonText("انتخاب فایل")
+                                            .DirectEvents(l =>
+                                            {
+                                                l.Change.Action = "Upload";
+                                                l.Change.Delay = 1000;
+                                                l.Change.Before = "if(GotoServerIm==false){return false;}";
+                                                l.Change.Success = "hideprogressIm";
+                                            })
+                                                .Listeners(l => l.Change.Fn = "showFileIm"),
+                                        X.Container()
+                                            .Content(@<div id="fi-button-msg" class="Wrap-label" style="width:336px;height:auto; text-align:right;"><b>فایل انتخاب شده:</b></div>)
+                                        ),
+                                X.Panel()
+                                    .Border(false)
+                                    .Layout(LayoutType.VBox)
+                                    .LayoutConfig(new VBoxLayoutConfig { Align=VBoxAlign.Center})
+                                    .Items(
+                                        X.Label("پیش نمایش"),
+                                        X.Panel()
+                                            .Frame(true)
+                                            .MarginSpec("3px 0 0 0")
+                                            .Layout(LayoutType.Fit)
+                                            .Items(
+                                        X.Image()
+                                                .ItemID("ImageImmediacy")
+                                            .Flex(1)
+                                            .ImageUrl("/Content/Blank.jpg")
+                                            .Width(40)
+                                            .Height(40)
+                                            .Border(true)
+                                            .Frame(true)))
+                            )
+                            @*, X.FieldSet().Border(true).Title("عکس نوع فوریت (حداکثر 100 کیلوبایت)").Height(115)
+                        .Defaults(new { Margin = 2 })
+                        .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                    .Items(
+                                 X.FieldSet().Border(false).ColSpan(2).Height(80).Width(500)
+            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                                .Defaults(new { Margin = 3 })
+                            .Items(
+                             X.FileUploadField()
+                            .ItemID("FileUploadField1")
+                                .ButtonOnly(true).ButtonText("انتخاب عکس")
+                            .DirectEvents(l =>
+                                    {
+                                        l.Change.Action = "Upload";
+                                        l.Change.Success = "hideprogressB();";
+                                    }
+                                )
+                            .Listeners(l => l.Change.Fn = "showFileB")
+                                    .Icon(Ext.Net.Icon.DiskUpload)
+                                          , X.Button().Listeners(l => l.Click.Handler = "DeleteFileB()").Icon(Ext.Net.Icon.Delete)
+                                  , X.Container().ColSpan(2).Content(@<div id="fi-button-msg" style="display:none;width:205px;height:50px"></div>)//.ColSpan(3)
+                            )
+                                 ,
+                                      X.FieldSet().Border(false).ColSpan(2)
+                                            .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                                .Defaults(new { Margin = 3 })
+                                .Items(X.Image().ItemID("Image").ImageUrl("~/Content/Blank.jpg").Width(80)
+                                                .Height(80)
+                                                .Border(true)
+                                                .Frame(true))
+                            )*@
+                )
+            )
+        ),
+        X.GridPanel()
+            .ItemID("ImmediacyGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                           .Listeners(l => l.DataChanged.Handler = "App.SabtImmediacy.queryById('ImmediacyGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtImmediacy.queryById('ImmediacyGrid');grid.setHeight(App.AutomationWin.getHeight() - 417); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldID).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان فوریت").Flex(4),
+                                    Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    var IsDelIm = 0;
+    var ImageId = 0;
+
+
+    function SabtImmediacySetSize() {
+        App.SabtImmediacy.setWidth(App.AutomationWin.getWidth());
+        var grid = App.SabtImmediacy.queryById('ImmediacyGrid');
+        grid.setHeight(App.AutomationWin.getHeight() - 417);
+
+    }
+
+
+    var GotoServerIm = false;
+    var EndUploadIm = false;
+
+    var CheckIm = setInterval(CheckEndIm, 500);
+
+    function CheckEndIm() {
+        if (EndUploadIm == true) {
+            Ext.net.DirectMethod.request({
+                url: '/Automation/Immediacy/ShowPicUpload',
+                success: function (data) {
+                    value = "data:image/gif;base64," + data.image;
+                    App.SabtImmediacy.queryById('ImageImmediacy').setImageUrl(value);
+                }
+            });
+            GotoServerIm = false;
+            Ext.MessageBox.hide();
+            Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+            clearInterval(CheckEndIm);
+            EndUploadIm = false;
+        }
+    }
+    var showFileIm = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msg');
+        if (v) {
+            showProgressBarIm();
+            if (v.split('.').pop().toLowerCase() == "jpg" || v.split('.').pop().toLowerCase() == "png" || v.split('.').pop().toLowerCase() == "jpeg"
+                || v.split('.').pop().toLowerCase() == "tif" || v.split('.').pop().toLowerCase() == "tiff" || v.split('.').pop().toLowerCase() == "gif"
+                || v.split('.').pop().toLowerCase() == "bmp") {
+                if (document.getElementById(id).files[0].size <= 307200) {
+                    GotoServerIm = true;
+                    el.update('<b>فایل انتخاب شده: ' + v + '</b>' + "&nbsp;&nbsp;" + '<img id="DeleteActionFileimg6" title="حذف فایل" src="/Content/cancel.png" style="width:15px;height:15px;margin-bottom: -4px;" onclick="javascript:DeleteFileHuman()" />');
+                }
+                else {
+                    clearInterval(CheckEndIm);
+                    el.update('<b>فایل انتخاب شده:</b> ');
+                    App.SabtImmediacy.queryById('ImageImmediacy').setImageUrl("/Content/Blank.jpg");
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "حجم فایل انتخاب شده غیرمجاز است.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                } else {
+                    el.highlight();
+                }
+            }
+            else {
+                clearInterval(CheckEndIm);
+                el.update('<b>فایل انتخاب شده:</b> ');
+                App.SabtImmediacy.queryById('ImageImmediacy').setImageUrl("/Content/Blank.jpg");
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "فایل انتخاب شده غیرمجاز است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+    };
+
+    var DeleteFileHu = false;
+    function DeleteFileHuman() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/Immediacy/DeleteSessionFile',
+            success: function (data) {
+                DeleteFileHu = true;
+                App.SabtImmediacy.queryById('ImageImmediacy').setImageUrl("/Content/Blank.jpg");
+                Ext.get('fi-button-msg').update('<b>فایل انتخاب شده:</b>');
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    var hideprogressIm = function (Responsdtxt, ResponseObj) {
+        if (ResponseObj.IsValid == true) {
+            EndUploadIm = true;
+        }
+        else {
+            var el = Ext.get('fi-button-msg');
+            GotoServerIm = false;
+            clearInterval(CheckEndIm);
+            EndUploadIm = false;
+            el.update('<b>فایل انتخاب شده:</b> ');
+            App.SabtImmediacy.queryById('ImageImmediacy').setImageUrl("/Content/Blank.jpg");
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: ResponseObj.Message,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    };
+
+    function showProgressBarIm() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+    function LoadImmediacy() {
+        var SelectedRow = App.SabtImmediacy.queryById('ImmediacyGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/Immediacy/Details',
+                params: {
+                    Id: SelectedRow.data.fldID
+                },
+                success: function (data) {
+                    var txtName = App.SabtImmediacy.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var txtDesc = App.SabtImmediacy.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtImmediacy.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    ImageId = data.fldFileId;
+
+                    if (data.FileName != "") {
+                        var fldfile = "data:image/gif;base64," + data.fldImage;
+                        App.SabtImmediacy.queryById('ImageImmediacy').setImageUrl(fldfile);
+                        Ext.get('fi-button-msg').update('<b>فایل انتخاب شده: ' + data.FileName + '</b>' + "&nbsp;&nbsp;" + '<img id="DeleteActionFileimg6" title="حذف فایل" src="/Content/cancel.png" style="width:15px;height:15px;margin-bottom: -4px;" onclick="javascript:DeleteFileHuman()" />');
+                    }
+                    else {
+                        App.SabtImmediacy.queryById('ImageImmediacy').setImageUrl("/Content/Blank.jpg");
+                        Ext.get('fi-button-msg').update('<b>فایل انتخاب شده:</b>');
+                    }
+
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function HelpImmediacy() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/Immediacy/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function SaveImmediacy() {
+        var txtName = App.SabtImmediacy.queryById('txtName');
+        var txtDesc = App.SabtImmediacy.queryById('txtDesc');
+        var fldId = App.SabtImmediacy.queryById('fldId');
+        var er = false;
+
+            if (txtName.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/Immediacy/Save',
+                params: {
+                    fldID: fldId.getValue(),
+                    fldName: txtName.getValue(),
+                    fldFileId: ImageId,
+                    fldDesc: txtDesc.getValue(),
+                    IsDel: DeleteFileHu
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtImmediacy.queryById('ImmediacyGrid').store.load();
+                    if (data.Err != 1)
+                        ClearImmediacy();
+                }
+
+            });
+    }
+    function DeleteImmediacy() {
+        var SelectedRow = App.SabtImmediacy.queryById('ImmediacyGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Automation/Immediacy/Delete',
+                            params: {
+                                id: SelectedRow.data.fldID
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtImmediacy.queryById('ImmediacyGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearImmediacy() {
+        App.SabtImmediacy.queryById('fldId').setValue(0);
+        App.SabtImmediacy.queryById('txtName').setValue("");
+        App.SabtImmediacy.queryById('txtDesc').setValue("");
+        Ext.get('fi-button-msg').update('<b>فایل انتخاب شده:</b> ');
+        App.SabtImmediacy.queryById('ImageImmediacy').setImageUrl("/Content/Blank.jpg");
+    }
+    var addKeyMapSabtImmediacy = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtImmediacy.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtImmediacy.queryById('FileUploadField1');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

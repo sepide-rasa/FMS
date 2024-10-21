@@ -1,0 +1,188 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(li => li.AfterRender.Handler = "LoadGrohTashvighi();")
+.Width(370).Height(290)
+    .Title("گروه تشویقی")
+    .ID("NewGrohTashvighi")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .KeyMap(Html.X().KeyMap()
+            .ID("GrohTashvighiMap")
+            .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("SaveGrohTashvighi(); ")
+                );
+
+            }))
+        .DefaultButton("btn")
+        .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ToolTip("کلید میانبر F8")
+               .Listeners(l =>
+               {
+                   l.Click.Handler = "SaveGrohTashvighi();";
+
+               })
+                   .ItemID("btnSave")
+
+            ,
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+            .OnClientClick("App.NewGrohTashvighi.destroy()")
+        ).Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+        .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                    .Defaults(new { Margin = 10 })
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.TextField()
+                    .ItemID("txtTedadeGroh")
+                    .FieldLabel("تعداد")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا تعداد را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AutoFocus(true)
+                    , X.PDateField()
+                    .ItemID("txtTarikh")
+                    .FieldLabel("تاریخ")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا تاریخ را وارد کنید.")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    , X.ComboBox()
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .FieldLabel("نوع گروه")
+                    .ItemID("CboNoeGroh")
+                    .TypeAhead(true)
+                    .QueryMode(DataLoadMode.Local)
+                    .ForceSelection(true)
+                    .TriggerAction(TriggerAction.All)
+                    .DisplayField("Name")
+                    .ValueField("ID")
+                    .EmptyText("نوع")
+                    .Store(X.Store()
+                        .Model(X.Model()
+                            .IDProperty("ID")
+                            .Fields(
+                            new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                            new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                            )
+                        )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetNoeGroh"))
+                            .Reader(X.JsonReader().Root("data"))
+                        )
+                                .Listeners(li => li.DataChanged.Handler = "LoadGrohTashvighi();")
+                        )
+                    , X.TextArea()
+                    .ItemID("txtDesc")
+                    .FieldLabel("توضیحات")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(160)
+
+                    )
+
+            )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+        )
+)
+
+<script type="text/javascript">
+    var PersonId = 0;
+    function LoadGrohTashvighi() {
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/DetailsSavabeghTashvighi',
+                params: {
+                    id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    var CboNoeGroh = App.NewGrohTashvighi.queryById('CboNoeGroh');
+                    CboNoeGroh.setValue(data.fldAnvaGroupId);
+                    var txtTedadeGroh = App.NewGrohTashvighi.queryById('txtTedadeGroh');
+                    txtTedadeGroh.setValue(data.fldTedadGroup);
+                    var txtTarikh = App.NewGrohTashvighi.queryById('txtTarikh');
+                    txtTarikh.setValue(data.fldTarikh);
+                    var txtDesc = App.NewGrohTashvighi.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var Id = App.NewGrohTashvighi.queryById('fldId');
+                    Id.setValue(data.fldId);
+                }
+            });
+        }
+    }
+    function SaveGrohTashvighi() {
+
+        var Id = App.NewGrohTashvighi.queryById('fldId');
+        var CboNoeGroh = App.NewGrohTashvighi.queryById('CboNoeGroh');
+        var txtTedadeGroh = App.NewGrohTashvighi.queryById('txtTedadeGroh');
+        var txtTarikh = App.NewGrohTashvighi.queryById('txtTarikh');
+        var txtDesc = App.NewGrohTashvighi.queryById('txtDesc');
+
+        if (txtTedadeGroh.validate() == false) {
+            er = true;
+        }
+        if (txtTarikh.validate() == false) {
+            er = true;
+        }
+
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/PersonalInfo/SaveSavabeghTashvighi',
+            params: {
+                fldId: Id.getValue(),
+                fldTarikh: txtTarikh.rawValue,
+                fldAnvaGroupId: CboNoeGroh.getValue(),
+                fldPersonalId: '@ViewBag.PersonelInfo',
+                fldTedadGroup: txtTedadeGroh.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: Ext.MessageBox.INFO,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.GrohTashvighi.queryById('Grid1').store.load(),
+                ClearGrohTashvighi()
+            }
+
+        });
+    }
+    function ClearGrohTashvighi() {
+        App.NewGrohTashvighi.queryById('CboNoeGroh').setValue("");
+        App.NewGrohTashvighi.queryById('txtTedadeGroh').setValue("");
+        App.NewGrohTashvighi.queryById('txtTarikh').setValue("");
+        App.NewGrohTashvighi.queryById('txtDesc').setValue("");
+        App.NewGrohTashvighi.queryById('fldId').setValue(0);
+
+    }
+
+    function EnterNext() {
+        var keyfield = App.NewGrohTashvighi.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+    }
+</script>

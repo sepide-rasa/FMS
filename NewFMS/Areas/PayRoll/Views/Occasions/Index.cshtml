@@ -1,0 +1,574 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_MonasebatHeader>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+
+    function ShowExecDate(val, metaData, record, rowIndex, colIndex, store) {
+        return val.toString().substr(0, 4) + "/" + val.toString().substr(4, 2);
+    }
+</script>
+<style>
+    #fieldstDeactiveDate{
+        text-align:right !important;
+    }
+    #fieldstExecDate{
+        text-align:right !important;
+    }
+</style>
+@(Html.X().Panel()
+    .ID("Occasions")
+    .Title("ثبت پرداخت های مناسبتی")
+    .Listeners(li => { li.AfterRender.Handler = "OccasionsSetSize();"; li.Render.Fn = "addKeyMapOccasions"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel().Border(false).Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l => { l.Click.Handler = "SaveOccasions();"; }),
+                X.Button()
+                    .Text("ویرایش")
+                    .Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadOccasions();"; }),
+                X.Button()
+                    .Text("حذف")
+                    .Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteOccasions();"; }),
+                //X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpOccasions();"; }),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.Occasions.destroy()")
+            )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.FieldSet()
+                    .Padding(5)
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Border(true)
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns=2 })
+                            .Defaults(new { Margin=2})
+                            .Title("مشخصات پرداخت")                            
+                            .Items(
+                                X.Hidden().ItemID("fldId"),
+                                X.Label("وضعیت:"),
+                                X.ComboBox()
+                                    .ItemID("CboStatus")
+                                    .Editable(false)
+                                    .Width(100)
+                                    .TypeAhead(true)
+                                    .BlankText("لطفا وضعیت را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .AllowBlank(false)
+                                    .EmptyText("وضعیت...")
+                                    .Listeners(l => {
+                                        l.Change.Handler = "DisablefieldstDeactiveDate()";
+                                        l.AfterRender.Handler = "App.Occasions.queryById('CboStatus').setValue('1');";
+                                    })
+                                    .Disabled(true)
+                                    .Items(
+                                        new ListItem("فعال", "1"),
+                                        new ListItem("غیرفعال", "0")
+                                    ),      
+                                X.FieldSet()
+                                    .Border(true)                          
+                                    .Title("تاریخ اجرا")
+                                    .Defaults(new { Margin = 2 })
+                                    .Layout(LayoutType.Table)
+                                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                                    .ColSpan(2)
+                                    .ID("fieldstExecDate")                                    
+                                    .Items(
+                                        X.Label("سال:"),
+                                        X.ComboBox()
+                                            .ItemID("CboYear")
+                                            .Width(100)
+                                            .ForceSelection(true)
+                                            .TypeAhead(true)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا سال را انتخاب کنید.")
+                                            .QueryMode(DataLoadMode.Local)
+                                            .TriggerAction(TriggerAction.All)
+                                            .DisplayField("fldYear")
+                                            .ValueField("fldYear")
+                                            .Listeners(l => l.Select.Handler = "loadMonthsOccasions()")
+                                            .Store(X.Store()
+                                                .Model(X.Model()
+                                                    .IDProperty("fldYear")
+                                                    .Fields(
+                                                        new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" }
+                                                    )
+                                                )
+                                                .Proxy(X.AjaxProxy()
+                                                    .Url(Url.Action("GetYear"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                                )
+                                                .Listeners(l => l.Load.Handler = "setdefaultYearOccasions()")
+                                            ),
+                                        X.Label("مــاه:"),
+                                        X.ComboBox()
+                                            .ItemID("CboMonth")
+                                            .ForceSelection(true)
+                                            .TypeAhead(true)
+                                            .AllowBlank(false)
+                                            .DisplayField("fldMonthName")
+                                            .ValueField("fldMonth")
+                                            .Width(100)
+                                            .BlankText("لطفا ماه را انتخاب کنید.")
+                                            .QueryMode(DataLoadMode.Local)
+                                            .TriggerAction(TriggerAction.All)
+                                            .Store(X.Store()
+                                                .AutoLoad(false)
+                                                .Model(X.Model()
+                                                    .IDProperty("fldMonth")
+                                                    .Fields(
+                                                        new ModelField("fldMonth", ModelFieldType.String) { Mapping = "fldMonth" },
+                                                        new ModelField("fldMonthName", ModelFieldType.String) { Mapping = "fldMonthName" }
+                                                    )
+                                                )
+                                                .Proxy(X.AjaxProxy()
+                                                    .Url(Url.Action("GetMonth"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                                )
+                                                .Listeners(l => l.Load.Handler = "setdefaultMonthOccasions()")
+                                            )
+                                        ),
+                                    X.FieldSet()
+                                        .Border(true)
+                                        .Title("تاریخ غیرفعالی")
+                                        .ColSpan(2)
+                                        .ID("fieldstDeactiveDate")     
+                                        .Layout(LayoutType.Table)
+                                        .Defaults(new { Margin = 2 })
+                                        .Disabled(true)
+                                        .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                                        .Items(
+                                            X.Label("سال:"),
+                                            X.ComboBox()
+                                                .ItemID("CboYearD")
+                                                .Width(100)
+                                                .ForceSelection(true)
+                                                .TypeAhead(true)
+                                                .AllowBlank(false)
+                                                .BlankText("لطفا سال را انتخاب کنید.")
+                                                .QueryMode(DataLoadMode.Local)
+                                                .TriggerAction(TriggerAction.All)
+                                                .DisplayField("fldYear")
+                                                .ValueField("fldYear")
+                                                .Listeners(l => l.Change.Handler = "loadMonthsDOccasions()")
+                                                .Store(X.Store()
+                                                    .AutoLoad(false)
+                                                    .Model(X.Model()
+                                                        .IDProperty("fldYear")
+                                                        .Fields(
+                                                            new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" }
+                                                        )
+                                                    )
+                                                    .Proxy(X.AjaxProxy()
+                                                        .Url(Url.Action("GetYearD"))
+                                                        .Reader(X.JsonReader().Root("data"))
+                                                    ) 
+                                                ),
+                                            X.Label("مــاه:"),
+                                            X.ComboBox()
+                                                .ItemID("CboMonthD")
+                                                .ForceSelection(true)
+                                                .TypeAhead(true)
+                                                .AllowBlank(false)
+                                                .DisplayField("fldMonthName")
+                                                .ValueField("fldMonth")
+                                                .Width(100)
+                                                .BlankText("لطفا ماه را انتخاب کنید.")
+                                                .QueryMode(DataLoadMode.Local)
+                                                .TriggerAction(TriggerAction.All)
+                                                .Store(X.Store()
+                                                    .AutoLoad(false)
+                                                    .Model(X.Model()
+                                                        .IDProperty("fldMonth")
+                                                        .Fields(
+                                                            new ModelField("fldMonth", ModelFieldType.String) { Mapping = "fldMonth" },
+                                                            new ModelField("fldMonthName", ModelFieldType.String) { Mapping = "fldMonthName" }
+                                                        )
+                                                    )
+                                                    .Proxy(X.AjaxProxy()
+                                                        .Url(Url.Action("GetMonthD"))
+                                                        .Reader(X.JsonReader().Root("data"))
+                                                    )
+                                                    //.Listeners(l => l.Load.Handler = "setdefaultMonthOccasions()")
+                                                )
+                                            )
+                                
+                            )
+                    )
+            ),
+            X.GridPanel()
+                .ItemID("OccasionsGrid")
+                .BottomBar(X.PagingToolbar())
+                .Store(
+                    X.StoreForModel()
+                        .Listeners(l => l.DataChanged.Handler = "App.Occasions.queryById('OccasionsGrid').selModel.refresh();")
+                        .Proxy(Html.X().AjaxProxy()
+                            .Url(Url.Action("Read"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+                        )
+                        .PageSize(20)
+                        .RemoteFilter(false)
+                        .RemotePaging(false)
+                )
+                .View(
+                    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                .Plugins(X.FilterHeader().Remote(false))
+                .ColumnModel(
+                    Html.X().RowNumbererColumn(),
+                    Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.fldActiveDate).Text("تاریخ اجرا").Flex(2).Renderer("ShowExecDate"),
+                    Html.X().Column().DataIndex(Model, m => m.fldActiveName).Text("وضعیت").Flex(10),
+                    Html.X().CommandColumn().Flex(1).Listeners(ls => ls.Command.Fn = "GotoMonasebat_Mablagh")
+                        .Commands(
+                            Html.X().GridCommand()
+                                .CommandName("cmdMM")                                
+                                .StandOut(true)
+                                .MinWidth(100)                                
+                                .Text("ثبت مبالغ")
+                                .ToolTip(tt => tt.Text = "ثبت مبالغ")
+                        )                        
+                )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+                )
+        )
+)
+<script type="text/javascript">
+
+    function DisablefieldstDeactiveDate() {
+        var CboStatus = App.Occasions.queryById('CboStatus');
+        var CboYearD = App.Occasions.queryById('CboYearD');
+        var CboYear = App.Occasions.queryById('CboYear');
+        var CboMonth = App.Occasions.queryById('CboMonth');
+        if (CboStatus.getValue() == "0") {
+            App.fieldstDeactiveDate.enable();
+            CboYearD.getStore().getProxy().setExtraParam("Year", CboYear.getValue());
+            CboYearD.getStore().getProxy().setExtraParam("Month", CboMonth.getValue());
+            CboYearD.getStore().load();
+        }
+        else {
+            App.fieldstDeactiveDate.disable();
+        }
+    }
+
+    function loadMonthsOccasions() {
+        var CboYear = App.Occasions.queryById('CboYear');
+        if (CboYear.getValue() == '@ViewBag.DefaultYear') {
+            App.Occasions.queryById('CboMonth').getStore().getProxy().setExtraParam("Month", '@ViewBag.DefaultMonth');
+            App.Occasions.queryById('CboMonth').getStore().load();
+        }
+        else if (CboYear.getValue() != null) {
+            App.Occasions.queryById('CboMonth').getStore().getProxy().setExtraParam("Month", null);
+            App.Occasions.queryById('CboMonth').getStore().load();
+        }
+        else {
+            App.Occasions.queryById('CboMonth').getStore().loadData("");
+        }
+    }
+
+    function loadMonthsDOccasions() {
+        var CboYear = App.Occasions.queryById('CboYear');
+        var CboMonth = App.Occasions.queryById('CboMonth');
+        var CboYearD = App.Occasions.queryById('CboYearD');
+
+        if (CboYear.getValue() != null && CboMonth.getValue() != null && CboYearD.getValue() != null) {
+            App.Occasions.queryById('CboMonthD').getStore().getProxy().setExtraParam("Year", CboYear.getValue());
+            App.Occasions.queryById('CboMonthD').getStore().getProxy().setExtraParam("Month", CboMonth.getValue());
+            App.Occasions.queryById('CboMonthD').getStore().getProxy().setExtraParam("YearD", CboYearD.getValue());
+            App.Occasions.queryById('CboMonthD').getStore().load();
+        }
+    }
+
+    function setdefaultYearOccasions() {
+        App.Occasions.queryById('CboYear').setValue('@ViewBag.DefaultYear');
+        if (App.Occasions.queryById('fldId').getValue() == 0) {
+            loadMonthsOccasions();
+        }
+    }
+
+    function setdefaultMonthOccasions() {
+        var CboYear = App.Occasions.queryById('CboYear');
+        if (App.Occasions.queryById('fldId').getValue() == 0) {
+            if (CboYear.getValue() == '@ViewBag.DefaultYear') {
+                App.Occasions.queryById('CboMonth').setValue('@ViewBag.DefaultMonth');
+            }
+            else {
+                App.Occasions.queryById('CboMonth').select(App.Occasions.queryById('CboMonth').store.getAt(0));
+            }
+        }
+    }
+
+    var GotoMonasebat_Mablagh = function (grid, command, record, row) {
+        var RowId = record.data.fldId;
+        App.Occasions.body.mask('در حال بارگذاری...');
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Occasions/Monasebat_Mablagh',
+            params: {
+                HeaderId: RowId,
+            },
+            success: function (data) {
+                App.Occasions.body.mask().hide();
+            }
+        });
+    };
+
+    function HelpOccasions() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Occasions/Help',
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function OccasionsSetSize() {
+        App.Occasions.setWidth(App.PayWin.getWidth());
+        var grid = App.Occasions.queryById('OccasionsGrid');
+        grid.setHeight(App.PayWin.getHeight() - 280);
+    }
+
+    function LoadOccasions() {
+        var SelectedRow = App.Occasions.queryById('OccasionsGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/Occasions/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var fldId = App.Occasions.queryById('fldId');
+                    fldId.setValue(data.fldId);
+
+                    var CboYear = App.Occasions.queryById('CboYear');
+                    CboYear.getStore().getProxy().setExtraParam("Year", data.fldYear);
+                    CboYear.getStore().load();
+                    CboYear.store.on('load', function () {
+                        CboYear.setValue(data.fldYear);                        
+                    }, single = true);
+                    CboYear.disable();
+
+                    var CboMonth = App.Occasions.queryById('CboMonth');
+                    CboMonth.getStore().getProxy().setExtraParam("Month", data.fldMonth);
+                    CboMonth.getStore().load();
+                    CboMonth.store.on('load', function () {
+                        CboMonth.setValue(data.fldMonth);
+                    }, single = true);
+                    CboMonth.disable();
+
+                    var CboStatus = App.Occasions.queryById('CboStatus');
+                    CboStatus.setValue(data.fldStatus);
+                    CboStatus.enable();
+                    
+                    if (data.fldYearD != "0") {
+                        var CboYearD = App.Occasions.queryById('CboYearD');
+                        CboYearD.store.on('load', function () {
+                            CboYearD.setValue(data.fldYearD);
+                        },single=true);
+                        
+                        var CboMonthD = App.Occasions.queryById('CboMonthD');
+                        CboMonthD.store.on('load', function () {
+                            CboMonthD.setValue(data.fldMonthD);
+                        }, single = true);                        
+                    }
+                    else {
+                        App.Occasions.queryById('CboYearD').clearValue();
+                        App.Occasions.queryById('CboMonthD').clearValue();
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveOccasions() {
+        var CboYear = App.Occasions.queryById('CboYear');
+        var CboYearD = App.Occasions.queryById('CboYearD');
+        var CboMonth = App.Occasions.queryById('CboMonth');
+        var CboMonthD = App.Occasions.queryById('CboMonthD');
+        var CboStatus = App.Occasions.queryById('CboStatus');
+        var fldId = App.Occasions.queryById('fldId');
+        var fldActivee = true;
+        var DeactiveDate = null;
+
+        var er = false;
+
+        if (CboYear.validate() == false) {
+            er = true;
+        }
+        if (CboMonth.validate() == false) {
+            er = true;
+        }
+        if (CboStatus.validate() == false) {
+            er = true;
+        }
+        if (CboStatus.getValue() == "0") {
+            fldActivee = false;
+            if (CboYearD.validate() && CboMonthD.validate()) {
+                DeactiveDate = CboYearD.getValue().toString() + CboMonthD.getValue().toString()
+            }
+            else {
+                if (CboYearD.validate() == false) {
+                    er = true;
+                }
+                if (CboMonthD.validate() == false) {
+                    er = true;
+                }
+            }
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Occasions/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldActiveDate: CboYear.getValue().toString() + CboMonth.getValue().toString(),
+                fldDeactiveDate: DeactiveDate,
+                fldActive: fldActivee
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.Msgtitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.Occasions.queryById('OccasionsGrid').store.load();
+                if (data.Err != 1)
+                    ClearOccasions();
+            }
+
+        });
+    }
+    function DeleteOccasions() {
+        var SelectedRow = App.Occasions.queryById('OccasionsGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/PayRoll/Occasions/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.Occasions.queryById('OccasionsGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearOccasions() {
+        App.Occasions.queryById('fldId').setValue(0);
+        App.Occasions.queryById('CboYear').setValue("");
+        App.Occasions.queryById('CboYearD').setValue("");
+        App.Occasions.queryById('CboYear').enable("").validate();
+        App.Occasions.queryById('CboMonth').setValue("");
+        App.Occasions.queryById('CboMonth').enable().validate();
+        App.Occasions.queryById('CboMonthD').setValue("");
+        App.Occasions.queryById('CboStatus').setValue("1").disable();
+    }
+
+    var addKeyMapOccasions = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.Occasions.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.Occasions.queryById('btnSaveOccasions');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

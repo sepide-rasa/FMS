@@ -1,0 +1,554 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_BankBillHeader>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+
+@{
+    var X = Html.X();
+}
+<script src="~/Scripts/jquery-ajax-native.js"></script>
+
+@(Html.X().Panel()
+    .ID("BankBill")
+    .Title("تعریف صورتحساب بانک")
+    .Closable(true)
+    .Listeners(li => { li.AfterRender.Handler = "BankBillSetSize();"; li.Render.Fn = "addKeyMapBankBill"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(
+                X.Label()),
+                X.Panel()
+                    .Border(false)
+                    .ButtonAlign(Ext.Net.Alignment.Center)
+                    .Buttons(
+                        X.Button()
+                            .Text("ذخیره")
+                            .Icon(Ext.Net.Icon.Disk)
+                            .Listeners(l => l.Click.Handler = "SaveBankBill();"),
+                        //X.Button()
+                        //    .Text("راهنما")
+                        //    .Icon(Ext.Net.Icon.Help)
+                        //    .Listeners(l => l.Click.Handler = "HelpBankBill();"),
+                        X.Button()
+                            .Text("خروج")
+                            .Icon(Ext.Net.Icon.DoorOut)
+                            .OnClientClick("App.BankBill.destroy()")
+                    )
+                    .Items(
+                        X.FormPanel()
+                            .Border(false)
+                            .Layout(LayoutType.VBox)
+                            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                            .Items(
+                                X.FieldSet()
+                                    .Title("مشخصات صورتحساب")
+                                    .Height(70)
+                                    .Border(true)
+                                    .Defaults(new { Margin = 2 })
+                                    .Layout(LayoutType.Table)
+                                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                                    .Items(
+                                        X.Hidden()
+                                            .ItemID("fldId"),
+                                        X.Label("عنوان:"),
+                                        X.TextField()
+                                            .AutoFocus(true)
+                                            .ItemID("txtName")
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا عنوان صورتحساب را وارد کنید.")
+                                            .MaxLength(200)
+                                            .EnforceMaxLength(true),
+                                        X.Label("بانک:"),
+                                        X.ComboBox()
+                                            .ItemID("CboBank")
+                                            .TypeAhead(true)
+                                            .QueryMode(DataLoadMode.Local)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا بانک مورد نظر را انتخاب کنید.")
+                                            .Listeners(l => l.Change.Handler = "if(App.BankBill.queryById('CboBank').getValue()!=null){App.BankBill.queryById('CboAccountNum').store.load();App.BankBill.queryById('CboBankTemplate').store.load();}")
+                                            .TriggerAction(TriggerAction.All)
+                                            .DisplayField("fldName")
+                                            .ValueField("fldId")
+                                            .EmptyText("بانک...")
+                                            .Store(X.Store()
+                                                .Model(X.Model()
+                                                    .IDProperty("fldId")
+                                                    .Fields(
+                                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                    )
+                                                )
+                                                .Proxy(X.AjaxProxy()
+                                                    .Url(Url.Action("GetBank"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                                )
+                                            ),
+                                        X.Label("شماره حساب:"),
+                                        X.ComboBox()
+                                            .ItemID("CboAccountNum")
+                                            .TypeAhead(true)
+                                            .QueryMode(DataLoadMode.Local)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا شماره حساب را انتخاب کنید.")
+                                            .TriggerAction(TriggerAction.All)
+                                            .DisplayField("fldName")
+                                            .ValueField("fldId")
+                                            .EmptyText("شماره حساب...")
+                                            .Store(X.Store()
+                                                .AutoLoad(false)
+                                                .Model(X.Model()
+                                                    .IDProperty("fldId")
+                                                    .Fields(
+                                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                    )
+                                                )
+                                                .Proxy(X.AjaxProxy()
+                                                    .Url(Url.Action("GetAccountNum"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                                )
+                                                .Parameters(ps => ps.Add(new StoreParameter("BankId", "App.BankBill.queryById('CboBank').getValue()", ParameterMode.Raw)))
+                                                .Parameters(ps => ps.Add(new StoreParameter("FiscalYearId", ViewBag.FiscalYearId, ParameterMode.Raw)))
+                                            ),
+                                        X.Label("الگو:"),
+                                        X.ComboBox()
+                                            .ItemID("CboBankTemplate")
+                                            .TypeAhead(true)
+                                            .QueryMode(DataLoadMode.Local)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا الگو را انتخاب کنید.")
+                                            .TriggerAction(TriggerAction.All)
+                                            .DisplayField("fldName")
+                                            .ValueField("fldId")
+                                            .EmptyText("الگو...")
+                                            .Store(X.Store()
+                                                .AutoLoad(false)
+                                                .Model(X.Model()
+                                                    .IDProperty("fldId")
+                                                    .Fields(
+                                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                    )
+                                                )
+                                                .Proxy(X.AjaxProxy()
+                                                    .Url(Url.Action("GetBankTemplate"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                                )
+                                                .Parameters(ps => ps.Add(new StoreParameter("BankId", "App.BankBill.queryById('CboBank').getValue()", ParameterMode.Raw)))
+                                            ),
+                                        X.Label("توضیحات:"),
+                                        X.TextField()
+                                            .ItemID("txtDesc"),
+                                        X.Label(),
+                                        X.FileUploadField()
+                                            .ButtonOnly(true)
+                                            .ButtonText("آپلود فایل اکسل")
+                                            .DirectEvents(l =>
+                                            {
+                                                l.Change.Action = "Upload";
+                                                l.Change.Success = "hideprogressBankBill";
+                                                l.Change.Delay = 1000;
+                                                l.Change.Before = "if(GotoServerBill==false){return false;}";
+                                            })
+                                            .Listeners(l => l.Change.Fn = "showFileBankBill")
+                                            .Icon(Ext.Net.Icon.DiskUpload)
+                                    )
+                            )
+                    ),
+                X.GridPanel()
+                    .ItemID("BankBillGrid")
+                    .BottomBar(X.PagingToolbar())
+                    .TopBar(
+                        Html.X().Toolbar()
+                            .Items(
+                                //X.Button()
+                                //    .Text("ویرایش")
+                                //    .Icon(Ext.Net.Icon.Pencil)
+                                //    .Listeners(l => { l.Click.Handler = "LoadBankBill();"; }),
+                                X.Button()
+                                    .Text("حذف")
+                                    .Icon(Ext.Net.Icon.Delete)
+                                    .Listeners(l => { l.Click.Handler = "DeleteBankBill();"; }),
+                                X.Button()
+                                    .Text("لیست تراکنش ها")
+                                    .Icon(Ext.Net.Icon.Money)
+                                    .Listeners(l => { l.Click.Handler = "GotoTransactionList();"; })
+                            )
+                    )
+                    .Store(
+                        X.StoreForModel()
+                            .Listeners(l => l.DataChanged.Handler = "App.BankBill.queryById('BankBillGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان").Flex(4).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldNamePattern).Text("عنوان الگو").Flex(4).Wrap(true),                
+                        Html.X().Column().DataIndex(Model, m => m.fldBankName).Text("نام بانک").Flex(2).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldShomareHesab).Text("شماره حساب").Flex(3).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(5).Wrap(true)
+                        //Html.X().ComponentColumn().ItemID("buttonDownloadBill").Text("دانلود").Filterable(false)
+                        //    .Component(Html.X().Button().ItemID("btnbindFileBill").Text("دانلود فایل").Listeners(l => l.Click.Handler = "DownloadFileBill()"))  
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+        )
+)
+<script type="text/javascript">
+    var GotoServerBill = false;
+    var EndUploadBankBill = false;
+
+    var CheckBankBill = setInterval(CheckEndBankBill, 500);
+
+    function CheckEndBankBill() {
+        if (EndUploadBankBill == true) {
+            Ext.MessageBox.hide();
+            clearInterval(CheckEndBankBill);
+            EndUploadBankBill = false;
+            GotoServerBill = false;
+            Ext.MessageBox.show({
+                title: "عملیات موفق",
+                msg: 'فایل با موفقیت آپلود شد.',
+                icon: Ext.MessageBox.INFO,
+                buttons: Ext.MessageBox.OK
+            });
+            /*Ext.net.Mask.show({ msg: 'فایل با موفقیت آپلود شد.' });
+            Ext.net.DirectMethod.request({
+                url: '/InitialConditions/Save',
+                params: {
+                    NahiId: App.InitialConditions.queryById('CboNahi').getValue()
+                    , __RequestVerificationToken: App.InitialConditions.queryById('antiForgeryToken').getValue()
+                },
+                success: function (data) {
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.InitialConditions.queryById('GridInitialConditions').store.load();
+                    Ext.net.Mask.hide();
+                },
+                timeout: 90000
+            });*/
+        }
+    }
+
+    var showFileBankBill = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        if (v) {
+            showProgressBarBankBill();
+            if (v.split('.').pop().toLowerCase() == "xls" || v.split('.').pop().toLowerCase() == "xlsx") {
+                /*if (document.getElementById(id).files[0].size <= 1048576) {*/
+                    GotoServerBill = true;
+                /*}
+                else {
+                    clearInterval(CheckEndBankBill);
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "حجم فایل انتخاب شده غیرمجاز است.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }*/
+            }
+            else {
+                clearInterval(CheckEndBankBill);
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "فایل انتخاب شده غیرمجاز است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+    };
+
+    var hideprogressBankBill = function (Responsdtxt, ResponseObj) {
+        if (ResponseObj.IsValid == true) {
+            EndUploadBankBill = true;
+        }
+        else {
+            GotoServerBill = false;
+            clearInterval(CheckEndBankBill);
+            EndUploadBankBill = false;
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: ResponseObj.Message,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    };
+
+    function showProgressBarBankBill() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+
+    /*function DownloadFileBill() {
+        var fldId = App.BankBill.queryById("buttonDownloadBill").activeRecord.record.data.fldId;
+        $.ajax({
+            type: "POST",
+            dataType: 'native',
+            url: "/Accounting/BankBill/Download",
+            xhrFields: {
+                responseType: 'blob'
+            },
+            data: {
+                fldId: fldId,
+            },
+            success: function (blob) {
+                var link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = "DownloadFileBank";
+                link.click();
+            }
+        });
+    }*/
+    function GotoTransactionList() {
+        var SelectedRow = App.BankBill.queryById('BankBillGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگزاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/BankBill/TransactionList',
+                params: {
+                    HeaderId: SelectedRow.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DeleteBankBill() {
+        var SelectedRow = App.BankBill.queryById('BankBillGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "با حذف رکورد مورد نظر کلیه تراکنشهای این صورتحساب حذف خواهد شد.آیا جهت انجام عملیات مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Accounting/BankBill/Delete',
+                            params: {
+                                Id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                if (App.BankBill.queryById('fldId').getValue() == SelectedRow.data.fldId) {
+                                    ClearBankBill();
+                                }
+                                if (data.Er != 1) {
+                                    App.BankBill.queryById('BankBillGrid').store.load();
+                                }
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function clearBankBill() {
+        App.BankBill.queryById('fldId').setValue(0);
+        App.BankBill.queryById('txtName').setValue("");
+        App.BankBill.queryById('CboBank').clearValue();
+        App.BankBill.queryById('CboAccountNum').clearValue();
+        App.BankBill.queryById('CboBankTemplate').clearValue();
+        App.BankBill.queryById('CboAccountNum').store.loadData("");
+        App.BankBill.queryById('CboBankTemplate').store.loadData("");
+        App.BankBill.queryById('txtDesc').setValue("");
+    }
+
+    function BankBillSetSize() {
+        App.BankBill.setWidth(App.AccountingWin.getWidth());
+        App.BankBill.queryById('BankBillGrid').setHeight(App.AccountingWin.getHeight() - 209);
+    }
+
+    /*function LoadBankBill() {
+        var SelectedRow = App.BankBill.queryById('BankBillGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/BankBill/Details',
+                params: {
+                    HeaderId: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    App.BankBill.queryById('CboBank').getStore().getProxy().setExtraParam("HeaderId", SelectedRow.data.fldId);
+                    App.BankBill.queryById('CboBank').store.load();
+
+                    var txtName = App.BankBill.queryById('txtName');
+                    txtName.setValue(data.fldNamePattern);
+
+                    var txtRow = App.BankBill.queryById('txtRow');
+                    txtRow.setValue(data.fldStartRow);
+
+                    var txtDesc = App.BankBill.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+
+                    var fldId = App.BankBill.queryById('fldId');
+                    fldId.setValue(data.fldId);
+
+                    var fldFileId = App.BankBill.queryById('fldFileId');
+                    fldFileId.setValue(data.fldFileId);
+
+                    var CboBank = App.BankBill.queryById('CboBank');
+                    CboBank.setValue(data.fldBankId.split(','));
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }*/
+
+    function SaveBankBill() {
+        var txtName = App.BankBill.queryById('txtName');
+        var CboAccountNum = App.BankBill.queryById('CboAccountNum');
+        var CboBankTemplate = App.BankBill.queryById('CboBankTemplate');
+        var CboBank = App.BankBill.queryById('CboBank');
+        var txtDesc = App.BankBill.queryById('txtDesc');
+        var er = false;
+
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (CboAccountNum.validate() == false) {
+            er = true;
+        }
+        if (CboBankTemplate.validate() == false) {
+            er = true;
+        }
+        if (CboBank.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/BankBill/Save',
+            params: {
+                fldName: txtName.getValue(),
+                fldPatternId: CboBankTemplate.getValue(),
+                fldShomareHesabId: CboAccountNum.getValue(),
+                fldFiscalYearId: '@ViewBag.FiscalYearId',
+                BankId:CboBank.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            App.BankBill.queryById('txtName').focus();
+                        }
+                    }
+                });
+                App.BankBill.queryById('BankBillGrid').store.load();
+                if (data.Er != 1)
+                    clearBankBill();
+            }
+        });
+    }
+
+    var addKeyMapBankBill = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.BankBill.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        SaveBankBill();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>
+

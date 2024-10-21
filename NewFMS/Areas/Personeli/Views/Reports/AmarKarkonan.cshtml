@@ -1,0 +1,154 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+
+@(Html.X().Panel().Listeners(l => l.AfterRender.Fn = "addKeyMapAmarKarkonan")
+    .Closable(true)
+    .Border(false)
+    .CloseAction(CloseAction.Destroy)
+    .Title("گزارش آمار کارکنان")
+    .Layout(LayoutType.Fit)
+    .ID("RptAmarKarkonan")
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .ButtonAlign(Alignment.Center)
+                    .Buttons(
+                        Html.X().Button()
+                            .Text("چاپ")
+                            .ItemID("btnPrint")
+                            .Icon(Ext.Net.Icon.Printer)
+                            .Listeners(l => l.Click.Handler = "PrintAmar()"),
+                        Html.X().Button()
+                            .Text("خروج")
+                            .ItemID("btnOut")
+                            .Icon(Ext.Net.Icon.DoorOut)
+                            .OnClientClick("App.RptAmarKarkonan.destroy()")
+                    )
+                    .Items(
+                        X.FieldSet()
+                            .Border(false)
+                            .Layout(LayoutType.Table)
+                                .Defaults(new { Margin="3px"})
+                            .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                            .Items(
+                                X.Label().Text("مدیرکل:"),
+                                X.TextField()
+                                .MaskRe("[a-z,A-Z,آ-ی]")
+                                    .ItemID("txtModir")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا نام مدیر کل را وارد کنید."),
+                                X.Label().Text("عنوان گیرنده:"),
+                                X.TextField()
+                                    .MaskRe("[a-z,A-Z,آ-ی]")
+                                    .ItemID("txtgirande")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا عنوان گیرنده را وارد کنید."),
+                                X.Label().Text("شماره نامه:"),
+                                X.TextField()
+                                    .ItemID("txtsh_Nameh")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا شماره نامه را وارد کنید."),
+                                X.Label("تاریخ:"),
+                                X.PDateField()
+                                    .ItemID("txtTarikh")
+                                        .MaskRe("[0-9,/]")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا تاریخ را وارد کنید.")
+                                    .PaddingSpec("0 0 0 10px")
+                                    .Editable(true),
+                                X.Label().Text("سال:"),
+                                X.TextField()
+                                    .ItemID("txtSal")
+                                    .MaskRe("[0-9]")
+                                    .MaxLength(4)
+                                    .MinLength(4)
+                                    .EnforceMaxLength(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا سال را وارد کنید.")
+                        )),
+                Html.X().Panel()
+                    .Border(true)
+                    .Listeners(L => L.AfterRender.Handler = "setSizeRptAmar()")
+                    .AutoScroll(true)
+                    .ItemID("RptPanelAmar")
+            )
+
+    )
+)
+
+<script type="text/javascript">
+
+    function setSizeRptAmar() {
+        App.RptAmarKarkonan.queryById('RptPanelAmar').setSize(App.PersoneliWin.getWidth() - 20, App.PersoneliWin.getHeight() - 165);
+    }
+
+    function PrintAmar() {
+        var height = App.PersoneliWin.getHeight() - 270;
+        var txtModir = App.RptAmarKarkonan.queryById('txtModir');
+        var txtgirande = App.RptAmarKarkonan.queryById('txtgirande');
+        var txtsh_Nameh = App.RptAmarKarkonan.queryById('txtsh_Nameh');;
+        var txtTarikh = App.RptAmarKarkonan.queryById('txtTarikh');
+        var txtSal = App.RptAmarKarkonan.queryById('txtSal');
+
+        var er = false;
+
+        if (txtModir.validate() == false) {
+            er = true;
+        }
+        if (txtgirande.validate() == false) {
+            er = true;
+        }
+        if (txtsh_Nameh.validate() == false) {
+            er = true;
+        }
+        if (txtTarikh.validate() == false) {
+            er = true;
+        }
+        if (txtSal.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        App.RptAmarKarkonan.queryById('RptPanelAmar').update("<center><object class='se-pre-con' style='width: 100%;height:" + height + "px;border: 1px solid #ccc;' type='application/pdf' data='/Personeli/Reports/GeneratePDFStaffStatistics?Modir=" + txtModir.getValue() + "&Girande=" + txtgirande.getValue() + "&Sh_Nameh=" + txtsh_Nameh.getValue() + "&Tarikh=" + txtTarikh.getRawValue() + "&Sal=" + txtSal.getValue() + "'></object></center>");
+    }
+    var addKeyMapAmarKarkonan = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.RptAmarKarkonan.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtSal") {
+                        nextfld = App.RptAmarKarkonan.queryById('btnPrint');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

@@ -1,0 +1,217 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_Organization>
+@using Ext.Net.MVC;
+@{
+
+    var X = Html.X();
+}
+<style>
+    .x-grid-cell {
+        background-color: transparent;
+    }
+</style>
+@(Html.X().Window().Modal(true)
+            .Width(500).Height(350)
+            .Title("سازمان ها")
+                .ID("SearchOrganization")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Items(
+                 X.Panel().Border(false)
+                        .Items(
+                                X.TreePanel()
+                                .ID("Tree_Organ")
+                                        .AutoScroll(true)
+                                        .Width(450)
+                                        .ColSpan(2)
+                                        .Height(300)
+                                        .UseArrows(true)
+                                        .Border(false)
+                                            .Store(
+                        Html.X().TreeStore()
+                            .Proxy(
+                                        Html.X().AjaxProxy().Url(Url.Action("Node"))
+                            )
+                    )
+
+                                        .Listeners(a =>
+                                        {
+                                            a.ItemDblClick.Handler = "GetId(record)";
+                                            a.AfterRender.Handler = "this.getRootNode().expand(true);";
+                                        })
+                           .Root(Html.X().Node().NodeID("0").Text(" سازمانها"))
+                          .Listeners(l =>
+                          {
+                              l.BeforeLoad.Fn = "nodeLoadOrgan";
+                          })
+                          .Expand(true)
+                                        .View(
+                                        X.TreeView()
+                                        .Plugins(
+                                        X.TreeViewDragDrop().AppendOnly(true).ContainerScroll(true)
+
+                                    )
+                            )
+
+                    )
+            //    X.Panel().Border(false)
+            //    .Border(false)
+            //    .AutoScroll(true)
+            //    .Items(
+
+            //        X.GridPanel().AutoScroll(true)
+            //            .TopBar(
+            //                Html.X().Toolbar()
+            //                .Items(
+            //                        X.Button().Text("انتخاب").Icon(Ext.Net.Icon.ArrowRedo)
+            //                                    .Listeners(li => li.Click.Handler = "NextSearchOrganization();")
+
+            //                )
+            //            )
+            //                    .ItemID("GridSearchOrganization").Flex(2)
+            //        .BottomBar(X.PagingToolbar())
+            //        .Height(330)
+            //        .ColumnWidth(0.6)
+            //        .Layout(Ext.Net.LayoutType.Column)
+            //        .Store(
+            //            X.StoreForModel()
+            //            .Proxy(Html.X().AjaxProxy()
+            //                .Url(Url.Action("Read"))
+            //                .Reader(Html.X().JsonReader().Root("data"))
+            //                //.ExtraParams(x => x.Add(new { FieldName = @ViewBag.FieldName }))
+            //            )
+            //            .PageSize(10)
+            //            .RemoteFilter(true)
+            //            .RemotePaging(true)
+
+            //        )
+            //        .View(
+            //            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            //        )
+            //        .Plugins(X.FilterHeader().Remote(true))
+            //        .ColumnModel(
+            //                    Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1),
+            //                    Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام").Flex(4),
+            //                    Html.X().Column().DataIndex(Model, m => m.fldCodeEghtesadi).Text("کد اقتصادی").Flex(4),
+            //                    Html.X().Column().DataIndex(Model, m => m.fldAddress).Text("آدرس").Flex(4),
+            //                    Html.X().Column().DataIndex(Model, m => m.fldTelphon).Text("شماره تلفن").Flex(4)
+            //        )
+            //            .Listeners(a => a.CellDblClick.Handler = "NextSearchOrganization();")
+            //        .SelectionModel(
+            //            Html.X().RowSelectionModel()
+            //                .Mode(Ext.Net.SelectionMode.Single)
+            //        )
+
+            //)
+        )
+)
+
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+    var Name = "";
+    var NodeId_O = 0;
+    var nodeLoadOrgan = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/SearchOrganization/NodeLoad',
+            params: {
+                nod: node.getId()
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+
+    function GetId(record) {
+        NodeId_O = record.getId();
+        if (NodeId_O != 0) {
+            Ext.net.DirectMethod.request({
+                url: '/Comon/SearchOrganization/GetName',
+                params: {
+                    id: NodeId_O
+                },
+                success: function (data) {
+                    Name = data.fldName;
+                    NextSearchOrganization();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "شما مجاز به انتخاب گزینه مورد نظر نمی باشید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    };
+
+    function NextSearchOrganization() {
+        if (NodeId_O != 0) {
+            if (State == 1) {
+                App.ChartOrgan.queryById('txtOrgan').setValue(Name);
+                App.ChartOrgan.queryById('fldOrganId').setValue(NodeId_O);
+            }
+           else if (State == 2) {
+                OrganId_M = NodeId_O;
+                App.Module_Organ.queryById('txtOrgan').setValue(Name);
+            }
+           else if (State == 3) {
+               OrganId = NodeId_O;
+               App.UsersTab.activeTab.queryById('txtOrgan').setValue(Name);
+           }
+
+           else if (State == 4)
+           {
+              /* var g = Ext.getCmp('GridItem');*/
+               var g = Ext.getCmp('GridDetail');
+               var sm = g.getSelectionModel();
+               sm.getSelection()[0].set('fldNameOrgan', Name);
+               sm.getSelection()[0].set('fldOrganId', NodeId_O);
+
+           }
+           else if (State == 5) {
+               var OrganId = App.PersonalInfo.queryById('OrganId');
+               OrganId.setValue(NodeId_O);
+               App.PersonalInfo.queryById('txtOrgan').setValue(Name);
+           }
+           else if (State == 6) {
+               var OrganId = App.NewWritingFormula.queryById('OrganId');
+               OrganId.setValue(NodeId_O);
+               App.NewWritingFormula.queryById('txtOrgan').setValue(Name);
+           }
+           else if (State == 7) {
+               App.NewUser.queryById('OrganId').setValue(NodeId_O);
+               App.NewUser.queryById('txtNameOrgan').setValue(Name);
+           }
+           else if (State == 8) {
+               OrganIdEjraee = NodeId_O;
+               App.ChartOrganEjraee.queryById('txtOrgan').setValue(Name);
+           }
+           else if (State == 9) {
+               App.ChartOrganTab1.queryById('txtOrgan').setValue(Name);
+               App.ChartOrganTab1.queryById('fldOrganId').setValue(NodeId_O);
+           }
+            App.SearchOrganization.destroy();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک گره را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+
+</script>

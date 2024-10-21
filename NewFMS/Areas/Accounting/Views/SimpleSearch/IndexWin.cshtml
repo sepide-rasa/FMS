@@ -1,0 +1,349 @@
+﻿@model IEnumerable<NewFMS.Models.SimpleSearch>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using NewFMS.WCF_Accounting
+
+@{
+    var X = Html.X();
+    NewFMS.WCF_Common.CommonService servic = new NewFMS.WCF_Common.CommonService();
+    NewFMS.WCF_Common.ClsError Err = new NewFMS.WCF_Common.ClsError();
+}
+
+@(Html.X()
+    .Window()
+    .Modal(true)
+        .Width(1000)
+        .ID("SimpleSearchWin")
+        .Title("جستجو")
+    .Closable(false)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Resizable(false)
+   // .Listeners(l => l.Destroy.Handler = "SetFocusFileComponent()")
+        //.ButtonAlign(Ext.Net.Alignment.Center)
+        //      .Buttons(
+        //            X.Button()
+        //                .Text("اعمال")
+        //                .Icon(Ext.Net.Icon.Tick)
+        //                .Listeners(l => l.Click.Handler = "alert();")
+        //            )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Padding(5)
+                 //.ButtonAlign(Ext.Net.Alignment.Center)
+                 // .Buttons(
+                 //       X.Button()
+                 //           .Text("جستجو")
+                 //           .Icon(Ext.Net.Icon.Magnifier)
+                 //           .Listeners(l => l.Click.Handler = "SaveSimpleSearchWin();").ItemID("btnSearch"),
+                 //       X.Button()
+                 //           .Text("خروج")
+                 //           .Icon(Ext.Net.Icon.DoorOut)
+                 //           .OnClientClick("App.SimpleSearchWin.destroy()")
+                 //       )
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Defaults(new { Margin = 2 })
+                          .Width(980)
+            .ButtonAlign(Ext.Net.Alignment.Center)
+             .Buttons(
+                   X.Button()
+                       .Text("جستجو")
+                       .Icon(Ext.Net.Icon.Magnifier)
+                       .Listeners(l => l.Click.Handler = "SaveSimpleSearchWin();").ItemID("btnSearch"),
+                       X.Button()
+                        .Text("اعمال")
+                        .Icon(Ext.Net.Icon.Tick)
+                        .Listeners(l => l.Click.Handler = "EmalSearch();"),
+                   X.Button()
+                       .Text("خروج")
+                       .Icon(Ext.Net.Icon.DoorOut)
+                           .OnClientClick("App.SimpleSearchWin.destroy();App.DocRegister_Header.queryById('mag').toggle();")
+                   )
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 8 })
+                        .Items(
+                                X.Label("شماره سند:"),
+                                X.TextField()
+                                    .ItemID("txtShomareSanad")
+                                    .AllowBlank(true)
+                                    .MaxLength(100)
+                                    .MaskRe("[0-9,*,/]")
+                                    .EnforceMaxLength(true)
+                                    .AutoFocus(true),
+
+                                           X.Label("شماره چک/فیش:"),
+                                    X.TextField()
+                                        .ItemID("txtShomareFish")
+                                        .MaskRe("[0-9]")
+                                        .AllowBlank(true)
+                                        .MaxLength(100)
+                                        .EnforceMaxLength(true),
+                                           X.Label("کد حساب:"),
+                                        X.TextField().Width(146)
+                                            .ItemID("txtCode")//.ColSpan(3)
+                                        .MaskRe("[0-9]")
+                                        .AllowBlank(true)
+                                        .MaxLength(100)
+                                        .EnforceMaxLength(true)
+                                            .Icon(Icon.Add)
+        // .FieldStyle("padding-right:20px;")
+                                            .EnableKeyEvents(true)
+                                            .Listeners(l =>
+                                        {
+                                            l.IconClick.Fn = "GotoSearchCode";
+                                            l.Change.Handler = "ShowName()";
+                                        })
+                                        ,
+                                                 X.Label().ItemID("lblSearchCode").ColSpan(2)
+                                        ,
+                                             X.Label("بدهکار:"),
+                                        X.TextField()
+                                            .ItemID("txtBedehkar")
+                                            .MaskRe("[0-9]")
+                                            .AllowBlank(true)
+                                            .MaxLength(100)
+                                            .EnforceMaxLength(true),
+                                               X.Label("بستانکار:"),
+                                        X.TextField()
+                                            .ItemID("txtBestankar")
+                                            .MaskRe("[0-9]")
+                                            .AllowBlank(true)
+                                            .MaxLength(100)
+                                            .EnforceMaxLength(true),
+                                              X.Label().Text("از تاریخ:").ItemID("lblAzTarikh"),
+                                        X.PDateField()
+        //    .Width(100)
+                                        .ItemID("txtAzTarikh")
+                                        .AllowBlank(false)
+                                        .MaskRe("[0-9,/]")
+                                        .BlankText("لطفا از تاریخ را وارد کنید.")
+                                        .PaddingSpec("0 0 0 10px")
+                                            .Listeners(l =>
+                                            {
+                                                l.Select.Handler = "ChangeAzTarikh()";
+                                                l.Blur.Handler = "SetCorrDateAz(0)";
+                                                l.SpecialKey.Handler = "SetCorrDateAz(e.getKey());";
+                                            })
+                                            .Editable(true),
+                                    X.Label().Text("تا تاریخ:").ItemID("lblTaTarikh"),
+                                        X.PDateField()
+        //  .Width(100)
+                                            .ItemID("txtTaTarikh")
+                                            .MaskRe("[0-9,/]")
+        // .PaddingSpec("0 0 0 10px")
+                                        .AllowBlank(false)
+                                                        .BlankText("لطفا تا تاریخ را وارد کنید.")
+                                                        .Listeners(l =>
+                                                        {
+                                                            l.Change.Handler = "ChangeTaTarikh()";
+                                                            l.Blur.Handler = "SetCorrDateTa(0)";
+                                                            l.SpecialKey.Handler = "SetCorrDateTa(e.getKey());";
+                                                        })
+                                            .Editable(true)
+                                            ,
+                                                X.Label("شرح آرتیکل:"),
+                                        X.TextField().ColSpan(3).Width(390)
+                                        .ItemID("txtArtikl")
+                                        .AllowBlank(true)
+                                             ,
+                                                    X.Label("شرح پایانی:"),
+                                                X.TextField().ColSpan(3).Width(390)
+                                            .ItemID("txtPayani")
+                                            .AllowBlank(true)
+
+                            ),
+        X.GridPanel()
+            .AutoScroll(true)
+                .ItemID("SimpleSearchWinGrid")
+            .Width(976)
+            .Height(300)
+            .BottomBar(X.PagingToolbar())
+               // .Listeners(l => l.AfterRender.Handler = "HandleFocus2();")
+            .Store(
+                    X.StoreForModel()
+                .AutoLoad(false)
+                            .Listeners(l => l.DataChanged.Handler = "App.SimpleSearchWin.queryById('SimpleSearchWinGrid').selModel.refresh();")
+                         
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+                                  //  .ExtraParams(l => l.Add(new { Year = ViewBag.Year }))
+                        )
+                    .PageSize(10000)
+                        .RemoteFilter(false)
+                    .RemotePaging(true)
+                   
+            )
+        //.View(
+        //    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+        //)
+            .ViewConfig(X.GridView().LoadingText("در حال بارگذاری...").RTL(true))
+                .Plugins(X.FilterHeader().Remote(false))
+            .ColumnModel(
+                    Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model, m => m.fldDocumentNum).Text("شماره سند").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldTarikhDocument).Text("تاریخ").Flex(3),
+                            Html.X().Column().DataIndex(Model, m => m.fldCode).Text("کد").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldfish_check).Text("شماره چک/فیش").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldBedehkar).Text("بدهکار").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldBestankar).Text("بستانکار").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldSh_Artikl).Text("شرح آرتیکل").Flex(4),
+                                Html.X().Column().DataIndex(Model, m => m.fldDescriptionDocu).Text("شرح پایانی").Flex(4)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+        )
+    )
+)
+<script type="text/javascript">
+    var ListSearch;
+    function ShowName() {
+        var txtCode = App.SimpleSearchWin.queryById('txtCode');
+        if (txtCode.getValue() != "") {
+            App.SimpleSearchWin.body.mask("در حال بارگذاری");
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/SimpleSearch/GetTitle',
+                params: {
+                    Code: txtCode.getValue(),
+                    Year: '@ViewBag.Year'
+                },
+                success: function (data) {
+                    App.SimpleSearchWin.queryById('lblSearchCode').setText(data.fldTitle);
+                    App.SimpleSearchWin.body.mask().hide();
+                }
+            });
+        }
+    }
+    function SimpleSearchWinSetSize() {
+        App.SimpleSearchWin.setWidth(App.AccountingWin.getWidth());
+        App.SimpleSearchWin.queryById('SimpleSearchWinGrid').setHeight(App.AccountingWin.getHeight() -310);
+    }
+    function ChangeTaTarikh() {
+        var txtAzTarikh = App.SimpleSearchWin.queryById('txtAzTarikh');
+        var txtTaTarikh = App.SimpleSearchWin.queryById('txtTaTarikh');
+        txtTaTarikh.setMinValue(txtAzTarikh.getValue());
+        txtTaTarikh.minText = "تا تاریخ باید بعد از تاریخ " + txtAzTarikh.rawValue + "باشد";
+
+    }
+    function ChangeAzTarikh() {
+        var txtAzTarikh = App.SimpleSearchWin.queryById('txtAzTarikh');
+        var txtTaTarikh = App.SimpleSearchWin.queryById('txtTaTarikh');
+        txtAzTarikh.setMaxValue(txtTaTarikh.getValue());
+        txtAzTarikh.maxText = "از تاریخ باید قبل از تا تاریخ " + txtTaTarikh.rawValue + "باشد";
+
+    }
+    function SetCorrDateAz(st) {
+        if (st == 0 || st == 13) {
+            var txtAzTarikh = App.SimpleSearchWin.queryById('txtAzTarikh');
+            var AzTa = txtAzTarikh.rawValue;
+            if (AzTa.length == 8) {
+                txtAzTarikh.setValue(AzTa.substring(0, 4) + "/" + AzTa.substring(4, 6) + "/" + AzTa.substring(6, 8));
+            }
+        }
+    }
+    function SetCorrDateTa(st) {
+        if (st == 0 || st == 13) {
+            var txtTaTarikh = App.SimpleSearchWin.queryById('txtTaTarikh');
+            var TaTa = txtTaTarikh.rawValue;
+            if (TaTa.length == 8) {
+                txtTaTarikh.setValue(TaTa.substring(0, 4) + "/" + TaTa.substring(4, 6) + "/" + TaTa.substring(6, 8));
+            }
+        }
+    }
+    var GotoSearchCode = function (Fieldd, Event, html) {
+        App.SimpleSearchWin.body.mask("در حال بارگذاری");
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/SearchCoding/Index',
+            params: {
+                state: 1,
+                Year: '@ViewBag.Year'
+            },
+            success: function () {
+                App.SimpleSearchWin.body.mask().hide();
+            }
+        });
+    };
+
+    function SaveSimpleSearchWin() {
+        var txtShomareSanad = App.SimpleSearchWin.queryById('txtShomareSanad');
+        var txtBedehkar = App.SimpleSearchWin.queryById('txtBedehkar');
+        var txtBestankar = App.SimpleSearchWin.queryById('txtBestankar');
+        var txtShomareFish = App.SimpleSearchWin.queryById('txtShomareFish');
+        var txtCode = App.SimpleSearchWin.queryById('txtCode');
+        var txtAzTarikh = App.SimpleSearchWin.queryById('txtAzTarikh');
+        var txtTaTarikh = App.SimpleSearchWin.queryById('txtTaTarikh');
+        var txtArtikl = App.SimpleSearchWin.queryById('txtArtikl');
+        var txtPayani = App.SimpleSearchWin.queryById('txtPayani');
+
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/SimpleSearch/SearchWin',
+            params: {
+                ShomareSanad: txtShomareSanad.getValue(),
+                Bedehkar: txtBedehkar.getValue(),
+                Bestankar: txtBestankar.getValue(),
+                ShomareFish: txtShomareFish.getValue(),
+                Codee: txtCode.getValue(),
+                AzTarikh: txtAzTarikh.rawValue,
+                TaTarikh: txtTaTarikh.rawValue,
+                Artikl: txtArtikl.getValue(),
+                Payani: txtPayani.getValue()
+            },
+            success: function (data) {
+
+                if (data.Er == 1)
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+
+                    App.SimpleSearchWin.queryById('SimpleSearchWinGrid').store.loadData(data.ListSanad);
+                    ListSearch = data.ListSanadHeader;
+
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function EmalSearch() {
+                App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.loadData(ListSearch);
+                App.SimpleSearchWin.destroy();
+
+         
+    }
+
+    var addKeyMapSimpleSearchWin = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SimpleSearchWin.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtPayani") {
+                        SaveSimpleSearchWin();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

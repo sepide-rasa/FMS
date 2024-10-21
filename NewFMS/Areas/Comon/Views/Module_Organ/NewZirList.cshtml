@@ -1,0 +1,178 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_ZirListHa>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(li => li.AfterRender.Handler = "LoadZirList();")
+    .Width(900).Height(600)
+        .Title("ثبت زیرلیست ها")
+    .ID("NewZirList")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+            X.FormPanel()
+                .ButtonAlign(Ext.Net.Alignment.Center)
+        .Border(false)
+        .KeyMap(Html.X().KeyMap()
+        .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+        .Binding(b =>
+        {
+            b.Add(Html.X().KeyBinding()
+            .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+            .Handler("SaveZirList(); ")
+            );
+
+        }))
+        .DefaultButton("btn")
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+        .Layout(Ext.Net.LayoutType.VBox)
+        .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+        .Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ToolTip("کلید میانبر F8")
+            .Listeners(l =>
+            {
+                l.Click.Handler = "SaveZirList();";
+
+            })
+            .ItemID("btnSave"),
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                    .OnClientClick("App.NewZirList.destroy()")
+        )
+        .Items(
+                X.Panel().ItemID("Panel").Width(870)
+            .Layout(Ext.Net.LayoutType.Table)
+            .Border(false)
+            .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 1 })
+            .Defaults(new { Margin = 10 })
+            .Items(
+                X.Hidden().ItemID("fldId"),
+
+                    X.Panel().Border(false).Width(850)
+                    .Items(
+                        X.GridPanel().AutoScroll(true)
+                        .ItemID("GridList")
+                        .Height(500)
+                        .ColumnWidth(0.6)
+
+
+                        .Store(
+                            X.StoreForModel()
+
+                        )
+                        .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+
+                        )
+
+                        .ColumnModel(
+                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد گزارش").Flex(3).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان گزارش").Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.fldMasir).Text("مسیر گزارش").Flex(3).Editor(Html.X().TextField()),
+                                Html.X().ComponentColumn().Align(Ext.Net.Alignment.Center).DataIndex(Model, m => m.C1).Text("").Flex(1).Editor(true).Component(X.Checkbox()),
+                                Html.X().ComponentColumn().Align(Ext.Net.Alignment.Center).DataIndex(Model, m => m.C2).Text("").Flex(1).Editor(true).Component(X.Checkbox()),
+                                Html.X().ComponentColumn().Align(Ext.Net.Alignment.Center).DataIndex(Model, m => m.C3).Text("").Flex(1).Editor(true).Component(X.Checkbox()),
+                                Html.X().ComponentColumn().Align(Ext.Net.Alignment.Center).DataIndex(Model, m => m.C4).Text("").Flex(1).Editor(true).Component(X.Checkbox()),
+                                Html.X().ComponentColumn().Align(Ext.Net.Alignment.Center).DataIndex(Model, m => m.C5).Text("").Flex(1).Editor(true).Component(X.Checkbox())
+                        )
+                            .Plugins(
+                                    Html.X().CellEditing().ClicksToEdit(1)
+                                    )
+
+                        .SelectionModel(
+                            Html.X().RowSelectionModel()
+                                .Mode(Ext.Net.SelectionMode.Single)
+                        )
+
+            )
+        )
+    ))
+)
+
+<script type="text/javascript">
+
+    function LoadZirList() {
+        Ext.net.DirectMethod.request({
+            url: 'Comon/Masuolin/RloadZirListItem',
+            params: {
+                Id: '@ViewBag.Id'
+            },
+            success: function (data) {
+                App.NewZirList.queryById('GridList').getStore().loadData(data.GridVal);
+
+                var Grid = App.NewZirList.queryById('GridList');
+                for (var i = 0; i < 5 ; i++){
+                    var k=Grid.getView().getHeaderAtIndex(i + 2);
+                    k.setText(data.HeaderText[i]);
+                    k.autoSize();
+                }
+            }
+        });
+
+    }
+
+    function SaveZirList() {
+
+        var ItemVal = new Array();
+        var ShowTitle = new Array();
+        var Id;
+        var SelectedRow = App.NewZirList.queryById('GridList');
+        for (var i = 0; i < SelectedRow.selModel.store.count() ; i++) {
+            row = SelectedRow.selModel.store.data.items[i];
+
+            ShowTitle[0] = row.data.C1;
+            ShowTitle[1] = row.data.C2;
+            ShowTitle[2] = row.data.C3;
+            ShowTitle[3] = row.data.C4;
+            ShowTitle[4] = row.data.C5;
+
+            for (var j = 0; j < 5; j++)
+                ItemVal.push({
+                    'ReportId': row.data.fldid,
+                    'OrderId': j + 1,
+                    'ShowTitle': ShowTitle[j]
+                });
+
+        }
+
+        var data = {
+            ItemVal: ItemVal,
+            HeaderId: '@ViewBag.Id'
+        };
+        $.ajax({
+            type: "POST",
+            url: 'Comon/Masuolin/SaveZirList',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (data) {
+                Ext.MessageBox.show({
+
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: Ext.MessageBox.INFO,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.Masoliyat.queryById('GridHeader').store.load();
+                App.Masoliyat.queryById('Grid').store.load();
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+        });
+    }
+
+
+    function EnterNext() {
+        var keyfield = App.NewZirList.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+
+    }
+
+</script>

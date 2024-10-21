@@ -1,0 +1,542 @@
+﻿@model IEnumerable<NewFMS.WCF_Weigh.OBJ_Weighbridge>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .color {
+        color: red;
+    }
+     .custom-icon {
+        margin-right: 135px !important;
+    }
+      .custom-EyeIC_B {
+        margin-right: 3px !important;
+    }
+</style>
+<br />
+<script src="~/signalr/hubs"></script>
+@(Html.X().Panel()
+        .ID("SabtWeighbridge")
+        .Title("تعریف باسکول")
+            .Listeners(li => { li.AfterRender.Handler = "WeighbridgeSetSize();"; li.Render.Fn = "addKeyMapWeighbridge"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                   X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveWeighbridge")
+                    .Listeners(l => { l.Click.Handler = "SaveWeighbridge();"; })
+        
+                    , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpWeighbridge();"; }),
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.SabtWeighbridge.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                 X.FieldSet().Border(false).Items(
+                    X.FieldSet().Border(true).Title("باسکول")
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                            X.Hidden().ItemID("fldAshkhasHoghoghiId"),
+                         X.Label("شرکت تولیدی (INS):")
+                                    , X.TextField().Width(230)
+                                        .Icon(Ext.Net.Icon.Add)
+                                    .ItemID("txtAshkhasHoghoghi")
+                                .AllowBlank(false)
+                                .BlankText("لطفا شرکت تولیدی را وارد کنید.")
+                                    .ReadOnly(true)
+                                       .Icon(Icon.Add)
+                                .Listeners(l =>
+                                {
+                                    l.SpecialKey.Handler = "SelectAshkhasHoghoghi(e.getKey());";
+                                    l.IconClick.Handler = "Ext.net.DirectMethod.request({ url: '/Daramad/SearchAshkhas/Index?State=10'});";
+                                   // l.AfterRender.Handler = "App.SabtWeighbridge.queryById('txtAshkhasHoghoghi').icon.dom.classList.add('custom-icon');";
+                                })
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                , X.Label("شناسه ملی:"),
+                                X.TextField()
+                                    .Width(125)
+                                    .ItemID("txtNationalCode")
+                                    .ReadOnly(true),
+                    X.Label("نام باسکول:"),
+                    X.TextField()
+                    .ItemID("txtName")
+                    .AllowBlank(false)
+                    .BlankText("لطفا نام باسکول را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .MaxLength(150)
+                    .EnforceMaxLength(true)
+                    //.MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                    
+                    , X.Label("آدرس:"),
+                        X.TextField()
+                    .AllowBlank(false)
+                    .ItemID("txtAddress")
+                    .Width(440).ColSpan(3),
+                    X.Label().Text("رمز عبور:").ItemID("lblRamz"),
+                        X.TextField()
+                            .ItemID("txtPassword")
+                            .InputType(Ext.Net.InputType.Password)
+                                .FieldStyle("direction:ltr;padding-left:5px;padding-right:3px;")
+                                .IconCls("eyeSee")
+                            .AllowBlank(false)
+                                .Listeners(l =>
+                                {
+                                    l.Change.Handler = "CheckvalidPass_B();";
+                                    l.KeyPress.Fn = "CheckCapsLock_B";
+                                    l.IconClick.Handler = "ShowHidePass_B('txtPassword')";
+                                    l.Render.Fn = "CreateComplexityTip_B";
+                                    l.AfterRender.Handler = "App.SabtWeighbridge.queryById('txtPassword').icon.dom.classList.add('custom-EyeIC_B');";
+                                })
+                            .BlankText("لطفا رمز عبور را وارد کنید.")
+                )
+             )
+            )
+        ),
+        X.GridPanel()
+            .TopBar(
+                            Html.X().Toolbar()
+                                .Items(
+                                      X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                        .Listeners(l => { l.Click.Handler = "LoadWeighbridge();"; })
+                , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                        .Listeners(l => { l.Click.Handler = "DeleteWeighbridge();"; })
+                                            , X.Button().Text("تغییر رمز").Icon(Ext.Net.Icon.Key)
+                                        .Listeners(l => { l.Click.Handler = "ChangePassBaskool();"; }) 
+                            , X.Button().Text("تنظیمات پارامترها").IconCls("SettingParametBaskol")
+                            .Listeners(l => { l.Click.Handler = "Param_ValueWeighbridge();"; }),
+                                     X.Button().Text("قوانین فروش").IconCls("IconArze")
+                                    .Listeners(l => { l.Click.Handler = "GotoArze();"; }),
+                                 X.Button().Text("توزین آنلاین").Icon(Ext.Net.Icon.StatusOnline)
+                                    .Listeners(l => { l.Click.Handler = "GotoVazn_Baskool();"; }) 
+                            )
+                        )
+                .ItemID("WeighbridgeGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                        X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.SabtWeighbridge.queryById('WeighbridgeGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtWeighbridge.queryById('WeighbridgeGrid');grid.setHeight(App.TasisatWin.getHeight() - 295); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                                Html.X().Column().DataIndex(Model, m => m.fldNameAshkhasHoghoghi).Text("شرکت تولیدی").Flex(2).Wrap(true),
+                                 Html.X().Column().DataIndex(Model, m => m.fldShenaseMelli).Text("شناسه ملی").Flex(2).Wrap(true),
+                                  Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام باسکول").Flex(2).Wrap(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldAddress).Text("آدرس").Flex(10).Wrap(true)
+               )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+          )
+    )
+)
+<script type="text/javascript">
+    function ShowHidePass_B(itemidd) {
+        var t = App.SabtWeighbridge.queryById(itemidd).inputEl.dom.type;
+        if (t == "text") {
+            App.SabtWeighbridge.queryById(itemidd).setIconCls("eyeSee");
+            App.SabtWeighbridge.queryById(itemidd).inputEl.dom.type = 'password';
+            App.SabtWeighbridge.queryById(itemidd).icon.dom.classList.add('custom-EyeIC_B');
+        }
+        else {
+            App.SabtWeighbridge.queryById(itemidd).setIconCls("eyeNotSee");
+            App.SabtWeighbridge.queryById(itemidd).inputEl.dom.type = 'text';
+            App.SabtWeighbridge.queryById(itemidd).icon.dom.classList.add('custom-EyeIC_B');
+        }
+    }
+    var CreateComplexityTip_B = function () {
+        this.PassWarningTooltip = new Ext.ToolTip({
+            target: App.SabtWeighbridge.queryById('txtPassword').inputEl.dom,
+            anchor: 'top',
+            width: 'auto',
+            height: 30,
+            autoHide: false,
+            mustShow: false,
+            html: '',
+            listeners: {
+                beforeshow: function () {
+                    return this.mustShow;
+                }
+            }
+        });
+    };
+    var OnCapsLock_B = false;
+    var CheckCapsLock_B = function (field, e) {
+        var charCode = e.getCharCode();
+        if ((e.shiftKey && charCode >= 97 && charCode <= 122) ||
+            (!e.shiftKey && charCode >= 65 && charCode <= 90)) {
+            OnCapsLock_B = true;
+            /*field.PassWarningTooltip.mustShow = true;
+            field.PassWarningTooltip.show();*/
+        }
+        else {
+            if (field.PassWarningTooltip.hidden == false) {
+                /*field.PassWarningTooltip.mustShow = false;
+                field.PassWarningTooltip.hide();*/
+                OnCapsLock_B = false;
+            }
+        }
+    };
+    function CheckvalidPass_B() {
+        var txtPass = App.SabtWeighbridge.queryById('txtPassword').getValue();
+        var IsFa = false;
+        var str = txtPass;
+        for (var i = 0; i < str.length ; i++) {
+            var c = str.codePointAt(i);
+            if (c >= 0x0600 && c <= 0x06FF || c == 0xFB8A || c == 0x067E || c == 0x0686 || c == 0x06AF) {
+                IsFa = true;
+            }
+        }
+        if (IsFa) {
+            if (App.SabtWeighbridge.queryById('txtPassword').PassWarningTooltip.hidden == false) {
+                App.SabtWeighbridge.queryById('txtPassword').PassWarningTooltip.mustShow = false;
+                App.SabtWeighbridge.queryById('txtPassword').PassWarningTooltip.hide();
+            }
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "زبان سیستم را به En تغییر دهید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK,
+                fn: function (btn) {
+                    if (btn == "ok") {
+                        App.SabtWeighbridge.queryById('txtPassword').setValue("");
+                    }
+                }
+            });
+        }
+        else 
+            if (OnCapsLock_B) {
+                App.SabtWeighbridge.queryById('txtPassword').PassWarningTooltip.setSize(150, 30);
+                App.SabtWeighbridge.queryById('txtPassword').PassWarningTooltip.update("CapsLock روشن است.");
+                App.SabtWeighbridge.queryById('txtPassword').PassWarningTooltip.mustShow = true;
+                App.SabtWeighbridge.queryById('txtPassword').PassWarningTooltip.show();
+            }
+
+            
+        
+    }
+    function SelectAshkhasHoghoghi(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/SearchAshkhas/Index',
+                params: {
+                    State: 10
+                }
+            });
+        }
+    }
+    function HelpWeighbridge() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Weigh/Weighbridge/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function WeighbridgeSetSize() {
+        App.SabtWeighbridge.setWidth(App.TasisatWin.getWidth());
+        var grid = App.SabtWeighbridge.queryById('WeighbridgeGrid');
+        grid.setHeight(App.TasisatWin.getHeight() - 295);
+    }
+    function GotoArze() {
+        var SelectedRow = App.SabtWeighbridge.queryById('WeighbridgeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Weighbridge/Arze',
+                params: {
+                    BaskoolId: SelectedRow.data.fldId,
+                    containerId: "FirstTabTasisat",
+                    FiscalYearId: '@ViewBag.FiscalYearId'
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function GotoVazn_Baskool() {
+        var SelectedRow = App.SabtWeighbridge.queryById('WeighbridgeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Weighbridge/Vazn_Baskool',
+                params: {
+                    BaskoolId: SelectedRow.data.fldId,
+                    containerId: "FirstTabTasisat",
+                    FiscalYearId:'@ViewBag.FiscalYearId'
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function Param_ValueWeighbridge() {
+        var SelectedRow = App.SabtWeighbridge.queryById('WeighbridgeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Weighbridge/Param_Value',
+                params: {
+                    BaskoolId: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function LoadWeighbridge() {
+        var SelectedRow = App.SabtWeighbridge.queryById('WeighbridgeGrid').selModel.getLastSelected();
+        App.SabtWeighbridge.queryById('lblRamz').hide();
+        App.SabtWeighbridge.queryById('txtPassword').hide();
+         
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Weighbridge/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtName = App.SabtWeighbridge.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var fldAshkhasHoghoghiId = App.SabtWeighbridge.queryById('fldAshkhasHoghoghiId');
+                    fldAshkhasHoghoghiId.setValue(data.fldAshkhasHoghoghiId);
+                    var txtAshkhasHoghoghi = App.SabtWeighbridge.queryById('txtAshkhasHoghoghi');
+                    txtAshkhasHoghoghi.setValue(data.fldNameAshkhasHoghoghi);
+                    var txtNationalCode = App.SabtWeighbridge.queryById('txtNationalCode');
+                    txtNationalCode.setValue(data.fldShenaseMelli);
+                    var txtAddress = App.SabtWeighbridge.queryById('txtAddress');
+                    txtAddress.setValue(data.fldAddress);
+                    var fldId = App.SabtWeighbridge.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ChangePassBaskool() {
+        var SelectedRow = App.SabtWeighbridge.queryById('WeighbridgeGrid').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Weighbridge/ChangePasBaskol',
+                params: {
+                    BaskoolId: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SaveWeighbridge() {
+        var txtName = App.SabtWeighbridge.queryById('txtName');
+        var fldAshkhasHoghoghiId = App.SabtWeighbridge.queryById('fldAshkhasHoghoghiId');
+        var txtAshkhasHoghoghi = App.SabtWeighbridge.queryById('txtAshkhasHoghoghi');
+        var txtAddress = App.SabtWeighbridge.queryById('txtAddress');
+        var fldId = App.SabtWeighbridge.queryById('fldId'); 
+        var Pass = "";
+            var er = false;
+            if (txtName.validate() == false) {
+                er = true;
+            }
+            if (txtAshkhasHoghoghi.validate() == false) {
+                er = true;
+            }
+            if (txtAddress.validate() == false) {
+                er = true;
+            }
+            if (fldId.getValue() == 0) {
+                var txtPassword = App.SabtWeighbridge.queryById('txtPassword');
+                if (txtPassword.validate() == false) {
+                    er = true;
+                }
+                if (er == true)
+                    return;
+                Pass =txtPassword.getValue();
+            }
+            
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در ذخیره سازی بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Weighbridge/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldName: txtName.getValue(),
+                    fldAshkhasHoghoghiId: fldAshkhasHoghoghiId.getValue(),
+                    fldAddress: txtAddress.getValue(),
+                    fldPassword: Pass
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtWeighbridge.queryById('WeighbridgeGrid').store.load();
+                    if (data.Err != 1) {
+                        App.SabtWeighbridge.queryById('lblRamz').show();
+                        App.SabtWeighbridge.queryById('txtPassword').show();
+                        ClearWeighbridge();
+                    }
+                       
+                }
+
+            });
+    }
+    function DeleteWeighbridge() {
+        var SelectedRow = App.SabtWeighbridge.queryById('WeighbridgeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Weigh/Weighbridge/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtWeighbridge.queryById('WeighbridgeGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearWeighbridge() {   
+        App.SabtWeighbridge.queryById('fldAshkhasHoghoghiId').setValue(0);
+        App.SabtWeighbridge.queryById('fldId').setValue(0);
+        App.SabtWeighbridge.queryById('txtName').setValue("");
+        App.SabtWeighbridge.queryById('txtAshkhasHoghoghi').setValue("");
+        App.SabtWeighbridge.queryById('txtNationalCode').setValue("");
+        App.SabtWeighbridge.queryById('txtAddress').setValue("");
+        App.SabtWeighbridge.queryById('txtPassword').setValue("");
+    }
+    var addKeyMapWeighbridge = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtWeighbridge.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtPassword") {
+                        nextfld = App.SabtWeighbridge.queryById('btnSaveWeighbridge');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

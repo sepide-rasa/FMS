@@ -1,0 +1,369 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_UserGroup>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+    .ID("UserGroup")
+    .Title("ثبت گروه کاربری")
+    .Border(false)
+    .Listeners(li => li.AfterRender.Handler = "UserGroupSetSize();") 
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy) 
+    .Items(
+        X.Panel()
+            .Border(false)
+            .ItemID("pnlNew")
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align=VBoxAlign.Center})
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                    .ItemID("btnSave")
+                    .Listeners(l => { l.Click.Handler = "SaveUserGroup();"; }),
+                X.Button()
+                    .Text("ویرایش")
+                    .Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadUserGroup();"; }),
+                X.Button()
+                    .Text("حذف")
+                    .Icon(Ext.Net.Icon.Delete)
+                        .Listeners(l => { l.Click.Handler = "DeleteUserGroup();"; }),
+                    X.Button()
+                        .Text("کپی دسترسی ها")
+                        .Icon(Ext.Net.Icon.PageCopy)
+                        .Listeners(l => { l.Click.Handler = "CopyUserGroupPermi();"; }),
+
+                X.Button().Text("راهنما")
+                .Icon(Ext.Net.Icon.Help)
+                .Listeners(l => { l.Click.Handler = "HelpUserGroup();"; }),
+                    
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.UserGroup.destroy()")
+            )
+            .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .Width(670)
+                    .Title("گروه کاربری")
+                    .Defaults(new { Margin = 2 })
+                    .ItemID("FieldsetUserGroup")
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                    .Items(
+                        X.Hidden().ItemID("fldId"),
+                        X.Label("عنوان گروه کاربری:"),
+                        X.TextField()
+                            .ItemID("txtTitle")
+                            .MaxLength(150)
+                            .EnforceMaxLength(true)
+                            .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                            .AllowBlank(false)
+                            .BlankText("لطفا عنوان گروه کاربری را وارد کنید.")
+                            .AutoFocus(true),
+                        X.Label("توضیحات:"),
+                        X.TextField()
+                            .ItemID("txtDesc")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Width(260),
+                        X.TreePanel()
+                            .ID("TreeOrgan_Module")
+                            .ColSpan(4)
+                            .AutoScroll(true)
+                            .Height(140)
+                            .Border(false)
+                            .UseArrows(true)
+                            .Store(
+                                X.TreeStore()
+                                    .Proxy(
+                                        Html.X().AjaxProxy()
+                                        .Url(Url.Action("GetOrgan_Module"))
+                                        )
+                                )
+                            .Root(Html.X().Node().NodeID("0").Expanded(true).Text("لیست سازمان_ماژول")) 
+                )
+        ),
+        X.GridPanel()
+            .ItemID("UserGroupGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.UserGroup.queryById('UserGroupGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )   
+        .Plugins(X.FilterHeader().Remote(true))
+            .Listeners(l =>
+            {
+                l.AfterRender.Handler = "var grid = App.UserGroup.queryById('UserGroupGrid');grid.setHeight(App.Win.getHeight() - 260); ";
+
+            })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("گروه کاربری").Flex(2),                                 
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10),
+                        Html.X().ImageCommandColumn()//.PrepareCommand("hideBtnAsnadEjra")
+                            .Listeners(l => l.Command.Fn = "ActionsUser")
+                            .Flex(1).Commands(
+                             Html.X().ImageCommand().CommandName("GoToShowUser").Icon(Ext.Net.Icon.User).ToolTip(tt => tt.Text = "کاربران این گروه کاربری")
+                            )
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.Win.addListener('resize', function () {
+        App.UserGroup.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.UserGroup.queryById('UserGroupGrid');
+        grid.setHeight(App.Win.getHeight()-260);
+    });*/
+    function ActionsUser(grid, command, record, row) {
+        if (command == 'GoToShowUser') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/UserGroup/ShowUser',
+                params: {
+                    UserGroupId: record.data.fldId
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+
+            });
+
+        }
+    }
+    function UserGroupSetSize() {
+        App.UserGroup.setSize(App.Win.getWidth(), App.Win.getHeight() - 175);
+        /* App.UserGroup.queryById("pnlNew").setSize(App.Win.getWidth(), App.Win.getHeight() - 400);
+        App.UserGroup.queryById("FieldsetUserGroup").setSize(App.Win.getWidth() - 750, App.Win.getHeight() - 440);*/
+        var grid = App.UserGroup.queryById('UserGroupGrid');
+        grid.setHeight(App.Win.getHeight() - 400);
+    }
+
+    function setDefaultOrgan_Module() {
+        var Id = App.UserGroup.queryById('CboOrgan_Module').store.getAt(0).data.fldId;
+        App.UserGroup.queryById('CboOrgan_Module').setValue(Id);
+    }
+    function HelpUserGroup() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/UserGroup/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function LoadUserGroup() {
+        var SelectedRow = App.UserGroup.queryById('UserGroupGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/UserGroup/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    App.TreeOrgan_Module.clearChecked();
+                    var txtTitle = App.UserGroup.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var txtDesc = App.UserGroup.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.UserGroup.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    for (var i = 0; i < data.Organ_Module.length; i++) {
+                        App.TreeOrgan_Module.getRootNode().findChild("id", data.Organ_Module[i]).set("checked", true);
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveUserGroup() {
+        var txtTitle = App.UserGroup.queryById('txtTitle');
+        var txtDesc = App.UserGroup.queryById('txtDesc');
+        var fldId = App.UserGroup.queryById('fldId');
+        var SelectedModule = App.TreeOrgan_Module.getChecked();
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        if (SelectedModule.length == 0) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا حداقل یک سازمان_ماژول را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+        else {
+            var Module_Organ = new Array();
+            for (var i = 0; i < SelectedModule.length ; i++) {
+                Module_Organ.push(SelectedModule[i].data.id);
+            }
+
+            var data1 = {
+                Module_Organ: Module_Organ,
+                fldId: fldId.getValue(),
+                fldTitle: txtTitle.getValue(),
+                fldDesc: txtDesc.getValue()
+            };
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            $.ajax({
+                type: "POST",
+                url:  '/Comon/UserGroup/Save',
+                datatype: "json",
+                data: JSON.stringify(data1),
+                contentType: "application/json; charset=utf-8",
+                success: function (data) {
+                    var result = data;/* JSON.parse(data);*/
+                    var ic = Ext.MessageBox.INFO;
+                    if (result.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: result.MsgTitle,
+                        msg: result.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.UserGroup.queryById('UserGroupGrid').store.load();
+                    if (result.Err != 1) {
+                        ClearUserGroup();
+                    }
+                    if (result.Err == 1) {
+                        App.UserGroup.queryById('fldId').setValue(result.Id);
+                    }
+                    Ext.net.Mask.hide();
+                },
+                failure: function (data) {
+                    alert(data.data);
+                }
+            });
+        }
+    }
+
+    function DeleteUserGroup() {
+        var SelectedRow = App.UserGroup.queryById('UserGroupGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/UserGroup/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.INFO,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.UserGroup.queryById('UserGroupGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function CopyUserGroupPermi() {
+        var SelectedRow = App.UserGroup.queryById('UserGroupGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/UserGroup/CopyPermi',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    if (data.Err == 1)
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearUserGroup() {
+        App.UserGroup.queryById('fldId').setValue(0);
+        App.UserGroup.queryById('txtTitle').setValue("");
+        App.UserGroup.queryById('txtDesc').setValue("");
+        App.TreeOrgan_Module.clearChecked();
+    }
+    function EnterNext() {
+        var keyfield = App.UserGroup.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtDesc") {
+            nextfld = App.UserGroup.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+    }
+</script>

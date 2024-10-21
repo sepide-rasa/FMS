@@ -1,0 +1,178 @@
+﻿@using Ext.Net
+@using Ext.Net.MVC
+@{
+    /*var ss = ViewBag.STRmablagh;*/
+    var mablagh = @ViewBag.mablagh;
+    /*for (int i = 1; i < 10; i++) {
+        if (ss[i].ToString() != "0")
+        {
+        mablagh = mablagh + "،" + ss[i].ToString("#,#");
+        }
+    }*/
+}
+
+@(Html.X()
+    .Window()
+    .Width(250)
+    .Height(150)
+    .CloseAction(CloseAction.Destroy)
+    .ID("ParsianPcpos")
+        //.Listeners(l => l.AfterRender.Handler = "loadPcPos();")
+    .Title("پرداخت توسط pcpos").Modal(true)
+    .Content(@<div>
+        <br />
+        <br />
+        <center>
+            <input type="text" id="Parsian_fishid" value="@ViewBag.fishid" style="display:none;" />
+            <textarea id="txtAdd" rows="4" cols="50" style="display:none;"></textarea>
+            مبلغ: <span>@mablagh</span> ریال
+            <br />
+            <br />
+            <button style="font-family:Tahoma;font-size:12px;" class="btn btn-success pull-right" type="button" id="btnSendAmountPCStart">ارسال به دستگاه کارتخوان</button>
+        </center>
+    </div>
+        //.Items(
+        //    Html.X().Label().Text("مبلغ:"),
+        //        Html.X().Label().Text(mablagh),
+        //            Html.X().Button().Text("پرداخت").Listeners(l => l.Click.Handler = "ParsianPay();"),
+        //        Html.X().Label().ID("ParsianResult")
+        )
+)
+
+<script>
+
+    var ShenaseGhabz = '@ViewBag.ShGhabz';
+    var ShenasePardakht = '@ViewBag.ShPardakht';
+    var Mablagh = [];
+    var Sheba = [];
+    var pcpos_url = '@ViewBag.pcpos_url';
+    var fishid = '@ViewBag.fishid';
+    var PayMethodVal = '@ViewBag.PayMethodVal';
+    var parsian_state = '@ViewBag.state';
+    var req_params = new Object();
+
+    var s = '@ViewBag.mablagh'.split(',');
+    for (i = 0; i < s.length; i++) {
+        if (s[i] == undefined || s[i] == "")
+            Mablagh[i] = "";
+        else Mablagh[i] = s[i];
+    }
+    for (var i = s.length; i < 9; i++) {
+        Mablagh[i] = "";
+    }
+    var h = '@ViewBag.Sheba'.split(',');
+    for (i = 0; i < 9; i++) {
+        Sheba[i] = h[i];
+        if (h[i] == undefined)
+            Sheba[i] = "";
+    }
+
+    /*  $('#btnSendAmountPCStart').click(doPCPOS);*/
+    $('#btnSendAmountPCStart').click(function () {
+        /* var doPCPOS = function () {*/
+
+
+
+        /*  Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });*/
+        App.ParsianPcpos.body.mask("در حال انجام عملیات...");
+
+        /*if ($('#service').val().length > 0)*/
+
+        if (PayMethodVal == "0") {/*خرید*/
+            req_params.PR = "000000";
+            req_params.AM = Mablagh;/*[$('#amount1').val(), $('#amount2').val(), $('#amount3').val(), $('#amount4').val(), $('#amount5').val(), $('#amount6').val(), $('#amount7').val(), $('#amount8').val(), $('#amount9').val()];*/
+            req_params.CU = "364";/* $('#currency').val();*/
+            req_params.R1 = "";/* $('#r_cardholder').val();*/
+            req_params.R2 = "";/*$('#r_merchant').val();*/
+            req_params.T1 = "";/* $('#t_cardholder').val();*/
+            req_params.T2 = ""; /*$('#t_merchant').val();*/
+            /*req_params.A1 = $('#amount1').val();
+            	req_params.I1 = $('#idd1').val();
+            req_params.A2 = $('#amount2').val();
+            req_params.I2 = $('#idd2').val();
+        }
+        else if (PayMethodVal == "1") {/*پرداخت با شناسه قبض و پرداخت*/
+
+        }
+        else {
+            req_params.SV = ShenaseGhabz;
+            req_params.SG = ShenasePardakht;
+        }
+        /*else
+        	document.getElementById("test1").innerHTML = "false!";
+        req_params.BI = $('#billpaymentid').val();
+        req_params.PI = $('#paymentid').val();*/
+
+        req_params.AD = "";
+        req_params.PD = "1";
+
+        var settel_str = "";
+        var keyval_str = "";
+        for (i = 0; i < 9; i++)
+            if (Mablagh[i].length > 0) {
+                settel_str += (i + 1) + "=" + Mablagh[i] + ",";
+                keyval_str += Mablagh[i] + "=" + Sheba[i] + ",";
+            }
+
+        var settelment = settel_str.slice(0, -1);
+        req_params.ST = settelment.split(",");
+        var key_value = keyval_str.slice(0, -1);
+        req_params.AV = key_value.split(",");
+
+        $.ajax({
+            type: "POST",
+            url: pcpos_url,
+            data: JSON.stringify(req_params),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            timeout: 120 * 1000,
+            success: doSuccess,
+            failure: function (errMsg) {
+                alert(errMsg);
+            }
+        });
+
+    });
+    var ttt;
+    var doSuccess = function (data) {
+        ttt = data;
+        /*$('#result').empty();
+        $('#result').append(JSON.stringify(data, null, "\t"));*/
+
+
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/AnnouncementComplications_Fish/ParsianPcPosVerify',
+            params: {
+                TerminalID: data.tM,
+                ResponseCode: data.resp_code,
+                SerialId: data.sR,
+                RRN: data.tR,
+                ResponseDescription: data.resp_msg,
+                TxnDate: data.tI,
+                fishid: fishid,
+                state: parsian_state
+            },
+            success: function (result) {
+                var ic = Ext.MessageBox.INFO;
+                if (result.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: "وضعیت پرداخت",
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == 'ok') {
+                            App.ParsianPcpos.destroy();
+                        }
+                    }
+                });
+                App.AnnouncementComplication_Fish.queryById('FishGrid').store.load();
+                Ext.net.Mask.hide();
+                App.ParsianPcpos.body.mask().hide();
+            }
+        });
+    }
+
+</script>

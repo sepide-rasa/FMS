@@ -1,0 +1,377 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_MaliyatArzesheAfzoode>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("SabtMaliyat")
+            .Title("ثبت مالیات ارزش افزوده")
+           .Listeners(li => { li.AfterRender.Handler = "MaliyatSetSize();"; li.Render.Fn = "addKeyMapSabtMaliyat"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveMaliyat")
+                    .Listeners(l => { l.Click.Handler = "SaveMaliyat();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadMaliyat();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteMaliyat();"; })
+            , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                .Listeners(l => { l.Click.Handler = "HelpMaliyat();"; })
+            ,   X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.SabtMaliyat.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("مالیات ارزش افزوده").Height(130)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                       X.Hidden().ItemID("fldId"),
+                           X.Label().Text("از تاریخ:")
+                        , X.PDateField()
+                                .ItemID("txtAzTarikh").MaxLength(10).EnforceMaxLength(true)
+                                .AllowBlank(false).Editable(true)
+                                         .MaskRe("/[0-9 /]/")
+                        .Listeners(l => l.Focus.Handler = "ChangeAzTarikh();")
+                        .BlankText("لطفا از تاریخ را وارد کنید.")
+                         .LabelAlign(Ext.Net.LabelAlign.Right).Width(170)
+
+                            , X.Label().Text("تا تاریخ:")
+                            , X.PDateField()
+
+                                 .ItemID("txtTaTarikh").Width(170).MaxLength(10).EnforceMaxLength(true)
+                                .AllowBlank(false)
+                                                 .MaskRe("/[0-9 /]/").Editable(true)
+                            .Listeners(l => l.Focus.Handler = "ChangeTaTarikh ();")
+                            .BlankText("لطفا تا تاریخ را وارد کنید.")
+
+                                 , X.Label().Text("درصد عوارض:")
+
+                            , X.TextField()
+                                .ItemID("txtDarsadAvarez").Width(170)
+                               .AllowBlank(false).Width(170).FieldStyle("direction:Ltr;")
+                                    .MaskRe("/[0-9,. /]/").MaxLength(5).EnforceMaxLength(true)
+                                      .Listeners(l => l.Change.Handler = "ChangeDarsadAvarez ();")
+                                .BlankText("لطفا درصد عوارض را وارد کنید.")
+
+
+                                     , X.Label().Text("درصد مالیات:")
+                                , X.TextField()
+                                    .ItemID("txtDarsadMaliyat").Width(170)
+                                        .AllowBlank(false).Width(170).FieldStyle("direction:Ltr;")
+                                    .MaskRe("/[0-9,. /]/").MaxLength(5).EnforceMaxLength(true)
+                                              .Listeners(l => l.Change.Handler = "ChangeDarsadMaliyat ();")
+                                    .BlankText("لطفا درصد مالیات را وارد کنید.")
+                                   
+
+
+                                    //     , X.Label().Text("درصد آموزش پرورش:")
+                                    //, X.TextField()
+                                    //    .ItemID("txtDarsadAmuzeshParvaresh").Width(170)
+                                    //        .AllowBlank(false).Width(170).FieldStyle("direction:Ltr;")
+                                    //    .MaskRe("/[0-9,. /]/").MaxLength(5).EnforceMaxLength(true)
+                                    //                  .Listeners(l => l.Change.Handler = "ChangeDarsadAmuzeshParvaresh ();")
+                                    //        .BlankText("لطفا درصد آموزش پرورش را وارد کنید.")
+                                    //             .ColSpan(3)
+                        , X.Label("توضیحات:"),
+                            X.TextField().ColSpan(3)
+                        .ItemID("txtDescMaliyat")
+
+                        .Width(413)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("MaliyatGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                            .Listeners(l => l.DataChanged.Handler = "App.SabtMaliyat.queryById('MaliyatGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtMaliyat.queryById('MaliyatGrid');grid.setHeight(App.Win.getHeight() - 310); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldFromDate).Text("از تاریخ").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldEndDate).Text("تا تاریخ").Flex(2),
+                             Html.X().Column().DataIndex(Model, m => m.fldDarsadeAvarez).Text("درصد عوارض").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldDarsadeMaliyat).Text("درصد مالیات").Flex(2),
+                                           // Html.X().Column().DataIndex(Model, m => m.fldDarsadAmuzeshParvaresh).Text("درصد آموزش پرورش").Flex(2),
+                           Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.Win.addListener('resize', function () {
+        App.Maliyat.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.Maliyat.queryById('MaliyatGrid');
+        grid.setHeight(App.Win.getHeight()-260);
+    });*/
+    function ChangeTaTarikh() {
+        var txtAzTarikh = App.SabtMaliyat.queryById('txtAzTarikh');
+        var txtTaTarikh = App.SabtMaliyat.queryById('txtTaTarikh');
+        txtTaTarikh.setMinValue(txtAzTarikh.rawValue);
+        txtTaTarikh.minText = "تا تاریخ باید بعد از تاریخ " + txtAzTarikh.rawValue + "باشد";
+
+    }
+    function ChangeAzTarikh() {
+        var txtAzTarikh = App.SabtMaliyat.queryById('txtAzTarikh');
+        var txtTaTarikh = App.SabtMaliyat.queryById('txtTaTarikh');
+        /*var fldTarikh = new Date('ViewBag.fldTarikh');*/
+        txtAzTarikh.setMaxValue(txtTaTarikh.getValue());
+        txtAzTarikh.maxText = "از تاریخ باید قبل از تا تاریخ " + txtTaTarikh.rawValue + "باشد";
+
+    }
+    function ChangeDarsadAvarez() {
+        var txtDarsadAvarez = App.SabtMaliyat.queryById('txtDarsadAvarez');
+        if (txtDarsadAvarez.getValue() > 100) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "درصد عوارض وارد شده بیشتر از حد مجاز می باشد.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ChangeDarsadMaliyat() {
+        var txtDarsadMaliyat = App.SabtMaliyat.queryById('txtDarsadMaliyat');
+        if (txtDarsadMaliyat.getValue() > 100) {
+                Ext.MessageBox.show({
+                title: "خطا",
+                msg: "درصد مالیات وارد شده بیشتر از حد مجاز می باشد.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ChangeDarsadAmuzeshParvaresh() {
+        var txtDarsadAmuzeshParvaresh = App.SabtMaliyat.queryById('txtDarsadAmuzeshParvaresh');
+        if (txtDarsadAmuzeshParvaresh.getValue() > 100) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "درصد آموزش پرورش وارد شده بیشتر از حد مجاز می باشد.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function HelpMaliyat() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/MaliyatArzeshAfzoode/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+       function MaliyatSetSize() {
+           App.SabtMaliyat.setWidth(App.Win.getWidth());
+            var grid = App.SabtMaliyat.queryById('MaliyatGrid');
+            grid.setHeight(App.Win.getHeight() - 340);
+        }
+        function LoadMaliyat() {
+            var SelectedRow = App.SabtMaliyat.queryById('MaliyatGrid').selModel.getLastSelected();
+            if (SelectedRow != null) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/MaliyatArzeshAfzoode/Details',
+                    params: {
+                        Id: SelectedRow.data.fldId
+                    },
+                    success: function (data) {
+                        var txtAzTarikh = App.SabtMaliyat.queryById('txtAzTarikh');
+                        txtAzTarikh.setValue(data.fldFromDate);
+                        var txtTaTarikh = App.SabtMaliyat.queryById('txtTaTarikh');
+                        txtTaTarikh.setValue(data.fldEndDate);
+                        var txtDarsadAvarez = App.SabtMaliyat.queryById('txtDarsadAvarez');
+                        txtDarsadAvarez.setValue(data.fldDarsadeAvarez);
+                        var txtDarsadMaliyat = App.SabtMaliyat.queryById('txtDarsadMaliyat');
+                        txtDarsadMaliyat.setValue(data.fldDarsadeMaliyat);
+                        /*var txtDarsadAmuzeshParvaresh = App.SabtMaliyat.queryById('txtDarsadAmuzeshParvaresh');
+                        txtDarsadAmuzeshParvaresh.setValue(data.fldDarsadAmuzeshParvaresh);*/
+                        var txtDescMaliyat = App.SabtMaliyat.queryById('txtDescMaliyat');
+                        txtDescMaliyat.setValue(data.fldDesc);
+                        var fldId = App.SabtMaliyat.queryById('fldId');
+                        fldId.setValue(data.fldId);
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+
+        function SaveMaliyat() {
+            var txtAzTarikh = App.SabtMaliyat.queryById('txtAzTarikh');
+            var txtTaTarikh = App.SabtMaliyat.queryById('txtTaTarikh');
+            var txtDarsadAvarez = App.SabtMaliyat.queryById('txtDarsadAvarez');
+            var txtDarsadMaliyat = App.SabtMaliyat.queryById('txtDarsadMaliyat');
+           /* var txtDarsadAmuzeshParvaresh = App.SabtMaliyat.queryById('txtDarsadAmuzeshParvaresh');*/
+            var txtDescMaliyat = App.SabtMaliyat.queryById('txtDescMaliyat');
+            var fldId = App.SabtMaliyat.queryById('fldId');
+            var er = false;
+
+            if (txtAzTarikh.validate() == false) {
+                er = true;
+            }
+            if (txtTaTarikh.validate() == false) {
+                er = true;
+            }
+            if (txtDarsadAvarez.validate() == false) {
+                er = true;
+            }
+            if (txtDarsadMaliyat.validate() == false) {
+                er = true;
+            }
+            /*if (txtDarsadAmuzeshParvaresh.validate() == false) {
+                er = true;
+            }*/
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            Ext.net.DirectMethod.request({
+                url: '/MaliyatArzeshAfzoode/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldFromDate: txtAzTarikh.getRawValue(),
+                    fldEndDate:txtTaTarikh.getRawValue(),
+                    fldDarsadeAvarez:txtDarsadAvarez.getValue(),
+                    fldDarsadeMaliyat: txtDarsadMaliyat.getValue(),
+                    fldDarsadAmuzeshParvaresh: 0,/*txtDarsadAmuzeshParvaresh.getValue(),*/
+                    fldDesc: txtDescMaliyat.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtMaliyat.queryById('MaliyatGrid').store.load();
+                    if (data.Err != 1)
+                        ClearMaliyat();
+                }
+
+            });
+        }
+        function DeleteMaliyat() {
+            var SelectedRow = App.SabtMaliyat.queryById('MaliyatGrid').selModel.getLastSelected();
+            if (SelectedRow != null) {
+                Ext.MessageBox.show({
+                    title: "هشدار",
+                    msg: "آیا برای حذف مطمئن هستید؟",
+                    icon: Ext.MessageBox.WARNING,
+                    buttons: Ext.MessageBox.YESNO,
+                    fn: function (btn) {
+                        if (btn == 'yes') {
+                            Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/MaliyatArzeshAfzoode/Delete',
+                                params: {
+                                    id: SelectedRow.data.fldId
+                                },
+                                success: function (data) {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Er == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    App.SabtMaliyat.queryById('MaliyatGrid').store.load()
+                                }
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        function ClearMaliyat() {
+            App.SabtMaliyat.queryById('fldId').setValue(0);
+            App.SabtMaliyat.queryById('txtAzTarikh').setValue("");
+            App.SabtMaliyat.queryById('txtTaTarikh').setValue("");
+            App.SabtMaliyat.queryById('txtDarsadAvarez').setValue("");
+            App.SabtMaliyat.queryById('txtDarsadMaliyat').setValue("");
+            /*App.SabtMaliyat.queryById('txtDarsadAmuzeshParvaresh').setValue("");*/
+            App.SabtMaliyat.queryById('txtDescMaliyat').setValue("");
+        }
+        var addKeyMapSabtMaliyat = function (cmp) {
+            this.keyMap = new Ext.util.KeyMap({
+                target: cmp.getEl(),
+                binding: [{
+                    key: [13, 9], /*Ext.EventObject.ENTER,*/
+                    fn: function (key, e) {
+                        if (e.getKey() == 9) {
+                            e.stopEvent();
+                        }
+                        var keyfield = App.SabtMaliyat.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        var nextfld;
+                        if (keyfield.itemId == "txtDescMaliyat") {
+                            nextfld = App.SabtMaliyat.queryById('btnSaveMaliyat');
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }]
+            });
+        }
+</script>

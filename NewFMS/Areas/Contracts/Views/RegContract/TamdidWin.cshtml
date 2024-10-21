@@ -1,0 +1,320 @@
+﻿@model IEnumerable<NewFMS.Areas.Contracts.Models.spr_tblTamdidSelect>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<script src="~/Scripts/jsQR.js"></script>
+
+@(Html.X().Window().Modal(true)
+    .Width(630)//.Height(220)
+                .Title("تمدید قرارداد")
+            .ID("SabtTamdid")
+                .Listeners(li => { li.AfterRender.Fn = "addKeyMapSabtTamdid"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+
+    .Items(
+                X.Panel()
+                                    .Defaults(new { Margin = 5 })
+                 .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                .Border(false)
+                    .Buttons(
+                    X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveTamdid")
+                    .Listeners(l => { l.Click.Handler = "SaveTamdid();"; })
+                , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                        .Listeners(l => { l.Click.Handler = "LoadTamdid();"; })
+                , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                            .Listeners(l => { l.Click.Handler = "DeleteTamdid();"; })
+               // , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpTamdid();"; })
+
+                , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.SabtTamdid.destroy()")
+            )
+                .ButtonAlign(Ext.Net.Alignment.Center)
+                .Items(
+        //X.Panel()
+        //    .Border(true)
+        //        .Layout(Ext.Net.LayoutType.VBox)
+        //    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+        //    .Items(
+                            X.FieldSet()
+                                .Border(true)
+                                .Title("اطلاعات تمدید")
+                                .Width(600)
+                                .Defaults(new { Margin = 2 })
+                                .Layout(LayoutType.Table)
+                                .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                                    .Items(
+                        X.Hidden().ItemID("fldId"),
+
+                         X.Label("نوع تمدید:"),
+                            X.ComboBox()
+                                      .Width(110)
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ItemID("CboTypeTmadid")
+                        .TypeAhead(true)
+                        .Editable(false)
+                        .QueryMode(DataLoadMode.Local)
+                        .BlankText("لطفا نوع تمدید را انتخاب کنید.")
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                        .DisplayField("fldName")
+                        .ValueField("fldId")
+                        .EmptyText(" ...")
+                        .Store(X.Store()
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                )
+                                            )
+                            .Listeners(l => { l.Load.Handler = "setdefaultValueTypeTamdid()"; })
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetTypeTmadid"))
+                        .Reader(X.JsonReader().Root("data"))
+                                )
+                                )
+        // .Listeners(l => { l.Change.Handler = "ChangeZemanat()"; })
+                        .AllowBlank(false)
+                            , X.Label("تاریخ پایان:").ItemID("lblTarikh")
+                                      , X.PDateField()
+                                          .Width(110)
+                                    .ItemID("txtTarikh")
+                                    .MaskRe("/[0-9,/]/")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا تاریخ پایان قرارداد را وارد کنید.")
+                            , X.Label("مبلغ افزایشی(ریال):"),
+                                    X.TextField()
+                                          .Width(120)
+                                .ItemID("txtMablagh")
+                                .Listeners(l => { l.Change.Handler = "App.SabtTamdid.queryById('txtMablagh').setValue(accounting.formatNumber(App.SabtTamdid.queryById('txtMablagh').getValue()));"; })
+                                .MaxLength(100)
+                                .EnforceMaxLength(true)
+                                .MaskRe("[0-9]")
+                                .AllowBlank(false)
+                                .BlankText("لطفا مبلغ افزایش را وارد کنید.")
+                        )
+        //)
+        ),
+                  X.GridPanel().AutoScroll(true)
+                                    .ItemID("TamdidGrid").Flex(2)
+                        .BottomBar(X.PagingToolbar())
+                        .Height(200)
+        //.ColumnWidth(0.6)
+        //.Layout(Ext.Net.LayoutType.Column)
+                        .Store(
+                            X.StoreForModel()
+                                         .Listeners(l => l.DataChanged.Handler = "App.SabtTamdid.queryById('TamdidGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                            .Url(Url.Action("ReadTamdid"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                                                    .ExtraParams(p => p.Add(new { ContractId = @ViewBag.ContractId }))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+
+                        )
+                        .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+
+                        .Plugins(X.FilterHeader().Remote(true))
+                        .ColumnModel(
+                                 Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldTypeTamdidName).Text("نوع تمدید").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.fldTarikhPayan).Text("تاریخ پایان").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.fldMablaghAfzayeshi).Text("مبلغ افزایشی").Flex(3)
+                            )
+        //.Layout(Ext.Net.LayoutType.VBox)
+        //.LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+)
+
+
+<script type="text/javascript">
+    function TamdidSetSize() {
+        App.SabtTamdid.setWidth(App.ContractWin.getWidth());
+        var grid = App.SabtTamdid.queryById('TamdidGrid');
+        grid.setHeight(App.ContractWin.getHeight() - 365);
+    }
+    function setdefaultValueTypeTamdid() {
+        var CboTypeTmadid = App.SabtTamdid.queryById('CboTypeTmadid');
+        CboTypeTmadid.select(CboTypeTmadid.store.getAt(0));
+    }
+    function LoadTamdid() {
+        var SelectedRow = App.SabtTamdid.queryById('TamdidGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Contracts/RegContract/DetailsTamdid',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {    
+                    var CboTypeTmadid = App.SabtTamdid.queryById('CboTypeTmadid');
+                    CboTypeTmadid.setValue(data.fldTamdidTypeId);
+                    var txtTarikh = App.SabtTamdid.queryById('txtTarikh');
+                    txtTarikh.setValue(data.fldTarikhPayan);
+                    var txtMablagh = App.SabtTamdid.queryById('txtMablagh');
+                    txtMablagh.setValue(data.fldMablaghAfzayeshi);
+               
+                    var fldId = App.SabtTamdid.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveTamdid() {
+        var CboTypeTmadid = App.SabtTamdid.queryById('CboTypeTmadid');
+        var txtTarikh = App.SabtTamdid.queryById('txtTarikh');
+        var txtMablagh = App.SabtTamdid.queryById('txtMablagh');
+        var fldId = App.SabtTamdid.queryById('fldId');
+        var er = false;
+
+        if (CboTypeTmadid.validate() == false) {
+            er = true;
+        }
+        if (txtTarikh.validate() == false) {
+            er = true;
+        }
+        if (txtMablagh.validate() == false) {
+            er = true;
+        }
+    
+
+        if (er == true)
+            return;
+
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Contracts/RegContract/SaveTamdid',
+            params: {
+                fldId: fldId.getValue(),
+                fldContractId:'@ViewBag.ContractId',
+                fldTamdidTypeId: CboTypeTmadid.getValue(),
+                fldTarikhPayan: txtTarikh.rawValue,
+                fldMablaghAfzayeshi: parseInt(txtMablagh.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''))
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.SabtTamdid.queryById('TamdidGrid').store.load();
+                App.RegContract.queryById('RegContractGrid').store.load();
+                if (data.Er != 1)
+                    ClearTamdid();
+            }
+
+        });
+    }
+    function DeleteTamdid() {
+        var SelectedRow = App.SabtTamdid.queryById('TamdidGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Contracts/RegContract/DeleteTamdid',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtTamdid.queryById('TamdidGrid').store.load();
+                                App.RegContract.queryById('RegContractGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearTamdid() {    
+        App.SabtTamdid.queryById('fldId').setValue(0);
+        App.SabtTamdid.queryById('CboTypeTmadid').setValue("");
+        App.SabtTamdid.queryById('txtTarikh').setValue("");
+        App.SabtTamdid.queryById('txtMablagh').setValue("");
+    }
+
+    function HelpTamdid() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Contracts/RegContract/HelpTamdid',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+   
+
+    var addKeyMapSabtTamdid = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtTamdid.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtMablagh") {
+                        nextfld = App.SabtTamdid.queryById('btnSaveTamdid');
+                    }
+                    else /*if (keyfield.itemId != "txtFormooleCheck")*/ {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

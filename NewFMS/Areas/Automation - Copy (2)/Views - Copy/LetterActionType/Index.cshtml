@@ -1,0 +1,274 @@
+﻿@model IEnumerable<NewFMS.Models.spr_tblLetterActionTypeSelect>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("SabtLetterActionType")
+            .Title("انواع اقدامات نامه")
+                            .Listeners(li => { li.AfterRender.Handler = "LetterActionTypeSetSize();"; li.Render.Fn = "addKeyMapSabtLetterActionType"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveLetterActionType")
+                .Listeners(l => { l.Click.Handler = "SaveLetterActionType();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadLetterActionType();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteLetterActionType();"; })
+                , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpLetterActionType();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.SabtLetterActionType.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("اقدامات نامه").Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                        X.Label("عنوان:"),
+                       X.TextField()
+                        .ItemID("txtName")
+                            .MaxLength(200)
+                            .EnforceMaxLength(true)
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان را وارد کنید.")
+                    .AutoFocus(true)
+                    , X.Label("توضیحات:"),
+                        X.TextField()
+                        .ItemID("txtDesc")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(260)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("LetterActionTypeGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                            .Listeners(l => l.DataChanged.Handler = "App.SabtLetterActionType.queryById('LetterActionTypeGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtLetterActionType.queryById('LetterActionTypeGrid');grid.setHeight(App.AutomationWin.getHeight() - 260); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldTitleActionType).Text("عنوان").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.Win.addListener('resize', function () {
+        App.State.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.State.queryById('StateGrid');
+        grid.setHeight(App.Win.getHeight()-260);
+    });*/
+    function HelpLetterActionType() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/LetterActionType/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function LetterActionTypeSetSize() {
+        App.SabtLetterActionType.setWidth(App.AutomationWin.getWidth());
+        var grid = App.SabtLetterActionType.queryById('LetterActionTypeGrid');
+        grid.setHeight(App.AutomationWin.getHeight() - 260);
+    }
+    function LoadLetterActionType() {
+        var SelectedRow = App.SabtLetterActionType.queryById('LetterActionTypeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/LetterActionType/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtName = App.SabtLetterActionType.queryById('txtName');
+                    txtName.setValue(data.fldTitleActionType);
+                    var txtDescLetterActionType = App.SabtLetterActionType.queryById('txtDesc');
+                    txtDescLetterActionType.setValue(data.fldDesc);
+                    var fldId = App.SabtLetterActionType.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveLetterActionType() {
+        var txtName = App.SabtLetterActionType.queryById('txtName');
+        var txtDesc = App.SabtLetterActionType.queryById('txtDesc');
+        var fldId = App.SabtLetterActionType.queryById('fldId');
+            var er = false;
+
+            if (txtName.validate() == false) {
+                er = true;
+            }
+            else if (txtName.getValue().length < 2) {
+                Ext.MessageBox.show({
+                    Name: "خطا",
+                    msg: "تعداد کاراکتر عنوان وارد شده کمتر از حد مجاز میباشد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                er = true;
+               
+            }
+            else if (txtName.getValue().length  > 200) {
+                Ext.MessageBox.show({
+                    Name: "خطا",
+                    msg: "تعداد کاراکتر عنوان وارد شده بیشتر از حد مجاز میباشد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                er = true;
+                
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/LetterActionType/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldTitleActionType: txtName.getValue(),
+                    fldDesc: txtDesc.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtLetterActionType.queryById('LetterActionTypeGrid').store.load();
+                    if (data.Err != 1)
+                        ClearLetterActionType();
+                }
+
+            });
+    }
+    function DeleteLetterActionType() {
+        var SelectedRow = App.SabtLetterActionType.queryById('LetterActionTypeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Automation/LetterActionType/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtLetterActionType.queryById('LetterActionTypeGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearLetterActionType() {
+        App.SabtLetterActionType.queryById('fldId').setValue(0);
+        App.SabtLetterActionType.queryById('txtName').setValue("");
+        App.SabtLetterActionType.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapSabtLetterActionType = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtLetterActionType.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtLetterActionType.queryById('btnSaveLetterActionType');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

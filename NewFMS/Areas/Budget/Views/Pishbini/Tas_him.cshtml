@@ -1,0 +1,390 @@
+﻿@model IEnumerable<NewFMS.Models.Tas_him>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+
+@{
+    var X = Html.X();
+}
+<style>
+    .x-mcombo-item-unchecked {
+        background-position: right;
+        padding-right: 20px;
+    }
+
+    .x-mcombo-item-checked {
+        background-position: right;
+        padding-right: 20px;
+    }
+</style>
+<script>
+    
+    function setCheckedCol(value, metaData, record, rowIndex, colIndex, store) {
+        if (record.data.fldHazine != "0") {
+            return true;
+        }
+    }
+
+    function setCheckedCol2(value, metaData, record, rowIndex, colIndex, store) {
+        alert(value);
+    }
+
+</script>
+@(Html.X().Panel()
+    .ID("Tas_himDaramadi")
+    .Title("ثبت جزئیات کدهای درآمد")
+    .Closable(true)
+    .Listeners(li => li.AfterRender.Handler = "Tas_himDaramadiSetSize();")
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Layout(LayoutType.Fit)
+    .Items(
+        X.GridPanel()
+            .ID("Tas_himDaramadiGrid")
+            //.BottomBar(X.PagingToolbar().Listeners(l => l.BeforeChange.Fn = "CheckModifiedTas_himDaramadi"))
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(
+                        X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(li => li.Click.Handler = "SaveTas_himDaramadi();")
+                    )
+            )   
+            .Store(
+                X.StoreForModel()
+                    //.Listeners(l => l.DataChanged.Handler = "App.Tas_himDaramadi.queryById('Tas_himDaramadiGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("ReadTas_him"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                        .ExtraParams(l => l.Add(new { Year = ViewBag.Year}))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(false)
+                    .RemotePaging(false)
+            )
+            .View(
+                Html.X().GridView()
+                    .PreserveScrollOnRefresh(true)
+                    .LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .BottomBar(X.PagingToolbar())
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldCodingAcc_DetailsId).Text("کد ").Flex(1).Hidden(true),
+                Html.X().Column().DataIndex(Model, m => m.fldCode).Text("کد حساب").Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان حساب").Flex(4).Wrap(true),
+                    Html.X().ComponentColumn().ID("ColMasrafType")
+                    .Flex(1).Editor(true).Sortable(false).Text("نوع درآمد")
+                    .Listeners(l => l.Bind.Fn = "setValueCboMasrafType")
+                    .Component(
+                        X.ComboBox()
+                            .ItemID("CboMasrafType")
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع درآمد را انتخاب کنید.")
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("نوع درآمد...")
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Timeout(200000000)
+                                    .Url(Url.Action("GetMasrafType"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            )
+                        ),
+                Html.X().Column().Text("نوع مصرف").Flex(3).Columns(
+                    X.ComponentColumn().Text("هزینه ای").ID("ColHazinei").Component(X.Checkbox().Listeners(l => l.DirtyChange.Fn = "EvaluatePercent")).DataIndex(Model, m => m.fldHazine).Editor(true),
+                    X.ComponentColumn().Text("تملک سرمایه ای").Component(X.Checkbox().Listeners(l => l.Change.Fn = "EvaluatePercent2")).ID("ColSarmayei").DataIndex(Model, m => m.fldSarmaye).Editor(true),
+                    X.ComponentColumn().Text("تملک مالی").ID("ColMali").Component(X.Checkbox().Listeners(l => l.Change.Fn = "EvaluatePercent2")).DataIndex(Model, m => m.fldMali).Editor(true)
+                ),
+                Html.X().ComponentColumn().ID("ColMamooriat")
+                    .Flex(3).Editor(true).Sortable(false).Text("حوزه مصرف براساس مأموریت")
+                    .Listeners(l => l.Bind.Fn = "setValueCboMamooriat")
+                    .Component(
+                        X.MultiCombo()
+                            .ItemID("CboMamooriat")
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا حوزه مصرف را انتخاب کنید.")
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("حوزه مصرف...")
+                            .Store(X.Store()
+                                //.Listeners(l=>l.Load.Handler="singleLoad()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Timeout(200000000)
+                                    .Url(Url.Action("GetMamooriat"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                    .ExtraParams(l => l.Add(new { Year = ViewBag.Year}))
+                                )
+                        )
+                    ),
+                Html.X().Column().Text("درصد مصرف").Flex(3).Columns(
+                    Html.X().ComponentColumn().ID("ColPercentHazine").DataIndex(Model, m => m.fldPercentHazine).Text("هزینه ای")
+                        .Listeners(l => l.Bind.Fn = "setValuePercentHazine")
+                                
+                        .Component(Html.X().NumberField()
+                            .MaxValue(100)
+                            .MinValue(0)
+                                        .Listeners(l => l.Change.Fn = "CheckPercentHazine")
+                            .AllowDecimals(false)
+                            .AllowExponential(false)
+                            .MaskRe("[0-9]")
+                        ),
+                        Html.X().ComponentColumn().ID("ColPercentTamallok").DataIndex(Model, m => m.fldPercentTamallok).Text("تملک")
+                            .Listeners(l => l.Bind.Fn = "setValuePercentTamallok")
+                                .Listeners(l => l.Edit.Fn = "CheckPercentTamallok")
+                            
+                            .Component(Html.X().NumberField()
+                            .MaxValue(100)
+                            .MinValue(0)
+                            .AllowDecimals(false)
+                            .AllowExponential(false)
+                            .MaskRe("[0-9]")
+                        )
+                )
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+        )
+)
+
+<script type="text/javascript">
+
+    function singleLoad(){
+        /*var s=App.Tas_himDaramadi.queryById('Tas_himDaramadiGrid').store;
+        return !s.count() > 0;*/
+        return false;
+    }
+
+    var CheckPercentTamallok = function (Field, value,Index) {
+        var Indexx=App.Tas_himDaramadi.queryById('Tas_himDaramadiGrid').store.indexOf(Field.record);  
+        if(App.ColPercentHazine.getComponent(Indexx)!=null){  
+            if (App.ColPercentTamallok.getComponent(Indexx).disabled == false && App.ColPercentTamallok.getComponent(Indexx).getValue() != 0 && 
+                App.ColPercentTamallok.getComponent(Indexx).getValue()  != 100){
+                var newVal=100-(App.ColPercentTamallok.getComponent(Indexx).getValue());
+                if(newVal<0)
+                    newVal=0;
+                App.ColPercentHazine.getComponent(Indexx).setValue(newVal);
+            }
+        }
+    };
+
+    var CheckPercentHazine = function (Field, value,Index) {
+        var Indexx=App.Tas_himDaramadi.queryById('Tas_himDaramadiGrid').store.indexOf(Field.record);
+        if(App.ColPercentTamallok.getComponent(Indexx)!=null){  
+            if (App.ColPercentHazine.getComponent(Indexx).disabled == false && App.ColPercentHazine.getComponent(Indexx).getValue() != 0 && 
+                    App.ColPercentHazine.getComponent(Indexx).getValue()!=100){
+                var newVal=100-(App.ColPercentHazine.getComponent(Indexx).getValue());
+                if(newVal<0)
+                    newVal=0;
+                App.ColPercentTamallok.getComponent(Indexx).setValue(newVal);
+            }
+        }
+    };
+ 
+    var EvaluatePercent = function (Cehckfield, newValue) {
+        var record=Cehckfield.record;
+        var Indexx=App.Tas_himDaramadi.queryById('Tas_himDaramadiGrid').store.indexOf(Cehckfield.record);        
+        if(App.ColMali.getComponent(Indexx)!=null && App.ColPercentTamallok.getComponent(Indexx)!=null && App.ColPercentHazine.getComponent(Indexx)!=null){        
+            if (newValue == false) {
+                App.ColPercentHazine.getComponent(Indexx).setValue(0);
+                App.ColPercentHazine.getComponent(Indexx).disable();
+                if (App.ColMali.getComponent(Indexx).getValue() || App.ColSarmayei.getComponent(Indexx).getValue()) {
+                    App.ColPercentTamallok.getComponent(Indexx).setValue(100);
+                    App.ColPercentTamallok.getComponent(Indexx).disable();
+                }
+                else {
+                    App.ColPercentTamallok.getComponent(Indexx).setValue(0);
+                    App.ColPercentTamallok.getComponent(Indexx).disable();
+                }          
+            }
+            else {
+                if (App.ColSarmayei.getComponent(Indexx).getValue()==false && App.ColMali.getComponent(Indexx).getValue()==false) {
+                    App.ColPercentHazine.getComponent(Indexx).setValue(100);
+                    App.ColPercentTamallok.getComponent(Indexx).setValue(0);
+                    App.ColPercentHazine.getComponent(Indexx).disable();
+                    App.ColPercentTamallok.getComponent(Indexx).disable();
+                }
+                else {
+                    App.ColPercentHazine.getComponent(Indexx).setValue(0);
+                    App.ColPercentTamallok.getComponent(Indexx).setValue(0);
+                    App.ColPercentTamallok.getComponent(Indexx).enable();
+                    App.ColPercentHazine.getComponent(Indexx).enable();
+                }
+            }   
+        }
+    };
+
+    var EvaluatePercent2 = function (Cehckfield, newValue) {
+        var record=Cehckfield.record;
+        var Indexx=App.Tas_himDaramadi.queryById('Tas_himDaramadiGrid').store.indexOf(Cehckfield.record);
+        if(App.ColHazinei.getComponent(Indexx)!=null && App.ColSarmayei.getComponent(Indexx)!=null &&App.ColMali.getComponent(Indexx)!=null
+            && App.ColPercentTamallok.getComponent(Indexx)!=null && App.ColPercentHazine.getComponent(Indexx)!=null){
+            if (newValue == false) {
+                if (App.ColSarmayei.getComponent(Indexx).getValue() == false && App.ColMali.getComponent(Indexx).getValue() == false) {
+                    if (App.ColHazinei.getComponent(Indexx).getValue()) {
+                        App.ColPercentHazine.getComponent(Indexx).setValue(100);
+                        App.ColPercentHazine.getComponent(Indexx).disable();
+                        App.ColPercentTamallok.getComponent(Indexx).setValue(0);
+                        App.ColPercentTamallok.getComponent(Indexx).disable();
+                    }
+                    else {
+                        App.ColPercentHazine.getComponent(Indexx).setValue(0);
+                        App.ColPercentHazine.getComponent(Indexx).disable();
+                        App.ColPercentTamallok.getComponent(Indexx).setValue(0);
+                        App.ColPercentTamallok.getComponent(Indexx).disable();
+                    }
+                }
+                else {
+                    if (App.ColHazinei.getComponent(Indexx).getValue()) {
+                        App.ColPercentTamallok.getComponent(Indexx).enable();
+                        App.ColPercentHazine.getComponent(Indexx).enable();
+                        App.ColPercentHazine.getComponent(Indexx).setValue(0);
+                        App.ColPercentTamallok.getComponent(Indexx).setValue(0);
+                    }
+                    else {
+                        App.ColPercentHazine.getComponent(Indexx).setValue(0);
+                        App.ColPercentHazine.getComponent(Indexx).disable();
+                        App.ColPercentTamallok.getComponent(Indexx).setValue(100);
+                        App.ColPercentTamallok.getComponent(Indexx).disable();
+                    }
+                }
+            }
+            else {
+                if (App.ColHazinei.getComponent(Indexx).getValue()==false) {
+                    App.ColPercentTamallok.getComponent(Indexx).setValue(100);
+                    App.ColPercentTamallok.getComponent(Indexx).disable();
+                    App.ColPercentHazine.getComponent(Indexx).setValue(0);
+                    App.ColPercentHazine.getComponent(Indexx).disable();
+                }
+                else {
+                    App.ColPercentTamallok.getComponent(Indexx).setValue(0);
+                    App.ColPercentHazine.getComponent(Indexx).setValue(0);
+                    App.ColPercentTamallok.getComponent(Indexx).enable();
+                    App.ColPercentHazine.getComponent(Indexx).enable();
+                }
+            }
+        }
+    };
+
+    var setValueCboMamooriat = function (columnn, component, record, rowIndex) {
+        component.setValue(record.data.fldHozeMamooriyat);
+    };
+
+    var setValueCboMasrafType = function (columnn, component, record, rowIndex) {
+        component.setValue(record.data.fldHozeMasraf);
+    };
+
+    var setValuePercentTamallok = function (columnn, component, record, rowIndex) {
+        if((record.data.fldMali==false && record.data.fldSarmaye==false && record.data.fldHazine)
+            ||(record.data.fldHazine==false &&(record.data.fldMali || record.data.fldSarmaye)))
+        {
+            component.disable();
+        }
+        component.setValue(record.data.fldPercentTamallok);
+    };
+
+    var setValuePercentHazine = function (columnn, component, record, rowIndex) {
+        if((record.data.fldMali==false && record.data.fldSarmaye==false && record.data.fldHazine)
+            ||(record.data.fldHazine==false &&(record.data.fldMali || record.data.fldSarmaye)))
+        {
+            component.disable();
+        }
+        component.setValue(record.data.fldPercentHazine);
+    };
+    
+    function Tas_himDaramadiSetSize() {
+        App.Tas_himDaramadi.setWidth(App.BudjeWin.getWidth());
+        App.Tas_himDaramadi.queryById('Tas_himDaramadiGrid').setHeight(App.BudjeWin.getHeight() - 170);
+    }
+
+    function SaveTas_himDaramadi() {
+        var Tas_himArray = new Array();
+        var grid = App.Tas_himDaramadi.queryById("Tas_himDaramadiGrid");
+        var changedRow = grid.store.getModifiedRecords();
+
+        if (changedRow.length > 0) {
+            for (var i = 0; i < changedRow.length ; i++) {
+                var RowIndex=grid.store.indexOf(changedRow[i]);
+                if(App.ColMasrafType.getComponent(RowIndex).validate() && App.ColMamooriat.getComponent(RowIndex).validate() && 
+                    App.ColPercentHazine.getComponent(RowIndex).validate() && App.ColPercentTamallok.getComponent(RowIndex).validate() &&
+                    (App.ColSarmayei.getComponent(RowIndex).getValue() || App.ColMali.getComponent(RowIndex).getValue() || App.ColHazinei.getComponent(RowIndex).getValue()))
+                {
+                    var TypeDaramd=App.ColMasrafType.getComponent(RowIndex).getValue()+";2";
+                    var HozeMasraf=App.ColMamooriat.getComponent(RowIndex).getValue();
+                    HozeMasraf = (HozeMasraf.map(i => + i+';3')).toString();
+                    Tas_himArray.push({
+                        fldCodingAcc_DetailsId:changedRow[i].data.fldCodingAcc_DetailsId,
+                        fldPercentHazine:App.ColPercentHazine.getComponent(RowIndex).getValue(),
+                        fldPercentTamallok:App.ColPercentTamallok.getComponent(RowIndex).getValue(),
+                        fldHozeMasraf:TypeDaramd,
+                        fldHozeMamooriyat:HozeMasraf,
+                        fldMali:App.ColMali.getComponent(RowIndex).getValue(),
+                        fldHazine:App.ColHazinei.getComponent(RowIndex).getValue(),
+                        fldSarmaye:App.ColSarmayei.getComponent(RowIndex).getValue()
+                    });
+                }
+                else{
+                    continue;
+                }
+            }
+            
+            var data = {
+                Tas_him: Tas_himArray
+            };
+
+            App.Tas_himDaramadi.body.mask('در حال ذخیره سازی...');
+            $.ajax({
+                type: "POST",
+                url: '/Budget/Pishbini/SaveTas_him',
+                datatype: "json",
+                data: JSON.stringify(data),
+                contentType: 'application/json; charset=utf-8',
+                success: function (result) {
+                    App.Tas_himDaramadi.body.mask().hide();
+                    var ico = Ext.MessageBox.INFO;
+                    if (result.Er == 1)
+                        ico = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: result.MsgTitle,
+                        msg: result.Msg,
+                        icon: ico,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    grid.store.load();
+                },
+                failure: function (data1) {
+                    alert(data.data1);
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "تغییری در اطلاعات جهت ثبت آن، اعمال نگردیده است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

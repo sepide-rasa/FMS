@@ -1,0 +1,1186 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_CodhayeDaramd>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using NewFMS.Models
+
+@{ var X = Html.X();
+   var Drd_Per = false;
+   if (Permission.haveAccess(1190, Session["Username"].ToString(), Session["Password"].ToString(), Convert.ToInt32(Session["OrganId"])))
+   {
+       Drd_Per = true;
+       
+   }
+   }
+<br />
+
+@*<script>
+    var a;
+    var searchInTreePanel = function (field) {
+        var tree = App.TreeDaramad;/*field.treePanel;*/
+        a = field;
+        text = a.getValue().fldDaramadTitle;/*field.getFilterValues().value;*/
+
+        if (Ext.isEmpty(text, false)) {
+            tree.clearFilter(true);
+        }
+
+        if (Ext.isEmpty(text, false)) {
+            return;
+        }
+
+        var re = new RegExp(".*" + text + ".*", "i");
+
+        tree.clearFilter(true);
+
+        tree.filterBy(function (node) {
+            var match = re.test(node.data.task),
+                pn = node.parentNode;
+
+            if (match && node.isLeaf()) {
+                pn.hasMatchNode = true;
+            }
+
+            if (pn != null && pn.fixed) {
+                if (node.isLeaf() === false) {
+                    node.fixed = true;
+                }
+                return true;
+            }
+
+            if (node.isLeaf() === false) {
+                node.fixed = match;
+                return match;
+            }
+
+            return (pn != null && pn.fixed) || match;
+        }, { expandNodes: true });
+
+        tree.getView().animate = false;
+        tree.getRootNode().cascadeBy(function (node) {
+            if (node.isRoot()) {
+                return;
+            }
+
+            if ((node.getDepth() === 1) ||
+                (node.getDepth() === 2 && node.hasMatchNode)) {
+                node.expand(false);
+            }
+
+            delete node.fixed;
+            delete node.hasMatchNode;
+        }, tree);
+        tree.getView().animate = true;
+    };*@
+
+    @*var TreeGridFilter= Ext.define('TreeGridFilter', {
+            extend: 'Ext.grid.feature.Feature'
+        , alias: 'feature.treeGridFilter'
+        , collapseOnClear: true                                             /* collapse all nodes when clearing/resetting the filter*/
+        , allowParentFolders: false                                         /* allow nodes not designated as 'leaf' (and their child items) to  be matched by the filter*/
+        , treeGrid: null
+        , filterPropertyNames: new Array()
+        , filterPropertyValues: new Array()
+        , filterColumnRenderers: new Array()
+        , init: function (tree) {
+            var me = this;
+            treeGrid = me.tree = tree;
+            var view = me.view;
+            var headerCt = view.headerCt;
+
+            /* Listen for header menu being created*/
+            headerCt.on('menucreate', me.onMenuCreate, me);
+
+            tree.filter = Ext.Function.bind(me.filter, me);
+            tree.clearFilter = Ext.Function.bind(me.clearFilter, me);
+        }
+
+        , filter: function (value, property, re, columnRenderer) {
+            var me = this
+                , tree = me.tree
+                , matches = []                                              /* array of nodes matching the search criteria*/
+                , root = tree.getRootNode()                                  /*root node of the tree*/
+                , property = property || 'text'                              /*property is optional - will be set to the 'text' propert of the  treeStore record by default*/
+                , visibleNodes = []                                          /*array of nodes matching the search criteria + each parent non-leaf  node up to root*/
+                , viewNode;
+
+            me.updateValueForName(property, value, columnRenderer);
+            if (me.filterPropertyNames.length == 0) {                       /* if the search field is empty*/
+                me.clearFilter();
+                return;
+            }
+
+            tree.expandAll();                                               /* expand all nodes for the the following iterative routines*/
+
+            /*iterate over all nodes in the tree in order to evalute them against the search criteria*/
+            root.cascadeBy(function (node) {
+                var numberOfFiltersMatched = 0;
+                for (var index = 0; index < me.filterPropertyNames.length; index++) {
+                    var propertyName = me.filterPropertyNames[index];
+                    var propertyValue = me.filterPropertyValues[index];
+                    var propertyValueOfNode = node.get(propertyName);
+                    if (me.filterColumnRenderers[index] != false) {
+                        var renderingFunction = me.filterColumnRenderers[index];
+                        propertyValueOfNode = renderingFunction(propertyValueOfNode);           /*Using the renderer function of the column*/
+                    }
+                    var regExpn = new RegExp(propertyValue, "ig");                          /* the regExp could be modified to allow for case-sensitive, starts  with, etc.*/
+                    if (propertyValueOfNode != null && (propertyValueOfNode + '').match(regExpn)) {
+                        numberOfFiltersMatched++;
+                    }
+                }
+                if (numberOfFiltersMatched == me.filterPropertyNames.length) {
+                    matches.push(node);                                     /* add the node to the matches array*/
+                }
+            });
+
+            if (me.allowParentFolders === false) {                          /* if me.allowParentFolders is false (default) then remove any non-leaf nodes from the regex match*/
+                Ext.each(matches, function (match) {
+                    if (match == null || !match.isLeaf()) {
+                        Ext.Array.remove(matches, match);
+                    }
+                });
+            }
+
+            Ext.each(matches, function (item, i, arr) {                     /* loop through all matching leaf nodes*/
+                root.cascadeBy(function (node) {                            /* find each parent node containing the node from the matches array*/
+                    if (node.contains(item) == true) {
+                        visibleNodes.push(node);                            /* if it's an ancestor of the evaluated node add it to the visibleNodes  array*/
+                    }
+                });
+                if (me.allowParentFolders === true && !item.isLeaf()) {     /* if me.allowParentFolders is true and the item is  a non-leaf item*/
+                    item.cascadeBy(function (node) {                        /* iterate over its children and set them as visible*/
+                        visibleNodes.push(node);
+                    });
+                }
+                visibleNodes.push(item);                                    /* also add the evaluated node itself to the visibleNodes array*/
+            });
+
+            root.cascadeBy(function (node) {                                /* finally loop to hide/show each node*/
+                viewNode = Ext.fly(tree.getView().getNode(node));           /* get the dom element assocaited with each node*/
+                if (viewNode) {                                             /* the first one is undefined ? escape it with a conditional*/
+                    viewNode.setVisibilityMode(Ext.Element.DISPLAY);        /* set the visibility mode of the dom node to display (vs offsets)*/
+                    viewNode.setVisible(Ext.Array.contains(visibleNodes, node));
+                }
+            });
+        }
+
+        , clearFilter: function () {
+            var me = this
+                , tree = this.tree
+                , root = tree.getRootNode();
+
+            if (me.collapseOnClear) {
+                tree.collapseAll();                                         /* collapse the tree nodes*/
+            }
+            root.cascadeBy(function (node) {                                /* final loop to hide/show each node*/
+                viewNode = Ext.fly(tree.getView().getNode(node));           /* get the dom element assocaited with each node*/
+                if (viewNode) {                                             /* the first one is undefined ? escape it with a conditional and show  all nodes*/
+                    viewNode.show();
+                }
+            });
+        },
+
+            onMenuCreate: function (headerCt, menu) {
+                var me = this;
+                menu.on('beforeshow', me.onMenuBeforeShow, me);
+            },
+
+            onMenuBeforeShow: function (menu) {
+                var me = this;
+                var currentHeaderFilter = menu.activeHeader.filter;
+                if (currentHeaderFilter == null) {
+                    if (me.menuItem == null) {
+                        return;
+                    }
+                    me.menuItem.hide();
+                    me.menuSeparator.hide();
+                } else if (me.menuItem != null) {
+                    me.menuItem.show();
+                    me.menuSeparator.show();
+                }
+                if (me.menuItem) {
+                    var perviousFilterValue = me.getValueForName(menu.activeHeader.dataIndex);
+                    if (perviousFilterValue == null || perviousFilterValue == '') {
+                        me.menuItem.setRawValue('');
+                    } else {
+                        me.menuItem.setRawValue(perviousFilterValue);
+                    }
+                } else {
+                    me.menuSeparator = menu.add('-');
+
+                    var filterTextFiels = new Ext.form.TextField({
+                        itemId: 'filterTextBox',
+                        cls: 'find-icon',
+                        listeners: {
+                            'change': this.onFilterTextChange
+                        }
+                    });
+                    me.menuItem = menu.add(filterTextFiels);
+                }
+                me.menuItem.activeDataIndex = menu.activeHeader.dataIndex;
+                me.menuItem.activeRenderer = menu.activeHeader.renderer;
+                me.menuItem.width = (currentHeaderFilter == null || currentHeaderFilter.width == null) ? 150 : currentHeaderFilter.width;
+            },
+
+            onFilterTextChange: function (searchMenuItem, value) {
+                treeGrid.filter(value, searchMenuItem.activeDataIndex, null, searchMenuItem.activeRenderer);
+            },
+
+            updateValueForName: function (property, value, columnRenderer) {
+                var propertyIndex = -1;
+                for (var index = 0; index < this.filterPropertyNames.length; index++) {
+                    if (property == this.filterPropertyNames[index]) {
+                        propertyIndex = index;
+                        break;
+                    }
+                }
+                if (propertyIndex >= 0) {
+                    if (value == null || value == '') {
+                        this.filterPropertyNames.splice(propertyIndex, 1);
+                        this.filterPropertyValues.splice(propertyIndex, 1);
+                        this.filterColumnRenderers.splice(propertyIndex, 1);
+                    } else {
+                        this.filterPropertyValues[propertyIndex] = value;
+                    }
+                } else {
+                    propertyIndex = this.filterPropertyNames.length;
+                    this.filterPropertyNames[propertyIndex] = property;
+                    this.filterPropertyValues[propertyIndex] = value;
+                    this.filterColumnRenderers[propertyIndex] = columnRenderer;
+                }
+            },
+
+            getValueForName: function (property) {
+                var propertyIndex = -1;
+                for (var index = 0; index < this.filterPropertyNames.length; index++) {
+                    if (property == this.filterPropertyNames[index]) {
+                        propertyIndex = index;
+                        break;
+                    }
+                }
+                if (propertyIndex >= 0) {
+                    return this.filterPropertyValues[propertyIndex];
+                } else {
+                    return null;
+                }
+            }
+        });
+    </script>*@
+
+<style>
+    /*.x-rtl .x-textfield-icon {
+        margin-right: 120px;
+    }
+    .x-rtl .x-textfield-icon-input {
+        padding-right: 5px;
+    }*/
+    /*.custom-gridPerformance .x-column-header-inner .x-column-header-text {
+        white-space: normal;
+        text-align:center;
+    }*/
+
+    .rowheight{
+        height:40px;
+    }
+
+</style>
+@(Html.X().Panel()
+    .ID("IncomeCodes")
+    .Title("تعریف کدهای درآمد")
+    .Width(1000)
+    .Listeners(li => { li.AfterRender.Handler = "IncomeCodesSetSize();"; li.Render.Fn = "addKeyMapIncomeCodes"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.VBox)
+    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.HBox)
+            .Items(
+                X.Panel()
+                    .ItemID("PnlFields")
+                    .Padding(10)
+                    .Border(true)
+                    .Layout(LayoutType.Fit)
+                    .Items(
+                        X.FieldSet()
+                            .Border(false)
+                            .Title("اطلاعات کدهای درآمد")
+                            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                            .Padding(10)
+                            .Items(
+                                X.Panel()
+                                    .Border(false)
+                                    .LayoutConfig(new TableLayoutConfig { Columns = 2, TRAttrs = { Cls = "rowheight" } })
+                                    .Defaults(new { MarginSpec = "5px 5px 5px 5px" })
+                                    .ButtonAlign(Alignment.Center)
+                                    .Buttons(
+                                        Html.X().Button().ItemID("btnSave").Text("ذخیره").Margin(5).Icon(Icon.Disk).Listeners(l => l.Click.Handler = "SaveTree()")
+                                        )
+                                    .Items(
+                                        X.Hidden().ItemID("fldId"),
+                                        X.Label("کد درآمد:"),
+                                        X.TextField()
+                                            .ItemID("txtCode")
+                                            .AllowBlank(false)
+                                            .AutoFocus(true)
+                                            .BlankText("لطفا کد درآمد را وارد کنید.")
+                                            .MaxLength(50)
+                                            .PaddingSpec("0 0 0 10px")
+                                            .MaskRe("[0-9,/,.]"),
+                                        X.Label("واحد اندازه گیری:"),
+                                        X.ComboBox()
+                                            .ItemID("CboUnit")
+                                            .TypeAhead(true)
+                                            .Editable(true)
+                                            .ForceSelection(true)
+                                            .QueryMode(DataLoadMode.Local)
+                                            .IndicatorIcon(Icon.ArrowRefresh)
+                                            .Width(164)
+                                            .IndicatorTip("به روز رسانی")
+                                            .Listeners(l => l.IndicatorIconClick.Handler = "App.IncomeCodes.queryById('CboUnit').store.load();")
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا واحد اندازه گیری را انتخاب کنید.")
+                                            .ForceSelection(true)
+                                            .TriggerAction(TriggerAction.All)
+                                            .DisplayField("fldName")
+                                            .ValueField("fldId")
+                                            .EmptyText("واحد اندازه گیری...")
+                                            .Store(X.Store()
+                                                .Model(X.Model()
+                                                    .IDProperty("fldId")
+                                                    .Fields(
+                                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                        )
+                                                    )
+                                                .Proxy(X.AjaxProxy()
+                                                    .Url(Url.Action("GetUnit"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                                    )
+                                                ),
+                                        X.Label("عنوان:"),
+                                        X.TextArea()
+                                            .ItemID("txtTitle")
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا عنوان را وارد کنید.")
+                                            .MaxLength(250),
+                                        /*X.Label("شماره حساب:"),
+                                        X.TextField()
+                                            .ItemID("txtShHesab")
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا شماره حساب را وارد کنید.")
+                                            .ReadOnly(true)
+                                            .IconCls("ShomareHesab")
+                                            .DirectEvents(li =>
+                                            {
+                                                li.SpecialKey.Url = "/Comon/SearchShomareHesab/Index?State=1&AshkhasId=";
+                                                li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                                li.IconClick.Url = "/Comon/SearchShomareHesab/Index?State=1&AshkhasId=";
+                                            }),*/
+                                        
+                                        X.Label("توضیحات:"),
+                                        X.TextArea()
+                                            .ItemID("txtDesc"),
+                                        X.FieldSet()
+                                            .ID("FieldsetArzesh")
+                                            .Border(false)
+                                            .Layout(LayoutType.HBox)
+                                            .ColSpan(2)
+                                            .Items(
+                                                X.Checkbox()
+                                                    .ItemID("chkArzesh")
+                                                    .PaddingSpec("0 58px 0 7px"),
+                                                X.Label("مشمول ارزش افزوده")),
+                                        X.FieldSet()
+                                            .ID("FieldsetKarmozd")
+                                            .Border(false)
+                                            .Layout(LayoutType.HBox)
+                                            .ColSpan(2)
+                                            .Items(
+                                                X.Checkbox()
+                                                    .ItemID("chkKarmozd")
+                                                    .PaddingSpec("0 58px 0 7px"),
+                                                X.Label("مشمول کارمزد")
+                                                    .Width(80)
+                                                        )
+                                                     /*   ,
+                                            X.FieldSet()
+                                                .ID("FieldsetAmuzesh")
+                                                .Border(false)
+                                                .Layout(LayoutType.HBox)
+                                                .ColSpan(2)
+                                                .Items(
+                                                    X.Checkbox()
+                                                        .ItemID("chkAmuzesh")
+                                                        .PaddingSpec("0 58px 0 7px"),
+                                                    X.Label("عوارض آموزش پرورش")
+                                                        .Width(110)
+                                                        )*/
+                                        ))
+                    ),
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.Fit)
+                    .ItemID("PnlTree")
+                    .Padding(10)
+                    .Items(
+                        X.FieldSet()
+                            .Border(true)
+                            .Layout(LayoutType.Fit)
+                            .Title("ساختار درختی کدهای درآمد")
+                            .Items(
+                                X.TreePanel()
+                                    .ID("TreeDaramad")
+                                    //.TopBar(Html.X().Toolbar().Items(X.TextField().Listeners(l => l.Change.Fn = "searchInTreePanel").Listeners(l => l.AfterRender.Handler = "this.treePanel = this.up('treepanel');")))
+                                    //.Cls("custom-gridPerformance")
+                                    .AutoScroll(true)
+                                    .Border(true)
+                                    .UseArrows(true)
+                                    .Listeners(l=>{
+                                        l.AfterRender.Handler = "AddMenu();this.getRootNode().expand();";
+                                        l.ItemClick.Fn = "SetDefaultParentDate";
+                                    })
+                                    //.Plugins(X.FilterHeader().Listeners(l => l.Filter.Fn = "searchInTreePanel"))
+                                    //.Plugins(Html.X().FilterHeader().Remote(false))                      
+                                    //.ViewConfig(Html.X().TreeView().Listeners(l => l.BeforeDrop.Fn = "moveNodes").Plugins(Html.X().TreeViewDragDrop().AppendOnly(true)))
+                                    .Store(
+                                        X.TreeStore()
+                                            .Model(
+                                                Html.X().Model()
+                                                    .Fields(
+                                                        X.ModelField().Name(Model, m => m.fldDaramadCode),
+                                                        X.ModelField().Name(Model, m => m.fldDaramadTitle).Type(ModelFieldType.String),
+                                                        X.ModelField().Name(Model, m => m.fldNameVahed).Type(ModelFieldType.String),
+                                                        X.ModelField().Name(Model, m => m.fldMashmooleArzesheAfzoode).Type(ModelFieldType.Boolean),
+                                                        X.ModelField().Name(Model, m => m.fldMashmooleKarmozd).Type(ModelFieldType.Boolean),
+                                                        /*X.ModelField().Name(Model, m => m.fldAmuzeshParvaresh).Type(ModelFieldType.Boolean),*/
+                                                        X.ModelField().Name(Model, m => m.fldUnitId).Type(ModelFieldType.Int),
+                                                        X.ModelField().Name(Model, m => m.fldFlag).Type(ModelFieldType.Int),
+                                                        X.ModelField().Name(Model, m => m.lastNod).Type(ModelFieldType.Int),                                                        
+                                                        X.ModelField().Name(Model, m => m.fldDesc).Type(ModelFieldType.String)
+                                                        )
+                                                    )
+                                            .Proxy(
+                                                Html.X().AjaxProxy()
+                                                    .Url(Url.Action("NodeLoadGroup"))
+                                                )
+                                            .Listeners(l => l.BeforeLoad.Fn = "GetParamTreeDaramad")
+                                        )
+                                    .TopBar(X.Toolbar().Items(
+                                        X.Button().Text("ویرایش").Icon(Icon.Pencil).Listeners(l => l.Click.Handler = "EditNode()"),
+                                        X.Button().Text("حذف").Icon(Icon.Delete).Listeners(l => l.Click.Handler = "DeleteNode()"),
+                                        X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpIncomeCodes();"; }),
+                                        X.Button().Text("ورود کدهای درآمد").Icon(Ext.Net.Icon.Add).Listeners(l => { l.Click.Handler = "InsertFromAccounting();"; }).Hidden(!Drd_Per)
+                                    ))
+                                    .ColumnModel(
+                                        X.TreeColumn().Text("عنوان").DataIndex("fldDaramadTitle").Wrap(true).Flex(9),
+                                        X.Column().Text("کد درآمد").DataIndex("fldDaramadCode").Wrap(true).Flex(2),
+                                        X.Column().Text("واحد اندازه گیری").DataIndex("fldNameVahed").Wrap(true).Flex(2),
+                                        X.CheckColumn().Text("مشمول ارزش افزوده").DataIndex("fldMashmooleArzesheAfzoode").Renderer("hidecheck").Editable(false).StopSelection(false).Flex(2),
+                                            X.CheckColumn().Text("مشمول کارمزد").DataIndex("fldMashmooleKarmozd").Renderer("hidecheck").Editable(false).StopSelection(false).Flex(2)/*,
+                                                X.CheckColumn().Text("عوارض آموزش پرورش").DataIndex("fldAmuzeshParvaresh").Renderer("hidecheck").Editable(false).StopSelection(false).Flex(2)*/
+                                        /*,
+                                        X.ImageCommandColumn().PrepareCommand("hideParam").Listeners(l => l.Command.Fn = "ActionParam").Flex(1)
+                                            .Commands(
+                                                Html.X().ImageCommand().CommandName("GotoParam").IconCls("ParameterTree").ToolTip(tt => tt.Text = "تعریف پارامترهای اختصاصی")),
+                                        X.ImageCommandColumn().PrepareCommand("hidePattern").Listeners(l => l.Command.Fn = "ActionPattern").Flex(1)
+                                            .Commands(
+                                                Html.X().ImageCommand().CommandName("GotoPattern").IconCls("Pattern").ToolTip(tt => tt.Text = "تعریف الگوی نامه نگاری")),
+                                        X.ImageCommandColumn().PrepareCommand("hideReportPattern").Listeners(l => l.Command.Fn = "ActionReportPattern").Flex(1)
+                                            .Commands(
+                                                Html.X().ImageCommand().CommandName("GotoReportPattern").IconCls("PatternRpt").ToolTip(tt => tt.Text = "تعریف الگوی گزارش")),
+                                        X.ImageCommandColumn().PrepareCommand("hidetranscript").Listeners(l => l.Command.Fn = "Actiontranscript").Flex(1)
+                                            .Commands(
+                                                Html.X().ImageCommand().CommandName("Gototranscript").IconCls("Copy").ToolTip(tt => tt.Text = "رونوشت")),
+                                        X.ImageCommandColumn().PrepareCommand("hideGeneralFormul").Listeners(l => l.Command.Fn = "ActionGeneralFormul").Flex(1)
+                                            .Commands(
+                                                Html.X().ImageCommand().CommandName("GotoGeneralFormul").IconCls("FormulKoli").ToolTip(tt => tt.Text = "فرمول کلی")),
+                                        X.ComponentColumn().Align(Alignment.Center).ItemID("FormulMenu").Listeners(l => l.Bind.Fn = "hideFormul").Flex(3).Component(Html.X().Button().Flat(true).Text("فرمول محاسبات").Menu(Html.X().Menu().Items(Html.X().MenuItem().Listeners(l => l.Click.Handler = "ActionFormul1();").Text("فرمول ساز").IconCls("Formul1"), Html.X().MenuItem().Listeners(l => l.Click.Handler = "ActionFormul2();").Text("فرمول نویس").IconCls("Formul2"))))
+                               */
+                                    )
+                                    .Root(Html.X().Node().NodeID("1").AttributesObject(new { fldDaramadCode = "", fldMashmooleArzesheAfzoode = false, fldMashmooleKarmozd = false, fldNameVahed="",fldDaramadTitle = "کدهای درآمد" }).Expanded(false))
+                            )
+                        )
+                )
+        )
+)
+<script type="text/javascript">  
+    /*var treeGridFilter = {
+        ftype: "treeGridFilter"
+    };*/
+    var LastActiveRow = 0;
+
+    var SetDefaultParentDate = function (view, rec, htmlr) {
+        App.IncomeCodes.queryById('CboUnit').setValue(String(rec.data.fldUnitId));
+        App.IncomeCodes.queryById('chkArzesh').setValue(rec.data.fldMashmooleArzesheAfzoode);
+        App.IncomeCodes.queryById('chkKarmozd').setValue(rec.data.fldMashmooleKarmozd);
+       /* App.IncomeCodes.queryById('chkAmuzesh').setValue(rec.data.fldAmuzeshParvaresh);*/
+    }; 
+
+    @*var moveNodes = function (a, child, parent, d,e) {
+        e.wait = true;
+        Ext.MessageBox.show({
+            title: "هشدار",
+            msg: "آیا برای جابجایی این شاخه مطمئن هستید؟",
+            icon: Ext.MessageBox.WARNING,
+            buttons: Ext.MessageBox.YESNO,
+            fn: function (btn) {
+                if (btn == "yes") {
+                    Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Daramad/IncomeCodes/MoveNodes',
+                        params: {
+                            childId: child.records[0].data.id,
+                            parentId: parent.data.id
+                        },
+                        success: function (data) {
+                            if (data.Err == 1) {
+                                e.cancelDrop();
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.ERROR,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                            }
+                            if (data.Err != 1) {
+                                e.processDrop();
+                                Ext.net.Mask.hide();
+                            }
+                            /*Ext.net.Mask.hide();
+                            var ic = Ext.MessageBox.INFO;
+                            if (data.Err == 1)
+                                ic = Ext.MessageBox.ERROR;
+                            Ext.MessageBox.show({
+                                title: data.MsgTitle,
+                                msg: data.Msg,
+                                icon: ic,
+                                buttons: Ext.MessageBox.OK
+                            });*/
+                        }
+                    });
+                }
+                else {
+                    e.cancelDrop();
+                }
+            }
+        });      
+    };*@
+
+    var ActionParam = function (column, command, record, rowIndex) {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/ParametreSabet/IndexWin',
+            params: {
+                id: record.data.id
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    };
+    function HelpIncomeCodes() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/IncomeCodes/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var ActionPattern = function (column, command, record, rowIndex) {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/LetterMinut/IndexWin',
+            params: {
+                id: record.data.id
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    };
+
+    var ActionReportPattern = function (column, command, record, rowIndex) {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/PatternReport/IndexNew',
+            params: {
+                DaramadId: record.data.id
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    };
+
+    var Actiontranscript = function (column, command, record, rowIndex) {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/Roonevesht/IndexWin',
+            params: {
+                id: record.data.id
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    };
+
+    var ActionGeneralFormul = function (column, command, record, rowIndex) {
+        var columnn = App.TreeDaramad.queryById("FormulMenu");
+        LastActiveRow = columnn.activeRecord.record.data.id;
+        openWindowWithPost("/WritingFormula/Formula", {
+            ID: columnn.activeRecord.record.data.id,
+            FieldName: "FormulKoli",
+            FormulId: columnn.activeRecord.record.data.fldFormulKoliId,
+            RankingType: null,
+            OrganId: null,
+            OrganName: "فرمول کلی کدهای درآمد(" + columnn.activeRecord.record.data.fldDaramadTitle + ")",
+            AzTarikh: ""
+        });
+    }; 
+
+    var ActionFormul1 = function () {/*فرمول ساز*/
+        var columnn = App.TreeDaramad.queryById("FormulMenu");
+        if (columnn.activeRecord.record.data.fldFormulMohasebatId != 0) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "برای کد درآمد انتخاب شده در قسمت فرمول نویس، فرمولی ثبت شده است. در صورت ثبت فرمول در قسمت فرمول ساز، فرمول قبلی حذف خواهد شد. آیا مایل به ادامه عملیات هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/IncomeCodes/FormulSaz',
+                            params: {
+                                ShomareHesabCodeDaramadId: columnn.activeRecord.record.data.id,
+                                Formul: columnn.activeRecord.record.data.fldFormolsaz
+                            },
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/IncomeCodes/FormulSaz',
+                params: {
+                    ShomareHesabCodeDaramadId: columnn.activeRecord.record.data.id,
+                    Formul: columnn.activeRecord.record.data.fldFormolsaz
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    };
+
+    var ActionFormul2 = function () {/*فرمول نویس*/
+        var columnn = App.TreeDaramad.queryById("FormulMenu");
+        if (columnn.activeRecord.record.data.fldFormolsaz != "") {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "برای کد درآمد انتخاب شده در قسمت فرمول ساز، فرمولی ثبت شده است. در صورت ثبت فرمول در قسمت فرمول نویس، فرمول قبلی حذف خواهد شد. آیا مایل به ادامه عملیات هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        LastActiveRow = columnn.activeRecord.record.data.id;
+                        openWindowWithPost("/WritingFormula/Formula", {
+                            ID: columnn.activeRecord.record.data.id,
+                            FieldName: "formulMohasebat",
+                            FormulId: columnn.activeRecord.record.data.fldFormulMohasebatId,
+                            RankingType: null,
+                            OrganId: null,
+                            OrganName: "کدهای درآمد(" + columnn.activeRecord.record.data.fldDaramadTitle + ")",
+                            AzTarikh: ""
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            LastActiveRow = columnn.activeRecord.record.data.id;
+            openWindowWithPost("/WritingFormula/Formula", {
+                ID: columnn.activeRecord.record.data.id,
+                FieldName: "formulMohasebat",
+                FormulId: columnn.activeRecord.record.data.fldFormulMohasebatId,
+                RankingType: null,
+                OrganId: null,
+                OrganName: "کدهای درآمد(" + columnn.activeRecord.record.data.fldDaramadTitle + ")",
+                AzTarikh: ""
+            });
+        }
+    };
+
+    function openWindowWithPost(url, data) {
+        var form = document.createElement("form");
+        form.target = "_blank";
+        form.method = "POST";
+        form.action = url;
+        form.id = "newFormultab";
+        form.style.display = "none";
+
+        for (var key in data) {
+            var input = document.createElement("input");
+            input.type = "hidden";
+            input.name = key;
+            input.value = data[key];
+            form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    }
+
+    var hidecheck = function (value, metaData, record, rowIndex, colIndex, store) {
+        if (record.data.id != 1 )
+            return Ext.ux.CheckColumn.prototype.renderer.apply(this, arguments);
+    };
+
+    function SaveTree() {
+        var Id = App.IncomeCodes.queryById('fldId');
+        var txtCode = App.IncomeCodes.queryById('txtCode');
+        var txtTitle = App.IncomeCodes.queryById('txtTitle');
+        var txtDesc = App.IncomeCodes.queryById('txtDesc');
+        var CboUnit = App.IncomeCodes.queryById('CboUnit');
+        var chkArzesh = App.IncomeCodes.queryById('chkArzesh'); 
+        var chkKarmozd = App.IncomeCodes.queryById('chkKarmozd');
+        /*var chkAmuzesh = App.IncomeCodes.queryById('chkAmuzesh');*/
+
+        var ParentNode;
+        var SelectedNode = App.TreeDaramad.getSelectionModel().getLastSelected();  
+        if(SelectedNode!=null){
+            ParentNode=SelectedNode.parentNode;
+        }
+
+        var er = false;
+
+        if (txtCode.validate() == false) {
+            er = true;
+        }
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (CboUnit.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        if (SelectedNode == null) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا ابتدا یک سطر (شاخه) را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        /*نمیدونم این شرط چیه خانوم علیزاده گذاشته من کامنت کردم  */
+        else if (Id.getValue() == 0 && SelectedNode.data.lastNod== 0) {    
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/IncomeCodes/CheckChildFlag',
+                params: {
+                    Id: SelectedNode.data.id,
+                    FiscalYearId:'@ViewBag.FiscalYearId'
+                },
+                success: function (data) {
+                    if(data.AccountingChild){
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "امکان ثبت کد درآمد برای شاخه انتخاب شده وجود ندارد.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                    else{
+                        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/IncomeCodes/Save',
+                            params: {
+                                fldId: Id.getValue(),
+                                fldDaramadCode: txtCode.getValue(),
+                                fldDaramadTitle: txtTitle.getValue(),
+                                fldMashmooleArzesheAfzoode:chkArzesh.getValue(),
+                                fldMashmooleKarmozd:chkKarmozd.getValue(),
+                                fldAmuzeshParvaresh: false,/*chkAmuzesh.getValue(),*/
+                                fldUnitId: CboUnit.getValue(),
+                                fldDesc: txtDesc.getValue(),
+                                fldPID: SelectedNode.data.id
+                            },
+                            success: function (data) {
+                                Ext.net.Mask.hide();
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Err == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                if (data.Err != 1) {
+                                    if (Id.getValue() == 0) {/*insert*/
+                                        App.TreeDaramad.getStore().load({ node: SelectedNode });
+                                        /*App.TreeDaramad.store.on('load', function (tree, node) { node.expand(); });*/
+                                        ClearIncomeCodes();
+                                        SelectedNode.data.lastNod=0;
+                                    }
+                                    else {/*edit*/
+                                        App.TreeDaramad.getStore().load({ node: ParentNode });
+                                        ClearIncomeCodes();
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+        }            
+        else{
+            /*var PID=0;
+            if(SelectedNode!=null){
+                PID=SelectedNode.data.id;
+            }*/
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/IncomeCodes/Save',
+                params: {
+                    fldId: Id.getValue(),
+                    fldDaramadCode: txtCode.getValue(),
+                    fldDaramadTitle: txtTitle.getValue(),
+                    fldMashmooleArzesheAfzoode:chkArzesh.getValue(),
+                    fldMashmooleKarmozd: chkKarmozd.getValue(),
+                    fldAmuzeshParvaresh: false,/*chkAmuzesh.getValue(),*/
+                    fldUnitId: CboUnit.getValue(),
+                    fldDesc: txtDesc.getValue(),
+                    fldPID: SelectedNode.data.id
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    if (data.Err != 1) {
+                        if (Id.getValue() == 0) {/*insert*/
+                            App.TreeDaramad.getStore().load({ node: SelectedNode });
+                            /*App.TreeDaramad.store.on('load', function (tree, node) { node.expand(); });*/
+                            ClearIncomeCodes();
+                            SelectedNode.data.lastNod=0;
+                        }
+                        else {/*edit*/
+                            App.TreeDaramad.getStore().load({ node: ParentNode });
+                            ClearIncomeCodes();
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    function AddMenu() {
+        var menu_grid = new Ext.menu.Menu({
+            bodyStyle:'background-color:#dfe8f6 !important;',
+            items: [
+                { text: "ویرایش", iconCls: "Editico", handler: function () { EditNode(); } },
+                { text: "حذف", iconCls: "Deleteico", handler: function () { DeleteNode(); } }
+            ]
+        });
+        App.TreeDaramad.on("itemcontextmenu", function (view, record, item, index, e, eOpts) { if (record.data.id != 1) { var position = e.getXY(); e.stopEvent(); menu_grid.showAt(position); } });
+        /*App.TreeDaramad.features = [treeGridFilter];*/
+    }
+
+    function EditNode() {
+        var SelectedNode = App.TreeDaramad.getSelectionModel().getLastSelected();
+        if (SelectedNode != null) {
+            if (SelectedNode.data.id != 1) {                
+                App.IncomeCodes.queryById('fldId').setValue(SelectedNode.data.id);
+                App.IncomeCodes.queryById('txtCode').setValue(SelectedNode.data.fldDaramadCode);
+                App.IncomeCodes.queryById('txtTitle').setValue(SelectedNode.data.fldDaramadTitle);
+                App.IncomeCodes.queryById('txtDesc').setValue(SelectedNode.data.fldDesc);
+                App.IncomeCodes.queryById('CboUnit').setValue(String(SelectedNode.data.fldUnitId));
+                App.IncomeCodes.queryById('chkArzesh').setValue(SelectedNode.data.fldMashmooleArzesheAfzoode); 
+                App.IncomeCodes.queryById('chkKarmozd').setValue(SelectedNode.data.fldMashmooleKarmozd);
+              /*  App.IncomeCodes.queryById('chkAmuzesh').setValue(SelectedNode.data.fldAmuzeshParvaresh);*/
+                if(SelectedNode.data.fldFlag==1){
+                    App.IncomeCodes.queryById('txtCode').setReadOnly(true);
+                    App.IncomeCodes.queryById('CboUnit').focus();
+                }
+                else{
+                    App.IncomeCodes.queryById('txtCode').setReadOnly(false);
+                    App.IncomeCodes.queryById('txtCode').focus();
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "امکان ویرایش شاخه مورد نظر وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر (شاخه) را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function InsertFromAccounting(){
+        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+        Ext.net.DirectMethod.request({
+            url: ' /Daramad/IncomeCodes/InsertFromAccounting',
+            params: {
+                FiscalYearId : '@ViewBag.FiscalYearId'
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        });
+        Ext.net.Mask.hide();
+    }
+
+    function DeleteNode() {
+        var SelectedNode = App.TreeDaramad.getSelectionModel().getLastSelected();
+        var ParentNode =SelectedNode.parentNode;
+        if (SelectedNode != null) {
+            if (SelectedNode.data.id != 1 && SelectedNode.data.fldFlag==0) {/*از حسابداری نیومده باشه*/
+                if (SelectedNode.data.lastNod == 1) {/*اگر بچه نداشت*/
+                    Ext.MessageBox.show({
+                        title: "هشدار",
+                        msg: "آیا برای حذف مطمئن هستید؟",
+                        icon: Ext.MessageBox.WARNING,
+                        buttons: Ext.MessageBox.YESNO,
+                        fn: function (btn) {
+                            if (btn == 'yes') {
+                                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                Ext.net.DirectMethod.request({
+                                    url: ' /Daramad/IncomeCodes/Delete',
+                                    params: {
+                                        Id: SelectedNode.data.id,
+                                        Pid:ParentNode.data.id,
+                                        FiscalYearId:'@ViewBag.FiscalYearId'
+                                    },
+                                    success: function (data) {
+                                        var ic = Ext.MessageBox.INFO;
+                                        if (data.Err == 1)
+                                            ic = Ext.MessageBox.ERROR;
+                                        Ext.MessageBox.show({
+                                            title: data.MsgTitle,
+                                            msg: data.Msg,
+                                            icon: ic,
+                                            buttons: Ext.MessageBox.OK
+                                        });
+                                        if (data.Err != 1) {
+                                            App.TreeDaramad.getStore().load({ node: ParentNode });
+                                            ClearIncomeCodes();
+                                        }
+                                        if(data.Child==0){
+                                            ParentNode.data.lastNod=1;
+                                        }
+                                    }
+                                });
+                                Ext.net.Mask.hide();
+                            }
+                        }
+                    });
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا ابتدا زیرشاخه های مربوطه را پاک نموده و سپس اقدام به حذف شاخه مورد نظر نمایید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "امکان حذف شاخه مورد نظر وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر (شاخه) را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearIncomeCodes() {
+        App.IncomeCodes.queryById('fldId').setValue(0);
+        App.IncomeCodes.queryById('txtCode').setValue("");
+        App.IncomeCodes.queryById('txtTitle').setValue("");
+        App.IncomeCodes.queryById('txtDesc').setValue("");
+        App.IncomeCodes.queryById('CboUnit').setValue("");
+        App.IncomeCodes.queryById('chkArzesh').setValue(false);
+        App.IncomeCodes.queryById('chkKarmozd').setValue(false);
+       /* App.IncomeCodes.queryById('chkAmuzesh').setValue(false);*/
+    }
+
+    var GetParamTreeDaramad = function (store, operation, eOpts) {
+        var nodeId = operation.node.getId();
+        operation.params.nod = nodeId;
+        operation.params.FiscalYearId =  '@ViewBag.FiscalYearId';
+    };
+
+    /*App.Win.addListener('resize', function () {
+        App.Measure.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.Measure.queryById('MeasureGrid');
+        grid.setHeight(App.Win.getHeight()-260);
+    });*/
+    
+    function IncomeCodesSetSize() {
+        App.IncomeCodes.setWidth(App.DaramadWin.getWidth());
+        var splitWidth=(App.DaramadWin.getWidth() - 20) /4;
+        App.IncomeCodes.queryById("PnlFields").setSize(splitWidth, App.DaramadWin.getHeight()-160);
+        App.IncomeCodes.queryById("PnlTree").setSize(splitWidth * 3, App.DaramadWin.getHeight() - 160);
+
+        App.IncomeCodes.queryById('txtCode').validate();
+        App.IncomeCodes.queryById('txtTitle').validate();
+        App.IncomeCodes.queryById('CboUnit').validate("");
+    }
+
+    var hideParam = function (Tree, Command, record, row) {
+        if (record.data.id == 1) {
+            Command.hidden = true;
+            Command.hideMode = 'visibility';
+        }
+    };
+
+    var hidePattern = function (Tree, Command, record, row) {
+        if (record.data.id == 1) {
+            Command.hidden = true;
+            Command.hideMode = 'visibility';
+        }
+    };
+
+    /*var hideFormul1 = function (Tree, Command, record, row) {
+        if (record.data.id == 1) {
+            Command.hidden = true;
+            Command.hideMode = 'visibility';
+        }
+    };
+
+    var hideFormul2 = function (Tree, Command, record, row) {
+        if (record.data.id == 1) {
+            Command.hidden = true;
+            Command.hideMode = 'visibility';
+        }
+    };*/
+    var hideFormul = function (col, button, record) {
+        if (record.data.id == 1) {
+            button.hide();
+        }
+        /*else if (record.data.fldFormolsaz != null) {
+            button.menu.items.items[1].setDisabled(true);
+        }
+        else if (record.data.fldFormulMohasebatId != 0) {
+            button.menu.items.items[0].setDisabled(true);
+        }*/
+    };
+
+    var hideReportPattern = function (Tree, Command, record, row) {
+        if (record.data.id == 1) {
+            Command.hidden = true;
+            Command.hideMode = 'visibility';
+        }
+    }; 
+
+    var hidetranscript = function (Tree, Command, record, row) {
+        if (record.data.id == 1) {
+            Command.hidden = true;
+            Command.hideMode = 'visibility';
+        }
+    }; 
+
+    var hideGeneralFormul = function (Tree, Command, record, row) {
+        if (record.data.id == 1) {
+            Command.hidden = true;
+            Command.hideMode = 'visibility';
+        }
+    };
+        
+    var addKeyMapIncomeCodes = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield;
+                    if (Ext.Element.getActiveElement().name == "") {
+                        /*var nextfld = App.IncomeCodes.queryById('chkKarmozd');*/
+                        /*var nextfld = App.IncomeCodes.queryById('chkAmuzesh');*/
+                        nextfld.focus(); 
+                        return;
+                    }
+                    else {
+                        keyfield = App.IncomeCodes.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    }
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.IncomeCodes.queryById('chkArzesh');
+                        nextfld.focus();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+
+    document.addEventListener("visibilitychange", function () {
+        if (document.hidden) {
+
+        } else {
+            if (App.IncomeCodes != undefined && LastActiveRow!=0/*&& App.FirstTabDaramad.activeTab.id == "IncomeCodes"*/) {
+                var nn = App.TreeDaramad.getRootNode().findChild("id", LastActiveRow);
+                App.TreeDaramad.getStore().load({ node: nn.parentNode });
+            }
+        }
+    }, false);    
+</script>

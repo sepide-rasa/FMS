@@ -1,0 +1,727 @@
+﻿@model IEnumerable<NewFMS.WCF_Deceased.OBJ_RequestAmanat>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{ 
+    var X = Html.X();
+    /*var Per = false;
+    NewFMS.WCF_Common.CommonService servic_Com = new NewFMS.WCF_Common.CommonService();
+    NewFMS.WCF_Common.ClsError Err_Com = new NewFMS.WCF_Common.ClsError();
+    if (servic_Com.Permission(1057, Convert.ToInt32(Session["OrganId"]), Session["Username"].ToString(), Session["Password"].ToString(), out Err_Com))
+    {
+        Per = true;
+    }*/
+}
+
+@(Html.X().Panel()
+    .ID("Request")
+    .Title("درخواست رزرو قبر")
+    .Listeners(li => { li.AfterRender.Handler = "RequestSetSize();"; li.Render.Fn = "addKeyMapRequest"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l => { l.Click.Handler = "SaveRequest();"; }),
+                X.Button()
+                    .Text("ویرایش")
+                    .Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadRequest();"; }),
+                X.Button()
+                    .Text("حذف")
+                    .Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteRequest();"; }),
+                //X.Button()
+                //    .Text("راهنما")
+                //    .Icon(Ext.Net.Icon.Help)
+                //    .Listeners(l => { l.Click.Handler = "HelpRequest();"; }),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.Request.destroy()")
+            )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Border(true)
+                            .Title("مشخصات درخواست")
+                            .ID("FieldsetRequest")
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 8 })
+                            .Items(
+                                X.Hidden().ItemID("fldId"),
+                                X.Label("آرامستان:"),
+                                X.ComboBox()
+                                    .AutoFocus(true)
+                                    .Editable(true)
+                                    .ItemID("CboVadiSalam")
+                                    .TypeAhead(true)
+                                    .BlankText("لطفا آرامستان را انتخاب کنید.")
+                                    .AllowBlank(false)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("Title")
+                                    .ValueField("ID")
+                                    .Listeners(ls =>ls.Select.Handler = "App.Request.queryById('cboGhete').clearValue(); App.Request.queryById('cboGhete').getStore().load();")
+                                    .Store(
+                                        X.Store()
+                                            .Model(
+                                                X.Model()
+                                                    .IDProperty("fldId")
+                                                    .Fields(
+                                                        new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                                        new ModelField("Title", ModelFieldType.String) { Mapping = "Title" }
+                                                    )
+                                            )
+                                            .Proxy(
+                                                X.AjaxProxy()
+                                                    .Url(Url.Action("GetVadiSalam"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                            )
+                                    ),
+                                X.Label("قطعه:"),
+                                X.ComboBox()
+                                    .Editable(true)
+                                    .ItemID("cboGhete")
+                                    .TypeAhead(true)
+                                    .BlankText("لطفا قطعه را انتخاب کنید.")
+                                    .AllowBlank(false)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("Title")
+                                    .ValueField("ID")
+                                    .Listeners(ls =>ls.Select.Handler = "App.Request.queryById('CboRadif').clearValue(); App.Request.queryById('CboRadif').getStore().load();")
+                                    .Store(
+                                        X.Store()
+                                            .AutoLoad(false)
+                                            .Model(
+                                                X.Model()
+                                                    .IDProperty("fldId")
+                                                    .Fields(
+                                                        new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                                        new ModelField("Title", ModelFieldType.String) { Mapping = "Title" }
+                                                    )
+                                            )
+                                            .Proxy(
+                                                X.AjaxProxy()
+                                                    .Url(Url.Action("GetGhete"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                            )
+                                            .Parameters(ps => ps.Add(new StoreParameter("VadiSalamId", "App.Request.queryById('CboVadiSalam').getValue()", ParameterMode.Raw)))
+                                            .Parameters(ps => ps.Add(new StoreParameter("ReqId", "App.Request.queryById('fldId').getValue()", ParameterMode.Raw)))
+                                    ),
+                                X.Label("ردیف:"),
+                                X.ComboBox()                                
+                                    .Editable(true)
+                                    .ItemID("CboRadif")
+                                    .TypeAhead(true)
+                                    .BlankText("لطفا ردیف را انتخاب کنید.")
+                                    .AllowBlank(false)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("Title")
+                                    .ValueField("ID")
+                                    .Listeners(ls =>ls.Select.Handler = "App.Request.queryById('cboShomare').clearValue(); App.Request.queryById('cboShomare').getStore().load();")
+                                    .Store(
+                                        X.Store()
+                                            .AutoLoad(false)
+                                            .Model(
+                                                X.Model()
+                                                    .IDProperty("fldId")
+                                                    .Fields(
+                                                        new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                                        new ModelField("Title", ModelFieldType.String) { Mapping = "Title" }
+                                                    )
+                                            )
+                                            .Proxy(
+                                                X.AjaxProxy()
+                                                    .Url(Url.Action("GetRadif"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                            )
+                                            .Parameters(ps => ps.Add(new StoreParameter("GheteId", "App.Request.queryById('cboGhete').getValue()", ParameterMode.Raw)))
+                                            .Parameters(ps => ps.Add(new StoreParameter("ReqId", "App.Request.queryById('fldId').getValue()", ParameterMode.Raw)))
+                                    ),
+                                X.Label("شماره:"),
+                                X.ComboBox()
+                                    .Editable(true)
+                                    .ItemID("cboShomare")
+                                    .TypeAhead(true)
+                                    .BlankText("لطفا شماره را انتخاب کنید.")
+                                    .AllowBlank(false)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("Title")
+                                    .ValueField("ID")
+                                    .Store(
+                                        X.Store()
+                                            .AutoLoad(false)
+                                            .Model(
+                                                X.Model()
+                                                    .IDProperty("fldId")
+                                                    .Fields(
+                                                        new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                                        new ModelField("Title", ModelFieldType.String) { Mapping = "Title" }
+                                                    )
+                                            )
+                                            .Proxy(
+                                                X.AjaxProxy()
+                                                    .Url(Url.Action("GetShomare"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                            )
+                                            .Parameters(ps => ps.Add(new StoreParameter("RadifId", "App.Request.queryById('CboRadif').getValue()", ParameterMode.Raw)))
+                                            .Parameters(ps => ps.Add(new StoreParameter("ReqId", "App.Request.queryById('fldId').getValue()", ParameterMode.Raw)))
+                                    ),                       
+                                X.Label("نوع شخص:"),
+                                X.ComboBox()
+                                    .ItemID("CboType")
+                                    .TypeAhead(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .EmptyText("نوع شخص")
+                                    .SelectedItems(new { Value = "0" })
+                                    .AllowBlank(false)
+                                    .Editable(false)
+                                    .BlankText("لطفا نوع شخص را انتخاب کنید.")
+                                    .Items(
+                                        new ListItem("حقیقی", "0"),
+                                        new ListItem("سایر", "1")
+                                    )
+                                    .Listeners(l => l.Select.Handler = "SelTypePerson()"),
+                                X.Label("کد ملـی:")
+                                    .ItemID("lblCode_ShenaseMelli"),
+                                X.TextField()
+                                    .ItemID("txtCodeMelli")
+                                    .AllowBlank(false)
+                                    .FieldStyle("direction:ltr;")
+                                    .BlankText("لطفا کد ملـی را وارد کنید.")
+                                    .MaxLength(10)
+                                    .MinLength(10)
+                                    .EnforceMaxLength(true)
+                                    .MaskRe("[0-9]")
+                                    .Listeners(l =>l.Change.Handler = "ChangeCode_ShenaseMelli();"),
+                                X.TextField()
+                                    .ItemID("txtCode_Shenase")
+                                    .AllowBlank(false)
+                                    .FieldStyle("direction:ltr;")
+                                    .Hidden(true)
+                                    .BlankText("لطفا کد مشخصه را وارد کنید.")
+                                    //.Icon(Icon.UserAdd)
+                                    .Listeners(l => l.Change.Handler = "ChangeCode_ShenaseMelli()"),
+                                X.Label("نام:"),
+                                X.TextField()
+                                    .ItemID("txtNameEmp")
+                                    .AllowBlank(false)
+                                    .MaxLength(50)
+                                    .EnforceMaxLength(true)
+                                    .BlankText("لطفا نام شخص را وارد کنید.")
+                                    .MaskRe("[a-z,A-Z,آ-ی, ,_,-]"),
+                                X.Label("نام خانوادگی:"),
+                                X.TextField()
+                                    .ItemID("txtFamilyEmp")
+                                    .AllowBlank(false)
+                                    .MaxLength(50)
+                                    .EnforceMaxLength(true)
+                                    .BlankText("لطفا نام خانوادگی را وارد کنید.")
+                                    .MaskRe("[a-z,A-Z,آ-ی, ,_,-]"),
+                                X.Label("نام پدر:"),
+                                X.TextField()
+                                    .ItemID("txtFatherName")
+                                    .AllowBlank(false)
+                                    .MaxLength(50)
+                                    .EnforceMaxLength(true)
+                                    .BlankText("لطفا نام پدر را وارد کنید.")
+                                    .MaskRe("[a-z,A-Z,آ-ی, ,_,-]"),
+                                X.Label("شماره شناسنامه:"),
+                                X.TextField()
+                                    .ItemID("txtSh_Shenasname")
+                                    .AllowBlank(false)
+                                    .MaxLength(50)
+                                    .EnforceMaxLength(true)
+                                    .BlankText("لطفا شماره شناسنامه را وارد کنید.")
+                                    .MaskRe("[0-9]"),
+                                X.Label("توضیحات:"),
+                                X.TextField()
+                                    .ItemID("txtDesc")
+                                    .ColSpan(3)
+                                    .Width(368)
+                            )
+                    )
+            ),
+        X.GridPanel()
+            .ItemID("GridRequest")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.Request.queryById('GridRequest').selModel.refresh();")
+                    .Proxy(
+                        Html.X().AjaxProxy()
+                            .Url(Url.Action("Read"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+            )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .Plugins(X.FilterHeader().Remote(true))
+            .Listeners(l =>l.AfterRender.Handler = "var grid = App.Request.queryById('GridRequest');grid.setHeight(App.MotevafiatWin.getHeight() - 310); ")
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                Html.X().Column().DataIndex(Model, m => m.fldIsEbtalName).Text("وضعیت").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldNameVadiSalam).Text("آرامستان").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldNameGhete).Text("قطعه").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldNameRadif).Text("ردیف").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldShomare).Text("شماره").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldMeli_Moshakhase).Text("کدملی/مشخصه").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldFamily).Text("نام خانوادگی").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldFatherName).Text("نام پدر").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldSh_Shenasname).Text("شماره شناسنامه").Flex(2)//,
+                //Html.X().ImageCommandColumn().Hidden(@Per == false).PrepareCommand("Disablebtn").Listeners(l => l.Command.Fn = "CancelRequest").Width(70).Filterable(false)
+                //    .Commands(
+                //        Html.X().ImageCommand().CommandName("Cancellation").Icon(Ext.Net.Icon.Cross).ToolTip(tt => tt.Text = "ابطال درخواست")
+                //    )
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+    )
+)
+<script type="text/javascript">
+    function HelpRequest() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/Request/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    /*var Disablebtn = function (grid, command, record, row) {
+        if (record.data.fldIsEbtal) {
+            command.disabled = true;
+            command.hideMode = 'visibility';
+        }
+        else {
+            command.disabled = false;
+            command.hideMode = 'visibility';
+        }
+    };
+
+    function CancelRequest(grid, command, record, row) {
+        if (command == 'Cancellation') {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای ابطال درخواست مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Deceased/Request/Cancel',
+                            params: {
+                                id: record.data.fldId
+                            },
+                            success: function (data) {
+                                var ico = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ico = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ico,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                Ext.net.Mask.hide();
+                                App.Request.queryById('GridRequest').store.load();
+                            }
+                        });
+                    }
+                }
+            });
+        }        
+    }*/
+
+    function RequestSetSize() {
+        App.Request.setWidth(App.MotevafiatWin.getWidth());
+        App.Request.queryById('GridRequest').setHeight(App.MotevafiatWin.getHeight() - 310);
+    }
+
+    function LoadRequest() {
+        var SelectedRow = App.Request.queryById('GridRequest').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if(SelectedRow.data.fldIsEbtal==false){
+                if(SelectedRow.data.ExistsCharkhe==false){
+                    Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Request/Details',
+                        params: {
+                            Id: SelectedRow.data.fldId
+                        },
+                        success: function (data) {
+                            var CboVadiSalam = App.Request.queryById('CboVadiSalam');
+                            CboVadiSalam.setValue(data.fldVadiSalamId);
+
+                            var cboGhete = App.Request.queryById('cboGhete');
+                            cboGhete.getStore().load();
+                            cboGhete.setValue(data.fldGheteId);
+
+                            var CboRadif = App.Request.queryById('CboRadif');
+                            CboRadif.getStore().load();
+                            CboRadif.setValue(data.fldRadifId);
+
+                            var cboShomare = App.Request.queryById('cboShomare');
+                            cboShomare.getStore().load();
+                            cboShomare.setValue(data.fldShomareId);
+
+                            var lblCode_ShenaseMelli = App.Request.queryById("lblCode_ShenaseMelli");
+                            if(data.typeCode=="0"){
+                                lblCode_ShenaseMelli.setText("کد ملـی:");
+                                App.Request.queryById("txtCode_Shenase").hide();
+                                App.Request.queryById('txtCodeMelli').show();
+                                App.Request.queryById('txtCodeMelli').setValue(data.Code_Meli);
+                            }
+                            else{
+                                lblCode_ShenaseMelli.setText("کد مشخصه:");
+                                App.Request.queryById("txtCodeMelli").hide();
+                                App.Request.queryById('txtCode_Shenase').show();
+                                App.Request.queryById('txtCode_Shenase').setValue(data.Code_Meli);
+                            }
+
+                            App.Request.queryById('txtNameEmp').setValue(data.fldname).setReadOnly(true);
+                            App.Request.queryById('txtFamilyEmp').setValue(data.fldFamily).setReadOnly(true);
+                            App.Request.queryById('txtFatherName').setValue(data.fldFatherName).setReadOnly(true);
+                            App.Request.queryById('txtSh_Shenasname').setValue(data.fldSh_Shenasname).setReadOnly(true);
+                            App.Request.queryById("CboType").setValue(data.typeCode);
+                        
+                            var txtDesc = App.Request.queryById('txtDesc');
+                            txtDesc.setValue(data.fldDesc);
+
+                            var fldId = App.Request.queryById('fldId');
+                            fldId.setValue(data.fldId);
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "درخواست انتخاب شده در حال بررسی است و امکان ویرایش آن وجود ندارد.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "درخواست انتخاب شده باطل شده است و امکان ویرایش آن وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveRequest() {
+        var cboShomare = App.Request.queryById('cboShomare');
+        var txtDesc = App.Request.queryById('txtDesc');
+        var txtCode_Shenase=App.Request.queryById('txtCode_Shenase');
+        var txtCodeMelli=App.Request.queryById('txtCodeMelli');
+        var txtNameEmp=App.Request.queryById('txtNameEmp');
+        var txtFamilyEmp=App.Request.queryById('txtFamilyEmp');
+        var txtFatherName=App.Request.queryById('txtFatherName');
+        var txtSh_Shenasname = App.Request.queryById('txtSh_Shenasname');
+        var CboType = App.Request.queryById("CboType");
+        var fldId = App.Request.queryById('fldId');
+        var er = false;
+
+        if (cboShomare.validate() == false) {
+            er = true;
+        }
+        if (txtSh_Shenasname.validate() == false) {
+            er = true;
+        }
+        if (txtFatherName.validate() == false) {
+            er = true;
+        }
+        if (txtFamilyEmp.validate() == false) {
+            er = true;
+        }
+        if (txtNameEmp.validate() == false) {
+            er = true;
+        }
+        if (CboType.getValue()=="1" && txtCode_Shenase.validate() == false) {
+            er = true;
+        }
+        if (CboType.getValue()=="0" && txtCodeMelli.validate() == false) {
+            er = true;
+        }
+
+        if (er)
+            return;
+
+        var CodeMeli="";
+        var CodeMoshakhase="";
+        if(CboType.getValue()=="0")
+            CodeMeli=txtCodeMelli.getValue();
+        else
+            CodeMoshakhase=txtCode_Shenase.getValue();
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Request/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldShomareId: cboShomare.getValue(),
+                fldDesc: txtDesc.getValue(),
+                CodeMeli:CodeMeli,
+                CodeMoshakhase:CodeMoshakhase,
+                Name:txtNameEmp.getValue(),
+                Family:txtFamilyEmp.getValue(),
+                Sh_Sh:txtSh_Shenasname.getValue(),
+                NameFather: txtFatherName.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.Request.queryById('GridRequest').store.load();
+                if (data.Er != 1)
+                    ClearRequest();
+            }
+        });
+    }
+
+    function DeleteRequest() {
+        var SelectedRow = App.Request.queryById('GridRequest').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if(SelectedRow.data.ExistsCharkhe==false){
+                Ext.MessageBox.show({
+                    title: "هشدار",
+                    msg: "آیا برای حذف مطمئن هستید؟",
+                    icon: Ext.MessageBox.WARNING,
+                    buttons: Ext.MessageBox.YESNO,
+                    fn: function (btn) {
+                        if (btn == 'yes') {
+                            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Request/Delete',
+                                params: {
+                                    id: SelectedRow.data.fldId
+                                },
+                                success: function (data) {
+                                    if(App.Request.queryById('fldId').getValue()==SelectedRow.data.fldId){
+                                        ClearRequest();
+                                    }
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Er == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    App.Request.queryById('GridRequest').store.load();
+                                }
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "درخواست انتخاب شده در حال بررسی است و امکان حذف آن وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearRequest() {
+        App.Request.queryById('CboVadiSalam').setValue("");
+        App.Request.queryById('cboGhete').setValue("");
+        App.Request.queryById('CboRadif').setValue("");
+        App.Request.queryById('cboShomare').setValue("");
+        App.Request.queryById("txtNameEmp").setValue("").setReadOnly(false);
+        App.Request.queryById("txtFamilyEmp").setValue("").setReadOnly(false);
+        App.Request.queryById("txtFatherName").setValue("").setReadOnly(false);
+        App.Request.queryById("txtSh_Shenasname").setValue("").setReadOnly(false);
+        App.Request.queryById("txtCode_Shenase").setValue("");
+        App.Request.queryById('txtCodeMelli').setValue("");
+        App.Request.queryById('txtDesc').setValue("");
+        App.Request.queryById('fldId').setValue(0);
+    }
+
+    function SelTypePerson() {
+        var lblCode_ShenaseMelli = App.Request.queryById("lblCode_ShenaseMelli");
+        var txtCodeMelli = App.Request.queryById("txtCodeMelli");
+        var txtCode_Shenase = App.Request.queryById("txtCode_Shenase");
+        var CboType = App.Request.queryById("CboType");
+        if (CboType.getValue() == "0") {
+            lblCode_ShenaseMelli.setText("کد ملـی:");
+            txtCodeMelli.show();
+            txtCodeMelli.setValue("");
+            txtCode_Shenase.hide();
+            App.Request.queryById("txtNameEmp").setValue("").setReadOnly(false);
+            App.Request.queryById("txtFamilyEmp").setValue("").setReadOnly(false);
+            App.Request.queryById("txtFatherName").setValue("").setReadOnly(false);
+            App.Request.queryById("txtSh_Shenasname").setValue("").setReadOnly(false);
+        }
+        else {
+            lblCode_ShenaseMelli.setText("کد مشخصه:");   
+            txtCode_Shenase.show();
+            txtCode_Shenase.setValue("");
+            txtCodeMelli.hide();
+            App.Request.queryById("txtNameEmp").setValue("").setReadOnly(false);
+            App.Request.queryById("txtFamilyEmp").setValue("").setReadOnly(false);
+            App.Request.queryById("txtFatherName").setValue("").setReadOnly(false);
+            App.Request.queryById("txtSh_Shenasname").setValue("").setReadOnly(false);
+        }
+    }
+
+    function ChangeCode_ShenaseMelli() {
+        if((App.Request.queryById("CboType").getValue()=="0" && App.Request.queryById('txtCodeMelli').validate())
+            || (App.Request.queryById("CboType").getValue()=="1" && App.Request.queryById('txtCode_Shenase').validate())){
+
+            var Code=App.Request.queryById('txtCodeMelli').getValue();
+            if(App.Request.queryById("CboType").getValue()=="1")
+                Code=App.Request.queryById('txtCode_Shenase').getValue();
+
+            Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/Request/CheckCode_ShenaseMelli',
+                params: {
+                    Code_ShenaseMelli: Code
+                },
+                success: function (data) {
+                    if (data.Err != 1) {
+                        var txtNameEmp = App.Request.queryById('txtNameEmp');
+                        txtNameEmp.setValue(data.fldName);
+                        if (data.fldName != "")
+                            txtNameEmp.setReadOnly(true);
+                        else
+                            txtNameEmp.setReadOnly(false);
+
+                        var txtFamilyEmp = App.Request.queryById('txtFamilyEmp');
+                        txtFamilyEmp.setValue(data.fldFamily);
+                        if (data.fldFamily != "")
+                            txtFamilyEmp.setReadOnly(true);
+                        else
+                            txtFamilyEmp.setReadOnly(false);
+
+                        var txtFatherName = App.Request.queryById('txtFatherName');
+                        txtFatherName.setValue(data.fldFatherName);
+                        if (data.fldFatherName != "")
+                            txtFatherName.setReadOnly(true);
+                        else
+                            txtFatherName.setReadOnly(false);
+
+                        var txtSh_Shenasname = App.Request.queryById('txtSh_Shenasname');
+                        txtSh_Shenasname.setValue(data.fldSh_Shenasname);
+                        if (data.fldSh_Shenasname != "")
+                            txtSh_Shenasname.setReadOnly(true);
+                        else
+                            txtSh_Shenasname.setReadOnly(false);
+
+                        Ext.net.Mask.hide();
+                    }
+                    else {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: data.MsgTitle,
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                }
+            });
+        }
+    }
+
+    var addKeyMapRequest = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.Request.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if(keyfield.itemId=="CboType"){
+                        if(App.Request.queryById("CboType").getValue()=="0"){
+                            nextfld=App.Request.queryById("txtCodeMelli");
+                        }
+                        else{
+                            nextfld=App.Request.queryById("txtCode_Shenase");
+                        }
+                    }
+                    else if (keyfield.itemId=="txtCodeMelli") {
+                        var IndexSh=App.FieldsetRequest.items.indexOf(App.Request.queryById("txtCode_Shenase"));
+                        nextfld=App.FieldsetRequest.items.items.filter(l=>l.readOnly==false && App.FieldsetRequest.items.indexOf(l)>App.FieldsetRequest.items.indexOf(keyfield)
+                            && App.FieldsetRequest.items.indexOf(l)!=IndexSh)[0];
+                    }
+                    else if (keyfield.xtype=="textfield") {                        
+                        nextfld=App.FieldsetRequest.items.items.filter(l=>l.readOnly==false && App.FieldsetRequest.items.indexOf(l)>App.FieldsetRequest.items.indexOf(keyfield))[0];
+                    }
+                    else{
+                        nextfld = keyfield.nextSibling().nextSibling();                        
+                    }
+                    nextfld.selectText();
+                    nextfld.focus();
+                    
+                }
+            }]
+        });
+    }
+</script>

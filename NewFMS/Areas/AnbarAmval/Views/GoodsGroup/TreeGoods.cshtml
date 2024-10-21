@@ -1,0 +1,335 @@
+﻿@model IEnumerable<NewFMS.WCF_AnbarAmval.OBJ_KalaTree>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+
+@(Html.X().Window()
+    .Width(700)
+    .Modal(true)
+    .ID("NewTreeGroupGoods")
+    .Title("ساختار درختی گروه کالا")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l => l.Render.Fn = "addKeyMapNewTreeGroupGoods")
+    .Resizable(false)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet()
+                    .Title("مشخصات ساختار درختی")
+                    .Height(50)
+                    .Border(true)
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 5 })
+                    .Items(
+                        X.Hidden()
+                            .ItemID("fldId"),
+                        X.Label("عنوان:"),
+                        X.TextField()
+                            .ItemID("txtTitle")
+                            .AllowBlank(false)
+                            .BlankText("لطفا عنوان را وارد کنید.")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                            .AutoFocus(true),
+                        X.Label("توضیحات:"),
+                        X.TextField()
+                            .ItemID("txtDesc")
+                            .Width(350),
+                        X.Button()
+                            .Text("ذخیره")
+                            .Icon(Icon.Disk)
+                            .Listeners(l => l.Click.Handler = "SaveTreeGroupGoods()")
+                    ),
+                X.TreePanel()
+                    .ID("TreeKala")
+                    .AutoScroll(true)
+                    .Frame(true)
+                    .Title("ساختار درختی")
+                    .Width(670)
+                    .Margin(5)
+                    .UseArrows(true)
+                    .Border(true)
+                    .Listeners(l =>
+                    {
+                        l.Render.Handler = "App.TreeKala.setHeight(Ext.getBody().getViewSize().height-250);";
+                        l.AfterRender.Handler = "AddMenuTreeKala()";
+                    })
+                    .View(X.TreeView().Listeners(l => l.BeforeDrop.Fn = "moveNodesTreeKala").Plugins(X.TreeViewDragDrop().AppendOnly(true)))
+                    .Store(
+                        Html.X().TreeStore()
+                            .Model(
+                                Html.X().Model()
+                                    .Fields(
+                                        X.ModelField().Name(Model, m => m.fldName).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldNodeType).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldDesc).Type(ModelFieldType.String)
+                                        )
+                                )
+                            .Proxy(
+                                Html.X().AjaxProxy().Url(Url.Action("LoadTreeKala"))
+                            )
+                            .Listeners(l => l.BeforeLoad.Fn = "GetParamTreeKala")
+                    )
+                    .Root(Html.X().Node()/*.NodeID("0")*/.Cls("0").Text(ViewBag.GroupName).AttributesObject(new { fldName = "", fldNodeType = "2", fldDesc = "" }).Expanded(true))
+            )
+        )
+)
+<script type="text/javascript">
+
+    var GetParamTreeKala = function (store, operation, eOpts) {
+        operation.params.nod = operation.node.data.cls;/*.getId();*/
+        operation.params.GroupId = '@ViewBag.GroupId';
+    };
+
+    function AddMenuTreeKala() {
+        var menu_grid = new Ext.menu.Menu({
+            bodyStyle: 'background-color:#dfe8f6 !important;',
+            items: [
+                { text: "ویرایش", iconCls: "Editico", handler: function () { EditNodeTreeKala(); } },
+                { text: "حذف", iconCls: "Deleteico", handler: function () { DeleteNodeTreeKala(); } }
+            ]
+        });
+        App.TreeKala.on("itemcontextmenu", function (view, record, item, index, e, eOpts) { if (record.data.fldNodeType != 2) { var position = e.getXY(); e.stopEvent(); menu_grid.showAt(position); } });
+    }
+
+    var moveNodesTreeKala = function (a, child, parent, d, e) {
+        if (child.records[0].data.fldNodeType != 2 && parent.data.fldNodeType != 2) {
+            e.wait = true;
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای جابجایی این شاخه مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == "yes") {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/AnbarAmval/GoodsGroup/MoveNodes',
+                            params: {
+                                childId: child.records[0].data.cls,
+                                parentId: parent.data.cls
+                            },
+                            success: function (data) {
+                                if (data.Er == 1) {
+                                    e.cancelDrop();
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: Ext.MessageBox.ERROR,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    Ext.net.Mask.hide();
+                                }
+                                if (data.Er != 1) {
+                                    e.processDrop();
+                                    Ext.net.Mask.hide();
+                                }
+                            }
+                        });
+                    }
+                    else {
+                        e.cancelDrop();
+                    }
+                }
+            });
+        }
+        else {
+            e.cancelDrop();
+        }
+    };
+
+    function SaveTreeGroupGoods() {
+        var Id = App.NewTreeGroupGoods.queryById('fldId');
+        var txtTitle = App.NewTreeGroupGoods.queryById("txtTitle");
+        var txtDesc = App.NewTreeGroupGoods.queryById('txtDesc');
+        var SelectedNode = App.TreeKala.getSelectionModel().getLastSelected();
+
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        if (SelectedNode == null) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا ابتدا یک سطر (شاخه) را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/AnbarAmval/GoodsGroup/SaveTree',
+            params: {
+                PID: SelectedNode.data.cls,
+                fldId: Id.getValue(),
+                fldName: txtTitle.getValue(),
+                fldDesc: txtDesc.getValue(),
+                fldGroupId: '@ViewBag.GroupId'
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                if (data.Er != 1) {
+                    if (Id.getValue() == 0) {/*insert*/
+                        App.TreeKala.getStore().load({ node: SelectedNode });
+                        ClearTreeGroupGoods();
+                    }
+                    else {/*edit*/
+                        App.TreeKala.getStore().load({ node: SelectedNode.parentNode });
+                        ClearTreeGroupGoods();
+                    }
+                }
+            }
+        });
+    }
+
+    function EditNodeTreeKala() {
+        var SelectedNode = App.TreeKala.getSelectionModel().getLastSelected();
+        if (SelectedNode != null) {
+            if (SelectedNode.data.cls != 0) {
+                App.NewTreeGroupGoods.queryById('fldId').setValue(SelectedNode.data.cls);
+                App.NewTreeGroupGoods.queryById('txtTitle').setValue(SelectedNode.data.fldName);
+                App.NewTreeGroupGoods.queryById('txtDesc').setValue(SelectedNode.data.fldDesc);
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "امکان ویرایش شاخه مورد نظر وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر (شاخه) را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DeleteNodeTreeKala() {
+        var SelectedNode = App.TreeKala.getSelectionModel().getLastSelected();
+        var ParentNode = SelectedNode.parentNode;
+        if (SelectedNode != null) {
+            if (SelectedNode.data.cls != 0) {
+                if (SelectedNode.childNodes.length == 0) {
+                    Ext.MessageBox.show({
+                        title: "هشدار",
+                        msg: "آیا برای حذف مطمئن هستید؟",
+                        icon: Ext.MessageBox.WARNING,
+                        buttons: Ext.MessageBox.YESNO,
+                        fn: function (btn) {
+                            if (btn == 'yes') {
+                                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                Ext.net.DirectMethod.request({
+                                    url: '/AnbarAmval/GoodsGroup/DeleteNode',
+                                    params: {
+                                        Id: SelectedNode.data.cls
+                                    },
+                                    success: function (data) {
+                                        if (data.Er == 1) {
+                                            Ext.MessageBox.show({
+                                                title: data.MsgTitle,
+                                                msg: data.Msg,
+                                                icon: Ext.MessageBox.ERROR,
+                                                buttons: Ext.MessageBox.OK
+                                            });
+                                        }
+                                        else {
+                                            App.TreeKala.getStore().load({ node: ParentNode });
+                                            App.TreeKala.getSelectionModel().clearSelections();
+                                            ClearTreeGroupGoods();
+                                        }
+                                    }
+                                });
+                                Ext.net.Mask.hide();
+                            }
+                        }
+                    });
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا ابتدا زیرشاخه های مربوطه را پاک نموده و سپس اقدام به حذف شاخه مورد نظر نمایید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "امکان حذف شاخه مورد نظر وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر (شاخه) را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearTreeGroupGoods() {
+        App.NewTreeGroupGoods.queryById('fldId').setValue(0);
+        App.NewTreeGroupGoods.queryById('txtTitle').setValue("");
+        App.NewTreeGroupGoods.queryById('txtDesc').setValue("");
+    }
+
+    var addKeyMapNewTreeGroupGoods = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NewTreeGroupGoods.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        SaveTreeGroup();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

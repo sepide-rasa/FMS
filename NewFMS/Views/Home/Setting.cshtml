@@ -1,0 +1,162 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+@(Html.X().Window().Modal(true).Listeners(li => li.AfterRender.Handler = "LoadSetting();")
+.Width(450).Height(350)
+    .Title("تنظیمات")
+        .ID("NewSetting")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .KeyMap(Html.X().KeyMap()
+            .ID("SettingMap")
+            .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("SaveSetting(); ")
+                );
+
+            }))
+        .DefaultButton("btn")
+        .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ToolTip("کلید میانبر F8")
+               .Listeners(l =>
+               {
+                   l.Click.Handler = "SaveSetting();";
+
+               })
+                   .ItemID("btnSave")
+
+            ,
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+            .OnClientClick("App.NewSetting.destroy()")
+        ).Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+        .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                    .Defaults(new { Margin = 10 })
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                    .Items(
+                    X.Hidden().ItemID("fldId"),
+                            X.TextField()
+                            .ItemID("txtTitle")
+                            .FieldLabel("عنوان").Width(300)
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .AllowBlank(false)
+                            .ReadOnly(false)
+                            .AutoFocus(true)
+                            .BlankText("لطفا عنوان را وارد کنید.")
+        //.Hidden(true)
+                            .MsgTarget(Ext.Net.MessageTarget.Side)
+                            .ColSpan(3)
+                            .Focus(true)
+
+                            , X.Label()
+                            .Text("حداکثر حجم مجاز برای بارگذاری 100 کیلوبایت می باشد.")
+                            .ColSpan(3)
+                            , X.FileUploadField()
+                            .ID("FileUploadField1")
+                            .ButtonOnly(true).ButtonText("انتخاب عکس")
+                            .DirectEvents(l =>
+                                                {
+                                                    l.Change.Action = "Upload";
+                                                }
+                                            )
+
+                            , X.Button()
+                                .ID("ShowButton")
+                                .Text("نمایش عکس")
+                                .Listeners
+                                (l =>
+                                            {
+                                                l.Click.Handler = "Show();";
+                                            }
+                                )
+                            , X.Image().ItemID("Image").ImageUrl("~/Content/Blank.jpg").Width(90).Height(80).Border(true)
+
+
+                    )
+
+            )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+        )
+)
+<script type="text/javascript">
+    function Show() {
+        var url = '/Admin/ShowPicSetting';
+        var g = url;
+        var k = App.NewSetting.queryById('Image');
+        k.setImageUrl(g);
+    }
+    function LoadSetting() {
+
+        Ext.net.DirectMethod.request({
+            url: '/Home/DetailsSetting',
+            params: {
+                id: 1
+            },
+            success: function (data) {
+                var txtTitle = App.NewSetting.queryById('txtTitle');
+                txtTitle.setValue(data.fldTitle);
+                var FileUploadField1 = App.NewSetting.queryById('FileUploadField1');
+                FileUploadField1.setValue(data.fldLogo);
+                var Id = App.NewSetting.queryById('fldId');
+                Id.setValue(data.fldId);
+                Show();
+            }
+        });
+    }
+
+    function SaveSetting() {
+        var txtTitle = App.NewSetting.queryById('txtTitle');
+        var FileUploadField1 = App.NewSetting.queryById('FileUploadField1');
+        var Id = App.NewSetting.queryById('fldId');
+
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.DirectMethod.request({
+            url: '/Home/SaveSetting',
+            params: {
+                fldTitle: txtTitle.getValue(),
+                fldId: Id.getValue(),
+                fldLogo: FileUploadField1.getValue(),
+
+            },
+            success: function (data) {
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: Ext.MessageBox.INFO,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+
+        });
+    }
+
+    function EnterNext() {
+        var keyfield = App.NewSetting.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+    }
+</script>

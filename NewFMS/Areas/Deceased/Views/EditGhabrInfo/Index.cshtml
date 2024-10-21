@@ -1,0 +1,278 @@
+﻿@model IEnumerable<NewFMS.Areas.Deceased.Models.spr_tblGhabrInfoSelect>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using NewFMS.Models
+
+@{ var X = Html.X();
+ var Drd_Per = false;
+ if (Permission.haveAccess(1190, Session["Username"].ToString(), Session["Password"].ToString(), Convert.ToInt32(Session["OrganId"])))
+ {
+     Drd_Per = true;
+
+ }
+}
+<br />
+
+
+<style>
+  
+
+    .rowheight {
+        height: 40px;
+    }
+</style>
+@(Html.X().Panel()
+    .ID("EditGhabrInfo")
+    .Title("ثبت اطلاعات قبر")
+    .Width(1000)
+    .Listeners(li => { li.AfterRender.Handler = "EditGhabrInfoSetSize();"; 
+        //li.Render.Fn = "addKeyMapEditGhabrInfo"; 
+    })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.VBox)
+    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.HBox)
+            .Items(
+                
+                X.Panel()
+                    .Border(false)
+                        .ItemID("PnlTree")
+                                   // .Layout(LayoutType.Fit)
+                    .Padding(10)
+                    .Items(
+                        X.FieldSet()
+                            .Border(true)
+                           // .Height(300)
+                           //.LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                            .Title("اطلاعات روی سنگ قبر")
+                            .Items
+                            (
+                            
+                            X.FieldSet()
+                                .Border(false)
+                               
+                                .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                                .Padding(10)
+                                .Items(
+                                    X.Panel()
+                                        .Border(false)
+                                        .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                                        .Defaults(new { MarginSpec = "5px 5px 5px 5px" })
+                                        .ButtonAlign(Alignment.Center)
+                                        .Buttons(
+                                            Html.X().Button().ItemID("btnSave").Text("ذخیره").Margin(5).Icon(Icon.Disk).Listeners(l => l.Click.Handler = "Save()")
+                                            )
+                                        .Items(
+                                            X.Hidden().ItemID("fldId"),
+                                            X.Label("نام شخص:"),
+                                            X.TextField()
+                                                .ItemID("txtName")
+                                                    .AutoFocus(true)
+                                                .AllowBlank(false)
+                                                .BlankText("لطفا نام را وارد کنید.")
+                                                .MaxLength(250),
+                                            X.Label("نام خانوادگی:"),
+                                                X.TextField()
+                                                    .ItemID("txtFamily")
+                                                .AllowBlank(false)
+                                                    .BlankText("لطفا نام خانوادگی را وارد کنید.")
+                                                    .MaxLength(250),
+                                                X.Label("نام پدر:"),
+                                                    X.TextField()
+                                                        .ItemID("txtNameFather")
+                                                    .AllowBlank(false)
+                                                        .BlankText("لطفا نام پدر را وارد کنید.")
+                                                    .MaxLength(250)
+                                                ,
+                                            X.Label("تاریخ تولد:"),
+                                            X.TextField()
+                                                    .ItemID("txtBDate")
+                                                .AllowBlank(true)
+                                                    .BlankText("لطفا تاریخ تولد را وارد کنید.")
+                                                .MaxLength(10)
+                                                .PaddingSpec("0 0 0 10px")
+                                                .MaskRe("[0-9,/]")
+                                                    ,
+                                                X.Label("تاریخ فوت:"),
+                                                X.TextField()
+                                                        .ItemID("txtDeathDate")
+                                                    .AllowBlank(true)
+                                                        .BlankText("لطفا تاریخ فوت را وارد کنید.")
+                                                    .MaxLength(10)
+                                                    .PaddingSpec("0 0 0 10px")
+                                                    .MaskRe("[0-9,/]")
+
+
+                                            )
+                                            )
+                            ,
+                                    X.GridPanel()//.Height(200)
+            .ItemID("GhabrGrid")
+                .BottomBar(X.PagingToolbar())
+                .Store(
+                                    X.StoreForModel()
+                                                    .Listeners(l => l.DataChanged.Handler = "App.EditGhabrInfo.queryById('GhabrGrid').selModel.refresh();")
+                                .Proxy(Html.X().AjaxProxy()
+                                    .Url(Url.Action("Read"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                                )
+                                .PageSize(20)
+                                .RemoteFilter(true)
+                                .RemotePaging(true)
+                            )
+                        .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                        .Plugins(X.FilterHeader().Remote(true))
+                         .Listeners(l =>
+                         {
+                             l.AfterRender.Handler = "var grid = App.EditGhabrInfo.queryById('GhabrGrid');grid.setHeight(App.MotevafiatWin.getHeight() - 360); ";
+
+                         })
+            .ColumnModel(
+                            Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام").Flex(4),
+                                Html.X().Column().DataIndex(Model, m => m.fldFamily).Text("نام خانوادگی").Flex(4),
+                                Html.X().Column().DataIndex(Model, m => m.fldNameFather).Text("نام پدر").Flex(4),
+                                    Html.X().Column().DataIndex(Model, m => m.fldBDate).Text("تاریخ تولد").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldDeathDate).Text("تاریخ فوت").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldObjectId).Text("کدعکس").Flex(1)
+        )
+              .Listeners(a => a.CellDblClick.Handler = "LoadPic();")
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+        )
+                            )
+                        )
+                        ,
+                            X.Panel()
+                        .ItemID("PnlFields")
+                        .Padding(10)
+                        .Border(true)
+                        .Layout(LayoutType.Fit)
+                        .Items(
+                            X.FieldSet()
+                                                .Border(false)
+                                                .Items(
+                                                    X.Image().ItemID("Image").ImageUrl("~/Content/Blank.jpg").Width(250).Height(450).Border(true)
+                                                    .PaddingSpec("0 -50px 0 0")
+                                                    )
+                        )
+                )
+        )
+)
+<script type="text/javascript">
+    var ObjectId = 0;
+    var recId = 0;
+    function EditGhabrInfoSetSize() {
+        App.EditGhabrInfo.setWidth(App.MotevafiatWin.getWidth());
+        var splitWidth = (App.MotevafiatWin.getWidth() - 20) / 5;
+        App.EditGhabrInfo.queryById("PnlFields").setSize(splitWidth, App.MotevafiatWin.getHeight() - 160);
+        App.EditGhabrInfo.queryById("PnlTree").setSize(splitWidth * 4, App.MotevafiatWin.getHeight() - 160);
+
+    }
+    function LoadPic() {
+        var SelectedRow = App.EditGhabrInfo.queryById('GhabrGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            ObjectId = SelectedRow.data.fldObjectId;
+            recId = SelectedRow.data.fldId;
+            var uu = "/Uploaded/GhabrPic/" + SelectedRow.data.fldObjectId + ".jpg";
+            App.EditGhabrInfo.queryById('Image').setImageUrl(uu);
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/EditGhabrInfo/Details',
+                params: {
+                    Id: recId
+                },
+                success: function (data) {
+                    App.EditGhabrInfo.queryById('txtName').setValue(data.fldName);
+                    App.EditGhabrInfo.queryById('txtFamily').setValue(data.fldFamily);
+                    App.EditGhabrInfo.queryById('txtNameFather').setValue(data.fldNameFather);
+                    App.EditGhabrInfo.queryById('txtBDate').setValue(data.fldBDate);
+                    App.EditGhabrInfo.queryById('txtDeathDate').setValue(data.fldDeathDate);
+                    Ext.net.Mask.hide();
+                }
+            });
+
+        }
+    }
+    function Save() {
+        if (ObjectId == 0) {
+            Ext.MessageBox.show({
+                title:"خطا",
+                msg: "یک مورد را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else {
+            var txtName = App.EditGhabrInfo.queryById('txtName');
+            var txtFamily = App.EditGhabrInfo.queryById('txtFamily');
+            var txtNameFather = App.EditGhabrInfo.queryById('txtNameFather');
+            var txtBDate = App.EditGhabrInfo.queryById('txtBDate');
+            var txtDeathDate = App.EditGhabrInfo.queryById('txtDeathDate');
+            var er = false;
+
+            if (txtName.validate() == false) {
+                er = true;
+            }
+            if (txtFamily.validate() == false) {
+                er = true;
+            }
+            if (txtNameFather.validate() == false) {
+                er = true;
+            }
+
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/EditGhabrInfo/Save',
+                params: {
+                    fldName: txtName.getValue(),
+                    fldFamily: txtFamily.getValue(),
+                    fldNameFather: txtNameFather.getValue(),
+                    fldBDate: txtBDate.getValue(),
+                    fldDeathDate: txtDeathDate.getValue(),
+                    fldObjectId: ObjectId,
+                    fldId:recId
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.EditGhabrInfo.queryById('GhabrGrid').store.load();
+                    if (data.Err != 1)
+                        ClearEditGhabrInfo();
+                }
+
+            });
+        }
+    }
+    function ClearEditGhabrInfo() {
+        App.EditGhabrInfo.queryById('txtName').setValue("");
+        App.EditGhabrInfo.queryById('txtFamily').setValue("");
+        App.EditGhabrInfo.queryById('txtNameFather').setValue("");
+        App.EditGhabrInfo.queryById('txtBDate').setValue("");
+        App.EditGhabrInfo.queryById('txtDeathDate').setValue("");
+        ObjectId = 0;
+        recId = 0;
+    }
+    </script>

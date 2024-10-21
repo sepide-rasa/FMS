@@ -1,0 +1,352 @@
+﻿@model IEnumerable<NewFMS.WCF_Archive.OBJ_FileMojaz>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+
+@(Html.X().Panel()
+    .ID("AllowedFiles")
+    .Title("ثبت فایل های مجاز")
+    .Closable(true)
+    .Listeners(li => {
+        //li.Render.Fn = "addKeyMapFileMojaz";
+        li.AfterRender.Handler = "setSizeAllowedFiles()";
+    })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => l.Click.Handler = "SaveAllowedFiles();").ItemID("btnSave"),
+                X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => l.Click.Handler = "LoadAllowedFiles();"),
+                X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => l.Click.Handler = "DeleteAllowedFiles();"),
+                X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => l.Click.Handler = "HelpAllowedFiles();"),
+                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.AllowedFiles.destroy()")
+                )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .ItemID("pnlInfo")
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align=VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Border(true)
+                            .Title("فایل های مجاز")
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                            .Items(
+                                X.Hidden()
+                                    .ItemID("fldId"),
+                                X.FieldSet()
+                                    .Border(false)
+                                    .Defaults(new { Margin = 2 })
+                                    .Layout(LayoutType.Table)                                        
+                                    .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                                    .Items(
+                                        X.Label("فرمت فایل:"),
+                                        X.ComboBox()
+                                            .ItemID("CboFormat")
+                                            .TypeAhead(true)
+                                            .Editable(true)
+                                            .ForceSelection(true)
+                                            .QueryMode(DataLoadMode.Local)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا فرمت فایل را انتخاب کنید.")
+                                            .Listeners(l => l.AfterRender.Handler = "App.AllowedFiles.queryById('CboFormat').validate();")
+                                            .TriggerAction(TriggerAction.All)
+                                            .DisplayField("fldName")
+                                            .ValueField("fldId")
+                                            .EmptyText("فرمت فایل...")
+                                            .Store(X.Store()
+                                                .Model(X.Model()
+                                                    .IDProperty("fldId")
+                                                    .Fields(
+                                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                    )
+                                                )
+                                                .Proxy(X.AjaxProxy()
+                                                    .Url(Url.Action("GetFormat"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                                )
+                                            ),
+                                        X.Label("توضیحات:"),
+                                        X.TextArea()
+                                            .ItemID("txtDesc")
+                                        ),
+                                X.TreePanel()
+                                    .ID("TreeArchive_Files")
+                                    .AutoScroll(true)
+                                    .UseArrows(true)
+                                    .Border(false)
+                                    .Store(
+                                        X.TreeStore()
+                                            .AutoLoad(false)
+                                            .Proxy(
+                                                X.AjaxProxy().Url(Url.Action("NodeLoadArchive"))
+                                            )
+                                            .Listeners(l => l.BeforeLoad.Fn = "GetParamTreeArchive_Files")
+                                    )
+                                    .Listeners(l =>{
+                                        l.AfterRender.Handler = "App.TreeArchive_Files.expandAll();";
+                                        l.ItemClick.Handler = "setTextlblNameTree()";
+                                    })
+                                    .Root(Html.X().Node().NodeID("0").Text("ساختار درختی بایگانی")),
+                                X.FieldSet()
+                                    .Border(false)
+                                    .Height(30)
+                                    .Layout(LayoutType.VBox)
+                                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                                    .PaddingSpec("10px 0 0 220px")
+                                    .ColSpan(2)
+                                    .Items(
+                                        X.Label().ItemID("lblNameTree")
+                                    )
+                                )
+                    )
+            ),
+        X.GridPanel()
+            .ItemID("AllowedFilesGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.AllowedFiles.queryById('AllowedFilesGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .Plugins(X.FilterHeader().Remote(true))
+            .Listeners(l => l.AfterRender.Handler = "App.AllowedFiles.queryById('AllowedFilesGrid').setHeight(App.ArchiveWin.getHeight() - 380); ")
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان ساختار درختی").Wrap(true).Flex(4),
+                Html.X().Column().DataIndex(Model, m => m.fldFormatName).Text("نام فرمت").Flex(2),                
+                Html.X().Column().DataIndex(Model, m => m.fldPassvand).Text("پسوندهای مجاز").Wrap(true).Flex(4),
+                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+        )
+    )
+)
+
+<script type="text/javascript">
+
+    var GetParamTreeArchive_Files = function (store, operation, eOpts) {
+        var nodeId = operation.node.getId();
+        operation.params.nod = nodeId;
+    };
+
+    function setSizeAllowedFiles() {
+        App.AllowedFiles.queryById("pnlInfo").setHeight(App.ArchiveWin.getHeight() - 450);
+        App.TreeArchive_Files.setSize(App.ArchiveWin.getWidth() - 850, App.ArchiveWin.getHeight() - 510);
+        App.AllowedFiles.queryById("lblNameTree").setWidth(App.ArchiveWin.getHeight() - 550);
+    }
+
+    function setTextlblNameTree() {
+        if (App.TreeArchive_Files.getSelectionModel().getLastSelected().data.cls == "True") {
+            App.AllowedFiles.queryById("lblNameTree").setText(App.TreeArchive_Files.getSelectionModel().getLastSelected().data.text);
+        }
+        else {
+            App.AllowedFiles.queryById("lblNameTree").setText("");
+        }
+    }
+
+    function LoadAllowedFiles() {
+        var SelectedRow = App.AllowedFiles.queryById('AllowedFilesGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Archive/AllowedFiles/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var CboFormat = App.AllowedFiles.queryById('CboFormat');
+                    CboFormat.setValue(String(data.fldPassvand));
+                    var txtDesc = App.AllowedFiles.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.AllowedFiles.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    App.TreeArchive_Files.getSelectionModel().select(App.TreeArchive_Files.getStore().getNodeById(String(data.fldArchiveTreeId)));
+                    var lblNameTree = App.AllowedFiles.queryById('lblNameTree');
+                    lblNameTree.setText(data.fldTitle);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveAllowedFiles() {
+        var CboFormat = App.AllowedFiles.queryById('CboFormat');
+        var txtDesc = App.AllowedFiles.queryById('txtDesc');
+        var fldId = App.AllowedFiles.queryById('fldId');
+        var SelectedTree = App.TreeArchive_Files.getSelectionModel().getLastSelected();
+        var er = false;
+
+        if (CboFormat.validate() == false) {
+            er = true;
+        }
+        if (SelectedTree == null || SelectedTree.data.id==0) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک گره از ساختار درختی را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            er = true;
+        }
+        else if (SelectedTree.data.cls == "False") {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "برای گره مورد نظر امکان آپلود فایل وجود ندارد.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Archive/AllowedFiles/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldArchiveTreeId: SelectedTree.data.id,
+                fldFormatFileId: CboFormat.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+                App.AllowedFiles.queryById('AllowedFilesGrid').store.load();
+                if (data.Er != 1)
+                    ClearAllowedFiles();
+            }
+        });
+    }
+
+    function DeleteAllowedFiles() {
+        var SelectedRow = App.AllowedFiles.queryById('AllowedFilesGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Archive/AllowedFiles/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.AllowedFiles.queryById('AllowedFilesGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearAllowedFiles() {
+        App.AllowedFiles.queryById('fldId').setValue(0);
+        App.AllowedFiles.queryById('txtDesc').setValue("");
+        App.AllowedFiles.queryById('CboFormat').setValue("");
+        App.AllowedFiles.queryById('lblNameTree').setText("");
+        App.TreeArchive_Files.getSelectionModel().deselectAll();
+        App.TreeArchive_Files.getSelectionModel().clearSelections();
+    }
+
+    function HelpAllowedFiles() {
+        /*Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Archive/Format/Help',
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });*/
+    }
+
+    var addKeyMapFileMojaz = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    if (Ext.Element.getActiveElement().name == "") {
+                        SaveFormatFiles();
+                        return;
+                    }
+                    var keyfield = App.TreeArchive_Files.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.FormatFiles.queryById("btnSave");
+                        nextfld.focus();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

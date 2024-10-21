@@ -1,0 +1,298 @@
+﻿@model IEnumerable<NewFMS.WCF_Budget.OBJ_Motammam>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("SabtMotamamBudget")
+        .Title("تعریف متمم بودجه")
+        .Listeners(li => { li.AfterRender.Handler = "MotamamBudgetSetSize();"; li.Render.Fn = "addKeyMapMotamamBudget"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                    X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveMotamamBudget")
+                .Listeners(l => { l.Click.Handler = "SaveMotamamBudget();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadMotamamBudget();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteMotamamBudget();"; })
+               //, X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpMotamamBudget();"; })
+               ,
+             X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.SabtMotamamBudget.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                 X.FieldSet().Border(false).Items(
+                    X.FieldSet().Border(true).Title("متمم بودجه").Height(80)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                     X.Label("ســـال:"),
+                                X.ComboBox()
+                                    .ItemID("CboYear")
+                                    .DisplayField("fldYear")
+                                    .ValueField("fldId")
+                                    .TypeAhead(true).ReadOnly(true)
+                                    .Editable(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا سال را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Listeners(l => l.AfterRender.Handler = "App.SabtMotamamBudget.queryById('CboYear').validate()")
+                                    .Store(X.Store()
+                                            .Listeners(l => l.Load.Handler = "setDefaultYearMotamam()")
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" },
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetSal"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                    ),
+                      X.Label("تاریخ :"),
+                            X.PDateField()
+                                        .AutoFocus(true)
+                            .ItemID("txtTarikh")
+                            .AllowBlank(true)
+                            .BlankText("لطفا تاریخ  را وارد کنید.")
+                            .Editable(true)
+                            .MaskRe("/[0-9/]/")
+                            .MaxLength(10)
+                                .MinLength(10)
+                            .EnforceMaxLength(true),
+                            
+                     X.Label("توضیحات:"),
+                    X.TextField()
+                    .ItemID("txtDesc")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(330).ColSpan(3)
+                )
+            )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("MotamamBudgetGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                                X.StoreForModel()
+                                                    .Listeners(l => l.DataChanged.Handler = "App.SabtMotamamBudget.queryById('MotamamBudgetGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtMotamamBudget.queryById('MotamamBudgetGrid');grid.setHeight(App.BudjeWin.getHeight() - 305); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                            Html.X().Column().DataIndex(Model, m => m.fldYear).Text("سال").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldTarikh).Text("تاریخ").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.BudjeWin.addListener('resize', function () {
+        App.SabtMotamamBudget.setWidth(App.BudjeWin.getWidth());
+    });
+    App.BudjeWin.addListener('resize', function () {
+        var grid = App.SabtMotamamBudget.queryById('MotamamBudgetGrid');
+        grid.setHeight(App.BudjeWin.getHeight()-240);
+    });*/
+    function setDefaultYearMotamam() {
+       
+        App.SabtMotamamBudget.queryById('CboYear').setValue('@ViewBag.FiscalYearId');
+    }
+    function HelpMotamamBudget() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Budget/MotamamBudget/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function MotamamBudgetSetSize() {
+        App.SabtMotamamBudget.setWidth(App.BudjeWin.getWidth());
+        var grid = App.SabtMotamamBudget.queryById('MotamamBudgetGrid');
+        grid.setHeight(App.BudjeWin.getHeight() - 275); 
+        App.SabtMotamamBudget.queryById('txtTarikh').setValue('@ViewBag.Tarikh');
+    }
+
+    function LoadMotamamBudget() {
+        var SelectedRow = App.SabtMotamamBudget.queryById('MotamamBudgetGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Budget/MotamamBudget/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var CboYear = App.SabtMotamamBudget.queryById('CboYear');
+                    CboYear.setValue(data.fldFiscalYearId);
+                    var txtTarikh = App.SabtMotamamBudget.queryById('txtTarikh');
+                    txtTarikh.setValue(data.fldTarikh);
+                    var txtDesc = App.SabtMotamamBudget.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtMotamamBudget.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveMotamamBudget() {
+        var CboYear = App.SabtMotamamBudget.queryById('CboYear');
+        var txtTarikh = App.SabtMotamamBudget.queryById('txtTarikh');
+        var txtDesc = App.SabtMotamamBudget.queryById('txtDesc');
+        var fldId = App.SabtMotamamBudget.queryById('fldId');
+            var er = false;
+
+            if (txtTarikh.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Budget/MotamamBudget/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldTarikh: txtTarikh.rawValue,
+                    fldFiscalYearId: CboYear.getValue(),
+                    fldDesc: txtDesc.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtMotamamBudget.queryById('MotamamBudgetGrid').store.load();
+                    if (data.Err != 1)
+                        ClearMotamamBudget();
+                }
+
+            });
+    }
+    function DeleteMotamamBudget() {
+        var SelectedRow = App.SabtMotamamBudget.queryById('MotamamBudgetGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Budget/MotamamBudget/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtMotamamBudget.queryById('MotamamBudgetGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearMotamamBudget() {
+        App.SabtMotamamBudget.queryById('fldId').setValue(0);
+        App.SabtMotamamBudget.queryById('txtTarikh').setValue("");
+        App.SabtMotamamBudget.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapMotamamBudget = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtMotamamBudget.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtMotamamBudget.queryById('btnSaveMotamamBudget');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

@@ -1,0 +1,1154 @@
+﻿@model NewFMS.WCF_Daramad.OBJ_RequestTaghsit_Takhfif
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+    NewFMS.WCF_Common.CommonService servic = new NewFMS.WCF_Common.CommonService();
+    string IP = System.Web.HttpContext.Current.Request.ServerVariables["REMOTE_HOST"];
+    NewFMS.WCF_Common.ClsError Err = new NewFMS.WCF_Common.ClsError();
+}
+<script>
+    var ShowStatus = function (value, record) {
+        var fldRequestType = record.record.data.fldRequestType;
+        var template = '<img src={0} alt="" title={1} />';
+        if (value == 3 && fldRequestType == 1) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/درخواستتقسیطپاسخدادهشده.png")";
+            var ToolTip = "بی" + '&nbsp;' + "پاسخ";
+            
+        }
+        else if (value == 1 && fldRequestType == 1) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/تقسیطموافقتشده.png")";
+            var ToolTip = "توافق";
+        }
+        else if (value == 2 && fldRequestType == 1) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/تقسیطابطالشده.png")";
+            var ToolTip = "عدم" + '&nbsp;' + "توافق";
+        }
+        if (value == 3 && fldRequestType == 2) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/درخواستتخفیفپاسخدادهشده.png")";
+            var ToolTip = "بی" + '&nbsp;' + "پاسخ";
+        }
+        else if (value == 1 && fldRequestType == 2) {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/تخفیفموافقتشده.png")";
+            var ToolTip = "توافق";
+        }
+        else if (value == 2 && fldRequestType == 2)  {
+            var Pic = "@Url.Content("~/Content/icons/Daramad/mini/تخفیفابطالشده.png")";
+            var ToolTip = "عدم" + '&nbsp;' + "توافق";
+        }
+        return Ext.String.format(template, Pic, ToolTip);
+    };
+</script>
+@(Html.X().Window()
+    .Modal(true)
+        .Listeners(li => { li.AfterRender.Handler = "LoadReplyTaghsit_Takhfif();"; li.Render.Fn = "addKeyMapReplyTaghsit_Takhfif"; })
+    .Width(840)
+        //   .Height(300)
+    .Resizable(false)
+    .Title("پاسخ درخواست تخفیف/تقسیط")
+    .ID("ReplyTaghsit_Takhfif")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .ButtonAlign(Ext.Net.Alignment.Center)
+            .Border(false)
+            .KeyMap(Html.X().KeyMap()
+                .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+                .Binding(b =>
+                {
+                    b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                    .Handler("checkSaveReplyTaghsit_Takhfif(); ")
+                    );
+
+                }))
+            .DefaultButton("btn")
+                    .DefaultButton("btn")
+                .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .Buttons(
+                    X.Button()
+                        .Text("ذخیره")
+                        .Icon(Ext.Net.Icon.Disk)
+                            .Listeners(l => l.Click.Handler = "SaveReplyTakhfif();")
+                            .ItemID("btnSave"),
+                    X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                        .Listeners(l => l.Click.Handler = "SaveReplyTaghsit();")
+                        .ItemID("btnSaveTaghsit"),
+                    X.Button()
+                        .Text("خروج")
+                        .Icon(Ext.Net.Icon.DoorOut)
+                        .ToolTip("کلید میانبر Esc")
+                        .OnClientClick("App.ReplyTaghsit_Takhfif.destroy();")
+                        )
+    .Items(
+        X.FormPanel()
+                //.Width(740)
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Border(false)
+            .Items(
+                X.FieldSet()
+                    .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+                        //.ItemID("Panel").Title("اطلاعات تخفیف/تقسیط")
+        // .Width(490)
+                    //.Layout(Ext.Net.LayoutType.Table)
+                    .Border(false)
+                    //.LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                     X.FieldSet()
+                    .Width(800)
+                    .ColSpan(4)
+                    .ItemID("pnlRequest")
+                    .Title("درخواست تخفیف/تقسیط")
+                    .Defaults(new { Margin = 2 })
+                    //.Listeners(l => l.Expand.Handler = "CollapsPnl();")
+                    //.Listeners(l => l.Collapse.Handler = "CollapsPnl();")
+                    .Frame(false)
+                    //.Defaults(new { Margin = 5 })
+                    .Items(
+                  X.GridPanel().AutoScroll(true)
+                    .ItemID("RequestGrid").Flex(2)
+                      .Store(
+                                X.StoreForModel().AutoLoad(true)
+                                .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadRequest"))
+                                            .Reader(Html.X().JsonReader().Root("data"))
+                                            .ExtraParams(l => l.Add(new { elamAvarez = @ViewBag.Id }))
+                                )
+                                .PageSize(20)
+                                .RemoteFilter(true)
+                                .RemotePaging(true)
+                                
+                            )
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+                            .Height(90)
+                                //.BottomBar(X.PagingToolbar().HideRefresh(true))   
+                            .ColumnModel(
+                                    Html.X().RowNumbererColumn(),
+                                    Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldMablaghWithTakhfifKoli).Text("مبلغ با تخفیف اصلی").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldElamAvarezId).Text("کداعلام عوارض").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldRequestTypeName).Text("نوع درخواست").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.fldReplyRequest).Text("پاسخ").Flex(2).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldRequestType).Text("نوع درخواست").Flex(2).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldName_Family).Text("نام").Flex(3).Wrap(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldFatherName).Text("نام پدر").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کدملی").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.MablaghAsli).Text("بدون ارزش افزوده").Renderer("LocalString").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.fldMablaghWithTakhfifKoli).Text("پس از تخفیف").Renderer("LocalString").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.fldMablagh).Text("ارزش افزوده").Renderer("LocalString").Flex(3),                                                                                                                
+                                    Html.X().Column().DataIndex(Model, m => m.fldMablaghMashmoolKarmozd).Text("مبلغ مشمول کارمزد").Renderer("LocalString").Flex(3),
+                                    //Html.X().Column().DataIndex(Model, m => m.fldReplyRequestName).Text("وضعیت درخواست").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldReplyRequest).Text("وضعیت").Flex(1).Renderer("ShowStatus").Filterable(false),
+                                    Html.X().Column().DataIndex(Model, m => m.fldCheckTakhfif_Taghsit).Text("وضعیت درخواست").Flex(3).Hidden(true),
+                                    Html.X().ImageCommandColumn()/*.PrepareCommand("prepareCommandSodur")*/
+                                    .Flex(2).Listeners(l => l.Command.Fn = "ShowInfoReply").Commands(
+                                        Html.X().ImageCommand().CommandName("NoAccept").Icon(Ext.Net.Icon.Cancel).ToolTip(tt => tt.Text = "عدم توافق")
+                                        , Html.X().ImageCommand().CommandName("Accept").Icon(Ext.Net.Icon.Accept).ToolTip(tt => tt.Text = "توافق")
+                                        , Html.X().ImageCommand().CommandName("Del").Icon(Ext.Net.Icon.Cross).ToolTip(tt => tt.Text = "حذف پاسخ")
+                                            .Hidden(!servic.Permission(747, Convert.ToInt32(Session["OrganId"]), Session["Username"].ToString(), Session["Password"].ToString(), out Err))
+                                        )
+                                )
+                            ),
+                                X.Hidden().ItemID("fldTakhfifId"),
+                                X.Hidden().ItemID("fldTaghsitId"),
+                                X.Hidden().ItemID("EmployeeId"),
+                      X.FieldSet()
+                        .Title("اطلاعات مربوط به تخفیف")
+                        .Layout(Ext.Net.LayoutType.Table)
+                        .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 6 })
+                     .ItemID("pnlTakhfif")
+                    .Width(680)
+                     .Items( 
+                        X.Label("شماره مجوز:"),
+                        X.TextField()
+                        .Width(160)
+                        .EnforceMaxLength(true)
+                        .MaxLength(50)
+                        .ItemID("txtMojavez")
+                        .AllowBlank(false)
+                        .AutoFocus(true)
+                        .BlankText("لطفا شماره مجوز را وارد کنید.")
+                        , X.Label().Text("تاریخ مجوز:")
+                        , X.PDateField()
+                        .ItemID("txtTarikhMojavez")
+                        .Listeners(l => l.Focus.Handler = "ChangeTarikhMojavez();")
+                        .Editable(false)
+                        .AllowBlank(false)
+                        .BlankText("لطفا تاریخ مجوز را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Right)
+                        ,X.Label("درصد تخفیف:")
+                        ,X.TextField()
+                        .Width(160)
+                        //.Regex(@"^\d+\.\d{0,2}$")
+                        .MaskRe("[0-9,.]")
+                        .ItemID("txtTakhfif")
+                        .Listeners(l => { l.Change.Handler = "ChangetxtTakhfif();"; l.Blur.Handler = "BlurtxtTakhfif()"; })
+                        .AllowBlank(false)
+                        .BlankText("لطفا درصد تخفیف را وارد کنید.")
+                        ,X.Label("مبلغ تخفیف:")
+                         ,X.TextField()
+                        .Width(160)
+                        .ItemID("txtMablaghTakhfif")
+                        .AllowBlank(false)
+                        .Listeners(l => { l.Change.Handler = "ChangetxtMablaghTakhfif();App.ReplyTaghsit_Takhfif.queryById('txtMablaghTakhfif').setValue(accounting.formatNumber(App.ReplyTaghsit_Takhfif.queryById('txtMablaghTakhfif').getValue()))"; 
+                        l.Blur.Handler = "BlurtxtMablaghTakhfif()";})
+                        .BlankText("لطفا مبلغ تخفیف را وارد کنید.")
+                        , X.Label("توضیحات:"),
+                        X.TextField()
+                        .Width(376)
+                        .ItemID("txtDescK")
+                        .ColSpan(3)
+                        .AllowBlank(true)
+                        .BlankText("لطفا توضیحات را وارد کنید.")
+                        .MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AutoScroll(true)
+                        )
+                        , X.FieldSet()
+                        .Title("اطلاعات مربوط به تقسیط")
+                        .Layout(Ext.Net.LayoutType.Table)
+                        .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 6 })
+                         .ItemID("pnlTaghsit")
+                        //.Defaults(new { Margin = 2 })
+                            //.Width(650)
+                         .Items(
+                            X.Label("شماره مجوز:"),
+                            //.MarginSpec("0 0 50px 0"),
+                            X.TextField()
+                            .EnforceMaxLength(true)
+                            .MaxLength(50)
+                            .Width(145)
+                            .ItemID("txtMojavezT")
+                            .AllowBlank(false)
+                            .AutoFocus(true)
+                            .BlankText("لطفا شماره مجوز را وارد کنید.")
+                            , X.Label().Text("تاریخ مجوز:")
+                            , X.PDateField()
+                            .ItemID("txtTarikhMojavezT")
+                            .Editable(false)
+                            .Listeners(l => l.Focus.Handler = "ChangeTarikhMojavezT();")
+                            .AllowBlank(false)
+                            .BlankText("لطفا تاریخ مجوز را وارد کنید.")
+                            .LabelAlign(Ext.Net.LabelAlign.Right)
+                            , X.Label("درصد مبلغ نقدی:")
+                            , X.TextField()
+                            .Width(145)
+        //.Regex(@"^\d+\.\d{0,2}$")
+                            .MaskRe("[0-9,.]")
+                            .ItemID("txtDarsad")
+                            .Listeners(l => { l.Change.Handler = "ChangetxtDarsad();"; l.Blur.Handler = "BlurtxtDarsad()";  })
+                            .AllowBlank(true)
+                            .BlankText("لطفا درصد مبلغ نقدی را وارد کنید.")
+                            , X.Label("مبلغ نقدی:")
+                            , X.TextField().Text("0")
+                            .Width(145)
+                            .ItemID("txtMablaghNaghdi")
+                            .AllowBlank(true)
+                            .AutoFocus(true)
+                            .MaskRe("[0-9]")
+                            .Listeners(l => { l.Change.Handler = "checkIntNum('txtMablaghNaghdi');MohasebeJarime();"; l.Blur.Handler = "BlurtxtMablaghNaghdi()"; })
+                            .BlankText("لطفا مبلغ نقدی را وارد کنید.")
+                            , X.Label("تعداد اقساط:")
+                             , X.TextField()
+                            .Width(145)
+                                .ItemID("txtNumber").Text("0")
+                            .MaskRe("[0-9]")
+                            .Listeners(l => l.Change.Handler = "checkByteNum('txtNumber')")
+                            .AllowBlank(false)
+                            .AutoFocus(true)
+                            .BlankText("لطفا تعداد اقساط را وارد کنید.")
+                            , X.Label("تعداد ماه های اقساط:")
+                            , X.TextField()
+                            .Width(145)
+                            .ItemID("txtMonth")
+                            .AllowBlank(false)
+                            .MaskRe("[0-9]")
+                            .Listeners(l => l.Change.Handler = "checkByteNum('txtMonth');MohasebeJarime();")                            
+                            .BlankText("لطفا تعداد ماه های اقساط را وارد کنید.")
+                            , X.Label("کارمزد:")
+                                , X.TextField().Text("0")
+                            .Width(145)
+                            .ItemID("txtJarime")
+                            .AllowBlank(false)
+                            .Listeners(l => l.Change.Handler = "checkIntNum('txtJarime')")
+                            .MaskRe("[0-9]")                            
+                            .ReadOnly(true)
+                            , X.Label("توضیحات:"),
+                            X.TextField()
+                            .Width(400)
+                            .ItemID("txtDesc")
+                            .ColSpan(6)
+                            .AllowBlank(true)
+                            .BlankText("لطفا توضیحات را وارد کنید.")
+                            .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AutoScroll(true)
+                                ,
+                                       X.FieldSet().Border(false).PaddingSpec("0 0 0 50px")
+                                            .Layout(LayoutType.HBox)
+                                    .Items(
+                                        X.Checkbox().ItemID("CheckKarmozd").Listeners(l => l.Change.Handler = "ChangeCheckKarmozd()")
+                                    , X.Label().Text("حذف کارمزد").Width(65)
+                                        ).ColSpan(2)
+                                , X.Label("دلیل حذف کارمزد:"),
+                                X.TextField()
+                                .Width(400)
+                                .ItemID("txtDescKarmozd")
+                                .ColSpan(6)
+                                .AllowBlank(false)
+                                .Disabled(true)
+                                .BlankText("لطفا توضیحات حذف کارمزد را وارد کنید.")
+                                    .AutoScroll(true)
+                            )
+                        )
+        )
+    )
+)
+
+<script type="text/javascript">
+    var ElamAvarezId = '@ViewBag.Id';
+    var fldMablaghMashmoolKarmozd = 0;
+    var fldMablaghWithTakhfifKoli = 0;
+    var RequestId = 0;
+    var Mashmul = 0;
+    var fldMablagh = 0;
+
+    function ChangeCheckKarmozd() {
+        var CheckKarmozd = App.ReplyTaghsit_Takhfif.queryById('CheckKarmozd');
+        var txtDescKarmozd = App.ReplyTaghsit_Takhfif.queryById('txtDescKarmozd');
+        var txtJarime = App.ReplyTaghsit_Takhfif.queryById('txtJarime');
+        if (CheckKarmozd.checked) {
+            txtDescKarmozd.setDisabled(false);
+            txtDescKarmozd.validate();
+            txtJarime.setValue(0);
+        }
+        else {
+            txtDescKarmozd.setDisabled(true);
+            txtDescKarmozd.setValue("");
+            MohasebeJarime();
+        }
+    }
+    function loadTakhfif(state, ReplyRequest) {
+        var pnlTakhfif = App.ReplyTaghsit_Takhfif.queryById('pnlTakhfif');
+        var pnlTakhfif = App.ReplyTaghsit_Takhfif.queryById('pnlTaghsit');
+        var btnSave = App.ReplyTaghsit_Takhfif.queryById('btnSave');
+        var btnSaveTaghsit = App.ReplyTaghsit_Takhfif.queryById('btnSaveTaghsit');
+
+
+        var txtMojavez = App.ReplyTaghsit_Takhfif.queryById('txtMojavez');
+        var txtTarikhMojavez = App.ReplyTaghsit_Takhfif.queryById('txtTarikhMojavez');
+        var txtTakhfif = App.ReplyTaghsit_Takhfif.queryById('txtTakhfif');
+        var txtMablaghTakhfif = App.ReplyTaghsit_Takhfif.queryById('txtMablaghTakhfif');
+        var fldTakhfifId = App.ReplyTaghsit_Takhfif.queryById('fldTakhfifId');
+        var txtDescK = App.ReplyTaghsit_Takhfif.queryById('txtDescK');
+        if (('@ViewBag.perTakhfif' == "0" && fldTakhfifId.getValue() != "") && (state == 2 || state == 4)) {
+            pnlTakhfif.setDisabled(true);
+            btnSave.setDisabled(true);
+        }
+            /*else if ('ViewBag.perTakhfif' == "1" && (state == 2 || state == 4)) {
+                pnlTakhfif.setDisabled(false);
+                btnSave.setDisabled(false);
+            }*/
+        else {
+            pnlTakhfif.setDisabled(false);
+            btnSave.setDisabled(false);
+        }
+        if (state == 1 || state == 3) {
+            txtMojavez.validate();
+
+            txtTarikhMojavez.validate();
+
+            txtTakhfif.validate();
+
+            txtMablaghTakhfif.validate();
+        }
+        else if (ReplyRequest == 1) {
+            Ext.net.DirectMethod.request({
+                url: '/ReplyTaghsit_Takhfif/DetailsTakhfif',
+                params: {
+                    id: RequestId
+                },
+                success: function (data) {
+
+                    txtMojavez.setValue(data.fldShomareMajavez);
+                    txtTarikhMojavez.setValue(data.fldTarikh);
+                    txtMablaghTakhfif.setValue(data.fldMablagh);
+                    txtTakhfif.setValue(data.fldDarsad);
+                    txtDescK.setValue(data.fldDesc);
+                    fldTakhfifId.setValue(data.fldId);
+                    if (('@ViewBag.perTakhfif' == "0" && fldTakhfifId.getValue() != "") && (state == 2 || state == 4)) {
+                        pnlTakhfif.setDisabled(true);
+                        btnSave.setDisabled(true);
+                    }
+                        /*else if ('ViewBag.perTakhfif' == "1" && (state == 2 || state == 4)) {
+                            pnlTakhfif.setDisabled(false);
+                            btnSave.setDisabled(false);
+                        }*/
+                    else {
+                        pnlTakhfif.setDisabled(false);
+                        btnSave.setDisabled(false);
+                    }
+                }
+            });
+        }
+
+
+
+    }
+    function loadTaghsit(state) {
+        var pnlTaghsit = App.ReplyTaghsit_Takhfif.queryById('pnlTaghsit');
+        var btnSaveTaghsit = App.ReplyTaghsit_Takhfif.queryById('btnSaveTaghsit');
+
+
+
+        var txtMojavezT = App.ReplyTaghsit_Takhfif.queryById('txtMojavezT');
+        var txtTarikhMojavezT = App.ReplyTaghsit_Takhfif.queryById('txtTarikhMojavezT');
+        var txtMablaghNaghdi = App.ReplyTaghsit_Takhfif.queryById('txtMablaghNaghdi');
+        var txtNumber = App.ReplyTaghsit_Takhfif.queryById('txtNumber');
+        var txtDarsad = App.ReplyTaghsit_Takhfif.queryById('txtDarsad');
+        var txtMonth = App.ReplyTaghsit_Takhfif.queryById('txtMonth');
+        var txtJarime = App.ReplyTaghsit_Takhfif.queryById('txtJarime');
+        var fldTaghsitId = App.ReplyTaghsit_Takhfif.queryById('fldTaghsitId');
+        var txtDesc = App.ReplyTaghsit_Takhfif.queryById('txtDesc');
+        var CheckKarmozd = App.ReplyTaghsit_Takhfif.queryById('CheckKarmozd');
+        var txtDescKarmozd = App.ReplyTaghsit_Takhfif.queryById('txtDescKarmozd');
+        if (Mashmul == 0) {
+            CheckKarmozd.setDisabled(true);
+            CheckKarmozd.setValue(false);
+        }
+        else
+            CheckKarmozd.setDisabled(false);
+
+
+        if (state == 1 || state == 2) {
+            txtMojavezT.validate();
+
+            txtTarikhMojavezT.validate();
+
+            txtMablaghNaghdi.validate();
+
+            txtNumber.validate();
+
+            txtMonth.validate();
+
+            txtJarime.validate();
+            txtDarsad.validate();
+
+        }
+        else /*if (state == 1)*/ {
+            Ext.net.DirectMethod.request({
+                url: '/ReplyTaghsit_Takhfif/DetailsTaghsit',
+                params: {
+                    id: RequestId
+                },
+                success: function (data) {
+                    txtDescKarmozd.setValue(data.fldDescKarmozd);
+                    CheckKarmozd.setValue(data.checkKarmozd);
+                    txtMojavezT.setValue(data.fldShomareMojavez);
+                    txtTarikhMojavezT.setValue(data.fldTarikh);
+                    txtMablaghNaghdi.setValue(data.fldMablaghNaghdi);
+                    txtNumber.setValue(data.fldTedadAghsat);
+                    txtMonth.setValue(data.fldTedadMahAghsat);
+                    txtDesc.setValue(data.fldDesc);
+                    fldTaghsitId.setValue(data.fldId);
+                    txtJarime.setValue(data.fldJarimeTakhir);
+                    txtDarsad.setValue(data.fldDarsad);
+                    if (('@ViewBag.perTaghsit' == "0" && fldTaghsitId.getValue() != "") && (state == 3 || state == 4)) {
+
+                        pnlTaghsit.setDisabled(true);
+                        btnSaveTaghsit.setDisabled(true);
+                    }
+                        /*else if ('ViewBag.perTaghsit' == "1" && (state == 3 || state == 4)) {
+
+                            pnlTakhfif.setDisabled(false);
+                            btnSaveTaghsit.setDisabled(false);
+                        }*/
+                    else {
+                        pnlTaghsit.setDisabled(false);
+                        btnSaveTaghsit.setDisabled(false);
+                    }
+                }
+            });
+        }
+
+
+    }
+    function checkIntNum(field) {
+        App.ReplyTaghsit_Takhfif.queryById(field).setValue(accounting.formatNumber(App.ReplyTaghsit_Takhfif.queryById(field).getValue()));
+        if (parseInt(App.ReplyTaghsit_Takhfif.queryById(field).getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '')) > fldMablaghWithTakhfifKoli) {
+            App.ReplyTaghsit_Takhfif.queryById(field).setValue("");
+            App.ReplyTaghsit_Takhfif.queryById(field).validate();
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "مقدار وارد شده بیشتر از حد مجاز است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function checkJarimeTakhir(field) {
+        App.ReplyTaghsit_Takhfif.queryById(field).setValue(accounting.formatNumber(App.ReplyTaghsit_Takhfif.queryById(field).getValue()));
+        if (parseInt(App.ReplyTaghsit_Takhfif.queryById(field).getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '')) > 2147483647) {
+            App.ReplyTaghsit_Takhfif.queryById(field).setValue("");
+            App.ReplyTaghsit_Takhfif.queryById(field).validate();
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "مقدار وارد شده بیشتر از حد مجاز است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function MohasebeJarime() {
+        var CheckKarmozd = App.ReplyTaghsit_Takhfif.queryById("CheckKarmozd");
+        var txtMonth = App.ReplyTaghsit_Takhfif.queryById("txtMonth").getValue();
+        var txtMablaghNaghdi = App.ReplyTaghsit_Takhfif.queryById("txtMablaghNaghdi").getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '');
+        var txtJarime = App.ReplyTaghsit_Takhfif.queryById("txtJarime");
+        var Nerkh = parseFloat('@ViewBag.Nerkh');
+        var mablagh = 0;
+        if (txtMonth != "" && Mashmul != 0 && !CheckKarmozd.checked) {
+               var Month = parseInt(txtMonth)+1;
+               var MablaghNaghdi = parseInt(txtMablaghNaghdi);
+               var m = Mashmul - MablaghNaghdi;
+               mablagh = m * Nerkh * Month  / 2400;
+           }
+           txtJarime.setValue(mablagh);
+
+           /* Ext.net.DirectMethod.request({
+                url: '/ReplyTaghsit_Takhfif/MohasebeKarmozd',
+                params: {
+                    Month: txtMonth,
+                    MablaghNaghdi: MablaghNaghdi,
+                    Mashmul: Mashmul,
+                    ElamAvarezId: ElamAvarezId
+                },
+                success: function (data) {
+                    txtJarime.setValue(data.mablagh);
+                }
+            });
+        }*/
+    }
+    function checkByteNum(field) {
+        if (parseInt(App.ReplyTaghsit_Takhfif.queryById(field).getValue()) > 255) {
+            App.ReplyTaghsit_Takhfif.queryById(field).setValue("");
+            App.ReplyTaghsit_Takhfif.queryById(field).validate();
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "مقدار وارد شده بیشتر از حد مجاز است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function LoadReplyTaghsit_Takhfif() {
+        var pnlTakhfif = App.ReplyTaghsit_Takhfif.queryById('pnlTakhfif');
+        var pnlTaghsit = App.ReplyTaghsit_Takhfif.queryById('pnlTaghsit');
+        var btnSave = App.ReplyTaghsit_Takhfif.queryById('btnSave');
+        var btnSaveTaghsit = App.ReplyTaghsit_Takhfif.queryById('btnSaveTaghsit');
+        pnlTakhfif.hide();
+        pnlTaghsit.hide();
+        btnSave.hide();
+        btnSaveTaghsit.hide();
+    }
+    var LocalString = function (value) {
+        return value.toLocaleString();
+    };
+
+    /**/
+
+    function ChangetxtDarsad() {
+        var txtDarsad = App.ReplyTaghsit_Takhfif.queryById('txtDarsad');
+        
+        if (parseFloat(txtDarsad.getValue()) > 100) {
+           
+            txtDarsad.setValue("");
+            txtDarsad.validate();
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "مقدار وارد شده بیشتر از حد مجاز است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function BlurtxtDarsad() {
+        var txtDarsad = App.ReplyTaghsit_Takhfif.queryById('txtDarsad');
+        var txtMablaghNaghdi = App.ReplyTaghsit_Takhfif.queryById("txtMablaghNaghdi");
+        if (txtDarsad.getValue() != "") {
+            var a = parseFloat(txtDarsad.getValue());
+            var s = a.toFixed(2);
+            txtDarsad.setValue(s);
+            var m = parseFloat(s) * fldMablaghWithTakhfifKoli / 100;
+            txtMablaghNaghdi.setValue(m);
+        }
+        else {
+            txtMablaghNaghdi.setValue(0);
+        }
+    }
+    /**/
+    function ChangetxtTakhfif() {
+        var txtTakhfif = App.ReplyTaghsit_Takhfif.queryById('txtTakhfif');
+        if (parseFloat(txtTakhfif.getValue()) > 100) {
+            txtTakhfif.setValue("");
+            txtTakhfif.validate();
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "مقدار وارد شده بیشتر از حد مجاز است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function BlurtxtTakhfif() {
+        var txtTakhfif = App.ReplyTaghsit_Takhfif.queryById('txtTakhfif');
+        var txtMablaghTakhfif = App.ReplyTaghsit_Takhfif.queryById('txtMablaghTakhfif');
+        if (txtTakhfif.getValue() != "") {
+            var a = parseFloat(txtTakhfif.getValue());
+            var s = a.toFixed(2);
+            txtTakhfif.setValue(s);
+            var m = parseFloat(s) * fldMablaghWithTakhfifKoli / 100;
+            txtMablaghTakhfif.setValue(m);
+        }
+        else {
+            txtMablaghTakhfif.setValue(0);
+        }
+    }
+    function BlurtxtMablaghTakhfif() {
+        var txtTakhfif = App.ReplyTaghsit_Takhfif.queryById('txtTakhfif');
+        var txtMablaghTakhfif = App.ReplyTaghsit_Takhfif.queryById('txtMablaghTakhfif');
+        if (txtMablaghTakhfif.getValue() != "") {
+            var a = parseInt(txtMablaghTakhfif.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''));
+            var m = a / fldMablaghWithTakhfifKoli * 100;
+            var s = m.toFixed(2);
+            txtTakhfif.setValue(s);
+        }
+        else {
+            txtTakhfif.setValue(0);
+        }
+    }
+    /**/
+    function BlurtxtMablaghNaghdi() {
+        var txtDarsad = App.ReplyTaghsit_Takhfif.queryById('txtDarsad');
+        var txtMablaghNaghdi = App.ReplyTaghsit_Takhfif.queryById('txtMablaghNaghdi');
+        if (txtMablaghNaghdi.getValue() != "" && fldMablagh>0) {
+            var a = parseInt(txtMablaghNaghdi.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''));
+            var m = a / fldMablagh * 100;
+            var s = m.toFixed(2);
+            txtDarsad.setValue(s);
+        }
+        else {
+            txtDarsad.setValue(0);
+        }
+    }
+
+    /**/
+    function ChangetxtMablaghTakhfif() {
+        var txtMablaghTakhfif = App.ReplyTaghsit_Takhfif.queryById('txtMablaghTakhfif');
+        var a = parseInt(txtMablaghTakhfif.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''));
+        if (a > fldMablaghWithTakhfifKoli) {
+            txtMablaghTakhfif.setValue("");
+            txtMablaghTakhfif.validate();
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "مقدار وارد شده بیشتر از حد مجاز است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ChangeTarikhMojavez() {
+        var txtTarikhMojavez = App.ReplyTaghsit_Takhfif.queryById('txtTarikhMojavez');
+        var fldTarikh = new Date('@ViewBag.fldTarikh');
+        txtTarikhMojavez.setMaxValue(fldTarikh);
+        txtTarikhMojavez.maxText = "تاریخ مجوز باید قبل از تاریخ " + '@ViewBag.TarikhShamsi' + "باشد";
+
+    }
+
+    function ChangeTarikhMojavezT() {
+        var txtTarikhMojavez = App.ReplyTaghsit_Takhfif.queryById('txtTarikhMojavezT');
+        var fldTarikh = new Date('@ViewBag.fldTarikh');
+        txtTarikhMojavez.setMaxValue(fldTarikh);
+        txtTarikhMojavez.maxText = "تاریخ مجوز باید قبل از تاریخ " + '@ViewBag.TarikhShamsi' + "باشد";
+    }
+    function ShowInfoReply(grid, command, record, row) {
+        var pnlTaghsit = App.ReplyTaghsit_Takhfif.queryById('pnlTaghsit');
+        var pnlTakhfif = App.ReplyTaghsit_Takhfif.queryById('pnlTakhfif');
+        var txtJarime = App.ReplyTaghsit_Takhfif.queryById('txtJarime');
+        var btnSave = App.ReplyTaghsit_Takhfif.queryById('btnSave');
+        var btnSaveTaghsit = App.ReplyTaghsit_Takhfif.queryById('btnSaveTaghsit');
+        fldMablaghMashmoolKarmozd = record.data.fldMablaghMashmoolKarmozd;
+        RequestId = record.data.fldId;
+        Mashmul = record.data.fldMablaghMashmoolKarmozd;
+        fldMablaghWithTakhfifKoli = record.data.fldMablaghWithTakhfifKoli;
+        fldMablagh = record.data.fldMablagh;
+        if (command == 'Accept') {
+            if (record.data.fldRequestType == 2) {/*تخفیف*/
+                if (record.data.fldCheckTakhfif_Taghsit == 3 && record.data.fldReplyRequest != 1) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "برای درخواست انتخاب شده قبلا تقسیط ثبت شده است، شما مجاز به ثبت تخیف نمی باشید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+
+                    /*else if (record.data.fldReplyRequest == 1) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "با درخواست تخفیف انتخاب شده قبلا موافقت شده است .",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                        loadTakhfif(1);
+                    }*/
+                else if (record.data.fldReplyRequest == 2) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "با درخواست تخفیف انتخاب شده قبلا مخالفت شده است .",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+                else /*if (record.data.fldReplyRequest == 3) *//*پاسخی به درخواست داده نشده*/ {
+                    btnSave.show();
+                    btnSaveTaghsit.hide();
+                    pnlTakhfif.show();
+                    pnlTaghsit.hide();
+                    loadTakhfif(record.data.fldCheckTakhfif_Taghsit, record.data.fldReplyRequest);
+
+                }
+            }
+            else if (record.data.fldRequestType == 1) {/*تقسیط*/
+                /*if (record.data.fldReplyRequest == 3) {/*پاسخی به درخواست داده نشده*/
+                if (record.data.fldReplyRequest == 2) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "با درخواست تقسیط انتخاب شده قبلا مخالفت شده است .",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+                else {
+                    if ('@ViewBag.Permission' == "1") {
+                        txtJarime.setReadOnly(false)
+                    }
+                    else {
+                        txtJarime.setReadOnly(true)
+                    }
+                    btnSave.hide();
+                    btnSaveTaghsit.show();
+                    pnlTaghsit.show();
+                    pnlTakhfif.hide();
+                    loadTaghsit(record.data.fldCheckTakhfif_Taghsit);
+                }
+                /*else if (record.data.fldReplyRequest == 1) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "با درخواست تقسیط انتخاب شده قبلا موافقت شده است .",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    loadTaghsit(1);
+                }*/
+
+            }
+        }
+        else if (command == 'NoAccept') {
+            btnSave.hide();
+            btnSaveTaghsit.hide();
+            pnlTakhfif.hide();
+            pnlTaghsit.hide();
+            if (record.data.fldRequestType == 2) {/*تخفیف*/
+                if (record.data.fldReplyRequest == 3) {/*پاسخی به درخواست داده نشده*/
+                    Ext.MessageBox.show({
+                        title: "هشدار",
+                        msg: "آیا برای مخالفت با درخواست داده شده مطمئن هستید؟",
+                        icon: Ext.MessageBox.WARNING,
+                        buttons: Ext.MessageBox.YESNO,
+                        fn: function (btn) {
+                            if (btn == 'yes') {
+                                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                Ext.net.DirectMethod.request({
+                                    url: '/ReplyTaghsit_Takhfif/Save',
+                                    params: {
+                                        fldRequestId: record.data.fldId,
+                                        fldTypeMojavez: 2,
+                                        fldTypeRequest: record.data.fldRequestType
+                                    },
+                                    success: function (data1) {
+                                        var ic = Ext.MessageBox.INFO;
+                                        if (data1.Er == 1)
+                                            ic = Ext.MessageBox.ERROR;
+                                        Ext.MessageBox.show({
+                                            title: data1.MsgTitle,
+                                            msg: data1.Msg,
+                                            icon: ic,
+                                            buttons: Ext.MessageBox.OK
+                                        });
+                                        App.ReplyTaghsit_Takhfif.queryById('RequestGrid').store.load();
+                                        App.MainAnnouncementComplication.queryById('AvarezGrid').store.load();
+                                        Ext.net.Mask.hide();
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+                else if (record.data.fldReplyRequest == 1) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "با درخواست تخفیف انتخاب شده قبلا موافقت شده است .",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+                else if (record.data.fldReplyRequest == 2) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "با درخواست تخفیف انتخاب شده قبلا مخالفت شده است .",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else if (record.data.fldRequestType == 1) {/*تقسیط*/
+                if (record.data.fldReplyRequest == 3) {/*پاسخی به درخواست داده نشده*/
+                    Ext.MessageBox.show({
+                        title: "هشدار",
+                        msg: "آیا برای مخالفت با درخواست داده شده مطمئن هستید؟",
+                        icon: Ext.MessageBox.WARNING,
+                        buttons: Ext.MessageBox.YESNO,
+                        fn: function (btn) {
+                            if (btn == 'yes') {
+                                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                Ext.net.DirectMethod.request({
+                                    url: '/ReplyTaghsit_Takhfif/Save',
+                                    params: {
+                                        fldRequestId: record.data.fldId,
+                                        fldTypeMojavez: 2,
+                                        fldTypeRequest: record.data.fldRequestType
+                                    },
+                                    success: function (data1) {
+                                        var ic = Ext.MessageBox.INFO;
+                                        if (data1.Er == 1)
+                                            ic = Ext.MessageBox.ERROR;
+                                        Ext.MessageBox.show({
+                                            title: data1.MsgTitle,
+                                            msg: data1.Msg,
+                                            icon: ic,
+                                            buttons: Ext.MessageBox.OK
+                                        });
+                                        App.ReplyTaghsit_Takhfif.queryById('RequestGrid').store.load();
+                                        App.MainAnnouncementComplication.queryById('AvarezGrid').store.load();
+                                        Ext.net.Mask.hide();
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+                else if (record.data.fldReplyRequest == 1) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "با درخواست تقسیط انتخاب شده قبلا موافقت شده است .",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+                else if (record.data.fldReplyRequest == 2) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "با درخواست تقسیط انتخاب شده قبلا مخالفت شده است .",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+        }
+        else if (command == 'Del') {
+            if (record.data.fldReplyRequest != 3) {/*پاسخی به درخواست داده شده*/
+                if (record.data.fldRequestType == 1) {/*تقسیط*/
+                    Ext.MessageBox.show({
+                        title: "هشدار",
+                        msg: "آیا برای حذف پاسخ درخواست انتخاب شده مطمئن هستید؟",
+                        icon: Ext.MessageBox.WARNING,
+                        buttons: Ext.MessageBox.YESNO,
+                        fn: function (btn) {
+                            if (btn == 'yes') {
+                                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                Ext.net.DirectMethod.request({
+                                    url: '/ReplyTaghsit_Takhfif/DeleteReply',
+                                    params: {
+                                        RequestId: record.data.fldId,
+                                        TypeRequest: record.data.fldRequestType
+                                    },
+                                    success: function (data1) {
+                                        var ic = Ext.MessageBox.INFO;
+                                        if (data1.Er == 1)
+                                            ic = Ext.MessageBox.ERROR;
+                                        Ext.MessageBox.show({
+                                            title: data1.MsgTitle,
+                                            msg: data1.Msg,
+                                            icon: ic,
+                                            buttons: Ext.MessageBox.OK
+                                        });
+                                        App.ReplyTaghsit_Takhfif.queryById('RequestGrid').store.load();
+                                        App.MainAnnouncementComplication.queryById('AvarezGrid').store.load();
+                                        if (data1.Er == 0) {
+                                            App.ReplyTaghsit_Takhfif.queryById('txtMojavezT').setValue("");
+                                            App.ReplyTaghsit_Takhfif.queryById('txtTarikhMojavezT').setValue("");
+                                            App.ReplyTaghsit_Takhfif.queryById('txtMablaghNaghdi').setValue("");
+                                            App.ReplyTaghsit_Takhfif.queryById('txtNumber').setValue("");
+                                            App.ReplyTaghsit_Takhfif.queryById('txtMonth').setValue("");
+                                            App.ReplyTaghsit_Takhfif.queryById('txtJarime').setValue("");
+                                            App.ReplyTaghsit_Takhfif.queryById('txtDarsad').setValue("");
+                                            App.ReplyTaghsit_Takhfif.queryById('txtDesc').setValue("");
+                                            btnSave.hide();
+                                            btnSaveTaghsit.hide();
+                                            pnlTakhfif.hide();
+                                            pnlTaghsit.hide();
+                                        }
+                                        Ext.net.Mask.hide();
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+                else if (record.data.fldRequestType == 2) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "پاسخ درخواست تخفیف قابل حذف نمی باشد .",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "به درخواست موردنظر پاسخی داده نشده است .",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+    }
+
+    function SaveReplyTakhfif() {
+        var txtMojavez = App.ReplyTaghsit_Takhfif.queryById('txtMojavez');
+        var txtTarikhMojavez = App.ReplyTaghsit_Takhfif.queryById('txtTarikhMojavez');
+        var txtTakhfif = App.ReplyTaghsit_Takhfif.queryById('txtTakhfif');
+        var txtMablaghTakhfif = App.ReplyTaghsit_Takhfif.queryById('txtMablaghTakhfif');
+        var fldTakhfifId = App.ReplyTaghsit_Takhfif.queryById('fldTakhfifId');
+        var txtDesc = App.ReplyTaghsit_Takhfif.queryById('txtDescK');
+
+        var er = false;
+
+        if (txtMojavez.validate() == false) {
+            er = true;
+            txtMojavez.validate();
+        }
+        if (txtTarikhMojavez.validate() == false) {
+            er = true;
+            txtTarikhMojavez.validate();
+        }
+        if (txtTakhfif.validate() == false) {
+            er = true;
+            txtTakhfif.validate();
+        }
+        if (txtMablaghTakhfif.validate() == false) {
+            er = true;
+            txtMablaghTakhfif.validate();
+        }
+        if (txtMablaghTakhfif.getValue() == "0" || txtMablaghTakhfif.getValue() == "") {
+            er = true;
+            txtMablaghTakhfif.validate();
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا مبلغ تخفیف را وارد نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/ReplyTaghsit_Takhfif/Save',
+            params: {
+                ReplyId: fldTakhfifId.getValue(),
+                fldRequestId: RequestId,
+                fldTypeMojavez: 1,
+                fldTypeRequest: 2,
+                fldDarsad: txtTakhfif.getValue(),
+                fldMablagh: txtMablaghTakhfif.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                fldShomareMajavez: txtMojavez.getValue(),
+                fldTarikh: txtTarikhMojavez.rawValue,
+                fldDesc: txtDesc.getValue(),
+                fldDescKarmozd:""
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                /*if (data.Er != 1) {
+                    ClearIncomeSettingg();
+                }*/
+                LoadReplyTaghsit_Takhfif();
+                App.ReplyTaghsit_Takhfif.queryById('RequestGrid').store.load();
+                App.MainAnnouncementComplication.queryById('AvarezGrid').store.load();
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function SaveReplyTaghsit() {
+        var txtMojavezT = App.ReplyTaghsit_Takhfif.queryById('txtMojavezT');
+        var txtTarikhMojavezT = App.ReplyTaghsit_Takhfif.queryById('txtTarikhMojavezT');
+        var txtMablaghNaghdi = App.ReplyTaghsit_Takhfif.queryById('txtMablaghNaghdi');
+        var txtNumber = App.ReplyTaghsit_Takhfif.queryById('txtNumber');
+        var txtMonth = App.ReplyTaghsit_Takhfif.queryById('txtMonth');
+        var txtJarime = App.ReplyTaghsit_Takhfif.queryById('txtJarime');
+        var fldTaghsitId = App.ReplyTaghsit_Takhfif.queryById('fldTaghsitId');
+        var txtDarsad = App.ReplyTaghsit_Takhfif.queryById('txtDarsad');
+        var txtDesc = App.ReplyTaghsit_Takhfif.queryById('txtDesc');
+        var CheckKarmozd = App.ReplyTaghsit_Takhfif.queryById('CheckKarmozd');
+        var txtDescKarmozd = App.ReplyTaghsit_Takhfif.queryById('txtDescKarmozd');
+
+        var er = false;
+
+
+        if (CheckKarmozd.checked) {
+            if (txtDescKarmozd.validate() == false) {
+                er = true;
+                txtDescKarmozd.validate();
+            }
+        }
+        if (txtMojavezT.validate() == false) {
+            er = true;
+            txtMojavezT.validate();
+        }
+        if (txtTarikhMojavezT.validate() == false) {
+            er = true;
+            txtTarikhMojavezT.validate();
+        }
+        /* if (txtMablaghNaghdi.validate() == false) {
+             er = true;
+             txtMablaghNaghdi.validate();
+         }*/
+        if (txtNumber.validate() == false) {
+            er = true;
+            txtNumber.validate();
+        }
+        if (txtMonth.validate() == false) {
+            er = true;
+            txtMonth.validate();
+        }
+        /*if (txtDarsad.validate() == false) {
+            er = true;
+            txtDarsad.validate();
+        }
+        if (txtMablaghNaghdi.getValue() == "0" || txtMablaghNaghdi.getValue() == "") {
+            er = true;
+            txtMablaghNaghdi.validate();
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا مبلغ نقدی را وارد نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }*/
+        if (er == true)
+            return;
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+
+       /* var Nerkh = parseFloat('*/@*@ViewBag.Nerkh*@/*');
+        var mablagh = 0;
+        var mm = txtMablaghNaghdi.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', '');
+        if (txtMonth.getValue() != "" && Mashmul != 0 && !CheckKarmozd.checked) {
+            var Month = parseInt(txtMonth.getValue()) + 1;
+            var MablaghNaghdi = parseInt(mm);
+            var m = Mashmul - MablaghNaghdi;
+            mablagh = m * Nerkh * Month / 2400;
+        }*/
+        var txtJarime = App.ReplyTaghsit_Takhfif.queryById("txtJarime");
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/ReplyTaghsit_Takhfif/Save',
+            params: {
+                ReplyId: fldTaghsitId.getValue(),
+                fldRequestId: RequestId,
+                fldTypeMojavez: 1,
+                fldTypeRequest: 1,
+                fldDarsad: txtDarsad.getValue(),
+                fldMablaghNaghdi: txtMablaghNaghdi.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                fldTedadAghsat: txtNumber.getValue(),
+                fldShomareMojavez: txtMojavezT.getValue(),
+                fldTarikh: txtTarikhMojavezT.rawValue,
+                fldTedadMahAghsat: txtMonth.getValue(),
+                fldJarimeTakhir: txtJarime.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),/*parseInt(mablagh)*//*,*/
+                fldDesc: txtDesc.getValue(),
+                fldDescKarmozd: txtDescKarmozd.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                LoadReplyTaghsit_Takhfif();
+                App.ReplyTaghsit_Takhfif.queryById('RequestGrid').store.load();
+                App.MainAnnouncementComplication.queryById('AvarezGrid').store.load();
+                /*if (data.Er != 1) {
+                    ClearIncomeSettingg();
+                }*/
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var addKeyMapReplyTaghsit_Takhfif = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.ReplyTaghsit_Takhfif.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    
+                    
+                    /* if (keyfield.itemId == "txtKosurat") {
+                         nextfld = App.ReplyTaghsit_Takhfif.queryById('btnSave');
+                     }
+                     else {*/
+                    nextfld = keyfield.nextSibling().nextSibling();
+                    nextfld.selectText();
+                    /*  }*/
+                    nextfld.focus();
+                }
+            }]
+        });
+    };
+</script>

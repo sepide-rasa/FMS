@@ -1,0 +1,160 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+
+@(Html.X().Window().Modal(true).Listeners(li => { li.AfterRender.Handler = "LoadParametrBaskol();"; li.Render.Fn = "addKeyMapParametrBaskol"; })
+.Width(540)//.Height(300)
+    .Title("تعریف پارامترهای باسکول")
+        .ID("NewParametrBaskol")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+        .ButtonAlign(Ext.Net.Alignment.Center)
+        .Layout(LayoutType.Fit)
+        .Buttons(X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l =>
+                    {
+                        l.Click.Handler = "SaveParametrBaskol();";
+
+                    })
+                     .ItemID("btnSaveParametrBaskol")
+                    ,
+                    X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                        .OnClientClick("App.NewParametrBaskol.hide();"))
+    .Items(
+        
+            X.Panel().Border(false)
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("پارامترهای باسکول")
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                .Defaults(new { Margin = 2 })
+                .Items(
+                X.Hidden().ItemID("fldId"),
+                     X.Label("نام فارسی:"),
+                     X.TextField()
+                     .ItemID("txtFaName")
+                     .MaxLength(400).MaskRe("[ ,),(,ا-ی-آ-ئ-ء]")
+                     .EnforceMaxLength(true)
+                    .AllowBlank(false)
+                    .BlankText("لطفا نام آیتم را وارد کنید.")
+                    .AutoFocus(true),
+                    X.Label("نام انگلیسی:"),
+                     X.TextField()
+                         .ItemID("txtEnName")
+                     .MaxLength(400).MaskRe("[a-z,A-Z]")
+                     .EnforceMaxLength(true)
+                    .AllowBlank(false)
+                    .BlankText("لطفا نام انگلیسی را وارد کنید.")
+
+                     )
+
+                )
+        )
+)
+<script type="text/javascript">
+    function LoadParametrBaskol() {
+        ReplaceArabic();
+        if ('@ViewBag.Id' != '0') {
+            App.NewParametrBaskol.body.mask("در حال بارگذاری...");
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Weighbridge/Details',
+                params: {
+                    Id: '@ViewBag.Id',
+                },
+                success: function (data) {
+                    var txtFaName = App.NewParametrBaskol.queryById('txtFaName');
+                    txtFaName.setValue(data.fldName);
+                    var txtEnName = App.NewParametrBaskol.queryById('txtEnName');
+                    txtEnName.setValue(data.fldEnglishNameFormul);
+                    var Id = App.NewParametrBaskol.queryById('fldId');
+                    Id.setValue(data.fldId);
+                    App.NewParametrBaskol.body.mask().hide();
+                }
+            });
+        }
+        else {
+            App.NewParametrBaskol.queryById('txtFaName').validate();
+            App.NewParametrBaskol.queryById('txtEnName').validate();
+        }
+
+    }
+
+    function SaveParametrBaskol() {
+        var txtFaName = App.NewParametrBaskol.queryById('txtFaName');
+        var txtEnName = App.NewParametrBaskol.queryById('txtEnName');
+        var Id = App.NewParametrBaskol.queryById('fldId');
+            var er = false;
+            if (txtFaName.validate() == false) {
+                er = true;
+            }
+            if (txtEnName.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+            App.NewParametrBaskol.body.mask("در حال ذخیره سازی");
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Weighbridge/SaveParametrsBaskool',
+                params: {
+                    fldId: Id.getValue(),
+                    fldFaName: txtFaName.getValue(),
+                    fldEnName: txtEnName.getValue(),
+                },
+                success: function (data) {
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    
+                    LoadGridBaskoolParametr_Value();
+                   
+                    if (data.Er != 1)
+                        ClearParametrBaskol();
+                    App.NewParametrBaskol.body.mask().hide();
+                }
+
+            });
+        }
+    function ClearParametrBaskol() {
+        App.NewParametrBaskol.queryById('txtEnName').setValue("");
+        App.NewParametrBaskol.queryById('txtFaName').setValue("");
+        App.NewParametrBaskol.queryById('fldId').setValue(0);
+    }
+    var addKeyMapParametrBaskol = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NewParametrBaskol.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtEnName") {
+                        nextfld = App.NewParametrBaskol.queryById('btnSaveParametrBaskol');
+                        SaveParametrBaskol();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

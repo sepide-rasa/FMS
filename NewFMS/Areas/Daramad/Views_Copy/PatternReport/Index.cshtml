@@ -1,0 +1,122 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+@(Html.X().Window().Modal(true).Listeners(l => l.AfterRender.Handler = "LoadOlgoReport()")
+            .Width(290).Height(160)
+            .Title("الگو چاپ فیش")
+            .ID("OlgoReport")
+            .Closable(true)
+        .Border(false)
+        .AutoScroll(true)
+        .CloseAction(CloseAction.Destroy)
+        .Layout(LayoutType.Fit)
+            .ButtonAlign(Alignment.Center)
+        .Buttons(
+            Html.X().Button()
+                .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk).ItemID("BtnSave")
+                    .Listeners(l => l.Click.Handler = "SaveOlgoReport()"),
+            Html.X().Button()
+                .Text("خروج")
+                .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.OlgoReport.destroy();")
+            )
+            .Items(
+            X.FormPanel().Border(false)
+                 .Layout(LayoutType.VBox)
+                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                                 X.FieldSet().Border(true).Height(90).Width(250).Title("فایل گزارش")
+        //.LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                                                    .Layout(Ext.Net.LayoutType.VBox)
+                        .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Right })
+                            .Items(
+                            X.FieldSet().Border(false)
+                                 .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                            .Items(
+                                     X.Label("الگو فیش:"),
+                         X.ComboBox().Width(150)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+        //.FieldLabel("نوع استخدام")
+                    .ItemID("CboPatternFish")
+                    .TypeAhead(true)
+                    .Editable(false)
+                    .QueryMode(DataLoadMode.Local)
+                    .ForceSelection(true)
+                    .TriggerAction(TriggerAction.All)
+                    .DisplayField("Name")
+                    .ValueField("ID")
+                        .EmptyText("الگو فیش")
+                    .Store(X.Store()
+                        .Model(X.Model()
+                            .IDProperty("ID")
+                            .Fields(
+                            new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                            new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                            )
+                        )
+                        .Proxy(X.AjaxProxy()
+                                .Url(Url.Action("GetPatternFish"))
+                            .Reader(X.JsonReader().Root("data"))
+                        )
+
+                    )
+                , X.Button().Text("طراحی گزارش").ItemID("BtnDesign").Listeners(l => l.Click.Handler = "DesignPattern()").Icon(Ext.Net.Icon.Report)
+                            )
+                          
+                                )
+                    )
+                )
+)
+
+
+
+<script type="text/javascript">
+    var MojazPatternR = 0;
+    var EndUploadPatternR = false;
+    function LoadOlgoReport() {
+
+        App.OlgoReport.queryById('BtnSave').disable(true);
+        if ('@ViewBag.HaveFile' == "0")
+            App.OlgoReport.queryById('BtnDesign').disable(true);
+        else {
+            App.OlgoReport.queryById('BtnDesign').enable(true);
+            App.OlgoReport.queryById('CboPatternFish').setValue('@ViewBag.HaveFile');
+        }
+    }
+
+    function SaveOlgoReport() {
+        var CboPatternFish = App.OlgoReport.queryById('CboPatternFish');
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/PatternReport/Save',
+            params: {
+                ShomareHesabCodeDaramadId: '@ViewBag.ShomareHesabCodeDaramadId',
+                PatternFishId:CboPatternFish.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                else
+                    App.OlgoReport.queryById('BtnDesign').enable(true);
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+
+        });
+    }
+    function DesignPattern() {
+        var CboPatternFish = App.OlgoReport.queryById('CboPatternFish');
+        window.open("/Daramad/PatternReport/ReportIndex?Id=" + CboPatternFish.getValue(), "_blank");
+    }
+</script>

@@ -1,0 +1,126 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(li => li.AfterRender.Handler = "LoadStatusAghsat()")
+    .Width(460)
+    .Title("تغییر وضعیت")
+            .ID("StatusAghsat")
+    .Resizable(false)
+    .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .ButtonAlign(Ext.Net.Alignment.Center)
+        .Buttons(X.Button().Text("تائید").Icon(Ext.Net.Icon.Accept)
+                .Listeners(l =>
+                {
+                    l.Click.Handler = "AcceptStatusAghsat()";
+
+                })
+                .ItemID("btnSave")
+                ,
+                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                            .OnClientClick("App.StatusAghsat.destroy()"))
+    .Items(
+        X.FormPanel().Border(false)
+        .Border(false)
+            .TitleAlign(Ext.Net.TitleAlign.Center)
+                .Items(
+                X.Panel().Border(false)
+            .Items(
+                X.FieldSet().Border(false).MarginSpec("5px 0 0 0")
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                    .Defaults(new { Margin = 2 })
+                .Items(
+                    X.Label().Text("تاریخ پرداخت:")
+                    , X.PDateField().Width(110)
+                        .AllowBlank(false)
+                        .MaskRe("[0-9-/]")
+                        .BlankText("لطفا تاریخ را انتخاب کنید.")
+                    .ItemID("txtTarikhPardakht")
+                    ,X.Label("وضعیت:")
+                            , X.ComboBox().Width(120)
+                            .ItemID("CboStatus")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                            .ForceSelection(true)
+                            .BlankText("لطفا وضعیت را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .EmptyText("وضعیت...")
+                            //.SelectedItems(new { Value = "2" })
+                            .Items(
+                                    //new ListItem("وصول شده", "1"),
+                                    //new ListItem("برگشت خورده", "2"),
+                                    //new ListItem("عودت داده شده", "3"),
+                                    //new ListItem("در انتظار وصول", "4")
+                                        new ListItem("در انتظار وصول", "1"),
+                                new ListItem("وصول شده", "2"),
+                                new ListItem("برگشت خورده", "3"),
+                                new ListItem("حقوقی شده", "4"),
+                                new ListItem("عودت داده شده", "5")
+                                )
+
+                        )
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+)
+        )
+)
+<script type="text/javascript">
+    function LoadStatusAghsat() {
+        var txtTarikhPardakht = App.StatusAghsat.queryById('txtTarikhPardakht');
+        var CboStatus = App.StatusAghsat.queryById('CboStatus');
+
+            txtTarikhPardakht.setValue('@ViewBag.fldTarikhVaziat');
+            CboStatus.setValue('@ViewBag.fldVaziat');
+        
+    }
+    function AcceptStatusAghsat() {
+        var txtTarikhPardakht = App.StatusAghsat.queryById('txtTarikhPardakht');
+        var CboStatus = App.StatusAghsat.queryById('CboStatus');
+        var er = false;
+
+        if (txtTarikhPardakht.validate() == false) {
+            er = true;
+        }
+        if (CboStatus.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Chek/TaeidAghsatChekAmani/Save',
+            params: {
+                fldId: '@ViewBag.Id',
+                CheckHayeVarede:'@ViewBag.CheckHayeVarede',
+                fldTarikhVaziat: txtTarikhPardakht.rawValue,
+                fldVaziat: CboStatus.getValue(),
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                });
+                App.TaeidChekVarede.queryById('GridChekVarede').store.load();
+                App.TaeidChekVarede.queryById('GridAghsat').store.load();
+                /*if (data.Err != 1)
+                    App.StatusAghsat.destroy();*/
+            }
+
+        });
+    }
+</script>

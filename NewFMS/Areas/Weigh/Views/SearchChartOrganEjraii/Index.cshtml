@@ -1,0 +1,114 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_ChartOrganEjraee>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+@(Html.X().Window().Modal(true)
+               .Width(380).Height(460)
+            .Title("چارت سازمانی اجرایی")
+                            .ID("SearchChartOrganEjraee")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Items(
+                X.Panel().Border(false)
+                .Border(false)
+                .Items(
+                             X.TreePanel()
+                                    .ID("TreeChartOrganEjraee")
+                                            .AutoScroll(true)
+                                            .Width(370)
+                                            .ColSpan(2)
+                                            .Height(450)
+                                            .UseArrows(true)
+                                            .Border(false)
+                                 .Store(
+                                    Html.X().TreeStore()
+                                        .Proxy(
+                                                    Html.X().AjaxProxy().Url(Url.Action("Node"))
+                                        )
+                                )
+                                        .Listeners(a =>
+                                        {
+                                            a.ItemDblClick.Handler = "GetIdChartOrganEjraee(record)";
+                                            a.AfterRender.Handler = "this.getRootNode().expand();";
+                                            a.BeforeLoad.Fn = "nodeLoadEjraee";
+                                        })
+                           .Root(Html.X().Node().NodeID("0").Text("چارت سازمانی"))
+
+                                        .View(
+                                        X.TreeView()
+                                        .Plugins(
+                                        X.TreeViewDragDrop().AppendOnly(true).ContainerScroll(true)
+
+                                    )
+                            )
+            )
+        )
+)
+
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+    var NodeIdEjaree = 0;
+    var Name = "";
+    var nodeLoadEjraee = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/ChartOrganEjraii/NodeLoad',
+            params: {
+                nod: node.getId()
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+    function GetIdChartOrganEjraee(record) {
+        NodeIdEjaree = record.getId();
+        Ext.net.DirectMethod.request({
+            url: '/Weigh/SearchChartOrganEjraii/GetName',
+            params: {
+                id: NodeIdEjaree
+            },
+            success: function (data) {
+                Name = data.fldName;
+                NextSearchChartOrganEjraee();
+            }
+        });
+    };
+
+    function NextSearchChartOrganEjraee() {
+        if (NodeIdEjaree != 0) {
+            if (State == 1) {
+
+                App.Vazn_Baskool.queryById('ChartOrganEjraeeId').setValue(NodeIdEjaree);
+                App.Vazn_Baskool.queryById('txtChart').setValue(Name);
+                App.SearchChartOrganEjraee.destroy();
+            }
+
+
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک گره را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+
+    }
+
+
+</script>

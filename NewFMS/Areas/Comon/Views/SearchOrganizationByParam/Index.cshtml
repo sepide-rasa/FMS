@@ -1,0 +1,129 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_Organization>
+@using Ext.Net.MVC;
+@{
+
+    var X = Html.X();
+}
+@(Html.X().Window().Modal(true)
+            .Width(900).Height(350)
+            .Title("سازمان ها")
+                .ID("SearchOrganizationByParam")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Items(
+                 X.Panel().Border(false)
+                        .Items(
+                                X.TreePanel()
+                                .ID("Tree_Organ")
+                                        .AutoScroll(true)
+                                        .Width(300)
+                                        .ColSpan(2)
+                                        .Height(450)
+                                        .UseArrows(true)
+                                        .Border(false)
+                                            .Store(
+                        Html.X().TreeStore()
+                            .Proxy(
+                                        Html.X().AjaxProxy().Url(Url.Action("Node"))
+                            )
+                    )
+
+                                        .Listeners(a =>
+                                        {
+                                            a.ItemDblClick.Handler = "GetId(record)";
+                                            a.AfterRender.Handler = "this.getRootNode().expand(true);";
+                                        })
+                           .Root(Html.X().Node().NodeID("0").Text(" سازمانها"))
+                          .Listeners(l =>
+                          {
+                              l.BeforeLoad.Fn = "nodeLoadOrgan";
+                          })
+                          .Expand(true)
+                                        .View(
+                                        X.TreeView()
+                                        .Plugins(
+                                        X.TreeViewDragDrop().AppendOnly(true).ContainerScroll(true)
+
+                                    )
+                            )
+
+                    )
+
+        )
+)
+
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+    var Id='@ViewBag.Id';
+    var Name = "";
+    var NodeId_O = 0;
+    var nodeLoadOrgan = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/SearchOrganizationByParam/NodeLoad',
+            params: {
+                nod: node.getId(),
+                Id:Id
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+
+    function GetId(record) {
+        NodeId_O = record.getId();
+        if (NodeId_O != 0) {
+            Ext.net.DirectMethod.request({
+                url: '/Comon/SearchOrganizationByParam/GetName',
+                params: {
+                    id: NodeId_O
+                },
+                success: function (data) {
+                    Name = data.fldName;
+                    NextSearchOrganizationByParam();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "شما مجاز به انتخاب گزینه مورد نظر نمی باشید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    };
+
+    function NextSearchOrganizationByParam() {
+        if (NodeId_O != 0) {
+             if (State == 1)
+           {
+               var g = Ext.getCmp('GridItem');
+               var sm = g.getSelectionModel();
+               sm.getSelection()[0].set('fldNameOrgan', Name);
+               sm.getSelection()[0].set('fldOrganId', NodeId_O);
+           }
+            App.SearchOrganizationByParam.destroy();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک گره را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+
+</script>

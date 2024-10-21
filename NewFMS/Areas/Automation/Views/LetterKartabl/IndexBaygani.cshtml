@@ -1,0 +1,1541 @@
+﻿@model NewFMS.Models.LetterList
+<script src="~/Scripts/jquery-ajax-native.js"></script>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using Ext.Net.Utilities;
+@using NewFMS.Models;
+@{
+    var X = Html.X();
+}
+
+<script>
+
+    var HaveAttachIco = function (value, record) {
+        if (value == 1) {
+            var template = "<img src='/content/icons/Automation/ضمیمه دارد.png' title='ضمیمه دارد' style='width:17px;height:17px;' />";
+            return template;
+        }
+        else {
+            var template = "<img src='/content/icons/Automation/ضمیمه ندارد.png' title='فاقد ضمیمه' style='width:17px;height:17px;' />";
+            return template;
+        }
+    };
+    var ReadIco = function (value, record) {
+        if (value == 2) {
+            var template = "<img src='/content/icons/Automation/نامهخواندهشده.png' title='خوانده شده' style='width:17px;height:17px;' />";
+            return template;
+        }
+        else if (value == 1) {
+            var template = "<img src='/content/icons/Automation/نامهخواندهنشده.png' title='خوانده نشده' style='width:17px;height:17px;' />";
+            return template;
+        }
+    };
+    var BayganiIco = function (value, record) {
+        if (value == 1) {
+            var template = "<img src='/content/icons/Automation/بایگانیشده.png' title='بایگانی شده' style='width:17px;height:17px;' />";
+            return template;
+        }
+        else {
+            var template = "<img src='/content/icons/Automation/بایگانینشده.png' title='بایگانی نشده' style='width:17px;height:17px;' />";
+            return template;
+        }
+    };
+
+
+    var ShowIconImmedi = function (value, p, record) {
+        if (value == null || value == 0) {
+            return "";
+        }
+        else {
+          /*  pic = "data:image/png;base64," + value;*/
+            var src = "@Url.Action("ShowPic", "Immediacy")"+"?FileId=" + value;
+            var template = "<img src=" + src + " title=" + record.data.fldImmediacyName + " style='width:17px;height:17px;' />";
+            return template;
+        }
+    };
+
+    //$().Ribbon5({ theme: 'windows7' }, '5');
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+
+</script>
+<style>
+    .borderrGK {
+        border-radius: 20px;
+        border-width: 3px;
+    }
+
+    .disable {
+        pointer-events: none;
+        opacity: 0.4;
+    }
+
+    .Treenode_Bold {
+        font-weight: bold !important;
+    }
+
+    .ColorrRow .x-grid-cell, .x-grid-rowwrap-div {
+        background-color: #D5F5E3 !important;
+    }
+</style>
+
+@(Html.X().Panel()//.Width(200).Height(500)
+   .Listeners(l => l.AfterRender.Handler = "SetSizeB()")
+    .Border(false)
+    .Closable(true)
+    .Layout(LayoutType.Fit)
+        .ID("BayganiTab")
+    .Title("بایگانی")
+    .Items(
+            X.AntiForgeryField().ItemID("antiForgeryToken").Hidden(true),
+            X.FieldSet()//.Width(200).Height(500)
+            .Border(false)
+            .AutoScroll(true)
+            .PaddingSpec("7px 7px 7px 7px")
+            .Margin(0)
+            .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+            .Items(
+                         X.FieldSet().ID("fff")
+                .Margin(0)
+                    .Border(false)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Stretch })
+                    .AutoScroll(false)
+                    .Items(
+                                    X.ComboBox()
+                                    .ItemID("CboboxType")
+                                            .EmptyText("...")
+                                        .AllowBlank(false)
+                                            .BlankText("لطفا  را انتخاب نمایید.")
+                                        .TypeAhead(true)
+                                        .Editable(false)
+                                        .QueryMode(DataLoadMode.Local)
+                                        .ForceSelection(true)
+                                        .TriggerAction(TriggerAction.All)
+                                            .DisplayField("fldName")
+                                        .ValueField("fldId")
+         .Listeners(l => l.Change.Handler = "ChangeGridShowB()")
+                                        .Store(
+                                         X.Store()
+
+                                                    .Listeners(l => l.Load.Handler = "setDefaultCboBoxType();")
+                                                .Model(X.Model()
+                                                .IDProperty("fldId")
+                                                .Fields(
+                                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" })
+                                                )
+                                                .Proxy(X.AjaxProxy()
+                                                                        .Url(Url.Action("GetBoxType"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                                )
+                                        )
+                    ,
+                X.Panel()
+                    .Layout(LayoutType.Accordion)
+                    .LayoutConfig(new Ext.Net.AccordionLayoutConfig { OriginalHeader = true, Animate = true, ActiveOnTop = true })
+                    .MarginSpec("0 7px 0 0")
+                    .Border(true)
+                    .Frame(true)
+                    .Shadow(false)
+                    .ID("MenuPanelB1")
+                    .TitleAlign(TitleAlign.Right)
+                    .AutoScroll(true)
+                    //.Items(
+                    //    X.ComboBox()
+                    //            .ItemID("CboboxType")
+                    //                    .EmptyText("...")
+                    //                .AllowBlank(false)
+                    //                    .BlankText("لطفا  را انتخاب نمایید.")
+                    //                .TypeAhead(true)
+                    //                .Editable(false)
+                    //                .QueryMode(DataLoadMode.Local)
+                    //                .ForceSelection(true)
+                    //                .TriggerAction(TriggerAction.All)
+                    //                    .DisplayField("fldName")
+                    //                .ValueField("fldId")
+                    //               // .Listeners(l => l.Change.Handler = "ChangeComision_T()")
+                    //                .Store(
+                    //                 X.Store()
+
+                    //                    //    .Listeners(l => l.Load.Handler = "setDefaultCboCommision_T();")
+                    //                        .Model(X.Model()
+                    //                        .IDProperty("fldId")
+                    //                        .Fields(
+                    //                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                    //                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" })
+                    //                        )
+                    //                        .Proxy(X.AjaxProxy()
+                    //                                                .Url(Url.Action("GetBoxType"))
+                    //                            .Reader(X.JsonReader().Root("data"))
+                    //                        )
+                    //                )
+                    //)
+                    )
+                    ,
+                X.Panel()
+                    .ID("MenuPanelB2")
+                    .Border(false)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Stretch })
+                    .AutoScroll(true)
+                    .Items(
+                        X.Panel()
+                            .ID("ActionnPanellB")
+                            .Frame(true)
+                            .MarginSpec("0 0 7px 0")
+                            .Listeners(l =>
+                            {
+                                l.Collapse.Handler = "CollapseSizeB();";
+                                l.BeforeExpand.Handler = "ExpandSizeB();";
+                            })
+                            .Title("اکشن های تعریف شده")
+                            .TitleAlign(TitleAlign.Right)
+                            .Collapsible(true)
+                            .AnimCollapse(true)
+                            .Height(95)
+                            .Content(@<div id="main">
+                                <div class="maincontainer2">
+                                    <ul class="ribbon5">
+                                        <li>
+                                            <ul class="menu2" style="left: 0px;float: right;direction: rtl;">
+                                                <li id="LiActions">
+                                                    @*<a href="#home" accesskey="2"></a>*@
+                                                    <ul id="ulActions">
+                                                        @*<li id="EffectiveActions" style="display:none;">
+                                                            </li>
+                                                            <li id="NonEffectiveActions" style="display:none;">
+                                                            </li>*@
+                                                        <li id="GeneralOP">
+                                                           
+                                                            <div id="SendLetterB" style="display:none;">
+                                                                <img src="~/content/icons/Automation/ارجاع نامه.png" style="width: 33px;" alt="ارجاع نامه/پیام" />
+                                                                ارجاع
+                                                            </div>
+                                                           
+                                                            @*<div id="SaveLetterTabagheBandi">
+                                                                    <img src="~/content/icons/Automation/طبقه بندی نامه.png" style="width: 33px;" alt="طبقه بندی نامه" />
+                                                                    طبقه بندی نامه
+                                                                </div>*@
+                                                           
+                                                            <div id="DelLetterB" style="display:none;">
+                                                                <img src="~/content/icons/Automation/حذف نامه.png" style="width: 33px;" alt="حذف نامه" />
+                                                                حذف نامه
+                                                            </div>
+                                                            <div id="AndikatorLetterB" style="display:none;">
+                                                                <img src="~/content/icons/Automation/ثبت اندیکاتور.png" style="width: 33px;" alt="ثبت اندیکاتور" />
+                                                                ثبت اندیکاتور
+                                                            </div>
+                                                            @*<div id="Baygani">
+                                                                    <img src="~/content/icons/Automation/بایگانی نامه.png" style="width: 33px;" alt="بایگانی نامه" />
+                                                                    بایگانی
+                                                                </div>*@
+                                                            <div id="EbtalB" style="display:none;">
+                                                                <img src="~/content/icons/Automation/ابطال نامه.png" style="width: 33px;" alt="ابطال نامه" />
+                                                                ابطال
+                                                            </div>
+                                                            <div id="KhatemeB" style="display:none;">
+                                                                <img src="~/content/icons/Automation/خاتمه کار.png" style="width: 33px;" alt="خاتمه کار" />
+                                                                خاتمه کار
+                                                            </div>
+                                                            <div id="CharkheB" style="display:none;">
+                                                                <img src="~/content/icons/Automation/چرخه نامه.png" style="width: 33px;" alt="چرخه نامه" />
+                                                                چرخه نامه
+                                                            </div>
+                                                        </li>
+
+                                                    </ul>
+                                                </li>
+                                            </ul>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>),
+                                X.Panel()
+                                    .Title("فیلتر جستجو")
+                                    .ItemID("pnlSearch")
+                                    .Collapsible(true)
+                                    .Collapse()
+                                    .AnimCollapse(true)
+                                    .Frame(true)
+                                    .MarginSpec("0 0 7px 0")
+                                    .TitleAlign(TitleAlign.Right)
+                                    .Listeners(l =>
+                                    {
+                                        l.Collapse.Handler = "CollapseSizeB2()";
+                                        l.Expand.Handler = "ExpandSizeB2()";
+                                    })
+                                    .Layout(LayoutType.VBox)
+                                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                                    .Items(
+                                        X.FieldSet()
+                                            .Layout(LayoutType.Table)
+                                            .Border(false)
+                                            .LayoutConfig(new TableLayoutConfig { Columns = 10 })
+                                            .Padding(5)
+                                            .Defaults(new { Margin = 2 })
+                                            .Items(
+                                                X.Label("شماره ثبت در رایانه:"),
+                                                X.TextField()
+                                                .ItemID("txtShSabt")
+                                                .AutoFocus(true)
+                                                .Width(100),
+                                                      X.Label("موضوع نامه:"),
+                                                    X.TextField()
+                                                    .ItemID("txtSubject")
+                                                    .AutoFocus(true)
+                                                        .Width(270)
+                                                        .ColSpan(3),
+                                                          X.Label("شماره نامه:"),
+                                                        X.TextField()
+                                                        .ItemID("txtShName")
+                                                        .Width(100)
+                                                            ,
+                                                              X.Label("تاریخ نامه:"),
+                                                            X.PDateField()
+                                                                .ItemID("txtTarikhLetter")
+                                                                    .Width(100),
+                                                                  X.Label("از تاریخ:"),
+                                                                X.PDateField()
+                                                                    .ItemID("txtAzTarikh")
+                                                                        .Width(100),
+                                                                  X.Label("تا تاریخ:"),
+                                                                X.PDateField()
+                                                                    .ItemID("txtTaTarikh")
+                                                                    .Width(100)
+                                                                    ,
+                                                                    X.Label("محرمانگی:"),
+                                                    X.ComboBox()
+                                                                        .Width(100)
+                                                            .ItemID("CboSecurityType")
+                                                        .TypeAhead(true)
+                                                        .Editable(false)
+                                                        .QueryMode(DataLoadMode.Local)
+                                                        .TriggerAction(TriggerAction.All)
+                                                        .DisplayField("Name")
+                                                        .ValueField("ID")
+                                                        .EmptyText("نوع محرمانگی...")
+                                                        .Store(X.Store()
+                                                            .Model(X.Model()
+                                                                .IDProperty("ID")
+                                                                .Fields(
+                                                                        new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                                                        new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                                                    )
+                                                                )
+                                                .Proxy(Html.X().AjaxProxy()
+                                                    .ActionMethods(l => l.Read = Ext.Net.HttpMethod.POST)
+                                                                        .Url(Url.Action("GetSecurityType"))
+                                                                .Reader(X.JsonReader().Root("data"))
+                                                            )
+                                                        )
+                                             ,
+                                                     X.Label("فوریت:"),
+                                                        X.ComboBox()
+                                                                        .Width(100)
+                                                                    .ItemID("CboImmediacy")
+                                                            .TypeAhead(true)
+                                                            .Editable(false)
+                                                            .QueryMode(DataLoadMode.Local)
+                                                            .TriggerAction(TriggerAction.All)
+                                                            .DisplayField("Name")
+                                                            .ValueField("ID")
+                                                            .EmptyText("فوریت...")
+                                                            .Store(X.Store()
+                                                                .Model(X.Model()
+                                                                    .IDProperty("ID")
+                                                                    .Fields(
+                                                                            new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                                                            new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                                                        )
+                                                                    )
+                                                    .Proxy(Html.X().AjaxProxy()
+                                                        .ActionMethods(l => l.Read = Ext.Net.HttpMethod.POST)
+                                                                            .Url(Url.Action("GetImmediacy"))
+                                                                    .Reader(X.JsonReader().Root("data"))
+                                                                )
+                                                            )
+                                                            ,
+                                                              X.Label("فرستنده:"),
+                                                            X.TextField()
+                                                            .ItemID("txtSender")
+                                                            .Width(100),
+                                                              X.Label("گیرنده:"),
+                                                            X.TextField()
+                                                            .ItemID("txtReciever")
+                                                            .Width(100),
+                                                                X.Label("کلیدواژه:"),
+                                                                X.TextField()
+                                                                    .ItemID("txtKeywords")
+                                                                    .Width(100),
+                                                                    X.Label("توضیحات:"),
+                                                                    X.TextField()
+                                                                        .ItemID("txtDesc")
+                                                                        .Width(270)
+                                                            .ColSpan(3)
+                        ,
+
+                                                X.Button()
+                                                    .ToolTip("جستجو")
+                                                    .Icon(Ext.Net.Icon.Magnifier)
+                                                    .Listeners(li => li.Click.Handler = "SearchSKB();")
+                                                )
+                                    ),
+                        X.Panel()
+                            .Border(false)
+                            .ItemID("pnlGrid")
+                            .Layout(LayoutType.Fit)
+                                .Items(
+                                    X.GridPanel()
+                                        .ID("GridRecieveB")
+        //.BottomBar(X.PagingToolbar().HideRefresh(true))
+                                        .Icon(Icon.Table)
+                                        .Frame(true)
+                                        .AutoScroll(true)
+                                        .Title("لیست موارد دریافتی")
+                                        .TitleAlign(TitleAlign.Right)
+                                        .Store(
+                                                    X.StoreFor(Model.Inbox)
+                                                .PageSize(20000)
+                                                    .RemoteFilter(true)
+                                                .RemotePaging(false)
+                                                    .Listeners(l => l.DataChanged.Handler = "App.BayganiTab.queryById('GridRecieveB').selModel.refresh();")
+                                        )
+                                        .Plugins(X.FilterHeader().Remote(false))
+                                        .ViewConfig(
+                                            X.GridView()
+                                                .PreserveScrollOnRefresh(true)
+        // .GetRowClass(l => l.Fn = "getRowClassGridRecieve")
+        //  .Listeners(l => l.AfterRender.Fn = "createTooltipLisLocCycle")
+                                                .LoadingText("در حال بارگذاری...").RTL(true)
+                                        )
+                                            .SelectionModel(
+                                                Html.X().CheckboxSelectionModel().PruneRemoved(false).CheckOnly(true)//.Listeners(l => l.SelectionChange.Handler = "CheckDisableAction()")
+                                                    .Mode(SelectionMode.Multi))
+                                        .ColumnModel(
+                                             Html.X().RowNumbererColumn(),
+                                             Html.X().ImageCommandColumn().Hideable(false).Listeners(l => l.Command.Handler = "GoToLetterB(record,1);")
+                                        .Width(30).Commands(Html.X().ImageCommand().Icon(Ext.Net.Icon.ArrowOutLonger).CommandName("Client").ToolTip(tt => tt.Text = "بازکردن نامه")
+                                        ),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.fldLetterId).Text("fldLetterId").Flex(1).Hidden(true),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.fldMessageId).Text("fldMessageId").Flex(1).Hidden(true),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.fldImmediacyID).Filterable(false).Width(30).Renderer("ShowIconImmedi").Align(Ext.Net.Alignment.Center),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.HaveAttach).Filterable(false).Width(30).Renderer("HaveAttachIco").Align(Ext.Net.Alignment.Center),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.fldAssignmentStatusID).Filterable(false).Width(30).Renderer("ReadIco").Align(Ext.Net.Alignment.Center),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.HaveArchiv).Filterable(false).Width(30).Renderer("BayganiIco").Align(Ext.Net.Alignment.Center),
+
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.fldSubject).Text("عنوان نامه").Flex(3).Wrap(true),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.fldOrderId).Text("ش ثبت نامه").Flex(2).Wrap(true),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.fldLetterNumber).Text("ش نامه").Flex(2),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.fldLetterDate).Text("تاریخ نامه").Flex(2).Wrap(true),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.fldCommision).Text("ارسال کننده").Flex(2).Wrap(true),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.AssimentLetterStatus).Text("وضعیت ارجاع").Flex(2).Wrap(true),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.fldLetterstatus).Text("وضعیت نامه").Flex(2).Wrap(true),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.fldAssignmentDate).Text("تاریخ ارجاع").Flex(2).Wrap(true),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.fldLetterType).Text("نوع نامه").Flex(2).Wrap(true),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.assigmentid).Text("assigmentid").Hidden(true),
+                                                    Html.X().Column().DataIndex(Model.Inbox, m => m.fldReceiverComisionID).Text("fldReceiverComisionID").Hidden(true)
+
+                                                                )
+                                                                            .Listeners(a => a.CellDblClick.Handler = "ShowLetterInkartablB(1);")
+                                      ,
+                                          X.GridPanel()
+                                            .ID("GridSentB")
+        //.BottomBar(X.PagingToolbar().HideRefresh(true))
+                                            .Icon(Icon.Table)
+                                            .Frame(true)
+                                            .AutoScroll(true)
+                                            .Title("لیست موارد ارسالی")
+                                            .TitleAlign(TitleAlign.Right)
+                                            .Store(
+                                                    X.StoreFor(Model.Sent)
+                                                    .PageSize(20000)
+                                                        .RemoteFilter(true)
+                                                    .RemotePaging(false)
+                                                            .Listeners(l => l.DataChanged.Handler = "App.BayganiTab.queryById('GridSentB').selModel.refresh();")
+                                            )
+                                            .Plugins(X.FilterHeader().Remote(false))
+                                            .ViewConfig(
+                                                X.GridView()
+                                                    .PreserveScrollOnRefresh(true)
+        // .GetRowClass(l => l.Fn = "getRowClassGridRecieve")
+        //  .Listeners(l => l.AfterRender.Fn = "createTooltipLisLocCycle")
+                                                    .LoadingText("در حال بارگذاری...").RTL(true)
+                                            )
+                .SelectionModel(
+                    Html.X().CheckboxSelectionModel().PruneRemoved(false).CheckOnly(true)//.Listeners(l => l.SelectionChange.Handler = "CheckDisableAction()")
+                        .Mode(SelectionMode.Multi))
+                                            .ColumnModel(
+                                                     Html.X().RowNumbererColumn(),
+                                                 Html.X().ImageCommandColumn().Hideable(false).Listeners(l => l.Command.Handler = "GoToLetterB(record,2);")
+                                           .Width(30).Commands(Html.X().ImageCommand().Icon(Ext.Net.Icon.ArrowOutLonger).CommandName("Client").ToolTip(tt => tt.Text = "بازکردن نامه")
+                                            ),
+                                                            Html.X().Column().DataIndex(Model.Sent, m => m.fldLetterId).Text("fldLetterId").Flex(1).Hidden(true),
+                                                            Html.X().Column().DataIndex(Model.Sent, m => m.fldMessageId).Text("fldMessageId").Flex(1).Hidden(true),
+                                                                       Html.X().Column().DataIndex(Model.Sent, m => m.fldImmediacyID).Filterable(false).Width(30).Renderer("ShowIconImmedi").Align(Ext.Net.Alignment.Center),
+                                                                          Html.X().Column().DataIndex(Model.Sent, m => m.HaveAttach).Filterable(false).Width(30).Renderer("HaveAttachIco").Align(Ext.Net.Alignment.Center),
+                                                                   Html.X().Column().DataIndex(Model.Sent, m => m.HaveArchiv).Filterable(false).Width(30).Renderer("BayganiIco").Align(Ext.Net.Alignment.Center),
+
+                                                                  Html.X().Column().DataIndex(Model.Sent, m => m.fldSubject).Text("عنوان نامه").Flex(3).Wrap(true),
+                                                            Html.X().Column().DataIndex(Model.Sent, m => m.fldOrderId).Text("ش ثبت نامه").Flex(2).Wrap(true),
+                                                            Html.X().Column().DataIndex(Model.Sent, m => m.fldLetterNumber).Text("ش نامه").Flex(2),
+                                                            Html.X().Column().DataIndex(Model.Sent, m => m.fldLetterDate).Text("تاریخ نامه").Flex(2).Wrap(true),
+                                                            Html.X().Column().DataIndex(Model.Sent, m => m.fldLetterstatus).Text("وضعیت نامه").Flex(2).Wrap(true),
+                                                                 Html.X().Column().DataIndex(Model.Sent, m => m.fldAssignmentDate).Text("تاریخ ارجاع").Flex(2).Wrap(true),
+                                                                  Html.X().Column().DataIndex(Model.Sent, m => m.fldLetterType).Text("نوع نامه").Flex(2).Wrap(true),
+                                                               Html.X().Column().DataIndex(Model.Sent, m => m.assigmentid).Text("assigmentid").Hidden(true),
+                                                                Html.X().Column().DataIndex(Model.Sent, m => m.fldSenderComisionID).Text("fldSenderComisionID").Hidden(true),
+                                                                Html.X().Column().DataIndex(Model.Sent, m => m.InternalAssignmentReceiverID).Text("InternalAssignmentReceiverID").Hidden(true),
+                                                                Html.X().Column().DataIndex(Model.Sent, m => m.fldAssignmentTypeID).Text("fldAssignmentTypeID").Hidden(true)
+
+
+                                                )
+                                                                            .Listeners(a => a.CellDblClick.Handler = "ShowLetterInkartablB(2);")
+                                            ,
+                                                X.GridPanel()
+                                                .ID("GridB3")
+        //.BottomBar(X.PagingToolbar().HideRefresh(true))
+                                                .Icon(Icon.Table)
+                                                .Frame(true)
+                                                .AutoScroll(true)
+                                                .Title("لیست پیش نویس نامه ها")
+                                                .TitleAlign(TitleAlign.Right)
+                                                .Store(
+                                                        X.StoreFor(Model.SavedLetter)
+                                                        .PageSize(20000)
+                                                        .RemoteFilter(false)
+                                                        .RemotePaging(false)
+                                                                .Listeners(l => l.DataChanged.Handler = "App.BayganiTab.queryById('GridB3').selModel.refresh();")
+                                                )
+                                                .Plugins(X.FilterHeader().Remote(false))
+                                                .ViewConfig(
+                                                    X.GridView()
+                                                        .PreserveScrollOnRefresh(true)
+        // .GetRowClass(l => l.Fn = "getRowClassGridRecieve")
+        //  .Listeners(l => l.AfterRender.Fn = "createTooltipLisLocCycle")
+                                                        .LoadingText("در حال بارگذاری...").RTL(true)
+                                                )
+                .SelectionModel(
+                    Html.X().CheckboxSelectionModel().PruneRemoved(false).CheckOnly(true)//.Listeners(l => l.SelectionChange.Handler = "CheckDisableAction()")
+                        .Mode(SelectionMode.Multi))
+                                                .ColumnModel(
+                                                         Html.X().RowNumbererColumn(),
+                                                 Html.X().ImageCommandColumn().Hideable(false).Listeners(l => l.Command.Handler = "GoToLetterB(record,3);")
+                                           .Width(30).Commands(Html.X().ImageCommand().Icon(Ext.Net.Icon.ArrowOutLonger).CommandName("Client").ToolTip(tt => tt.Text = "بازکردن نامه")
+                                            ),
+                                                                Html.X().Column().DataIndex(Model.SavedLetter, m => m.fldLetterId).Text("fldLetterId").Flex(1).Hidden(true),
+                                                                Html.X().Column().DataIndex(Model.SavedLetter, m => m.fldMessageId).Text("fldMessageId").Flex(1).Hidden(true),
+                                                                    Html.X().Column().DataIndex(Model.SavedLetter, m => m.fldImmediacyID).Filterable(false).Width(30).Renderer("ShowIconImmedi").Align(Ext.Net.Alignment.Center),
+                                                                    Html.X().Column().DataIndex(Model.SavedLetter, m => m.HaveAttach).Filterable(false).Width(30).Renderer("HaveAttachIco").Align(Ext.Net.Alignment.Center),
+                                                                Html.X().Column().DataIndex(Model.SavedLetter, m => m.HaveArchiv).Filterable(false).Width(30).Renderer("BayganiIco").Align(Ext.Net.Alignment.Center),
+
+                                                                Html.X().Column().DataIndex(Model.SavedLetter, m => m.fldSubject).Text("عنوان نامه").Flex(3).Wrap(true),
+                                                                Html.X().Column().DataIndex(Model.SavedLetter, m => m.fldOrderId).Text("ش ثبت نامه").Flex(2).Wrap(true),
+                                                                Html.X().Column().DataIndex(Model.SavedLetter, m => m.fldLetterNumber).Text("ش نامه").Flex(2),
+                                                                Html.X().Column().DataIndex(Model.SavedLetter, m => m.fldLetterDate).Text("تاریخ نامه").Flex(2).Wrap(true),
+                                                                Html.X().Column().DataIndex(Model.SavedLetter, m => m.fldCreatedDate).Text("تاریخ ایجاد").Flex(2).Wrap(true),
+                                                                Html.X().Column().DataIndex(Model.SavedLetter, m => m.fldLetterType).Text("نوع نامه").Flex(2).Wrap(true)
+
+                                                    )
+                                                                        .Listeners(a => a.CellDblClick.Handler = "ShowLetterInkartablB(3);")
+                                               
+                                                    ,
+                                                    X.GridPanel()
+                                                .ID("GridB5")
+        //  .BottomBar(X.PagingToolbar().HideRefresh(true))
+                                                .Icon(Icon.Table)
+                                                .Frame(true)
+                                                .AutoScroll(true)
+                                                .Title("لیست نامه های حذف شده")
+                                                .TitleAlign(TitleAlign.Right)
+                                                .Store(
+                                                        X.StoreFor(Model.Deleted)
+                                                        .PageSize(20000)
+                                                        .RemoteFilter(false)
+                                                        .RemotePaging(false)
+                                                                .Listeners(l => l.DataChanged.Handler = "App.BayganiTab.queryById('GridB5').selModel.refresh();")
+                                                )
+                                                .Plugins(X.FilterHeader().Remote(false))
+                                                .ViewConfig(
+                                                    X.GridView()
+                                                        .PreserveScrollOnRefresh(true)
+        // .GetRowClass(l => l.Fn = "getRowClassGridRecieve")
+        //  .Listeners(l => l.AfterRender.Fn = "createTooltipLisLocCycle")
+                                                        .LoadingText("در حال بارگذاری...").RTL(true)
+                                                )
+                .SelectionModel(
+                    Html.X().CheckboxSelectionModel().PruneRemoved(false).CheckOnly(true)//.Listeners(l => l.SelectionChange.Handler = "CheckDisableAction()")
+                        .Mode(SelectionMode.Multi))
+                                                .ColumnModel(
+                                                         Html.X().RowNumbererColumn(),
+                                                 Html.X().ImageCommandColumn().Hideable(false).Listeners(l => l.Command.Handler = "GoToLetterB(record,5);")
+                                            .Width(30).Commands(Html.X().ImageCommand().Icon(Ext.Net.Icon.ArrowOutLonger).CommandName("Client").ToolTip(tt => tt.Text = "بازکردن نامه")
+                                            ),
+                                                            Html.X().Column().DataIndex(Model.Deleted, m => m.fldLetterId).Text("fldLetterId").Flex(1).Hidden(true),
+                                                            Html.X().Column().DataIndex(Model.Deleted, m => m.fldMessageId).Text("fldMessageId").Flex(1).Hidden(true),
+                                                                        Html.X().Column().DataIndex(Model.Deleted, m => m.fldImmediacyID).Filterable(false).Width(30).Renderer("ShowIconImmedi").Align(Ext.Net.Alignment.Center),
+                                                                     Html.X().Column().DataIndex(Model.Deleted, m => m.HaveAttach).Filterable(false).Width(30).Renderer("HaveAttachIco").Align(Ext.Net.Alignment.Center),
+                                                                        Html.X().Column().DataIndex(Model.Deleted, m => m.HaveArchiv).Filterable(false).Width(30).Renderer("BayganiIco").Align(Ext.Net.Alignment.Center),
+
+                                                             Html.X().Column().DataIndex(Model.Deleted, m => m.fldSubject).Text("عنوان نامه").Flex(3).Wrap(true),
+                                                                Html.X().Column().DataIndex(Model.Deleted, m => m.fldOrderId).Text("ش ثبت نامه").Flex(2).Wrap(true),
+                                                                Html.X().Column().DataIndex(Model.Deleted, m => m.fldLetterNumber).Text("ش نامه").Flex(2),
+                                                                Html.X().Column().DataIndex(Model.Deleted, m => m.fldLetterDate).Text("تاریخ نامه").Flex(2).Wrap(true),
+                                                                Html.X().Column().DataIndex(Model.Deleted, m => m.fldCommision).Text("ارسال کننده").Flex(2).Wrap(true),
+                                                                Html.X().Column().DataIndex(Model.Deleted, m => m.fldLetterstatus).Text("وضعیت نامه").Flex(2).Wrap(true),
+                                                                Html.X().Column().DataIndex(Model.Deleted, m => m.fldAssigmentDate).Text("تاریخ ارجاع").Flex(2).Wrap(true),
+                                                                Html.X().Column().DataIndex(Model.Deleted, m => m.fldLetterType).Text("نوع نامه").Flex(2).Wrap(true),
+                                                                Html.X().Column().DataIndex(Model.Deleted, m => m.assigmentid).Text("assigmentid").Flex(2).Hidden(true),
+                                                                Html.X().Column().DataIndex(Model.Deleted, m => m.fldTrashType).Text("fldTrashType").Flex(2).Hidden(true)
+
+
+                                                                )
+                                                                            .Listeners(a => a.CellDblClick.Handler = "ShowLetterInkartablB(5);")
+
+                                )
+                    )
+            )
+    )
+)
+<script type="text/javascript">
+    
+    var IdOfKartablll = null;
+    var SelBoxmm = null;
+    var titleOfKartablll = "";
+    var SearchFilterB = "";
+    function CheckPermiB() {
+        if ('@Permission.haveAccess(1245, Session["Username"].ToString(), Session["Password"].ToString(), Convert.ToInt32(Session["OrganId"]))' == "True")
+            document.getElementById("SendLetterB").style.display = "inline";
+        if ('@Permission.haveAccess(1246, Session["Username"].ToString(), Session["Password"].ToString(), Convert.ToInt32(Session["OrganId"]))' == "True")
+            document.getElementById("DelLetterB").style.display = "inline";
+        if ('@Permission.haveAccess(1247, Session["Username"].ToString(), Session["Password"].ToString(), Convert.ToInt32(Session["OrganId"]))' == "True")
+            document.getElementById("AndikatorLetterB").style.display = "inline";
+        if ('@Permission.haveAccess(1248, Session["Username"].ToString(), Session["Password"].ToString(), Convert.ToInt32(Session["OrganId"]))' == "True")
+            document.getElementById("EbtalB").style.display = "inline";
+        if ('@Permission.haveAccess(1249, Session["Username"].ToString(), Session["Password"].ToString(), Convert.ToInt32(Session["OrganId"]))' == "True")
+            document.getElementById("KhatemeB").style.display = "inline";
+        if ('@Permission.haveAccess(1250, Session["Username"].ToString(), Session["Password"].ToString(), Convert.ToInt32(Session["OrganId"]))' == "True")
+            document.getElementById("CharkheB").style.display = "inline";
+
+
+
+    }
+    function SetSizeB() {
+        CheckPermiB();
+        var splitWidth = (Ext.getBody().getViewSize().width - 31) / 4;
+        var Height = Ext.getBody().getViewSize().height - 103;
+        App.fff.setSize(splitWidth * 0.85, Height);
+        App.MenuPanelB1.setSize(splitWidth * 0.85, Height-30);
+        App.MenuPanelB2.setSize(splitWidth * 3.15, Height);
+        App.BayganiTab.queryById("GridRecieveB").setHeight(Ext.getBody().getViewSize().height - 233 + 25 - 30);
+        App.BayganiTab.queryById("GridSentB").setHeight(Ext.getBody().getViewSize().height - 233 + 25 - 30);
+        App.BayganiTab.queryById("GridB3").setHeight(Ext.getBody().getViewSize().height - 233 + 25 - 30);
+        App.BayganiTab.queryById("GridB5").setHeight(Ext.getBody().getViewSize().height - 233 + 25 - 30);
+        App.BayganiTab.queryById("GridSentB").hide();
+        App.BayganiTab.queryById("GridB3").hide();
+        App.BayganiTab.queryById("GridB5").hide();
+        
+        h = 0;
+
+         LoadTreeB(KArtablData);
+        /*  App.BayganiTab.queryById("pnlSearch").collapse();*/
+    }
+    function ChangeGridShowB() {
+        var BoxType=App.BayganiTab.queryById("CboboxType").getValue();
+        if (BoxType == 1) {
+            App.BayganiTab.queryById("GridRecieveB").show();
+            App.BayganiTab.queryById("GridSentB").hide();
+            App.BayganiTab.queryById("GridB3").hide();
+            App.BayganiTab.queryById("GridB5").hide();
+        }
+        else if (BoxType == 2) {
+            App.BayganiTab.queryById("GridRecieveB").hide();
+            App.BayganiTab.queryById("GridSentB").show();
+            App.BayganiTab.queryById("GridB3").hide();
+            App.BayganiTab.queryById("GridB5").hide();
+        }
+        else if (BoxType == 3) {
+            App.BayganiTab.queryById("GridRecieveB").hide();
+            App.BayganiTab.queryById("GridSentB").hide();
+            App.BayganiTab.queryById("GridB3").show();
+            App.BayganiTab.queryById("GridB5").hide();
+        }
+        else if (BoxType == 5) {
+            App.BayganiTab.queryById("GridRecieveB").hide();
+            App.BayganiTab.queryById("GridSentB").hide();
+            App.BayganiTab.queryById("GridB3").hide();
+            App.BayganiTab.queryById("GridB5").show();
+        }
+    }
+    function setDefaultCboBoxType() {
+        App.BayganiTab.queryById("CboboxType").setValue(App.BayganiTab.queryById("CboboxType").store.getAt(0));
+    }
+    var a; var ddd;
+    function LoadTreeB(data) {
+
+        if (h < data.KartablId.length) {
+            Ext.net.DirectMethod.request({
+                url: '/Automation/LetterKartabl/GetTabagheBandi',
+                params: {
+                    CommisionId: data.KartablId[h],
+                    __RequestVerificationToken: App.BayganiTab.queryById('antiForgeryToken').getValue()
+                },
+                success: function (result) {
+                    if (result.MsgTitle == "") {
+
+                        var nodeId = 0;
+
+                        /*    var stylestringK = ".Pic" + String(h) + "{background-image:url(data:image/gif;base64," + data.KartablIcon[h] + ") !important;background-size:contain;}";
+                            Ext.util.CSS.createStyleSheet(stylestringK);
+                            var CSSNameK = "Pic" + String(h);*/
+
+                        var nameKar = data.KartablName[h];
+                        if (data.Active[h] == "0")
+                            nameKar = "<span style='color: red;'>" + data.KartablName[h] + "</span>";
+
+                        var tree = Ext.create('Ext.tree.Panel', {
+                            width: 400,
+                            height: 400,
+                            useArrows: true,
+                            rootVisible: false,
+                            expanded: true,
+                            titleAlign: "right",
+                            /* store: store,*/
+                            title: nameKar,
+                            tooltip: nameKar,
+                            id: "B"+String(data.KartablId[h]),
+                            listeners: {
+                                itemclick: function () {
+                                    SearchSKB();
+                                    var IdOfKartabl = Ext.getCmp("MenuPanelB1").child("[collapsed=false]").id;
+                                    IdOfKartablll = IdOfKartabl;
+                                    titleOfKartablll = Ext.getCmp("MenuPanelB1").child("[collapsed=false]").title;
+                                    for (var mm = 0; mm < App.MenuPanelB1.items.length; mm++) {
+                                        if (App.MenuPanelB1.items.items[mm].id != IdOfKartabl) {
+                                            App.MenuPanelB1.items.items[mm].getSelectionModel().deselectAll();
+                                        }
+                                    }
+                                    var SelBox = Ext.getCmp(IdOfKartabl).getSelectionModel().getLastSelected();
+                                    SelBoxmm = SelBox;
+                                    var BoxId = SelBox.raw.itemId;
+                                    nodeId = BoxId;
+
+
+
+                                },
+                                afterrender: function () {
+                                    tree.expandAll();
+                                },
+                                expand: function () {
+                                    ReloadCountTree();
+                                }
+
+                            }
+                        });
+                        var root = tree.getRootNode();
+                        for (var g = 0; g < result.BoxId.length; g++) {
+                            var Box = root.appendChild /*var nodee = new Ext.tree.TreeNode*/
+                                ({
+                                    text: result.BoxName[g],
+                                    itemId: result.BoxId[g],
+                                    qtip: result.BoxName[g]
+                                });
+
+                            if (result.ChildId[g] != "" && result.ChildId[g] != null) {
+                                var IdChild = result.ChildId[g].split(';');
+                                var NameChild = result.ChildName[g].split(';');
+
+                                for (var gg = 0; gg < IdChild.length - 1; gg++)
+                                    var Box2 = Box.appendChild
+                                      ({
+                                          text: NameChild[gg],
+                                          itemId: IdChild[gg],
+                                          qtip: NameChild[gg]
+                                      });
+                            }
+
+                        }
+                        if (result.BoxId.length > 0) {
+                            App.MenuPanelB1.add(tree);
+                            a = tree;
+
+
+
+                        }
+                        h++;
+                        LoadTreeB(data);
+                        if (h == data.KartablId.length) {
+                            Ext.net.Mask.hide();
+                        }
+                    }
+                    else {
+                        Ext.MessageBox.show({
+                            title: data.MsgTitle,
+                            msg: data.Msg,
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.net.Mask.hide();
+        }
+    }
+    function CollapseSizeB() {    
+        if (App.BayganiTab.queryById("pnlSearch").collapsed == false) {
+            App.BayganiTab.queryById("GridRecieveB").setHeight(Ext.getBody().getViewSize().height - 246 - 30);
+            App.BayganiTab.queryById("GridSentB").setHeight(Ext.getBody().getViewSize().height - 246 - 30);
+            App.BayganiTab.queryById("GridB3").setHeight(Ext.getBody().getViewSize().height - 246 - 30);
+            App.BayganiTab.queryById("GridB5").setHeight(Ext.getBody().getViewSize().height - 246 - 30);
+        }
+        else {
+            App.BayganiTab.queryById("GridRecieveB").setHeight(Ext.getBody().getViewSize().height - 139 - 30);
+            App.BayganiTab.queryById("GridSentB").setHeight(Ext.getBody().getViewSize().height - 139 - 30);
+            App.BayganiTab.queryById("GridB3").setHeight(Ext.getBody().getViewSize().height - 139 - 30);
+            App.BayganiTab.queryById("GridB5").setHeight(Ext.getBody().getViewSize().height - 139 - 30);
+        }
+    }
+
+    function ExpandSizeB() {
+        if (App.BayganiTab.queryById("pnlSearch").collapsed == false) {
+            App.BayganiTab.queryById("GridRecieveB").setHeight(Ext.getBody().getViewSize().height - 330 - 30);
+            App.BayganiTab.queryById("GridSentB").setHeight(Ext.getBody().getViewSize().height - 330 - 30);
+            App.BayganiTab.queryById("GridB3").setHeight(Ext.getBody().getViewSize().height - 330 - 30);
+            App.BayganiTab.queryById("GridB5").setHeight(Ext.getBody().getViewSize().height - 330 - 30);
+        }
+        else {
+            App.BayganiTab.queryById("GridRecieveB").setHeight(Ext.getBody().getViewSize().height - 233 + 25 - 30);
+            App.BayganiTab.queryById("GridSentB").setHeight(Ext.getBody().getViewSize().height - 233 + 25 - 30);
+            App.BayganiTab.queryById("GridB3").setHeight(Ext.getBody().getViewSize().height - 233 + 25 - 30);
+            App.BayganiTab.queryById("GridB5").setHeight(Ext.getBody().getViewSize().height - 233 + 25 - 30);
+        }
+    }
+
+    function CollapseSizeB2() {
+        if (App.ActionnPanellB.collapsed == false) {
+            App.BayganiTab.queryById("GridRecieveB").setHeight(Ext.getBody().getViewSize().height - 233 + 25 - 30);
+            App.BayganiTab.queryById("GridSentB").setHeight(Ext.getBody().getViewSize().height - 233 + 25 - 30);
+            App.BayganiTab.queryById("GridB3").setHeight(Ext.getBody().getViewSize().height - 233 + 25 - 30);
+            App.BayganiTab.queryById("GridB5").setHeight(Ext.getBody().getViewSize().height - 233 + 25 - 30);
+        }
+        else {
+            App.BayganiTab.queryById("GridRecieveB").setHeight(Ext.getBody().getViewSize().height - 139 - 30);
+            App.BayganiTab.queryById("GridSentB").setHeight(Ext.getBody().getViewSize().height - 139 - 30);
+            App.BayganiTab.queryById("GridB3").setHeight(Ext.getBody().getViewSize().height - 139 - 30);
+            App.BayganiTab.queryById("GridB5").setHeight(Ext.getBody().getViewSize().height - 139 - 30);
+        }
+    }
+
+    function ExpandSizeB2() {
+        if (App.ActionnPanellB.collapsed == false) {
+            App.BayganiTab.queryById("GridRecieveB").setHeight(Ext.getBody().getViewSize().height - 320 - 30);
+            App.BayganiTab.queryById("GridSentB").setHeight(Ext.getBody().getViewSize().height - 320 - 30);
+            App.BayganiTab.queryById("GridB3").setHeight(Ext.getBody().getViewSize().height - 320 - 30);
+            App.BayganiTab.queryById("GridB5").setHeight(Ext.getBody().getViewSize().height - 320 - 30);
+        }
+        else {
+            App.BayganiTab.queryById("GridRecieveB").setHeight(Ext.getBody().getViewSize().height - 256 - 30);
+            App.BayganiTab.queryById("GridSentB").setHeight(Ext.getBody().getViewSize().height - 256 - 30);
+            App.BayganiTab.queryById("GridB3").setHeight(Ext.getBody().getViewSize().height - 256 - 30);
+            App.BayganiTab.queryById("GridB5").setHeight(Ext.getBody().getViewSize().height - 256 - 30);
+        }
+    }
+    function SearchSKB() {
+        makeSearchFilter();
+        var IdOfKartabl = Ext.getCmp("MenuPanelB1").child("[collapsed=false]").id;
+        var SelBox = Ext.getCmp(IdOfKartabl).getSelectionModel().getLastSelected();
+
+
+        if (SelBox != null) {
+            var TabagheId = SelBox.raw.itemId;
+
+
+            App.BayganiTab.body.mask("در حال بارگذاری...");
+            Ext.net.DirectMethod.request({
+                url: '/Automation/LetterKartabl/SearchBaygani',
+                params: {
+                    ComId: IdOfKartabl.replace('B'),
+                    BoxType: App.BayganiTab.queryById("CboboxType").getValue(),
+                    SearchFilter: SearchFilter,
+                    TabagheId: TabagheId
+                },
+                success: function (data) {
+                    if (data.Er == 0) {
+                        App.BayganiTab.queryById('GridRecieveB').getSelectionModel().clearSelections();
+                        App.BayganiTab.queryById('GridRecieveB').store.loadData(data.ListInbox);
+                        App.BayganiTab.queryById('GridSentB').getSelectionModel().clearSelections();
+                        App.BayganiTab.queryById('GridSentB').store.loadData(data.ListSent);
+                        App.BayganiTab.queryById('GridB3').getSelectionModel().clearSelections();
+                        App.BayganiTab.queryById('GridB3').store.loadData(data.ListSavedLetter);
+                        App.BayganiTab.queryById('GridB5').getSelectionModel().clearSelections();
+                        App.BayganiTab.queryById('GridB5').store.loadData(data.ListDeleted);
+
+                    }
+                    else {
+                        Ext.MessageBox.show({
+                            title: data.MsgTitle,
+                            msg: data.Msg,
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                    App.BayganiTab.body.mask().hide();
+                },
+                timeout: 7200000
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا ابتدا یک طبقه را انتخاب نمایید تا نامه های مربوط به آن لیست شوند.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function makeSearchFilterB() {
+        /*and fldOrderId= and fldSubject like N'' and  and fldLetterNumber like N'' and fldLetterDate like N''
+        and fldImmediacyName like N'' and fldCreatedDate between N'' and N'' and fldCommision like N''
+        and LetterRecievers like N'' and fldSecurityType like N'' and fldDesc like N'' and fldKeywords like N''
+        txtShSabt  txtSubject  txtShName  txtTarikhLetter  txtAzTarikh  txtTaTarikh  CboSecurityType  CboImmediacy  txtSender  txtReciever  txtKeywords  txtDesc*/
+        SearchFilterB = "";
+        var txtShSabt = App.BayganiTab.queryById("txtShSabt");
+        var txtSubject = App.BayganiTab.queryById("txtSubject");
+        var txtShName = App.BayganiTab.queryById("txtShName");
+        var txtTarikhLetter = App.BayganiTab.queryById("txtTarikhLetter");
+        var txtAzTarikh = App.BayganiTab.queryById("txtAzTarikh");
+        var txtTaTarikh = App.BayganiTab.queryById("txtTaTarikh");
+        var CboImmediacy = App.BayganiTab.queryById("CboImmediacy");
+        var CboSecurityType = App.BayganiTab.queryById("CboSecurityType");
+        var txtSender = App.BayganiTab.queryById("txtSender");
+        var txtReciever = App.BayganiTab.queryById("txtReciever");
+        var txtKeywords = App.BayganiTab.queryById("txtKeywords");
+        var txtDesc = App.BayganiTab.queryById("txtDesc");
+
+        if (txtShSabt.getValue() != "")
+            SearchFilterB = SearchFilterB + "and fldOrderId like N|%" + txtShSabt.getValue() + "%| ";
+        if (txtSubject.getValue() != "")
+            SearchFilterB = SearchFilterB + "and fldSubject like N|%" + txtSubject.getValue() + "%| ";
+        if (txtShName.getValue() != "")
+            SearchFilterB = SearchFilterB + "and fldLetterNumber like N|%" + txtShName.getValue() + "%| ";
+        if (txtAzTarikh.getValue() != null && txtTaTarikh.getValue() != null)
+            SearchFilterB = SearchFilterB + "and fldCreatedDate between N|" + txtAzTarikh.rawValue + "| and N|" + txtTaTarikh.rawValue + "| ";
+        if (CboImmediacy.getValue() != null)
+            SearchFilterB = SearchFilterB + "and fldImmediacyName like N|" + CboImmediacy.getDisplayValue() + "| ";
+        if (CboSecurityType.getValue() != null)
+            SearchFilterB = SearchFilterB + "and fldSecurityType like N|" + CboSecurityType.getDisplayValue() + "| ";
+        if (txtSender.getValue() != "")
+            SearchFilterB = SearchFilterB + "and fldCommision like N|%" + txtSender.getValue() + "%| ";
+        if (txtReciever.getValue() != "")
+            SearchFilterB = SearchFilterB + "and LetterRecievers like N|%" + txtReciever.getValue() + "%| ";
+        if (txtDesc.getValue() != "")
+            SearchFilterB = SearchFilterB + "and fldDesc like N|%" + txtDesc.getValue() + "%| ";
+        if (txtKeywords.getValue() != "")
+            SearchFilterB = SearchFilterB + "and fldKeywords like N|%" + txtKeywords.getValue() + "%| ";
+    }
+    $('#SendLetterB').click(function () {
+        var Active = Ext.getCmp("MenuPanelB1").child("[collapsed=false]").title.search("red");
+        var IdOfKartabl = Ext.getCmp("MenuPanelB1").child("[collapsed=false]").id;
+        var SelBox = Ext.getCmp(IdOfKartabl).getSelectionModel().getLastSelected();
+        var boxType = App.BayganiTab.queryById("CboboxType").getValue();
+
+        if (Active < 0) {
+            var Selection = App.BayganiTab.queryById('GridRecieveB').getSelectionModel().getSelection();
+            if (boxType == 2)
+                Selection = App.BayganiTab.queryById('GridSentB').getSelectionModel().getSelection();
+            if (boxType == 3)
+                Selection = App.BayganiTab.queryById('GridB3').getSelectionModel().getSelection();
+            if (boxType == 5)
+                Selection = App.BayganiTab.queryById('GridB5').getSelectionModel().getSelection();
+
+            var LetterIds = "";
+            var MessageIds = "";
+            for (var i = 0; i < Selection.length; i++) {
+                if (Selection[i].data.fldLetterId != null && Selection[i].data.fldLetterId != 0)
+                    LetterIds = LetterIds + Selection[i].data.fldLetterId + ";";
+                if (Selection[i].data.fldMessageId != null && Selection[i].data.fldMessageId != 0)
+                    MessageIds = MessageIds + Selection[i].data.fldMessageId + ";";
+            }
+
+            var SourceAssId = 0;
+            if (!(boxType == 3 || boxType == 4))
+                SourceAssId = Selection[0].data.assigmentid;
+
+            var LetterTypeId = 0;
+            if (boxType != 4 && Selection.length == 1)
+                LetterTypeId = Selection[0].data.fldLetterTypeID;
+
+            if (Selection != null) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Automation/LetterKartabl/ErjaWin',
+                    params: {
+                        fldLetterId: LetterIds,
+                        fldMessageId: MessageIds,
+                        SourceAssId: SourceAssId,
+                        commId: IdOfKartabl.replace('B'),
+                        state: 1,
+                        LetterTypeId: LetterTypeId
+                    },
+                    success: function (data) {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "کارتابل موردنظر منقضی شده و امکان ارجاع پیام وجود ندارد.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+
+    });
+    $('#DelLetterB').click(function () {
+        var Active = Ext.getCmp("MenuPanelB1").child("[collapsed=false]").title.search("red");
+        var IdOfKartabl = Ext.getCmp("MenuPanelB1").child("[collapsed=false]").id;
+        var SelBox = Ext.getCmp(IdOfKartabl).getSelectionModel().getLastSelected();
+        var boxType = App.BayganiTab.queryById("CboboxType").getValue();
+        var BoxId = SelBox.raw.itemId;
+
+        var selectionIds = "";
+
+        if (Active < 0) {
+            var Selection = App.BayganiTab.queryById('GridRecieveB').getSelectionModel().getSelection();
+            for (var i = 0; i < Selection.length; i++)
+                selectionIds = selectionIds + Selection[i].data.assigmentid + ";";
+            if (boxType == 2) {
+                Selection = App.BayganiTab.queryById('GridSentB').getSelectionModel().getSelection();
+                for (var i = 0; i < Selection.length; i++)
+                    selectionIds = selectionIds + Selection[i].data.assigmentid + ";";
+            }
+            if (boxType == 3) {
+                Selection = App.BayganiTab.queryById('GridB3').getSelectionModel().getSelection();
+                for (var i = 0; i < Selection.length; i++)
+                    selectionIds = selectionIds + Selection[i].data.fldLetterId + ";";
+            }
+            if (boxType == 5) {
+                Selection = App.BayganiTab.queryById('GridB5').getSelectionModel().getSelection();
+                for (var i = 0; i < Selection.length; i++) {
+                    if (Selection[i].data.fldMessageId == null || Selection[i].data.fldMessageId == 0)
+                        selectionIds = selectionIds + Selection[i].data.fldLetterId + "|1;";
+                    else if (Selection[i].data.fldLetterId == null || Selection[i].data.fldLetterId == 0)
+                        selectionIds = selectionIds + Selection[i].data.fldMessageId + "|2;";
+                }
+            }
+
+            if (Selection != null) {
+                Ext.MessageBox.show({
+                    title: "هشدار",
+                    msg: "آیا برای حذف مطمئن هستید؟",
+                    icon: Ext.MessageBox.WARNING,
+                    buttons: Ext.MessageBox.YESNO,
+                    fn: function (btn) {
+                        if (btn == 'yes') {
+                            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Automation/LetterKartabl/SaveDeleted',
+                                params: {
+                                    SelectedLetterId: selectionIds,
+                                    BoxType: boxType,
+                                    CommId: IdOfKartabl.replace('B')
+                                },
+                                success: function (data) {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Err == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    Ext.net.Mask.hide();
+                                    SearchSKB();
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "کارتابل موردنظر منقضی شده و امکان حذف پیام وجود ندارد.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    });
+
+    $('#AndikatorLetterB').click(function () {
+        var Active = Ext.getCmp("MenuPanelB1").child("[collapsed=false]").title.search("red");
+        var IdOfKartabl = Ext.getCmp("MenuPanelB1").child("[collapsed=false]").id;
+        var SelBox = Ext.getCmp(IdOfKartabl).getSelectionModel().getLastSelected();
+        var boxType = App.BayganiTab.queryById("CboboxType").getValue();
+
+        if (Active < 0) {
+            var Selection = App.BayganiTab.queryById('GridRecieveB').getSelectionModel().getSelection();
+            if (boxType == 2)
+                Selection = App.BayganiTab.queryById('GridSentB').getSelectionModel().getSelection();
+            if (boxType == 3)
+                Selection = App.BayganiTab.queryById('GridB3').getSelectionModel().getSelection();
+            /* if (boxType == 4)
+                 Selection = App.BayganiTab.queryById('Grid4').getSelectionModel().getSelection();*/
+            if (boxType == 5)
+                Selection = App.BayganiTab.queryById('GridB5').getSelectionModel().getSelection();
+
+            if (Selection.length > 1) {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا تنها یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+            else {
+                if (Selection != null) {
+                    if (Selection[0].data.fldLetterId != null && Selection[0].data.fldLetterId != 0) {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Automation/LetterKartabl/Andicator',
+                            params: {
+                                LetterId: Selection[0].data.fldLetterId,
+                                CommisionId: IdOfKartabl.replace('B')
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Err == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                Ext.net.Mask.hide();
+                                SearchSKB();
+                            }
+                        });
+                    }
+                    else {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "ثبت اندیکاتور فقط برای نامه ها امکان پذیر می باشد.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا یک سطر را انتخاب کنید",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "کارتابل موردنظر منقضی شده و امکان ثبت اندیکاتور وجود ندارد.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    });
+    $('#EbtalB').click(function () {
+        DoActionsB(2);
+    });
+    $('#KhatemeB').click(function () {
+        DoActionsB(3);
+    });
+    function DoActionsB(state) {
+        var Active = Ext.getCmp("MenuPanel1").child("[collapsed=false]").title.search("red");
+        var IdOfKartabl = Ext.getCmp("MenuPanel1").child("[collapsed=false]").id;
+        var SelBox = Ext.getCmp(IdOfKartabl).getSelectionModel().getLastSelected();
+        var boxType = App.BayganiTab.queryById("CboboxType").getValue();
+        var BoxId = SelBox.raw.itemId;
+
+        var selectionIds = "";
+
+        if (Active < 0) {
+            var Selection = App.BayganiTab.queryById('GridRecieveB').getSelectionModel().getSelection();
+            if (boxType == 2) {
+                Selection = App.BayganiTab.queryById('GridSentB').getSelectionModel().getSelection();
+            }
+            if (boxType == 3) {
+                Selection = App.BayganiTab.queryById('GridB3').getSelectionModel().getSelection();
+            }
+            if (boxType == 4) {
+
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "این عملیات مربوط به پیام ها نمی باشد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                return;
+            }
+            if (boxType == 5) {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "این عملیات مربوط به موارد حذف شده نمی باشد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                return;
+            }
+
+
+            for (var i = 0; i < Selection.length; i++)
+                if (Selection[i].data.fldLetterId != null && Selection[i].data.fldLetterId != 0)
+                    selectionIds = selectionIds + Selection[i].data.fldLetterId + ";";
+
+            if (selectionIds != "") {
+                var mmsg = "آیا برای بایگانی نامه(ها) مطمئن هستید؟";
+                if (state == 2)
+                    mmsg = "آیا برای ابطال نامه(ها) مطمئن هستید؟";
+                else if (state == 3)
+                    mmsg = "آیا برای خاتمه نامه(ها) مطمئن هستید؟";
+                Ext.MessageBox.show({
+                    title: "هشدار",
+                    msg: mmsg,
+                    icon: Ext.MessageBox.WARNING,
+                    buttons: Ext.MessageBox.YESNO,
+                    fn: function (btn) {
+                        if (btn == 'yes') {
+                            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Automation/LetterActionType/SaveLetterActions',
+                                params: {
+                                    LetterIds: selectionIds,
+                                    fldLetterActionTypeId: state
+                                },
+                                success: function (data) {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Err == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    Ext.net.Mask.hide();
+                                    SearchSKB();
+                                }
+                            });
+                        }
+                    }
+                });
+
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا حداقل یک نامه را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "کارتابل موردنظر منقضی شده و امکان انجام عملیات وجود ندارد.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    $('#CharkheB').click(function () {
+        var Active = Ext.getCmp("MenuPanelB1").child("[collapsed=false]").title.search("red");
+        var IdOfKartabl = Ext.getCmp("MenuPanelB1").child("[collapsed=false]").id;
+        var IdOfKartabl = Ext.getCmp("MenuPanelB1").child("[collapsed=false]").id;
+        var SelBox = Ext.getCmp(IdOfKartabl).getSelectionModel().getLastSelected();
+        if (SelBox != null) {
+            var boxType = App.BayganiTab.queryById("CboboxType").getValue();
+            var Selection = App.BayganiTab.queryById('GridRecieveB').getSelectionModel().getSelection();
+            if (boxType == 2)
+                Selection = App.BayganiTab.queryById('GridSentB').getSelectionModel().getSelection();
+            if (boxType == 3)
+                Selection = App.BayganiTab.queryById('GridB3').getSelectionModel().getSelection();
+            if (boxType == 5)
+                Selection = App.BayganiTab.queryById('GridB5').getSelectionModel().getSelection();
+
+            if (Selection == "") {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+            else {
+                if (Selection.length > 1) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا تنها یک سطر را انتخاب کنید",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    return;
+                }
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Automation/LetterCharkhe/Index',
+                    params: {
+                        LetterId: Selection[0].data.fldLetterId,
+                        MessageId: Selection[0].data.fldMessageId,
+                    },
+                    success: function () {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا حداقل یک نامه را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+
+    });
+    function ShowLetterInkartablB(boxType) {
+
+        var IdOfKartabl = Ext.getCmp("MenuPanel1").child("[collapsed=false]").id;
+
+        var SelectedRow = App.BayganiTab.queryById('GridRecieveB').selModel.getLastSelected();
+        if (boxType == 2)
+            SelectedRow = App.BayganiTab.queryById('GridSentB').selModel.getLastSelected();
+        if (boxType == 3)
+            SelectedRow = App.BayganiTab.queryById('GridB3').selModel.getLastSelected();
+        if (boxType == 5)
+            SelectedRow = App.BayganiTab.queryById('GridB5').selModel.getLastSelected();
+
+        var SourceAssId = 0;
+        if (!(boxType == 3 || boxType == 4))
+            SourceAssId = SelectedRow.data.assigmentid;
+
+        if (SelectedRow.data.fldLetterId != null && SelectedRow.data.fldLetterId != 0) {
+            if (SelectedRow.data.fldLetterTypeID == 1) {
+                Ext.net.Mask.show({
+                    msg: 'در حال بارگذاری...'
+                });
+                Ext.net.DirectMethod.request({
+                    url: '/Automation/LetterKartabl/UpdateReadFlag',
+                    params: {
+                        ComisionId: IdOfKartabl.replace('B'),
+                        AssignmentID: SourceAssId
+                    },
+                    success: function () {
+                        SearchSK();
+                        Ext.net.DirectMethod.request({
+                            url: '/Automation/SadereLetter/Index',
+                            params: {
+                                CommisionId: IdOfKartabl.replace('B'),
+                                LetterId: SelectedRow.data.fldLetterId,
+                                SourceAssId: SourceAssId,
+                                HistoryLetterID: 0
+                            },
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                });
+            }
+            else if (SelectedRow.data.fldLetterTypeID == 2) {
+                Ext.net.Mask.show({
+                    msg: 'در حال بارگذاری...'
+                });
+                Ext.net.DirectMethod.request({
+                    url: '/Automation/LetterKartabl/UpdateReadFlag',
+                    params: {
+                        ComisionId: IdOfKartabl.replace('B'),
+                        AssignmentID: SourceAssId
+                    },
+                    success: function () {
+                        SearchSK();
+                        Ext.net.DirectMethod.request({
+                            url: '/Automation/VaredeLetter/Index',
+                            params: {
+                                CommisionId: IdOfKartabl.replace('B'),
+                                LetterId: SelectedRow.data.fldLetterId,
+                                SourceAssId: SourceAssId
+                            },
+                            success: function () {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                });
+            }
+            else {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Automation/Message/Index',
+                    params: {
+                        CommisionId: IdOfKartabl.replace('B'),
+                        HeaderId: SelectedRow.data.fldMessageId
+                    },
+                    success: function (data) {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+    }
+    function GoToLetterB(record, boxType) {
+        var IdOfKartabl = Ext.getCmp("MenuPanelB1").child("[collapsed=false]").id;
+
+        var SourceAssId = 0;
+        if (!(boxType == 3 || boxType == 4))
+            SourceAssId = record.data.assigmentid;
+
+
+        if (record.data.fldLetterId != null && record.data.fldLetterId != 0) {
+
+            if (boxType == 3) {/*پیش نویس*/
+                if (record.data.fldLetterTypeID == 1) {
+                    Ext.net.Mask.show({
+                        msg: 'در حال بارگذاری...'
+                    });
+                    Ext.net.DirectMethod.request({
+                        url: '/Automation/SadereLetter/Index',
+                        params: {
+                            CommisionId: IdOfKartabl.replace('B'),
+                            LetterId: record.data.fldLetterId,
+                            SourceAssId: SourceAssId,
+                            HistoryLetterID: 0
+                        },
+                        success: function () {
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+                else if (record.data.fldLetterTypeID == 2) {
+                    Ext.net.Mask.show({
+                        msg: 'در حال بارگذاری...'
+                    });
+                    Ext.net.DirectMethod.request({
+                        url: '/Automation/VaredeLetter/Index',
+                        params: {
+                            CommisionId: IdOfKartabl.replace('B'),
+                            LetterId: record.data.fldLetterId,
+                            SourceAssId: SourceAssId
+                        },
+                        success: function () {
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+            }
+            else if (boxType == 1 || boxType == 2) {
+                var ccom = record.data.fldSenderComisionID;
+                if (boxType == 2)
+                    var ccom = IdOfKartabl.replace('B');
+
+                Ext.net.Mask.show({
+                    msg: 'در حال بارگذاری...'
+                });
+
+                /*باز شدن ارجاعات بعد توش نمایش نامه*/
+                Ext.net.DirectMethod.request({
+                    url: '/Automation/LetterKartabl/ErjaWinShow',
+                    params: {
+                        fldLetterId: record.data.fldLetterId,
+                        fldMessageId: '',
+                        SourceAssId: SourceAssId,
+                        commId: record.data.fldSenderComisionID,
+                        state: 3,
+                        LetterTypeId: record.data.fldLetterTypeID
+                    },
+                    success: function (data) {
+                        Ext.net.Mask.hide();
+                    }
+                });
+
+
+            }
+
+        }
+        else {
+            if (boxType == 4) {/*پیش نویس*/
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Automation/Message/Index',
+                    params: {
+                        CommisionId: IdOfKartabl.replace('B'),
+                        HeaderId: record.data.fldMessageId
+                    },
+                    success: function (data) {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else if (boxType == 1 || boxType == 2) {
+                var ccom = record.data.fldSenderComisionID;
+                if (boxType == 2)
+                    var ccom = IdOfKartabl.replace('B');
+
+                /*باز شدن ارجاعات بعد توش نمایش */
+                Ext.net.DirectMethod.request({
+                    url: '/Automation/LetterKartabl/ErjaWinShow',
+                    params: {
+                        fldLetterId: '',
+                        fldMessageId: record.data.fldMessageId,
+                        SourceAssId: SourceAssId,
+                        commId: record.data.fldSenderComisionID,
+                        state: 3,
+                        LetterTypeId: record.data.fldLetterTypeID
+                    },
+                    success: function (data) {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+    }
+</script>

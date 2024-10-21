@@ -1,0 +1,188 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_PcPosParametr>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+    .ID("PcPosParam_Detail")
+    .Listeners(li =>li.AfterRender.Handler = "PcPosParam_DetailSetSize();")
+    .Title("مقداردهی پارامترهای PcPos")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.Hidden().ItemID("fldId"),
+                X.FieldSet()
+                    .Border(false)
+                    .Layout(LayoutType.Table)
+                    .Defaults(new { margin = 2 })
+                    .MarginSpec("2px 2px 12px 2px")
+                    .PaddingSpec("5px 5px 8px 5px")
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                    .Items(
+                        X.Label("شرکت PSP:"),
+                        X.ComboBox()
+                            .ItemID("CboPSP_Organ")
+                            .Width(400)
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا شرکت PSP را انتخاب کنید.")
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("شرکت PSP ...")
+                            .Listeners(l =>
+                            {
+                                l.AfterRender.Handler = "App.PcPosParam_Detail.queryById('CboPSP_Organ').validate();";
+                                l.Select.Handler = "App.PcPosParam_Detail.queryById('PcPosParam_DetailGrid').store.load();";
+                            })
+                            .AutoFocus(true)
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldID" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                            )
+                                    )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetPcPosInfo"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            )
+                    )),
+            X.GridPanel()
+                .AutoScroll(true)
+                .ItemID("PcPosParam_DetailGrid")
+                .BottomBar(X.PagingToolbar().HideRefresh(true))
+                .TopBar(
+                    Html.X().Toolbar()
+                        .Items(
+                            X.Button()
+                                .Text("ذخیره")
+                                .Icon(Ext.Net.Icon.Disk)
+                                .Listeners(li => li.Click.Handler = "SavePcPosParam_Detail()")
+                             , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpPcPosParam_Detail()"; })
+                                )
+                        )
+                .Store(
+                    X.StoreForModel()
+                        .AutoLoad(false)
+                        .Listeners(l=>l.BeforeLoad.Handler="setParameterforRead()")
+                        .Proxy(Html.X().AjaxProxy()
+                            .Url(Url.Action("Read"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+                        )
+                    .PageSize(20000)
+                    .Listeners(l => l.DataChanged.Handler = "App.PcPosParam_Detail.queryById('PcPosParam_DetailGrid').selModel.refresh();")
+                )
+                .Plugins(Html.X().CellEditing())
+                .View(
+                    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                .ColumnModel(
+                    Html.X().RowNumbererColumn(),
+                    Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.fldFaName).Text("نام فارسی").Wrap(true).Flex(5),
+                    Html.X().Column().DataIndex(Model, m => m.fldEnName).Text("نام انگلیسی").Flex(5),
+                    Html.X().Column().DataIndex(Model, m => m.fldValue).Text("مقدار").Editor(X.TextField()).Flex(4)
+                    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+                )
+    )
+)
+<script type="text/javascript">
+
+    function PcPosParam_DetailSetSize() {
+        App.PcPosParam_Detail.setWidth(App.DaramadWin.getWidth());
+        App.PcPosParam_Detail.queryById('PcPosParam_DetailGrid').setHeight(App.DaramadWin.getHeight() - 225);
+    }
+
+    function setParameterforRead() {
+        App.PcPosParam_Detail.queryById('PcPosParam_DetailGrid').getStore().getProxy().setExtraParam("PcPosInfoId", App.PcPosParam_Detail.queryById("CboPSP_Organ").getValue());
+    }
+    function HelpPcPosParam_Detail() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/PcPosParam_Detail/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SavePcPosParam_Detail() {
+        var CboPSP_Organ = App.PcPosParam_Detail.queryById("CboPSP_Organ");
+        var store=App.PcPosParam_Detail.queryById('PcPosParam_DetailGrid').store;
+        var PcPosParam_DetailArray = new Array();
+
+        var er = false;
+        if (CboPSP_Organ.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        for (var i = 0; i < store.count(); i++) {
+            if (store.data.items[i].data.fldValue != "") {
+                PcPosParam_DetailArray.push({
+                    "fldPcPosParamId": store.data.items[i].data.fldId,
+                    "fldValue": store.data.items[i].data.fldValue,
+                });
+            }
+        }
+
+        if (PcPosParam_DetailArray.length > 0 && PcPosParam_DetailArray.length != store.count()) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا مقدار کلیه پارامترها را وارد نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else {
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            var data1 = {
+                PcPosParam_DetailArray: PcPosParam_DetailArray,
+                PcPosInfoId: App.PcPosParam_Detail.queryById("CboPSP_Organ").getValue()
+            };
+
+            $.ajax({
+                type: "POST",
+                url: '/Daramad/PcPosParam_Detail/Save',
+                datatype: "json",
+                data: JSON.stringify(data1),
+                contentType: "application/json; charset=utf-8",
+                success: function (data) {
+                    var result = data;/*JSON.parse(data);*/
+                    var ic = Ext.MessageBox.INFO;
+                    if (result.Er == 1) {
+                        ic = Ext.MessageBox.ERROR;
+                    }
+                    Ext.MessageBox.show({
+                        title: result.MsgTitle,
+                        msg: result.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.PcPosParam_Detail.queryById('PcPosParam_DetailGrid').store.load();
+                    Ext.net.Mask.hide();
+                },
+                failure: function (data) {
+                    alert(data.data);
+                }
+            });
+        }
+    }
+</script>

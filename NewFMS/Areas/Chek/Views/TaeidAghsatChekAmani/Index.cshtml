@@ -1,0 +1,216 @@
+﻿@model NewFMS.Models.ChekVarede
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+
+<style>
+    .margincommandFile {
+        margin: 0 0 0 12px !important;
+    }
+</style>
+@(Html.X().Panel()
+        .ID("TaeidChekVarede")
+        .Title("تغییر وضعیت چک های وارده")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Border(false)
+                .Listeners(li => li.AfterRender.Handler = "TaeidChekVaredeSetSize()")
+       .Items(
+    X.Panel().Border(false)//.Height(250)
+        .Items(
+                X.GridPanel()
+                     .TopBar(
+                            Html.X().Toolbar()
+                            .Items(
+                                X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                                            .Listeners(li => li.Click.Handler = "HelpTaeidChekVarede();")
+                            )
+                                )
+                        .Listeners(l => l.ItemClick.Handler = "ReloadGridChekDetail()")
+                                .AutoScroll(true)
+                                .ItemID("GridChekVarede")
+                                .BottomBar(X.PagingToolbar())
+                                .Flex(2)
+                                .Store(
+                                        X.StoreFor(Model.Varede)
+                                        .Proxy(Html.X().AjaxProxy()
+                                            .Url(Url.Action("ReadChekVarede"))
+                                            .Reader(Html.X().JsonReader().Root("data")))
+                                .PageSize(9)
+                                .RemotePaging(true)
+                                  .Listeners(l => l.DataChanged.Handler = "App.TaeidChekVarede.queryById('GridChekVarede').selModel.refresh();"))
+                                .View(
+                                    Html.X().GridView()
+                                        .LoadingText("در حال بارگذاری...")
+                                        .RTL(true))
+                                .ColumnModel(
+                                    Html.X().RowNumbererColumn(),
+                                    Html.X().Column().DataIndex(Model.Varede, m => m.fldId).Text("کد").Flex(1),
+                                    Html.X().Column().DataIndex(Model.Varede, m => m.fldBankName).Text("نام بانک").Flex(2),
+                                    Html.X().Column().DataIndex(Model.Varede, m => m.fldShobeName).Text("نام شعبه").Flex(2),
+                                    Html.X().Column().DataIndex(Model.Varede, m => m.fldNoeeCheck).Text("نوع چک").Flex(2).Hidden(true),
+                                    Html.X().Column().DataIndex(Model.Varede, m => m.NoeeCheckName).Text("نوع چک").Flex(2),
+                                    Html.X().Column().DataIndex(Model.Varede, m => m.fldSaderKonandeh).Text("صادر کننده چک").Flex(2),
+                                    Html.X().Column().DataIndex(Model.Varede, m => m.fldTarikhVosolCheck).Text("تاریخ وصول").Flex(2),
+                                    Html.X().Column().DataIndex(Model.Varede, m => m.fldTarikhDaryaftCheck).Text("تاریخ دریافتی").Flex(2),
+                                    Html.X().Column().DataIndex(Model.Varede, m => m.fldShenaseKamelCheck).Text("شناسه کامل چک").Flex(3),
+                                    Html.X().Column().DataIndex(Model.Varede, m => m.fldBabat).Text("بابت").Flex(5),
+                                    Html.X().Column().DataIndex(Model.Varede, m => m.fldDesc).Text("توضیحات").Flex(5),
+                                    Html.X().Column().DataIndex(Model.Varede, m => m.NameVaziat).Text("وضعیت").Flex(2).Wrap(true),
+                                    Html.X().Column().DataIndex(Model.Varede, m => m.fldTarikhVaziat).Text("تاریخ وضعیت").Flex(2).Wrap(true),
+                                    Html.X().ImageCommandColumn().PrepareCommand("prepareCommandStatus")
+                                    .Listeners(l => l.Command.Fn = "GoChangeStatus")/*.Text("نمایش اطلاعات")*/
+                                    .Flex(1).Commands(Html.X().ImageCommand().CommandName("ChangeStatus").Icon(Ext.Net.Icon.ArrowRefresh).ToolTip(tt => tt.Text = "تغییر وضعیت"))
+                                )
+                                    .Plugins(X.FilterHeader().Remote(true))
+                                .SelectionModel(
+                                    Html.X().RowSelectionModel()
+                                        .Mode(Ext.Net.SelectionMode.Single)
+        //     .Listeners(l =>
+        //{
+        //    l.Select.Handler = "ReloadCheks();";
+        //})
+                                        )
+        ),
+           X.Panel()
+                                .ItemID("PnlGridDetail")
+                                .Title("اقساط چک های امانی")
+                                .Border(false)
+                                .Layout(Ext.Net.LayoutType.Fit)
+                                .Items(
+                                        X.GridPanel()
+                                        .BottomBar(X.PagingToolbar().HideRefresh(true))
+                                        .AutoScroll(true)
+                                        .ID("GridAghsat")
+                                        .Flex(2).Height(187)
+                                     //.Listeners(li => li.ItemClick.Handler = "CheckEdit();")
+                                        .Store(
+                                               X.StoreFor(Model.Aghsat)
+                                        //           .AutoLoad(false)
+                                        //            .Proxy(Html.X().AjaxProxy()
+                                        //.Url(Url.Action("Read"))
+                                        //.Reader(Html.X().JsonReader().Root("data")))
+                                                .PageSize(9)
+                                                .RemotePaging(true)
+
+                                          .Listeners(l => l.DataChanged.Handler = " App.TaeidChekVarede.queryById('GridAghsat').selModel.refresh();")
+                        )
+                                        .View(
+                                            Html.X().GridView()
+                                                .LoadingText("در حال بارگذاری...")
+                                                .RTL(true)
+                        )
+                                            .ColumnModel(
+                                            Html.X().RowNumbererColumn(),
+                                            Html.X().Column().DataIndex(Model.Aghsat, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                                            Html.X().Column().DataIndex(Model.Aghsat, m => m.fldIdCheckHayeVarede).Text("کد چک").Flex(2).Wrap(true),
+                                            Html.X().Column().DataIndex(Model.Aghsat, m => m.fldMablagh).Text("مبلغ").Flex(2).Wrap(true),
+                                            Html.X().Column().DataIndex(Model.Aghsat, m => m.fldTarikh).Text("تاریخ").Flex(2).Wrap(true),
+                                            Html.X().Column().DataIndex(Model.Aghsat, m => m.fldNobat).Text("نوبت").Flex(2).Wrap(true),
+                                            Html.X().Column().DataIndex(Model.Aghsat, m => m.NameVaziat).Text("وضعیت").Flex(2).Wrap(true),
+                                            Html.X().Column().DataIndex(Model.Aghsat, m => m.fldTarikhVaziat).Text("تاریخ وضعیت").Flex(2).Wrap(true),
+                                            Html.X().ImageCommandColumn()
+                                            .Listeners(l => l.Command.Fn = "ActionsInSatus")
+                                            .Flex(1).Commands(
+                                            Html.X().ImageCommand().CommandName("GoToStatusAghsat").Icon(Ext.Net.Icon.ArrowRefresh).ToolTip(tt => tt.Text = "تغییر وضعیت")
+                                    )
+                                 )
+                                        .Plugins(
+                                            Html.X().CellEditing().ClicksToEdit(1)
+        // ,X.FilterHeader().Remote(true)
+                                            )
+                                        .SelectionModel(
+                                            Html.X().RowSelectionModel()
+                                                .Mode(Ext.Net.SelectionMode.Single)
+                                )
+                    )
+    )
+)
+
+<script type="text/javascript">
+    function HelpTaeidChekVarede() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Chek/TaeidAghsatChekAmani/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var prepareCommandStatus = function (grid, command, record, row) {
+        if (command.command == 'ChangeStatus') {
+            if (record.data.fldNoeeCheck == false) {
+                command.hidden = true;
+                command.hideMode = 'visibility';
+            }
+            else {
+                command.hidden = false;
+                command.hideMode = 'visibility';
+            }
+        }
+    };
+    function GoChangeStatus(grid, command, record, row) {
+        if (command == 'ChangeStatus') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Chek/TaeidAghsatChekAmani/StatusAghsat',
+                params: {
+                    id: "0",
+                    CheckHayeVarede: record.data.fldId,
+                    State:1
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+
+            });
+
+        }
+    }
+    function ActionsInSatus(grid, command, record, row) {
+        if (command == 'GoToStatusAghsat') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Chek/TaeidAghsatChekAmani/StatusAghsat',
+                params: {
+                    id: record.data.fldId,
+                    CheckHayeVarede: record.data.fldIdCheckHayeVarede,
+                    State:2
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+
+            });
+
+        }
+    }
+    function TaeidChekVaredeSetSize() {
+
+        var grid = App.TaeidChekVarede.queryById('GridChekVarede');
+        grid.setHeight((App.ChekWin.getHeight() - 200) / 2);
+        var GridDetail = App.TaeidChekVarede.queryById('GridAghsat');
+        GridDetail.setHeight((App.ChekWin.getHeight() - 200) / 2);
+    }
+    function ReloadGridChekDetail() {
+        var SelectedRow = App.TaeidChekVarede.queryById("GridChekVarede").getSelectionModel().getLastSelected();
+        PersonalId = SelectedRow.data.fldId;
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Chek/TaeidAghsatChekAmani/ReloadAghsat',
+            params: {
+                ChekVaredeId: SelectedRow.data.fldId
+            },
+            success: function (result) {
+                App.TaeidChekVarede.queryById('GridAghsat').getStore().loadData(result);
+
+
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+</script>

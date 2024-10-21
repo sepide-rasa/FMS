@@ -1,0 +1,356 @@
+﻿@model IEnumerable<NewFMS.WCF_Common_Pay.OBJ_Items_Estekhdam>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net.Utilities
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+
+
+
+@(X.Window().Title("تغییر وضعیت اسناد").Modal(true).Border(false)
+        .ID("StatusEjra")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+          .Width(300)
+          .Layout(LayoutType.VBox)
+              .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.Height(130)
+             .ButtonAlign(Alignment.Center)
+
+        .DefaultButton("btn")
+
+             .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                .Listeners(l =>
+                {
+                    l.Click.Handler = "SaveStatusEjra();";
+
+                })
+                    , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                            .OnClientClick("App.StatusEjra.destroy()")
+                )
+    .Items(
+                X.Panel().ItemID("Panel")
+            .Border(false)
+                .Layout(LayoutType.Table)
+                .Padding(10)
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                .Defaults(new { Margin = 2 })
+            .Items(
+                        X.Label("وضعیت:"),
+                            X.ComboBox()
+                            .ItemID("CboStatus")
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .QueryMode(DataLoadMode.Local)
+                            .BlankText("لطفا وضعیت را انتخاب کنید.")
+                                .ForceSelection(true).AllowBlank(false)
+                            .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldTitle")
+                            .ValueField("fldId")
+                            .EmptyText("وضعیت ...")
+        //.SelectedItems(new { Value = "1" })
+                            .Store(X.Store()
+                            .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                    )
+                                        )
+                            .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetStatus"))
+                            .Reader(X.JsonReader().Root("data"))
+                                    )
+                                    .Parameters(ps => ps.Add(new StoreParameter("TypeSand", @ViewBag.TypeSanad, ParameterMode.Raw)))
+                                    )
+                                        , X.Label("تاریخ: "),
+                                         X.PDateField()
+                                        .ItemID("txtTarikhStatus")
+                                        .BlankText("لطفا تاریخ را انتخاب کنید.")
+                                        .AllowBlank(false)
+                                
+        )
+    )
+)
+<script type="text/javascript">
+
+    function SaveNokouli(CodingTarafEn_nokoul, CodingEn_nokoul, FiscalYearId, DateNokoul) {
+        var DocumentRecord_DetailsArray = new Array();
+        DocumentRecord_DetailsArray.push({
+            fldId: 0,
+            fldCodingId: CodingEn_nokoul,
+            fldDescription: "بابت برگشت چک دریافتی از " + '@ViewBag.fldNameSaderkonandeCheck' + "(اعلام عوارض شماره " + '@ViewBag.fldElamAvarezId' + ")",
+            fldBedehkar: '@ViewBag.fldMablaghSanad',
+            fldBestankar: 0,
+            fldCenterCoId: 0,
+            fldCaseTypeId: 3,
+            fldCaseId: 0,
+            fldDocument_HedearId: 0,
+            fldSourceId: '@ViewBag.id',
+            fldOrder: 0
+        });
+        DocumentRecord_DetailsArray.push({
+            fldId: 0,
+            fldCodingId: CodingTarafEn_nokoul,
+            fldDescription: "بابت برگشت چک دریافتی از " + '@ViewBag.fldNameSaderkonandeCheck' + "(اعلام عوارض شماره " + '@ViewBag.fldElamAvarezId' + ")",
+            fldBedehkar: 0,
+            fldBestankar: '@ViewBag.fldMablaghSanad',
+            fldCenterCoId: 0,
+            fldCaseTypeId: 3,
+            fldCaseId: 0,
+            fldDocument_HedearId: 0,
+            fldSourceId: '@ViewBag.id',
+            fldOrder: 1
+        });
+        var data =
+        {
+            fldId: 0,
+            fldDocumentNum: 0,
+            fldFiscalYearId: FiscalYearId,
+            fldYear: DateNokoul.substring(0, 4),
+            fldArchiveNum: null,
+            fldDescriptionDocu: "بابت برگشت چک شماره " + '@ViewBag.fldShomareSanad' + "(اعلام عوارض شماره " + '@ViewBag.fldElamAvarezId' + ")",
+            fldTarikhDocument: DateNokoul,
+            fldType: 1,
+            fldTypeSanad: 2,
+            fldShomareFaree: null,
+            fldEdit: 2,
+            DocumentRecord_DetailsArray: DocumentRecord_DetailsArray
+        };
+        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+        $.ajax({
+            type: "POST",
+            url: '/Khazanedari/RegisterDocs/Save',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (result) {
+                if (result.Er == 1) {
+                    Ext.net.Mask.hide();
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: result.Msg,
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    return;
+                }
+                else {
+                    Ext.net.Mask.hide();
+                    Ext.MessageBox.show({
+                        title: "عملیات موفق",
+                        msg: "عملیات با موفقیت انجام شد.",
+                        icon: Ext.MessageBox.INFO,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.AnnouncementComplication_Ejraiyat.queryById('EjraiyatGrid').store.load();
+                }
+            },
+            failure: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function SaveStatusEjra() {
+        var CboStatus = App.StatusEjra.queryById('CboStatus');
+        var txtTarikhStatus = App.StatusEjra.queryById('txtTarikhStatus');
+        var er = false;
+
+        if (CboStatus.validate() == false) {
+            er = true;
+        }
+        if (txtTarikhStatus.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+        Ext.MessageBox.show({
+            title: "هشدار",
+            msg: "آیا برای تغییر وضعیت مطمئن هستید؟",
+            icon: Ext.MessageBox.WARNING,
+            buttons: Ext.MessageBox.YESNO,
+            fn: function (btn) {
+                if (btn == 'yes') {
+                    Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Daramad/AnnouncementComplications_Ejraiyat/Save',
+                        params: {
+                            Status: CboStatus.getValue(),
+                            id: '@ViewBag.id',
+                            TypeSanad: '@ViewBag.TypeSanad',
+                            TarikhStatus: txtTarikhStatus.rawValue,
+                            HaveKhazane:'@ViewBag.HaveKhazane'
+                        },
+                        success: function (data) {
+                            if ('@ViewBag.HaveKhazane' == true && '@ViewBag.TypeSanad' == "2" && CboStatus.getValue() == 3 && data.Err == 0) {/*چک نکول شده*/
+                                var DocumentRecord_DetailsArray = new Array();
+                                DocumentRecord_DetailsArray.push({
+                                    fldId: 0,
+                                    fldCodingId: data.CodingTarafEn_Vosoul,
+                                    fldDescription: "بابت دریافت چک از " + '@ViewBag.fldNameSaderkonandeCheck' + "(اعلام عوارض شماره " + '@ViewBag.fldElamAvarezId' + ")",
+                                    fldBedehkar: '@ViewBag.fldMablaghSanad',
+                                    fldBestankar: 0,
+                                    fldCenterCoId: 0,
+                                    fldCaseTypeId: 3,
+                                    fldCaseId: 0,
+                                    fldDocument_HedearId: 0,
+                                    fldSourceId: '@ViewBag.id',
+                                    fldOrder: 0
+                                });
+                                DocumentRecord_DetailsArray.push({
+                                    fldId: 0,
+                                    fldCodingId: data.CodingEn_Vosoul,
+                                    fldDescription: "بابت دریافت چک از " + '@ViewBag.fldNameSaderkonandeCheck' + "(اعلام عوارض شماره " + '@ViewBag.fldElamAvarezId' + ")",
+                                    fldBedehkar: 0,
+                                    fldBestankar: '@ViewBag.fldMablaghSanad',
+                                    fldCenterCoId: 0,
+                                    fldCaseTypeId: 3,
+                                    fldCaseId: 0,
+                                    fldDocument_HedearId: 0,
+                                    fldSourceId: '@ViewBag.id',
+                                    fldOrder: 1
+                                });
+                                var data1 =
+                                {
+                                    fldId: 0,
+                                    fldDocumentNum: 0,
+                                    fldFiscalYearId: data.FiscalYearId,
+                                    fldYear: txtTarikhStatus.rawValue.substring(0, 4),
+                                    fldArchiveNum: null,
+                                    fldDescriptionDocu: "بابت تعدیل حساب انتظامی در جریان وصول",
+                                    fldTarikhDocument: txtTarikhStatus.rawValue,
+                                    fldType: 1,
+                                    fldTypeSanad: 2,
+                                    fldShomareFaree: null,
+                                    fldEdit: 2,
+                                    DocumentRecord_DetailsArray: DocumentRecord_DetailsArray
+                                };
+                                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                $.ajax({
+                                    type: "POST",
+                                    url: '/Khazanedari/RegisterDocs/Save',
+                                    datatype: "json",
+                                    data: JSON.stringify(data1),
+                                    contentType: 'application/json',
+                                    success: function (result) {
+                                        if (result.Er == 1) {
+                                            Ext.net.Mask.hide();
+                                            Ext.MessageBox.show({
+                                                title: "خطا",
+                                                msg: result.Msg,
+                                                icon: Ext.MessageBox.ERROR,
+                                                buttons: Ext.MessageBox.OK
+                                            });
+                                            return;
+                                        }
+                                        else {
+                                            return SaveNokouli(data.CodingTarafEn_nokoul, data.CodingEn_nokoul, data.FiscalYearId, txtTarikhStatus.rawValue);
+                                        }
+                                    },
+                                    failure: function () {
+                                        Ext.net.Mask.hide();
+                                    }
+                                });
+                            }
+                            else if ('@ViewBag.HaveKhazane' == true && '@ViewBag.TypeSanad' == "6" && CboStatus.getValue() == 5 && data.Err == 0) {
+                                var DocumentRecord_DetailsArray = new Array();
+                                DocumentRecord_DetailsArray.push({
+                                    fldId: 0,
+                                    fldCodingId: data.CodingTarafEn_SarresidNashode,
+                                    fldDescription: "بابت عودت چک ضمانتی صادر شده توسط " + '@ViewBag.fldNameSaderkonandeCheck',
+                                    fldBedehkar: '@ViewBag.fldMablaghSanad',
+                                    fldBestankar: 0,
+                                    fldCenterCoId: 0,
+                                    fldCaseTypeId: 3,
+                                    fldCaseId: 0,
+                                    fldDocument_HedearId: 0,
+                                    fldSourceId: '@ViewBag.id',
+                                    fldOrder: 0
+                                });
+                                DocumentRecord_DetailsArray.push({
+                                    fldId: 0,
+                                    fldCodingId: data.CodingEn_SarresidNashode,
+                                    fldDescription:"بابت عودت چک ضمانتی صادر شده توسط " + '@ViewBag.fldNameSaderkonandeCheck',
+                                    fldBedehkar: 0,
+                                    fldBestankar: '@ViewBag.fldMablaghSanad',
+                                    fldCenterCoId: 0,
+                                    fldCaseTypeId: 3,
+                                    fldCaseId: 0,
+                                    fldDocument_HedearId: 0,
+                                    fldSourceId: '@ViewBag.id',
+                                    fldOrder: 1
+                            });
+                            var data1 =
+                            {
+                                fldId: 0,
+                                fldDocumentNum: 0,
+                                fldFiscalYearId: data.FiscalYearId,
+                                fldYear: txtTarikhStatus.rawValue.substring(0, 4),
+                                fldArchiveNum: null,
+                                fldDescriptionDocu: "بابت تعدیل حساب انتظامی سررسید نشده",
+                                fldTarikhDocument: txtTarikhStatus.rawValue,
+                                fldType: 1,
+                                fldTypeSanad: 2,
+                                fldShomareFaree: null,
+                                fldEdit: 2,
+                                DocumentRecord_DetailsArray: DocumentRecord_DetailsArray
+                            };
+                            Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                            $.ajax({
+                                type: "POST",
+                                url: '/Khazanedari/RegisterDocs/Save',
+                                datatype: "json",
+                                data: JSON.stringify(data1),
+                                contentType: 'application/json',
+                                success: function (result) {
+                                    if (result.Er == 1) {
+                                        Ext.net.Mask.hide();
+                                        Ext.MessageBox.show({
+                                            title: "خطا",
+                                            msg: result.Msg,
+                                            icon: Ext.MessageBox.ERROR,
+                                            buttons: Ext.MessageBox.OK
+                                        });
+                                        return;
+                                    }
+                                    else {
+                                        return SaveNokouli(data.CodingTarafEn_nokoul, data.CodingEn_nokoul, data.FiscalYearId, txtTarikhStatus.rawValue);
+                                    }
+                                },
+                                failure: function () {
+                                    Ext.net.Mask.hide();
+                                }
+                            });
+                        }
+                    else {
+                                Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.AnnouncementComplication_Ejraiyat.queryById('EjraiyatGrid').store.load();
+                }
+            }
+        });
+        Ext.net.Mask.hide();
+    }
+    }
+    });
+    }
+</script>

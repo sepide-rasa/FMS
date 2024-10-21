@@ -1,0 +1,324 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+@(Html.X().Window()
+    .Modal(true)
+    .Listeners(li => { li.AfterRender.Handler = "LoadEzafeKari_TatilKari();"; li.Render.Fn = "addKeyMapNewEzafeKari_TatilKari"; })
+    .Width(530)
+        //   .Height(300)
+    .Resizable(false)
+    .Title("اطلاعات اضافه کاری جدید")
+    .ID("NewEzafeKari_TatilKari")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel()
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Border(false)
+            .KeyMap(Html.X().KeyMap()
+                .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+                .Binding(b =>
+                {
+                    b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                    .Handler("checkSaveEzafeKari_TatilKari(); ")
+                    );
+
+                }))
+            .DefaultButton("btn")
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+        //.ToolTip("کلید میانبر F8")
+                        .Listeners(l => l.Click.Handler = "checkSaveEzafeKari_TatilKari();")
+                    .ItemID("btnSave"),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .ToolTip("کلید میانبر Esc")
+                    .OnClientClick("App.NewEzafeKari_TatilKari.destroy();")
+                    )
+            .Items(
+                X.FieldSet()
+                        .ItemID("Panel").Title("اطلاعات اضافه کاری")
+                    .Layout(Ext.Net.LayoutType.Table)
+                    .Border(true)
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                    .Defaults(new { Margin = 2 })
+                        .Items(
+                            X.Hidden().ItemID("fldId"),
+                                X.Hidden().ItemID("fldPersonalId"),
+                                    X.Label("نام و نام خانوادگی:"),
+                            X.TextField()
+                                .ItemID("txtName")
+                                    .FieldStyle("background-image:none;background-color:#dfe8f6")
+                                .ReadOnly(true)
+                                .AllowBlank(false),
+                            X.Label("کد ملی:"),
+                            X.TextField()
+                                    .ItemID("txtNationalCode")
+                                        .FieldStyle("background-image:none;background-color:#dfe8f6")
+                                    .ReadOnly(true)
+                                .AllowBlank(false),
+                            X.Label("شماره پرسنلی:"),
+                            X.TextField()
+                                    .ItemID("txtShomarePersoneli")
+                                        .FieldStyle("background-image:none;background-color:#dfe8f6")
+                                    .ReadOnly(true)
+                                .AllowBlank(false),
+                            X.Label("نوبت پرداخت:"),
+                    X.ComboBox()
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .ItemID("CboNobatePardakht")
+                    .Editable(false)
+                    .TypeAhead(true)
+                    .AutoFocus(true)
+                        .BlankText("لطفا نوبت پرداخت را انتخاب کنید.")
+                    .QueryMode(DataLoadMode.Local)
+                    .TriggerAction(TriggerAction.All)
+                    .Items(
+                        new ListItem("یک", "1"),
+                        new ListItem("دو", "2"),
+                        new ListItem("سه", "3"),
+                        new ListItem("چهار", "4"),
+                        new ListItem("پنج", "5")
+                    )
+                    .SelectedItems(new { Value = "1" })
+                        ,
+                 X.Label("تعداد ")
+                    , X.TextField()
+                    .ItemID("txtCount")
+                    .Text("0")
+                    .MaxLength(9)
+                    .EnforceMaxLength(true)
+                    .MaskRe("/[0-9]/")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا تعداد را وارد کنید.")
+                    .Listeners(l => { l.Change.Handler = "CheckCountDay()"; })
+                    ,
+         X.Label("مالیات:"),   
+                        X.ComboBox()
+                            .ItemID("CboHasMaliyat")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا وضعیت مالیات را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Items(
+                                new ListItem("دارد", "1"),
+                                new ListItem("ندارد", "0")
+                                )
+                            .SelectedItems(new{value="0"})
+                                          ,
+             X.Label("بیمه:"),
+                            X.ComboBox()
+                                .ItemID("CboHasBime")
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .AllowBlank(false)
+                                .BlankText("لطفا وضعیت بیمه را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .Items(
+                                    new ListItem("دارد", "1"),
+                                    new ListItem("ندارد", "0")
+                                    )
+                                .SelectedItems(new { value = "0" })
+        )
+    ))
+)
+
+<script type="text/javascript">
+    var Year = '@ViewBag.Year';
+    var Month = '@ViewBag.Month';
+
+    function CheckCountDay() {
+        var txtCount = App.NewEzafeKari_TatilKari.queryById('txtCount');
+        if (parseInt(txtCount.getValue()) > '@ViewBag.DayCount') {
+            txtCount.blankText = "تعداد روز وارد شده نامعتبر است.";
+            txtCount.setValue("");
+        }
+    }
+    function LoadEzafeKari_TatilKari() {
+        if ('@ViewBag.Type' == "2") {
+            App.NewEzafeKari_TatilKari.setTitle("اطلاعات تعطیل کاری جدید");
+            App.NewEzafeKari_TatilKari.queryById('Panel').setTitle("اطلاعات تعطیل کاری");
+        }
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/EzafeKari_TatilKari/Details',
+                params: {
+                    id: '@ViewBag.Id',
+                    OrganId: '@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    var txtName = App.NewEzafeKari_TatilKari.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var txtNationalCode = App.NewEzafeKari_TatilKari.queryById('txtNationalCode');
+                    txtNationalCode.setValue(data.fldCodemeli);
+                    var txtShomarePersoneli = App.NewEzafeKari_TatilKari.queryById('txtShomarePersoneli');
+                    txtShomarePersoneli.setValue(data.fldSh_Personali);
+
+                    var CboNobatePardakht = App.NewEzafeKari_TatilKari.queryById('CboNobatePardakht');
+                    CboNobatePardakht.setValue(data.fldNobatePardakht);
+                    var txtCount = App.NewEzafeKari_TatilKari.queryById('txtCount');
+                    txtCount.setValue(data.fldCount);
+                    var CboHasMaliyat = App.NewEzafeKari_TatilKari.queryById('CboHasMaliyat');
+                    CboHasMaliyat.setValue(data.fldHasMaliyat);
+                    var CboHasBime = App.NewEzafeKari_TatilKari.queryById('CboHasBime');
+                    CboHasBime.setValue(data.fldHasBime);
+                    var fldPersonalId = App.NewEzafeKari_TatilKari.queryById('fldPersonalId');
+                    fldPersonalId.setValue(data.fldPersonalId);
+                    var Id = App.NewEzafeKari_TatilKari.queryById('fldId');
+                    Id.setValue(data.fldId);
+                    Year = data.fldYear;
+                    Month = data.fldMonth;
+                }
+            });
+        }
+        else {
+            var fldPersonalId = App.NewEzafeKari_TatilKari.queryById('fldPersonalId');
+            fldPersonalId.setValue('@ViewBag.PersonalId');
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/EzafeKari_TatilKari/DetailsHeader',
+                params: {
+                    Id: '@ViewBag.PersonalId',
+                    OrganId: '@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    var txtName = App.NewEzafeKari_TatilKari.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var txtNationalCode = App.NewEzafeKari_TatilKari.queryById('txtNationalCode');
+                    txtNationalCode.setValue(data.fldNationalCode);
+                    var txtShomarePersoneli = App.NewEzafeKari_TatilKari.queryById('txtShomarePersoneli');
+                    txtShomarePersoneli.setValue(data.fldShomarePersoneli);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+    function checkSaveEzafeKari_TatilKari() {
+        var SelectedRow = App.EzafeKari_TatilKari.queryById('GridHeader').selModel.getLastSelected();
+        if (SelectedRow.data.fldStatusId == 1) {
+            SaveEzafeKari_TatilKari();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "وضعیت فرد مورد نظر " + SelectedRow.data.fldStatusTitle + " است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SaveEzafeKari_TatilKari() {
+        var CboNobatePardakht = App.NewEzafeKari_TatilKari.queryById('CboNobatePardakht');
+        var txtCount = App.NewEzafeKari_TatilKari.queryById('txtCount');
+        var CboHasMaliyat = App.NewEzafeKari_TatilKari.queryById('CboHasMaliyat');
+        var CboHasBime = App.NewEzafeKari_TatilKari.queryById('CboHasBime');
+        var Id = App.NewEzafeKari_TatilKari.queryById('fldId');
+        var PersonalId = App.NewEzafeKari_TatilKari.queryById('fldPersonalId');
+
+        var er = false;
+
+        if (CboNobatePardakht.validate() == false) {
+            er = true;
+        }
+        if (txtCount.validate() == false) {
+            er = true;
+        }
+        if (CboHasMaliyat.validate() == false) {
+            er = true;
+        }
+        if (CboHasMaliyat.validate() == false) {
+            er = true;
+        }
+
+
+        if (er == true)
+            return;
+            var HasBime=false;
+            if (CboHasBime.getValue() == 1)
+                HasBime = true;
+            var HasMaliyat = false;
+            if (CboHasMaliyat.getValue() == 1)
+                HasMaliyat = true;
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/EzafeKari_TatilKari/Save',
+            params: {
+                fldId: Id.getValue(),
+                fldNobatePardakht: CboNobatePardakht.getValue(),
+                fldCount: txtCount.getValue(),
+                fldHasMaliyat: HasMaliyat,
+                fldHasBime: HasBime,
+                fldPersonalId: PersonalId.getValue(),
+                fldYear: Year,
+                fldMonth: Month,
+                fldType: '@ViewBag.Type',/*اضافه کاری 1           تعطیل کاری2*/
+                OrganId: '@ViewBag.OrganId'
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                ClearEzafeKari_TatilKari();
+                /*App.EzafeKari_TatilKari.queryById('GridHeader').store.load();
+                App.EzafeKari_TatilKari.queryById('GridDetail').getStore().loadData("");*/
+                ReloadGridDetailEzafeKari_TatilKari();
+            }
+
+        });
+    }
+    function ClearEzafeKari_TatilKari() {
+        /*  App.NewEzafeKari_TatilKari.queryById('CboYear').setValue("");*/
+        App.NewEzafeKari_TatilKari.queryById('CboNobatePardakht').setValue("1");
+        App.NewEzafeKari_TatilKari.queryById('txtCount').setValue(0);
+        App.NewEzafeKari_TatilKari.queryById('CboHasMaliyat').setValue("1");
+        App.NewEzafeKari_TatilKari.queryById('CboHasBime').setValue("1");
+        /*App.NewEzafeKari_TatilKari.queryById('fldPersonalId').setValue(0);*/
+        App.NewEzafeKari_TatilKari.queryById('fldId').setValue(0);
+        Year = '@ViewBag.Year';
+    }
+
+    var addKeyMapNewEzafeKari_TatilKari = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NewEzafeKari_TatilKari.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "CboHasBime") {
+                        nextfld = App.NewEzafeKari_TatilKari.queryById('btnSave');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                }
+            }]
+        });
+    }
+
+
+</script>

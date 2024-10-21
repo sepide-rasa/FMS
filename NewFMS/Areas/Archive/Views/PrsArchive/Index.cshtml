@@ -1,0 +1,103 @@
+﻿@model IEnumerable<NewFMS.WCF_Personeli.OBJ_PersonalInfo>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+
+<br />
+@(Html.X().Panel()
+    .ID("PrsArchive")
+    .Title("بایگانی دیجیتال پرسنلی")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Listeners(l => l.AfterRender.Handler = "App.PrsArchive.setHeight(App.ArchiveWin.getHeight() - 170);")
+    .Layout(LayoutType.Fit)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.Fit)
+            .Height(270)
+            .AutoScroll(true)
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.GridPanel()
+                    .TopBar(
+                        Html.X().Toolbar()
+                        .Items(
+                            X.Button().Text("بایگانی دیجیتال").Icon(Ext.Net.Icon.BookAdd).Listeners(Li => Li.Click.Handler = "DigitalArchivePersonalInfo();"),                            
+                            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.PrsArchive.destroy()")
+                        )
+                        )
+                        .ItemID("PrsArchiveGrid")
+                    .BottomBar(X.PagingToolbar())
+                    .Height(190)
+                    .Store(
+                        X.StoreForModel()
+                            .Listeners(l => l.DataChanged.Handler = "App.PrsArchive.queryById('PrsArchiveGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                    )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام").Flex(2).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldFamily).Text("نام خانوادگی").Flex(3).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldFatherName).Text("نام پدر").Flex(2).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کدملی").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldSh_Shenasname).Text("شماره شناسنامه").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldSh_Personali).Text("شماره پرسنلی").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.NamePostOran).Text("عنوان پست_کدشغل").Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldTitleChartOrgan).Text("محل خدمت").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldTitleStatus).Text("وضعیت").Flex(1).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldSh_MojavezEstekhdam).Text("شماره مجوز استخدام").Flex(2)
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+            )
+        )
+)
+)
+<script>
+    App.ArchiveWin.addListener('resize', function () {
+        var grid = App.PrsArchive.queryById('PrsArchiveGrid');
+        App.PrsArchive.setSize(App.ArchiveWin.getWidth(), App.ArchiveWin.getHeight() - 170);
+    });
+
+    function DigitalArchivePersonalInfo() {
+        var SelectedRow = App.PrsArchive.queryById('PrsArchiveGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Archive/PrsArchive/Archive',
+                params: {
+                    id: SelectedRow.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+</script>

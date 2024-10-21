@@ -1,0 +1,281 @@
+﻿@model IEnumerable<NewFMS.WCF_Personeli.OBJ_SavabeghJebhe_Items>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+    .ID("SavabeghJebhe_Items")
+        .Title("ثبت آیتم های سوابق جبهه")
+        .Listeners(li => li.AfterRender.Handler = "SavabeghJebhe_ItemsSetSize();")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .Buttons(
+                    X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => { l.Click.Handler = "SaveSavabeghJebhe_Items();"; }).ItemID("btnSave"),
+                X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "LoadSavabeghJebhe_Items();"; }),
+                X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteSavabeghJebhe_Items();"; }),
+                X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpSavabeghJebhe_Items();"; }),
+                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.SavabeghJebhe_Items.destroy()")
+                )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.Panel()
+                        .Border(false)
+                              .Layout(LayoutType.VBox)
+                                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                            X.FieldSet().Title("آیتم های سوابق جبهه")
+                                .Height(80)
+                                .Border(true)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                        .Items(
+                            X.Hidden()
+                                .ItemID("fldId"),
+                            X.Label("عنوان:"),
+                            X.TextField()
+                                .ItemID("txtName")
+        //.MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(false)
+                                .MaxLength(300)
+                                .EnforceMaxLength(true)
+                                .BlankText("لطفا عنوان را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                               // .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                                .AutoFocus(true),
+                            X.Label("درصد به ازای هرسال:"),
+                            X.TextField()
+                                .ItemID("txtDarsad")
+                              
+                               .AllowBlank(false)
+                               .FieldStyle("direction:Ltr;")
+                                    .MaskRe("/[0-9,. /]/")
+                                    .MaxLength(5)
+                                    .EnforceMaxLength(true)
+                                      .Listeners(l => l.Change.Handler = "ChangeDarsad();")
+                                .BlankText("لطفا درصد را وارد کنید."),
+                            X.Label("توضیحات:"),
+                            X.TextField()
+                                .ItemID("txtDesc")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .Width(407)
+                                .ColSpan(3)
+                        )
+                    )
+        ),
+        X.GridPanel()
+            .ItemID("SavabeghJebhe_ItemsGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.SavabeghJebhe_Items.queryById('SavabeghJebhe_ItemsGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+            .Plugins(X.FilterHeader().Remote(true))
+            .Listeners(l =>
+            {
+                l.AfterRender.Handler = "var grid = App.SavabeghJebhe_Items.queryById('SavabeghJebhe_ItemsGrid');grid.setHeight(App.PersoneliWin.getHeight() - 290); ";
+            })
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldDarsad_Sal).Text("درصد به ازای هرسال").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    function ChangeDarsad() {
+        var txtDarsad = App.SavabeghJebhe_Items.queryById('txtDarsad');
+        if (txtDarsad.getValue() > 100) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "درصد وارد شده بیشتر از حد مجاز می باشد.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            txtDarsad.setValue("");
+        }
+    }
+    function HelpSavabeghJebhe_Items() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/SavabeghJebhe_Items/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+   /* App.PersoneliWin.addListener('resize', function () {
+        App.SavabeghJebhe_Items.setWidth(App.PersoneliWin.getWidth());
+    });
+    App.PersoneliWin.addListener('resize', function () {
+        var grid = App.SavabeghJebhe_Items.queryById('SavabeghJebhe_ItemsGrid');
+        grid.setHeight(App.PersoneliWin.getHeight() - 240);
+    });*/
+    function SavabeghJebhe_ItemsSetSize() {
+        App.SavabeghJebhe_Items.setWidth(App.PersoneliWin.getWidth());
+        var grid = App.SavabeghJebhe_Items.queryById('SavabeghJebhe_ItemsGrid');
+        grid.setHeight(App.PersoneliWin.getHeight() - 290);
+    }
+    function LoadSavabeghJebhe_Items() {
+        var SelectedRow = App.SavabeghJebhe_Items.queryById('SavabeghJebhe_ItemsGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/SavabeghJebhe_Items/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtName = App.SavabeghJebhe_Items.queryById('txtName');
+                    txtName.setValue(data.fldTitle);
+                    var txtDesc = App.SavabeghJebhe_Items.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SavabeghJebhe_Items.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    var txtDarsad = App.SavabeghJebhe_Items.queryById('txtDarsad');
+                    txtDarsad.setValue(data.fldDarsad_Sal);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveSavabeghJebhe_Items() {
+        var txtName = App.SavabeghJebhe_Items.queryById('txtName');
+        var txtDarsad = App.SavabeghJebhe_Items.queryById('txtDarsad');
+        var txtDesc = App.SavabeghJebhe_Items.queryById('txtDesc');
+        var fldId = App.SavabeghJebhe_Items.queryById('fldId');
+        var er = false;
+
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (txtDarsad.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/SavabeghJebhe_Items/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldTitle: txtName.getValue(),
+                fldDarsad_Sal: txtDarsad.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.SavabeghJebhe_Items.queryById('SavabeghJebhe_ItemsGrid').store.load();
+                if (data.Er == 0)
+                    ClearSavabeghJebhe_Items();
+            }
+
+        });
+    }
+
+    function DeleteSavabeghJebhe_Items() {
+        var SelectedRow = App.SavabeghJebhe_Items.queryById('SavabeghJebhe_ItemsGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Personeli/SavabeghJebhe_Items/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SavabeghJebhe_Items.queryById('SavabeghJebhe_ItemsGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                        ClearSavabeghJebhe_Items();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearSavabeghJebhe_Items() {
+        App.SavabeghJebhe_Items.queryById('fldId').setValue(0);
+        App.SavabeghJebhe_Items.queryById('txtName').setValue("");
+        App.SavabeghJebhe_Items.queryById('txtDarsad').setValue("");
+        App.SavabeghJebhe_Items.queryById('txtDesc').setValue("");
+    }
+    function EnterNext() {
+        var keyfield = App.SavabeghJebhe_Items.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtDesc") {
+            nextfld = App.SavabeghJebhe_Items.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+    }
+</script>

@@ -1,0 +1,317 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_GroupCenterCost>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using NewFMS.WCF_Accounting
+
+@{
+    var X = Html.X();
+    NewFMS.WCF_Common.CommonService servic = new NewFMS.WCF_Common.CommonService();
+    NewFMS.WCF_Common.ClsError Err = new NewFMS.WCF_Common.ClsError();
+}
+
+@(Html.X().Panel()
+    .ID("SabtGroupCenterCost")
+    .Title("تعریف گروه مراکز هزینه")
+    .Closable(true)
+    .Listeners(li => { li.AfterRender.Handler = "GroupCenterCostSetSize();"; li.Render.Fn = "addKeyMapGroupCenterCost"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l => l.Click.Handler = "SaveGroupCenterCost();").ItemID("btnSave"),
+                X.Button()
+                    .Text("ویرایش")
+                    .Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => l.Click.Handler = "LoadGroupCenterCost();"),
+                X.Button()
+                    .Text("حذف")
+                    .Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => l.Click.Handler = "DeleteGroupCenterCost();"),
+                X.Button()
+                    .Text("تعریف ساختار درختی")
+                    .Icon(Ext.Net.Icon.ApplicationSideTree)
+                    .Hidden(!servic.Permission(898, Convert.ToInt32(Session["OrganId"]), Session["Username"].ToString(), Session["Password"].ToString(), out Err))
+                    .Listeners(l => l.Click.Handler = "TreeGroupCenterCost();"),
+        //X.Button()
+        //.Text("راهنما")
+        //.Icon(Ext.Net.Icon.Help)
+        //.Listeners(l => { l.Click.Handler = "HelpGroupCenterCost();"; }),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.SabtGroupCenterCost.destroy()")
+                )
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Title("مشخصات گروه")
+                            .Height(50)
+                            .Border(true)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                        .Items(
+                            X.Hidden()
+                                .ItemID("fldId"),
+                            X.Label("عنوان گروه:"),
+                            X.TextField()
+                                .ItemID("txtTitle")
+                                .AllowBlank(false)
+                                .BlankText("لطفا عنوان گروه را وارد کنید.")
+                                .MaxLength(100)
+                                .EnforceMaxLength(true)
+                                .AutoFocus(true),
+                            X.Label("توضیحات:"),
+                            X.TextField()
+                                .ItemID("txtDesc")
+                                .Width(380)
+                        )
+                    )
+        ),
+        X.GridPanel()
+            .ItemID("GroupCenterCostGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.SabtGroupCenterCost.queryById('GroupCenterCostGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+            .Plugins(X.FilterHeader().Remote(true))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldNameGroup).Text("عنوان گروه").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10),
+                Html.X().ComponentColumn().Flex(2).ItemID("ButtonsTree_CenterCost").Component(Html.X().Button().ItemID("btnTree_CenterCost").IconCls("Tree").Text("اختصاص ساختار درختی گروه مراکز هزینه")
+                    .Listeners(l => l.Click.Handler = "GoToTree_CenterCost();")).Filterable(false)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+    )
+)
+<script type="text/javascript">
+    function GoToTree_CenterCost() {
+        var SelectedRow = App.SabtGroupCenterCost.queryById("ButtonsTree_CenterCost").activeRecord.record;
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/GroupCenterCost/Cost_TreeWin',
+            params: {
+                GroupId: SelectedRow.data.fldId,
+                GroupName: SelectedRow.data.fldNameGroup
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function GroupCenterCostSetSize() {
+        App.SabtGroupCenterCost.setWidth(App.AccountingWin.getWidth());
+        App.SabtGroupCenterCost.queryById('GroupCenterCostGrid').setHeight(App.AccountingWin.getHeight() - 260);
+    }
+
+    function LoadGroupCenterCost() {
+        var SelectedRow = App.SabtGroupCenterCost.queryById('GroupCenterCostGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/GroupCenterCost/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTitle = App.SabtGroupCenterCost.queryById('txtTitle');
+                    txtTitle.setValue(data.fldNameGroup);
+                    var txtDesc = App.SabtGroupCenterCost.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtGroupCenterCost.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveGroupCenterCost() {
+        var txtTitle = App.SabtGroupCenterCost.queryById('txtTitle');
+        var txtDesc = App.SabtGroupCenterCost.queryById('txtDesc');
+        var fldId = App.SabtGroupCenterCost.queryById('fldId');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/GroupCenterCost/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldNameGroup: txtTitle.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                if (data.Er != 1) {
+                    App.SabtGroupCenterCost.queryById('GroupCenterCostGrid').store.load();
+                    ClearGroupCenterCost();
+                }
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function TreeGroupCenterCost() {
+        var SelectedRow = App.SabtGroupCenterCost.queryById('GroupCenterCostGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/GroupCenterCost/TreeStore',
+                params: {
+                    GroupId: SelectedRow.data.fldId,
+                    GroupName: SelectedRow.data.fldNameGroup
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DeleteGroupCenterCost() {
+        var SelectedRow = App.SabtGroupCenterCost.queryById('GroupCenterCostGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Accounting/GroupCenterCost/Delete',
+                            params: {
+                                Id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtGroupCenterCost.queryById('GroupCenterCostGrid').store.load();
+                                ClearGroupCenterCost();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearGroupCenterCost() {
+        App.SabtGroupCenterCost.queryById('fldId').setValue(0);
+        App.SabtGroupCenterCost.queryById('txtTitle').setValue("");
+        App.SabtGroupCenterCost.queryById('txtDesc').setValue("");
+    }
+
+    /*function HelpGroupCenterCost() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/GroupCenterCost/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }*/
+
+    var addKeyMapGroupCenterCost = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtGroupCenterCost.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        SaveGroupCenterCost();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

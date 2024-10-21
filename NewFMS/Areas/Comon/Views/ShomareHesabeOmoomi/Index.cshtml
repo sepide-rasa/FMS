@@ -1,0 +1,407 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_ShomareHesabeOmoomi>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+            .ID("SabtShomareHesabeOmoomi")
+            .Title("ثبت شماره حساب")
+          .Listeners(li => { li.Render.Handler = "ShomareHesabeOmoomiSetSize();"; li.AfterRender.Fn = "addKeyMapSabtShomareHesabeOmoomi"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                        X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveShomareHesabeOmoomi")
+                    .Listeners(l => { l.Click.Handler = "SaveShomareHesabeOmoomi();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadShomareHesabeOmoomi();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteShomareHesabeOmoomi();"; })
+                 , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpShomareHesabeOmoomi();"; })
+
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.SabtShomareHesabeOmoomi.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                 X.FieldSet().Border(false).Items(
+                    X.FieldSet().Border(true).Title("اطلاعات شماره حساب").Height(80)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                    X.Hidden().ItemID("fldId")
+                    ,X.Hidden().ItemID("fldAshkhasId"),
+                             X.Label("بانک:"),
+             X.ComboBox()
+                .ItemID("CboBank")
+            .LabelAlign(Ext.Net.LabelAlign.Top)
+            .Editable(true)
+            .TypeAhead(true)
+            .QueryMode(DataLoadMode.Local)
+            .ForceSelection(true)
+            .TriggerAction(TriggerAction.All)
+                .DisplayField("Name")
+                .ValueField("ID")
+            .EmptyText("بانک...")
+        //.Listeners(ls =>
+        //ls.Select.Handler = "App.NewCity_New.queryById('CboState').clearValue(); App.NewCity_New.queryById('CboState').getStore().load()"
+        //    )
+            .Listeners(ls =>
+                                ls.Select.Handler = " App.SabtShomareHesabeOmoomi.queryById('CboShobe').getStore().load();"
+                                    )
+                    .Store(X.Store()//.AutoLoad(false)
+                .Model(X.Model()
+                            .IDProperty("fldStateId")
+                    .Fields(
+                                new ModelField("ID", ModelFieldType.String) { Mapping = "fldID" },
+                                new ModelField("Name", ModelFieldType.String) { Mapping = "fldName" }
+                    )
+                )
+                .Proxy(X.AjaxProxy()
+                        .Url(Url.Action("GetBank"))
+                    .Reader(X.JsonReader().Root("data"))
+                )
+                       // .Listeners(li => li.Load.Handler = "LoadShomareHesabeOmoomi();")
+        )
+            .AllowBlank(false)
+            .BlankText("لطفا بانک را انتخاب نمایید."),
+            X.Label("شعبه:"),
+                        X.ComboBox()
+                            .ItemID("CboShobe")
+                        .EmptyText("شعبه...")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .TypeAhead(true)
+                        .Editable(true)
+                        .AllowBlank(false)
+                        .BlankText("لطفا شعبه مورد نظر را انتخاب نمایید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                            .DisplayField("Name")
+                            .ValueField("ID")
+                                    .Store(X.Store().AutoLoad(false)
+                            .Model(X.Model()
+                                        .IDProperty("fldCityId")
+                                .Fields(
+                                    new ModelField("ID", ModelFieldType.String) { Mapping = "fldID" },
+                                    new ModelField("Name", ModelFieldType.String) { Mapping = "fldName" })
+                                    )
+                            .Proxy(X.AjaxProxy()
+                                                .Url(Url.Action("GetShobe"))
+                                .Reader(X.JsonReader().Root("data")))
+                                                    .Parameters(ps => ps.Add(new StoreParameter("ID", "App.SabtShomareHesabeOmoomi.queryById('CboBank').getValue()", ParameterMode.Raw)))
+                                            )
+                   ,
+                        X.Label().Text("شخص(INS):").ItemID("lblName"),
+                        X.TextField()
+                        .ItemID("txtName")
+                        .Icon(Icon.UserAdd)
+                        .EnableKeyEvents(true)
+                        //.Listeners(l => l.KeyDown.Fn = "DeletePersonn2")
+                        .LabelAlign(Ext.Net.LabelAlign.Right)
+                        .AllowBlank(false)
+                        .ReadOnly(true)
+                        .BlankText("لطفا شخص را وارد کنید.")
+                        .DirectEvents(li =>
+                        {
+                            li.SpecialKey.Url = "/Daramad/SearchAshkhas/Index?State=1";
+                            li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                        })
+                            .Listeners(l => l.IconClick.Handler = "SearchAshkhas();"),                         
+                             X.Label("شماره حساب:"),
+                    X.TextField()
+                    .ItemID("txtShHesab")
+        //.FieldLabel("نام شهرستان")
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا شماره حساب را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .MaxLength(50)
+                    .MaskRe("[0-9]")
+                        .FieldStyle("direction:ltr;")
+                    .EnforceMaxLength(true)
+                    ,X.Label("شماره شبا:"),
+                    X.TextField()
+                    //.ColSpan(3)
+                    .ItemID("txtShSheba")
+                            .MaskRe("[I,R,i,r,0-9]") 
+                        .FieldStyle("direction:ltr;")
+                          /*  .Plugins(X.InputMask()
+                                        .Mask("IRAAAAAAAAAAAAAAAAAAAAAAAA")
+                                        .UnmaskOnBlur(true)
+                                        .MaskSymbols(ls =>
+                                        {
+                                            ls.Add(new MaskSymbol { Name = "A", Regex = "[0-9]", Placeholder = "_".ToCharArray()[0] });
+                                        })
+                                    )*/
+                            .EmptyText("IR------------------------")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .MaxLength(27)
+                    .EnforceMaxLength(true)
+                    //.Width(379)
+                     
+                    , X.Label("عنوان:"),
+                     X.TextField()
+                    .ItemID("txtDesc")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(160)
+                    .ColSpan(3)
+                )
+            )
+            )
+        ),
+        X.GridPanel()
+            .ItemID("ShomareHesabeOmoomiGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                                X.StoreForModel()
+                              .Listeners(l => l.DataChanged.Handler = "App.SabtShomareHesabeOmoomi.queryById('ShomareHesabeOmoomiGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtShomareHesabeOmoomi.queryById('ShomareHesabeOmoomiGrid');grid.setHeight(App.Win.getHeight() - 300); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.NameAshkhas).Text("نام و نام خانوادگی").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("عنوان").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldBankName).Text("نام بانک").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.nameShobe).Text("نام شعبه").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldShomareHesab).Text("شماره حساب").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldShomareSheba).Text("شماره شبا").Flex(6)
+                        
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.Win.addListener('resize', function () {
+        App.City.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.City.queryById('CityGrid');
+        grid.setHeight(App.Win.getHeight()-240);
+    });*/
+    function SearchAshkhas() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/SearchAshkhas/Index',
+            params: {
+                State: 1
+            },
+        });
+        Ext.net.Mask.hide();
+    }
+    function HelpShomareHesabeOmoomi() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/ShomareHesabeOmoomi/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function ShomareHesabeOmoomiSetSize() {
+        App.SabtShomareHesabeOmoomi.setWidth(App.Win.getWidth());
+        var grid = App.SabtShomareHesabeOmoomi.queryById('ShomareHesabeOmoomiGrid');
+        grid.setHeight(App.Win.getHeight() - 500);
+    }
+
+    function LoadShomareHesabeOmoomi() {
+        var SelectedRow = App.SabtShomareHesabeOmoomi.queryById('ShomareHesabeOmoomiGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/ShomareHesabeOmoomi/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) { 
+                    var CboBank = App.SabtShomareHesabeOmoomi.queryById('CboBank');
+                    CboBank.setValue(data.fldBankId);
+                    App.SabtShomareHesabeOmoomi.queryById('CboShobe').clearValue(); App.SabtShomareHesabeOmoomi.queryById('CboShobe').getStore().load();
+                    var CboShobe = App.SabtShomareHesabeOmoomi.queryById('CboShobe');
+                    CboShobe.setValue(data.fldShobeId);
+                    var txtName = App.SabtShomareHesabeOmoomi.queryById('txtName');
+                    txtName.setValue(data.NameAshkhas);
+                    var fldAshkhasId = App.SabtShomareHesabeOmoomi.queryById('fldAshkhasId');
+                    fldAshkhasId.setValue(data.fldAshkhasId);
+                    var txtShHesab = App.SabtShomareHesabeOmoomi.queryById('txtShHesab');
+                    txtShHesab.setValue(data.fldShomareHesab);
+                    var txtShSheba = App.SabtShomareHesabeOmoomi.queryById('txtShSheba');
+                    txtShSheba.setValue(data.fldShomareSheba);
+                    var txtDesc = App.SabtShomareHesabeOmoomi.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtShomareHesabeOmoomi.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveShomareHesabeOmoomi() {
+        var fldAshkhasId = App.SabtShomareHesabeOmoomi.queryById('fldAshkhasId');
+        var CboShobe = App.SabtShomareHesabeOmoomi.queryById('CboShobe');
+        var CboBank = App.SabtShomareHesabeOmoomi.queryById('CboBank');
+        var txtName = App.SabtShomareHesabeOmoomi.queryById('txtName');
+        var txtShHesab = App.SabtShomareHesabeOmoomi.queryById('txtShHesab');
+        var txtShSheba = App.SabtShomareHesabeOmoomi.queryById('txtShSheba');
+        var txtDesc = App.SabtShomareHesabeOmoomi.queryById('txtDesc');
+        var fldId = App.SabtShomareHesabeOmoomi.queryById('fldId');
+            var er = false;
+
+            if (CboBank.validate() == false) {
+                er = true;
+            }
+            if (CboShobe.validate() == false) {
+                er = true;
+            }
+            if (txtName.validate() == false) {
+                er = true;
+            }
+            if (txtShHesab.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/ShomareHesabeOmoomi/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldAshkhasId: fldAshkhasId.getValue(),
+                    fldShobeId: CboShobe.getValue(),
+                    fldShomareHesab: txtShHesab.getValue(),
+                    fldShomareSheba: txtShSheba.getValue(),
+                    fldDesc:txtDesc.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtShomareHesabeOmoomi.queryById('ShomareHesabeOmoomiGrid').store.load();
+                    if (data.Err != 1)
+                        ClearShomareHesabeOmoomi();
+                }
+
+            });
+    }
+    function DeleteShomareHesabeOmoomi() {
+        var SelectedRow = App.SabtShomareHesabeOmoomi.queryById('ShomareHesabeOmoomiGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/ShomareHesabeOmoomi/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtShomareHesabeOmoomi.queryById('ShomareHesabeOmoomiGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearShomareHesabeOmoomi() {
+        App.SabtShomareHesabeOmoomi.queryById('fldId').setValue(0);
+        App.SabtShomareHesabeOmoomi.queryById('fldAshkhasId').setValue(0);
+        App.SabtShomareHesabeOmoomi.queryById('txtName').setValue("");
+        App.SabtShomareHesabeOmoomi.queryById('txtShHesab').setValue("");
+        App.SabtShomareHesabeOmoomi.queryById('txtShSheba').setValue("");
+        App.SabtShomareHesabeOmoomi.queryById('txtDesc').setValue("");
+        App.SabtShomareHesabeOmoomi.queryById('CboState').setValue("");
+    }
+    var addKeyMapSabtShomareHesabeOmoomi = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtShomareHesabeOmoomi.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtShSheba") {
+                        nextfld = App.SabtShomareHesabeOmoomi.queryById('btnSaveShomareHesabeOmoomi');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

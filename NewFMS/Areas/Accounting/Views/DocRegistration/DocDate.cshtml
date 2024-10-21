@@ -1,0 +1,173 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+
+@(Html.X().Window()
+    .ID("DocDateWin")
+    .Title("انتخاب تاریخ")
+    .Width(200)
+    .Height(100)
+    .Modal(true)
+    .Closable(true)
+    .Resizable(false)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Layout(LayoutType.Fit)
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("تأیید")
+            .Icon(Ext.Net.Icon.Tick)
+            .Listeners(l => l.Click.Handler = "Send();"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.DocDateWin.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .Padding(5)
+            .LayoutConfig(new VBoxLayoutConfig { Align=VBoxAlign.Center})
+            .Items(
+                X.FieldSet()
+                    .Border(false)
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig{Columns=2})
+                    .Items(
+                        X.Label("تاریخ سند:"),
+                        X.PDateField()
+                            .ItemID("DocDate")
+                            .AutoFocus(true)
+                            .Listeners(l=>l.AfterRender.Handler="setDocDateBaze()")
+                            .Editable(true)
+                            .AllowBlank(false)
+                            .Width(100)
+                            .MaskRe("/[0-9 /]/")
+                            .BlankText("لطفا تاریخ ثبت سند را وارد کنید.")
+                            .MaxLength(10)
+                            .EnforceMaxLength(true)
+                    )
+            )
+    )
+)
+<script type="text/javascript">
+
+    function setDocDateBaze() {
+        var DocDate = App.DocDateWin.queryById("DocDate");
+        DocDate.setMinValue(new Date('@ViewBag.MinDate'));
+        DocDate.minText ="تاریخ باید در محدوده سال مالی باشد.";
+
+        DocDate.setMaxValue(new Date('@ViewBag.MaxDate'));
+        DocDate.maxText = "تاریخ باید در محدوده سال مالی باشد.";
+    }
+
+    function Send() {
+        var DocDate = App.DocDateWin.queryById("DocDate");
+        if (DocDate.validate()) {
+            if ('@ViewBag.State' == 1) {
+                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Khazanedari/RegisterDocs/SendToModule',
+                    params: {
+                        DocId: '@ViewBag.DocId',
+                        fldModuleErsalId: '@ViewBag.fldModuleErsalId',
+                        fldModuleSaveId: '@ViewBag.fldModuleSaveId',
+                        DocDate: DocDate.getRawValue()
+                    },
+                    success: function (data) {
+                        var ic = Ext.MessageBox.INFO;
+                        if (data.Er == 1)
+                            ic = Ext.MessageBox.ERROR;
+                        Ext.MessageBox.show({
+                            title: data.MsgTitle,
+                            msg: data.Msg,
+                            icon: ic,
+                            closable:false,
+                            buttons: Ext.MessageBox.OK,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    App.DocDateWin.destroy();
+                                }
+                            }
+                        });
+                        App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.load();
+                        if (App.DocRegister_HeaderKhazane != undefined)
+                            App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').store.load();
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else if ('@ViewBag.State' == 2) {
+                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Accounting/DocRegistration/BackToKhazanedari',
+                    params: {
+                        DocId: '@ViewBag.DocId',
+                        fldModuleErsalId: '@ViewBag.fldModuleErsalId',
+                        fldModuleSaveId: '@ViewBag.fldModuleSaveId',
+                        DocDate: DocDate.getRawValue()
+                    },
+                    success: function (data) {
+                        var ic = Ext.MessageBox.INFO;
+                        if (data.Er == 1)
+                            ic = Ext.MessageBox.ERROR;
+                        Ext.MessageBox.show({
+                            title: data.MsgTitle,
+                            msg: data.Msg,
+                            icon: ic,
+                            closable: false,
+                            buttons: Ext.MessageBox.OK,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    App.DocDateWin.destroy();
+                                }
+                            }
+                        });
+                        App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.load();
+                        if (App.DocRegister_HeaderKhazane != undefined)
+                            App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').store.load();
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else {
+                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Khazanedari/RegisterDocs/SendToModule',
+                    params: {
+                        DocId: '@ViewBag.DocId',
+                        fldModuleErsalId: '@ViewBag.fldModuleErsalId',
+                        fldModuleSaveId: '@ViewBag.fldModuleSaveId',
+                        DocDate: DocDate.getRawValue()
+                    },
+                    success: function (data) {
+                        var ic = Ext.MessageBox.INFO;
+                        if (data.Er == 1)
+                            ic = Ext.MessageBox.ERROR;
+                        Ext.MessageBox.show({
+                            title: data.MsgTitle,
+                            msg: data.Msg,
+                            icon: ic,
+                            closable: false,
+                            buttons: Ext.MessageBox.OK,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    App.DocDateWin.destroy();
+                                }
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                        App.DocRegister_HeaderKhazane.queryById('DocRegister_HeaderKhazaneGrid').store.load();
+                        if (App.DocRegister_Header != undefined)
+                            App.DocRegister_Header.queryById('DocRegister_HeaderGrid').store.load();
+                    }
+                });
+            }
+        }
+    }
+</script>
+

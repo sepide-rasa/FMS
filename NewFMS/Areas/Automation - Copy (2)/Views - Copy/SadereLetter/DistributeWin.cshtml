@@ -1,0 +1,193 @@
+﻿@model IEnumerable<NewFMS.WCF_Automation.OBJ_InternalAssignmentReceiver>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+
+@(Html.X().Window().Modal(true)
+            .Listeners(li => li.AfterRender.Handler = "LoadDistributeWin();")
+.Width(300)//.Height(300)
+    .Title("توزیع نامه")
+         .ID("DistributeWin")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+            .Margin(10)
+            .DefaultButton("btn")
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+               .Buttons(X.Button().Text("توزیع").Icon(Ext.Net.Icon.Disk).Margin(10)
+                           .Listeners(l =>
+                           {
+                               l.Click.Handler = "SaveDistributeWin();";
+
+                           })
+                           .ItemID("btnSave")
+                                ,
+                            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                                   .OnClientClick("App.DistributeWin.destroy()"))
+
+                .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                .Defaults(new { Margin = 2 })
+                .Items(
+                X.Label().Text("حداکثر مهلت پاسخ:")
+                , X.PDateField()
+                    .ItemID("txtTarikh")//.PaddingSpec("0 0 9px 0")
+                    .Width(100)
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .Editable(false)
+                    .MaskRe("/[0-9,/]/")
+                    .BlankText("لطفا تاریخ را انتخاب نمایید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+        //   .Listeners(l => l.Change.Handler = "TaTarikh()")
+
+                      )
+                     
+   
+      
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+
+        )
+)
+
+<script type="text/javascript">
+
+    function LoadDistributeWin() {
+        App.DistributeWin.queryById('txtTarikh').setValue('@ViewBag.Tarikh');
+
+
+    }
+
+    function SaveDistributeWin() {
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        var txtTarikh = App.DistributeWin.queryById('txtTarikh');
+
+
+        var er = false;
+
+
+        if (txtTarikh.validate() == false) {
+            er = true;
+        }
+
+        var Items = new Array();
+        var er = false;
+        var SelectedRow = App.PnlAsliLetter.queryById('GridRunevesht');
+        var ErAssignmentTypeID = 0;
+        for (var i = 0; i < SelectedRow.selModel.store.count() ; i++) {
+            row = SelectedRow.selModel.store.data.items[i];
+            if (row.data.fldAssignmentTypeID != 0) {
+                Items.push({
+                    'fldAshkhasHoghoghiId': row.data.fldAshkhasHoghoghiId,
+                    'fldCommisionId': row.data.fldCommisionId,
+                    'fldAssignmentTypeId': row.data.fldAssignmentTypeId,
+                    'fldText': row.data.fldText
+                });
+            }
+            else
+                ErAssignmentTypeID = 1;
+        }
+        if (ErAssignmentTypeID == 1) {
+            Ext.MessageBox.show({
+                Name: "خطا",
+                msg: "فیلد نوع ارجاع انتخاب نشده است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            Ext.net.Mask.hide();
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        var data1 = {
+            runevesht: Items,
+            LetterID: '@ViewBag.LetterID',
+            ReceiverComisionID: '@ViewBag.ReceiverComisionID',
+            ComisionID: '@ViewBag.ComisionID',
+            SourceAssId: '@ViewBag.SourceAssId',
+            AnswerDate: txtTarikh.rawValue
+        };
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Automation/SadereLetter/Distribute',
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify(data1),
+            datatype: "json",
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == 'ok') {
+                            SearchSK();
+                            App.DistributeWin.destroy();
+                        }
+                    }
+                });
+                Ext.net.Mask.hide();
+            }
+        });
+
+    }
+    function ClearDistributeWin() {
+        App.DistributeWin.queryById('CboCommittee').setValue("");
+        App.DistributeWin.queryById('CheckedIsUser').setValue(false);
+        App.DistributeWin.queryById('Momayezi_ArzyabGroupId').setValue(0);
+        App.DistributeWin.queryById('fldId').setValue(0);
+    }
+    function DelMomayez() {
+        var SelectedHeaderRow = App.DistributeWin.queryById('GridEeja').selModel.getLastSelected();
+        if (SelectedHeaderRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+
+                        App.DistributeWin.queryById('GridEeja').deleteSelected();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function EnterNext() {
+        var keyfield = App.DistributeWin.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+
+    }
+</script>

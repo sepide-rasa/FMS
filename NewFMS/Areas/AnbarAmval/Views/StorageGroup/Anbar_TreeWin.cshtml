@@ -1,0 +1,149 @@
+﻿@model IEnumerable<NewFMS.WCF_AnbarAmval.OBJ_AnbarTree>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+@using Ext.Net.Utilities;
+
+@{ var X = Html.X();}
+<br />
+
+@(Html.X().Window()
+    .Width(670)
+    .Modal(true)
+        .ID("Anbar_TreeWin")
+    .Title("اختصاص ساختار درختی گروه انبار")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+        //.Listeners(l => l.Render.Fn = "addKeyMapNewTreeGroupGoods")
+    .Resizable(false)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.HBox)
+            .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Stretch })
+            .Items(
+
+                X.TreePanel()
+                            .ID("TreeAnbarTarifNashode")
+                            .AutoScroll(true)
+                            .Frame(true)
+                            .Title("انبار")
+                            .Width(320)
+                            .Margin(5)
+                            .UseArrows(true)
+                            .Border(true)
+                            .Listeners(l =>
+                            {
+                                l.Render.Handler = "App.TreeAnbarTarifNashode.setHeight(Ext.getBody().getViewSize().height-350);";
+                            })
+                                .View(X.TreeView().Plugins(X.TreeViewDragDrop().AppendOnly(true)))
+                            .Store(
+                                X.TreeStore()
+                                    .AutoLoad(false)
+                                    .Proxy(
+                                            X.AjaxProxy().Url(Url.Action("LoadAnbar_TarifNashode"))
+                                    )
+                                            .Listeners(l => l.BeforeLoad.Fn = "GetParamTreeAnbarTarifNashode")
+                            )
+                                    .Root(Html.X().Node()/*.NodeID("0")*/.Text("انبارهای تعریف نشده").Cls("0").Expanded(true)),
+                            X.TreePanel()
+                    .ID("TreeAnbar")
+                    .AutoScroll(true)
+                    .Frame(true)
+                    .Title("ساختار درختی گروه انبار")
+                    .Width(320)
+                    .Margin(5)
+                    .UseArrows(true)
+                    .Border(true)
+                    .Listeners(l =>
+                    {
+                        l.Render.Handler = "App.TreeAnbar.setHeight(Ext.getBody().getViewSize().height-350);";/* l.ItemMove.Fn = "moveNodeAnbar"*/;
+                    })
+                            .View(X.TreeView().Listeners(l => { l.BeforeDrop.Fn = "moveNodesTreeAnbar"; })
+                    .Plugins(X.TreeViewDragDrop().AppendOnly(true))
+                    )
+                    .Store(
+                        Html.X().TreeStore()
+                            .Model(
+                                Html.X().Model()
+                                    .Fields(
+                                        X.ModelField().Name(Model, m => m.fldId).Type(ModelFieldType.Int),
+                                        X.ModelField().Name(Model, m => m.fldName).Type(ModelFieldType.String),
+                                         X.ModelField().Name(Model, m => m.fldNodeType).Type(ModelFieldType.String),
+                                            X.ModelField().Name(Model, m => m.fldDesc).Type(ModelFieldType.String)
+                                        )
+                                )
+                            .Proxy(
+                                    Html.X().AjaxProxy().Url(Url.Action("LoadTreeAnbar"))
+                            )
+                                .Listeners(l => l.BeforeLoad.Fn = "GetParamTreeAnbar")
+                    )
+                      .Root(Html.X().Node().NodeID("0")/*.Cls("0")*/.Text(ViewBag.GroupName).AttributesObject(new { fldId = 0, fldName = "", fldNodeType = "2", fldDesc = "" }).Expanded(true))
+            )
+        )
+)
+<script type="text/javascript">
+    var aaa;
+    var GetParamTreeAnbarTarifNashode = function (store, operation, eOpts) {
+        operation.params.nod = operation.node.data.cls;/*.getId();*/
+        operation.params.GroupId = '@ViewBag.GroupId';
+    };
+    var GetParamTreeAnbar = function (store, operation, eOpts) {
+        operation.params.nod = operation.node.data.cls;/*.getId();*/
+
+        operation.params.GroupId = '@ViewBag.GroupId';
+    };
+
+    var moveNodesTreeAnbar = function (a, child, parent, d, e) {
+        if (child.records[0].data.fldNodeType != 2 && parent.data.fldNodeType != 2) {
+            e.wait = true;
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای جابجایی این شاخه مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == "yes") {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/AnbarAmval/StorageGroup/SaveAnbar_Tree',
+                            params: {
+                                AnbarId: child.records[0].data.cls,
+                                AnbarTreeId: parent.data.fldId
+                            },
+                            success: function (data) {
+                                if (data.Er == 1) {
+                                    e.cancelDrop();
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: Ext.MessageBox.ERROR,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    Ext.net.Mask.hide();
+                                }
+                                if (data.Er != 1) {
+                                    e.processDrop();
+                                    Ext.net.Mask.hide();
+                                }
+                            }
+                        });
+                    }
+                    else {
+                        e.cancelDrop();
+                    }
+                }
+            });
+        }
+        else {
+            e.cancelDrop();
+        }
+    };
+
+    function SaveTreeGroupGoods() {
+
+    }
+
+
+</script>

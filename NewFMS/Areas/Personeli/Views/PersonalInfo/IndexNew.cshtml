@@ -1,0 +1,404 @@
+﻿@model IEnumerable<NewFMS.WCF_Personeli.OBJ_PersonalInfo>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+
+<br />
+@(Html.X().Panel()
+    .ID("PersonalInfo")
+    .Title("ثبت پرسنل جدید")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l => l.AfterRender.Handler = "App.PersonalInfo.setHeight(App.PersoneliWin.getHeight() - 170);")
+    .Layout(LayoutType.Fit)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.Fit)
+            .Height(270)
+            .AutoScroll(true)
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.GridPanel()
+                    .TopBar(
+                        Html.X().Toolbar()
+                        .Items(
+                            X.Button().Text("جدید").Icon(Ext.Net.Icon.Add).Listeners(l => { l.Click.Handler = "NewPersonalInfo();"; }),
+                            X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "EditPersonalInfo();"; }),
+                            X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeletePersonalInfo();"; }),
+                            X.Button().Text("تغییر وضعیت").Icon(Ext.Net.Icon.ArrowRedo).Listeners(Li => Li.Click.Handler = "ChangeStatusPersonalInfo()"),
+                            X.Button().Text("تغییر وضعیت استخدام").Icon(Ext.Net.Icon.ArrowRedo).Listeners(Li => Li.Click.Handler = "ChangeEstekhdamStatusPersonalInfo()"),
+                                X.Button().Text("تغییر وضعیت تحصیلات").Icon(Ext.Net.Icon.ArrowRedo).Listeners(Li => Li.Click.Handler = "ChangeTahsilat()"),
+                            X.Button().Text("تسویه حساب").Icon(Ext.Net.Icon.ArrowRedo).Listeners(Li => Li.Click.Handler = "TasviehHesab()"),
+                            X.Button().Text("گروه های تشویقی").Icon(Ext.Net.Icon.BookAdd).Listeners(Li => Li.Click.Handler = "GoruhTashvighiPersonalInfo();"),
+                            X.Button().Text("بایگانی دیجیتال").Icon(Ext.Net.Icon.BookAdd).Listeners(Li => Li.Click.Handler = "DigitalArchivePersonalInfo();").Hidden(true),
+                            X.Button().Text("خروجی اکسل").Icon(Ext.Net.Icon.BookAdd)
+                            .DirectEvents(de =>
+                            {
+                                de.Click.Url = "/Personeli/PersonalInfo/ExcelWin";
+                                /*de.Click.ExtraParams.Add(new { containerId = "PersonalInfoTab" });*/
+                                de.Click.Before = "Ext.net.Mask.show({ msg : 'در حال بارگذاری...' });";
+                                de.Click.Success = "Ext.net.Mask.hide();";
+                            }),
+                                X.Button().Text("سوابق سنوات خدمت").Icon(Ext.Net.Icon.BookAdd).Listeners(Li => Li.Click.Handler = "SanvatKhedmatPersonalInfo();"),
+                                X.Button().Text("سوابق جبهه").Icon(Ext.Net.Icon.BookAdd).Listeners(Li => Li.Click.Handler = "SabagheJebhePersonalInfo();"),
+/*X.Button().Text("نمونه امضا").Icon(Ext.Net.Icon.BookAdd).Listeners(Li => Li.Click.Handler = "EmzaPersonalInfo();"),*/
+                                X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpPersonalInfo();"; }),
+                                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.PersonalInfo.destroy()")
+                        )
+                        )
+                    .ItemID("PersonalInfoGrid")
+                    .BottomBar(X.PagingToolbar())
+                    .Height(190)
+                    .Store(
+                        X.StoreForModel()
+                            .Listeners(l => l.DataChanged.Handler = "App.PersonalInfo.queryById('PersonalInfoGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                    )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldEmployeeId).Text("کد شخص").Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام").Flex(2).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldFamily).Text("نام خانوادگی").Flex(3).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldFatherName).Text("نام پدر").Flex(2).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کدملی").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldSh_Shenasname).Text("شماره شناسنامه").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldSh_Personali).Text("شماره پرسنلی").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.NamePostOran).Text("عنوان پست_کدشغل").Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldTitleChartOrgan).Text("محل خدمت").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldTitleStatus).Text("وضعیت").Flex(1).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldSh_MojavezEstekhdam).Text("شماره مجوز استخدام").Flex(2)
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+            )
+        )
+)
+)
+<script>
+    App.PersoneliWin.addListener('resize', function () {
+        var grid = App.PersonalInfo.queryById('PersonalInfoGrid');
+        App.PersonalInfo.setSize(App.PersoneliWin.getWidth(), App.PersoneliWin.getHeight() - 170);
+    });
+
+    function ChangeStatusPersonalInfo() {
+        var SelectedRow = App.PersonalInfo.queryById('PersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/ChangeStatus',
+                params: {
+                    id: SelectedRow.data.fldId,
+                    State: 1
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ChangeEstekhdamStatusPersonalInfo() {
+        var SelectedRow = App.PersonalInfo.queryById('PersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/ChangeEstekhdamStatus',
+                params: {
+                    id: SelectedRow.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ChangeTahsilat() {
+        var SelectedRow = App.PersonalInfo.queryById('PersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/ChangeTahsilat',
+                params: {
+                    EmployeeId: SelectedRow.data.fldEmployeeId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function TasviehHesab() {
+        var SelectedRow = App.PersonalInfo.queryById('PersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/IndexTasvieHesab',
+                params: {
+                    id: SelectedRow.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SanvatKhedmatPersonalInfo() {
+        var SelectedRow = App.PersonalInfo.queryById('PersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            /*چک کارگر یا کارمند*/
+            /* Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/CheckNoeEstekhdam',
+                params: {
+                    id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    if (data.MsgTitle != "" && data.Msg != "") {
+                        Ext.MessageBox.show({
+                            title: data.MsgTitle,
+                            msg: data.Msg,
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                    else {*/
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/SavabeghSanavatKhedmatWin',
+                params: {
+                    id: SelectedRow.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+            /*  }
+          }
+      });*/
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SabagheJebhePersonalInfo() {
+        var SelectedRow = App.PersonalInfo.queryById('PersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldJensiyat == 0) {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "ثبت سوابق جبهه برای فرد موردنظر امکان پذیر نمی باشد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+            else {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Personeli/PersonalInfo/SabagheJebheWin',
+                    params: {
+                        id: SelectedRow.data.fldId
+                    },
+                    success: function () {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function HelpPersonalInfo() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/PersonalInfo/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function GoruhTashvighiPersonalInfo() {
+        var SelectedRow = App.PersonalInfo.queryById('PersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/GoruhTashvighiWin',
+                params: {
+                    id: SelectedRow.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function NewPersonalInfo() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/PersonalInfo/New',
+            params: {
+                Id: 0
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function EditPersonalInfo() {
+        var SelectedRow = App.PersonalInfo.queryById('PersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/New',
+                params: {
+                    Id: SelectedRow.data.fldId
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DeletePersonalInfo() {
+        var SelectedHeaderRow = App.PersonalInfo.queryById('PersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedHeaderRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Personeli/PersonalInfo/Delete',
+                            params: {
+                                Id: SelectedHeaderRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1) {
+                                    ic = Ext.MessageBox.ERROR;
+                                }
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.PersonalInfo.queryById('PersonalInfoGrid').store.load();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+   /* function EmzaPersonalInfo() {
+        var SelectedRow = App.PersonalInfo.queryById('PersonalInfoGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/EmzaPersonalInfo',
+                params: {
+                    id: SelectedRow.data.fldId
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }*/
+</script>

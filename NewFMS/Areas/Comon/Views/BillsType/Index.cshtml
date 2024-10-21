@@ -1,0 +1,253 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_BillsType>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .color {
+        color: red;
+    }
+</style>
+<br />
+@(Html.X().Panel()
+        .ID("SabtBillsType")
+        .Title("تعریف انواع قبوض")
+        .Listeners(li => { li.AfterRender.Handler = "BillsTypeSetSize();"; li.Render.Fn = "addKeyMapDescription"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                   X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveBillsType")
+                    .Listeners(l => { l.Click.Handler = "SaveBillsType();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadBillsType();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteBillsType();"; })
+                    , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpBillsType();"; }),
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.SabtBillsType.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                 X.FieldSet().Border(false).Items(
+                    X.FieldSet().Border(true).Title("انواع قبوض").Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.Label("عنوان:"),
+                    X.TextField()
+                    .ItemID("txtName")
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .MaxLength(150)
+                    .EnforceMaxLength(true)
+                    .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                    , X.Label("توضیحات:"),
+                        X.TextField()
+                    .AllowBlank(false)
+                    .ItemID("txtDesc")
+                    .Width(345)//.ColSpan(3)
+                )
+             )
+            )
+        ),
+        X.GridPanel()
+                .ItemID("BillsTypeGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                        X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.SabtBillsType.queryById('BillsTypeGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtBillsType.queryById('BillsTypeGrid');grid.setHeight(App.Win.getHeight() - 275); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان").Flex(2).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10).Wrap(true)
+               )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+          )
+    )
+)
+<script type="text/javascript">
+    function HelpBillsType() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/BillsType/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function BillsTypeSetSize() {
+        App.SabtBillsType.setWidth(App.Win.getWidth());
+        var grid = App.SabtBillsType.queryById('BillsTypeGrid');
+        grid.setHeight(App.Win.getHeight() - 275);
+    }
+
+    function LoadBillsType() {
+        var SelectedRow = App.SabtBillsType.queryById('BillsTypeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/BillsType/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtName = App.SabtBillsType.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var txtDesc = App.SabtBillsType.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtBillsType.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveBillsType() {
+        var txtName = App.SabtBillsType.queryById('txtName');
+        var txtDesc = App.SabtBillsType.queryById('txtDesc');
+        var fldId = App.SabtBillsType.queryById('fldId');
+            var er = false;
+            if (txtName.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/BillsType/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldName: txtName.getValue(),
+                    fldDesc: txtDesc.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtBillsType.queryById('BillsTypeGrid').store.load();
+                    if (data.Err != 1)
+                        ClearBillsType();
+                }
+
+            });
+    }
+    function DeleteBillsType() {
+        var SelectedRow = App.SabtBillsType.queryById('BillsTypeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/BillsType/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtBillsType.queryById('BillsTypeGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearBillsType() {
+        App.SabtBillsType.queryById('fldId').setValue(0);
+        App.SabtBillsType.queryById('txtName').setValue("");
+        App.SabtBillsType.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapDescription = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtBillsType.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtBillsType.queryById('btnSaveBillsType');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

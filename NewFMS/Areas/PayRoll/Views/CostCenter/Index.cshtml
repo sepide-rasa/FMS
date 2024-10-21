@@ -1,0 +1,411 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_CostCenter>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("CostCenter")
+            .Title("ثبت مراکز هزینه")
+            .Listeners(li => { li.AfterRender.Handler = "CostCenterSetSize();"; li.Render.Fn = "addKeyMapCostCenter"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                .Listeners(l => { l.Click.Handler = "SaveCostCenter();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadCostCenter();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteCostCenter();"; })
+                , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpCostCenter();"; })
+        
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.CostCenter.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("اطلاعات مراکز هزینه").Height(100)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                         X.Label("سازمان:"),
+                         X.ComboBox()
+                                .ItemID("CboOrgan")
+                                .TypeAhead(true)
+                                .ColSpan(3)
+                                .AutoFocus(true)
+                                .Editable(true)
+                                     .QueryMode(DataLoadMode.Local)
+                                            .TriggerAction(TriggerAction.All)
+                                    .BlankText("لطفا سازمان را انتخاب کنید.")
+                                            .Listeners(l => l.Change.Handler = "ChangeCboOrgan()")
+                                    .AllowBlank(false)
+                                .ForceSelection(true)
+                                    .DisplayField("fldTitle")
+                                .ValueField("fldId")
+                                    .EmptyText("سازمان ...")
+                                .Width(375)
+                                .Store(X.Store()
+                                .Model(X.Model()
+                                .IDProperty("fldId")
+                                .Fields(
+                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                    new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                        )
+                                            )
+                                .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetOrgan"))
+                                .Reader(X.JsonReader().Root("data"))
+                                                )
+                    .Listeners(l => l.Load.Handler = "setdefaultValueCost()")
+                                        ),
+                                X.Label("عنوان مرکز هزینه:"),
+                       X.TextField()
+                        .ItemID("txtTitle")
+                            .MaxLength(200)
+                            .EnforceMaxLength(true)
+                                .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                            .BlankText("لطفا عنوان مرکز هزینه را وارد کنید.")
+                    .AutoFocus(true)
+                            , X.Label("نوع مرکز هزینه:"), 
+                        X.ComboBox()
+                             .ItemID("CboTypOfCenter")
+                        .AllowBlank(false)
+                         .TypeAhead(true)
+                         .Editable(false)
+                         .QueryMode(DataLoadMode.Local)
+                         .BlankText("لطفا نوع مرکز هزینه را انتخاب کنید.")
+                         .ForceSelection(true)
+                         .TriggerAction(TriggerAction.All)
+                         .DisplayField("fldTitle")
+                         .ValueField("fldId")
+                         .EmptyText("نوع مراکز")
+                         .SelectedItems(new { Value = "1" })
+                         .Store(X.Store()
+                         .Model(X.Model()
+                         .IDProperty("fldId")
+                         .Fields(
+                              new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                              new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                    )
+                                      )
+                         .Proxy(X.AjaxProxy()
+                         .Url(Url.Action("GetTypeOfCenter"))
+                         .Reader(X.JsonReader().Root("data"))
+                                   )
+                                 )
+                            , X.Label("نوع استخدام:")
+                            , X.ComboBox()
+                        .AllowBlank(false)
+                         .ItemID("CboEmployMent")
+                         .TypeAhead(true)
+                         .Editable(false)
+                         .QueryMode(DataLoadMode.Local)
+                         .BlankText("لطفا نوع استخدام را انتخاب کنید.")
+                         .QueryMode(DataLoadMode.Local)
+                         .ForceSelection(true)
+                         .TriggerAction(TriggerAction.All)
+                         .DisplayField("Title")
+                         .ValueField("ID")
+                         .EmptyText("نوع استخدام")
+                         .SelectedItems(new { Value = "1" })
+                         .Store(X.Store()
+                         .Model(X.Model()
+                         .IDProperty("ID")
+                         .Fields(
+                                  new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                  new ModelField("Title", ModelFieldType.String) { Mapping = "Title" }
+                                      )
+                                        )
+                              .Proxy(X.AjaxProxy()
+                              .Url(Url.Action("GetEmployMent"))
+                              .Reader(X.JsonReader().Root("data"))
+                                      )
+                                    )
+                            , X.Label("نوع گزارش:")
+                            , X.ComboBox()
+                        .AllowBlank(false)
+                         .ItemID("CboTypOfCenter")
+                         .TypeAhead(true)
+                         .Editable(false)
+                         .QueryMode(DataLoadMode.Local)
+                         .BlankText("لطفا نوع گزارش را انتخاب کنید.")
+                         .ItemID("CboReportType")
+                         .ForceSelection(true)
+                         .TriggerAction(TriggerAction.All)
+                         .DisplayField("Name")
+                         .ValueField("Id")
+                         .SelectedItems(new { Value = "1" })
+                         .EmptyText("نوع گزارش")
+                         .Store(X.Store()
+                             .Model(X.Model()
+                             .IDProperty("Id")
+                             .Fields(
+                                    new ModelField("Id", ModelFieldType.String) { Mapping = "Id" },
+                                    new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                        )
+                                      )
+                             .Proxy(X.AjaxProxy()
+                             .Url(Url.Action("GetReportType"))
+                             .Reader(X.JsonReader().Root("data"))
+                                       )
+                                )
+                    , X.Label("توضیحات:"),
+                        X.TextField()
+                    .ItemID("txtDesc")
+                    .ColSpan(3)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(375)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("CostCenterGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel().AutoLoad(false)
+                                        .Listeners(l => l.DataChanged.Handler = "App.CostCenter.queryById('CostCenterGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                )
+                                        .Parameters(ps => ps.Add(new StoreParameter("OrganId", "App.CostCenter.queryById('CboOrgan').getValue()", ParameterMode.Raw)))
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.CostCenter.queryById('CostCenterGrid');grid.setHeight(App.PayWin.getHeight() - 310); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان مرکز هزینه").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.TypecenterTitle).Text("نوع مرکز هزینه").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.EmploymentName).Text("نوع استخدام").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.fldReportTypeName).Text("نوع گزارش").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.PayWin.addListener('resize', function () {
+        App.CostCenter.setWidth(App.PayWin.getWidth());
+    });
+    App.PayWin.addListener('resize', function () {
+        var grid = App.CostCenter.queryById('CostCenterGrid');
+        grid.setHeight(App.PayWin.getHeight()-260);
+    });*/
+    function ChangeCboOrgan() {
+        if (App.CostCenter.queryById('CboOrgan').getValue() != null) {
+            App.CostCenter.queryById('CostCenterGrid').store.load();
+        }
+    }
+
+    function CostCenterSetSize() {
+        App.CostCenter.setWidth(App.PayWin.getWidth());
+        var grid = App.CostCenter.queryById('CostCenterGrid');
+        grid.setHeight(App.PayWin.getHeight() - 310);
+    }
+    function setdefaultValueCost() {
+        App.CostCenter.queryById('CboOrgan').select(App.CostCenter.queryById('CboOrgan').store.getAt(0));
+    }
+    function LoadCostCenter() {
+        var SelectedRow = App.CostCenter.queryById('CostCenterGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/CostCenter/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTitle = App.CostCenter.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var CboOrgan = App.CostCenter.queryById('CboOrgan');
+                    CboOrgan.setValue(data.fldorganid);
+                    var CboTypOfCenter = App.CostCenter.queryById('CboTypOfCenter');
+                    CboTypOfCenter.setValue(data.fldTypeOfCostCenterId);
+                    var CboEmployMent = App.CostCenter.queryById('CboEmployMent');
+                    CboEmployMent.setValue(data.fldEmploymentCenterId);
+                    var CboReportType = App.CostCenter.queryById('CboReportType');
+                    CboReportType.setValue(data.fldReportTypeId);
+                    var txtDesc = App.CostCenter.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.CostCenter.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveCostCenter() {
+        var txtTitle = App.CostCenter.queryById('txtTitle');
+        var CboOrgan = App.CostCenter.queryById('CboOrgan');
+        var CboTypOfCenter = App.CostCenter.queryById('CboTypOfCenter');
+        var CboEmployMent = App.CostCenter.queryById('CboEmployMent');
+        var CboReportType = App.CostCenter.queryById('CboReportType ');
+        var txtDesc = App.CostCenter.queryById('txtDesc');
+        var fldId = App.CostCenter.queryById('fldId');
+            var er = false;
+
+            if (txtTitle.validate() == false) {
+                er = true;
+            }
+            if (CboTypOfCenter.validate() == false) {
+                er = true;
+            }
+            if (CboEmployMent.validate() == false) {
+                er = true;
+            }
+            if (CboReportType.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/CostCenter/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldTitle: txtTitle.getValue(),
+                    fldTypeOfCostCenterId: CboTypOfCenter.getValue(),
+                    fldEmploymentCenterId: CboEmployMent.getValue(),
+                    fldReportTypeId: CboReportType.getValue(),
+                    fldDesc: txtDesc.getValue(),
+                    fldorganid: CboOrgan.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.CostCenter.queryById('CostCenterGrid').store.load();
+                    if (data.Err != 1)
+                        ClearCostCenter();
+                }
+
+            });
+    }
+    function HelpCostCenter() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/CostCenter/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function DeleteCostCenter() {
+        var SelectedRow = App.CostCenter.queryById('CostCenterGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/CostCenter/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Err == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon:ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.CostCenter.queryById('CostCenterGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearCostCenter() {
+        App.CostCenter.queryById('fldId').setValue(0);
+        App.CostCenter.queryById('txtTitle').setValue("");
+        App.CostCenter.queryById('CboTypOfCenter').setValue("");
+        App.CostCenter.queryById('CboEmployMent').setValue("");
+        App.CostCenter.queryById('CboReportType').setValue("");
+        App.CostCenter.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapCostCenter = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+        var keyfield = App.CostCenter.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtDesc") {
+            nextfld = App.CostCenter.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

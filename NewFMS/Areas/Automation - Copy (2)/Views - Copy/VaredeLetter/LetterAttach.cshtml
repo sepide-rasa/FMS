@@ -1,0 +1,378 @@
+﻿@model IEnumerable<NewFMS.WCF_Automation.OBJ_LetterAttachment>
+<script src="~/Scripts/jquery-ajax-native.js"></script>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+                .ID("PnlAttach_Varede")
+                .Title("پیوست ها")
+
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                    X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveAttach_Varede")
+                    .Listeners(l => { l.Click.Handler = "SaveAttach_Varede();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteAttach_Varede();"; })
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("اطلاعات پیوست").Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldID"),
+                        X.Label("عنوان:"),
+                        X.TextField()
+                        .ItemID("txtTitle")
+                            .MaxLength(200)
+                            .EnforceMaxLength(true)
+        //.MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                            .AllowBlank(false)
+                            .BlankText("لطفا عنوان را وارد کنید.")
+                            .AutoFocus(true)
+
+                      , X.Label("توضیحات:"),
+                        X.TextField()
+                            .ItemID("txtDesc")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Width(260)
+                )
+                ,
+                        X.FieldSet()
+                            .Border(true)
+                            .AutoScroll(true)
+                            .ColSpan(8)
+                            .Title("انتخاب فایل")
+                            .ID("fieldsetforfile")
+                            .Layout(LayoutType.HBox)
+                            .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Stretch })
+                            .Items(
+                                X.FormPanel()
+                                    .Border(false)
+                                    .Width(500)
+                                    .Layout(LayoutType.HBox)
+                                    .ItemID("fieldsetShowFile")
+                                    .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Middle })
+        //.Listeners(l => l.AfterRender.Handler = "App.NewHuman.queryById('fieldsetShowFile').setWidth(App.BasicInfWin.getWidth() - 1050)")
+                                    .Items(
+                                        X.FileUploadField()
+                                            .MarginSpec("0 10px 10px 0")
+                                            .Icon(Ext.Net.Icon.DiskUpload)
+                                            .ButtonOnly(true)
+                                            .ButtonText("انتخاب فایل")
+                                            .DirectEvents(l =>
+                                            {
+                                                l.Change.Action = "Upload";
+                                                l.Change.Delay = 1000;
+                                                l.Change.Before = "if(GotoServerAttach_Varede==false){return false;}";
+                                                l.Change.Success = "hideprogressAttach_Varede";
+                                            })
+                                                .Listeners(l => l.Change.Fn = "showFileAttach_Varede"),
+                                        X.Container()
+                                            .Content(@<div id="fi-button-msg" style="width:570px;text-align:right;"><b>فایل انتخاب شده:</b></div>)
+                                        )
+                            )
+            )
+        ),
+        X.GridPanel().Height(260)//.Width(200)
+                    .ItemID("Attach_VaredeGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                                .Listeners(l => l.DataChanged.Handler = "App.PnlAttach_Varede.queryById('Attach_VaredeGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                    .Url(Url.Action("ReadAttach"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                    .ExtraParams(x => x.Add(new { LetterId = @ViewBag.LetterId }))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+
+                  .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10),
+                                Html.X().ComponentColumn().ItemID("buttonDownloadAttach_Varede").Listeners(l => l.Bind.Fn = "CheckEnable").Text("دانلود").Filterable(false)
+                                        .Component(Html.X().Button().ItemID("btnbindAnnouncement").Text("دانلود فایل").Listeners(l => l.Click.Handler = "DownloadAttach_Varede()"))
+                       )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+           )
+      )
+)
+<script type="text/javascript">
+
+
+    var CheckEnable = function (columnn, component, record, rowIndex) {
+        if (record.data.fldContentFileId == 0) {
+            component.disable();
+        }
+    };
+    function DownloadAttach_Varede() {
+        var fldIDAttach_Varede = App.PnlAttach_Varede.queryById("buttonDownloadAttach_Varede").activeRecord.record.data.fldContentFileId;
+        $.ajax({
+            type: "POST",
+            dataType: 'native',
+            url: "/SadereLetter/DownloadAttach",
+            xhrFields: {
+                responseType: 'blob'
+            },
+            data: {
+                fldContentFileId: fldIDAttach_Varede,
+            },
+            success: function (blob) {
+                var link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = "DownloadFile";
+                link.click();
+            }
+        });
+        }
+
+    var HaveFile = false;
+    var EndUploadAttach_Varede = false;
+    var GotoServerAttach_Varede = false;
+
+    var CheckAttach_Varede = setInterval(CheckEndAttach_Varede, 500);
+
+    function CheckEndAttach_Varede() {
+        if (EndUploadAttach_Varede == true) {
+            GotoServerAttach_Varede = false;
+            Ext.MessageBox.hide();
+            Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+            clearInterval(CheckEndAttach_Varede);
+            EndUploadAttach_Varede = false;
+        }
+    }
+
+    function showProgressBarAttach_Varede() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+    var hideprogressAttach_Varede = function (Responsdtxt, ResponseObj) {
+        if (ResponseObj.IsValid == true) {
+            EndUploadAttach_Varede = true;
+        }
+        else {
+            var el = Ext.get('fi-button-msg');
+            GotoServerAttach_Varede = false;
+            clearInterval(CheckEndAttach_Varede);
+            EndUploadAttach_Varede = false;
+            el.update("");
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: ResponseObj.Message,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    };
+
+    var showFileAttach_Varede = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msg');
+        var sizeofFile = document.getElementById(id).files[0].size;
+        if (v) {
+            showProgressBarAttach_Varede();
+            Ext.net.DirectMethod.request({
+                url: '/Automation/VaredeLetter/CheckFormatSize',
+                params: {
+                    Passvand: v.split('.').pop().toLowerCase()
+                },
+                success: function (data) {
+                    if (data.Valid) {
+                        if (sizeofFile <= data.FileSize) {
+                            GotoServerAttach_Varede = true;
+                            el.update('<b>فایل انتخاب شده:</b> ' + v);
+                        }
+                        else {
+                            Ext.MessageBox.hide();
+                            clearInterval(CheckEndAttach_Varede);
+                            el.update('<b>فایل انتخاب شده:</b> ');
+                            Ext.MessageBox.show({
+                                title: "خطا",
+                                msg: "حجم فایل انتخابی غیرمجاز است.",
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+
+                        if (!el.isVisible()) {
+                            el.slideIn('t', {
+                                duration: .2,
+                                easing: 'easeIn',
+                                callback: function () {
+                                    el.highlight();
+                                }
+                            });
+                        } else {
+                            el.highlight();
+                        }
+                    }
+                    else {
+                        Ext.MessageBox.hide();
+                        clearInterval(CheckEndAttach_Varede);
+                        el.update('<b>فایل انتخاب شده:</b> ');
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "فایل انتخاب شده غیرمجاز است.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                }
+            });
+        }
+    };
+
+    
+    function HelpAssignmentType() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/SadereLetter/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+
+    function SaveAttach_Varede() {
+        var txtTitle = App.PnlAttach_Varede.queryById('txtTitle');
+        var txtDesc = App.PnlAttach_Varede.queryById('txtDesc');
+        var fldID = App.PnlAttach_Varede.queryById('fldID');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/SadereLetter/SaveLetterAttachment',
+            params: {
+                fldID: fldID.getValue(),
+                fldName: txtTitle.getValue(),
+                fldDesc: txtDesc.getValue(),
+                fldLetterId: '@ViewBag.LetterId'
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.PnlAttach_Varede.queryById('Attach_VaredeGrid').store.load();
+                if (data.Err != 1)
+                    ClearAttach_Varede();
+            }
+
+        });
+    }
+    function DeleteAttach_Varede() {
+        var SelectedRow = App.PnlAttach_Varede.queryById('Attach_VaredeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/SadereLetter/DeleteLetterAttachment',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.PnlAttach_Varede.queryById('Attach_VaredeGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearAttach_Varede() {
+        App.PnlAttach_Varede.queryById('fldID').setValue(0);
+        App.PnlAttach_Varede.queryById('txtTitle').setValue("");
+        App.PnlAttach_Varede.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapAttach_Varede = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.PnlAttach_Varede.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtType") {
+                        nextfld = App.PnlAttach_Varede.queryById('btnSaveAttach_Varede');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

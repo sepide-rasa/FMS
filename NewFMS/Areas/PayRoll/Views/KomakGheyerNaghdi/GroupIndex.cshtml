@@ -1,0 +1,393 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_KomakGheyerNaghdi>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+@*<style>
+        #test legend{
+            text-align:right!important;
+        }
+    </style>*@
+<br />
+@(Html.X().Panel()
+        .ID("GroupKomakGheyerNaghdi")
+            .Title("ثبت گروهی کمک غیرنقدی")
+        //.Listeners(l =>
+        //                {
+        //                    l.AfterLayout.Handler = "ReloadKomakGheyerNaghdiGroup();";
+        //                })
+        // .Listeners(li => li.AfterRender.Handler = "GroupKomakGheyerNaghdiSetSize();")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+        X.GridPanel()
+                          .TopBar(
+                                    Html.X().Toolbar()
+                                    .Items(
+                                        X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)//.ToolTip("کلید میانبر F2")
+                                                    .Listeners(Li => Li.Click.Handler = "SaveGroupKomakGheyerNaghdi();"),
+                                        X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)//.ToolTip("کلید میانبر F9")
+                                                    .Listeners(Li => Li.Click.Handler = "DeleteGroupKomakGheyerNaghdi();")
+
+                                    )
+                                )
+        .ItemID("GroupKomakGheyerNaghdiGrid").AutoScroll(true)
+                //.BottomBar(X.PagingToolbar().HideRefresh(true))
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.GroupKomakGheyerNaghdi.queryById('GroupKomakGheyerNaghdiGrid').selModel.refresh();")
+        //.Proxy(Html.X().AjaxProxy()
+        //    .Url(Url.Action("Read"))
+        //    .Reader(Html.X().JsonReader().Root("data"))
+        //)
+                            .PageSize(20000)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true).GetRowClass(l => l.Fn = "getRowClassKomakGheyerNaghdiGroup")
+                )
+        //    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.GroupKomakGheyerNaghdi.queryById('GroupKomakGheyerNaghdiGrid');grid.setHeight(App.PayWin.getHeight() - 170); ";
+
+                     })
+        .ColumnModel(
+                            Html.X().Column().DataIndex(Model, m => m.fldPersonalInfoId).Hidden(true).Flex(3),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Hidden(true).Flex(3),
+                            Html.X().Column().DataIndex(Model, m => m.fldShomareHesabId).Hidden(true).Text("شماره حساب").Flex(3),
+                            Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام و نام خانوادگی").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کدملی").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.fldSh_Personali).Text("شماره پرسنلی").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.fldMablagh).Text("مبلغ").Flex(3).Editor(
+                            Html.X().TextField().MaskRe("/[0-9]/").ID("txtMablagh")
+                            .Listeners(l => { l.Change.Handler = "App.GroupKomakGheyerNaghdi.queryById('txtMablagh').setValue(accounting.formatNumber(App.GroupKomakGheyerNaghdi.queryById('txtMablagh').getValue()));CheckInt(App.GroupKomakGheyerNaghdi.queryById('txtMablagh'));"; }))
+       ,
+                            Html.X().Column().DataIndex(Model, m => m.fldMaliyat).Text("مالیات").Flex(3).Editor(
+                                Html.X().TextField().MaskRe("/[0-9]/").ID("txtMaliyat").ReadOnly(true)
+                            .Listeners(l => { l.Change.Handler = "App.GroupKomakGheyerNaghdi.queryById('txtMaliyat').setValue(accounting.formatNumber(App.GroupKomakGheyerNaghdi.queryById('txtMaliyat').getValue()));"; }))
+                            ,
+                            Html.X().Column().DataIndex(Model, m => m.fldShomareHesab).Text("شماره حساب(Ins)").Flex(3).Editor(
+                            Html.X().TextField().ID("txtShomareHesab")
+                                .ReadOnly(true)
+                                    .Listeners(li =>
+                                    {
+                                        //li.Focus.Handler = "ReadOnly();";
+                                        //li.IconClick.Handler = "SearchOrganizationPost(45);";
+                                        li.SpecialKey.Handler = "SearchOrganizationPost(e.getKey());";
+                                    })
+                                    )
+                            )
+              .Listeners(l =>
+                                        {
+                                            l.ViewReady.Handler = "ReloadKomakGheyerNaghdiGroup();";
+                                        })
+              .SelectionModel(
+                            Html.X().CheckboxSelectionModel().PruneRemoved(false).ShowHeaderCheckbox(false)
+                                .Mode(SelectionMode.Multi).CheckOnly(true))
+                        .Plugins(
+                        Html.X().CellEditing().ClicksToEdit(1)
+                        .Listeners(l =>
+                                {
+                                    l.Edit.Fn = "LockOff";
+                                    l.BeforeEdit.Fn = "LockOn";
+                                }))
+    )
+)
+<script type="text/javascript">
+
+    var getRowClassKomakGheyerNaghdiGroup = function (record, rowIndex, rowParams, store) {
+        var color = 'white';
+        if (rowIndex % 2 == 1)
+            color = '#dfe8f6';
+        var clsName = "row" + rowIndex,
+            clsStyle = Ext.String.format(".{0} .x-grid-cell, .{0} .x-grid-rowwrap-div { background-color: {1} !important; })", clsName, color);
+        Ext.net.ResourceMgr.registerCssClass(clsName, clsStyle);
+        return clsName;
+    };
+
+    var LockOn = function (editor, e) {
+        App.GroupKomakGheyerNaghdi.queryById('GroupKomakGheyerNaghdiGrid').getSelectionModel().setLocked(true);
+        if (e.field == "fldShomareHesab") {
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/SearchShomareHesabs/Index?State=2&PersonalId=' + e.record.data.fldPersonalInfoId + "&OrganId=" + '@ViewBag.OrganId'
+            });
+        }
+        App.GroupKomakGheyerNaghdi.queryById('GroupKomakGheyerNaghdiGrid').getView().focusRow(e.rowIdx);
+    };
+
+    var LockOff = function (editor, e) {
+        App.GroupKomakGheyerNaghdi.queryById('GroupKomakGheyerNaghdiGrid').getSelectionModel().setLocked(false);
+
+        var Grid = App.GroupKomakGheyerNaghdi.queryById("GroupKomakGheyerNaghdiGrid");
+        if (e.field == "fldMablagh") {
+            var NoeMostamar = true;
+            if ('@ViewBag.NoeMostamer' == "0")
+                NoeMostamar = false;
+            Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KomakGheyerNaghdi/CalcMaliat',
+                params: {
+                    sal: '@ViewBag.Year',
+                    mah: '@ViewBag.Month',
+                    mablagh: e.record.data.fldMablagh,
+                    personalId: e.record.data.fldPersonalInfoId,
+                    Type: NoeMostamar,
+                    OrganId: '@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    if (data.Msg == "") {
+                        ErrMaliat = 0;
+                        var k = Grid.store.find('fldPersonalInfoId', e.record.data.fldPersonalInfoId);
+                        if (k >= 0) {
+                            var row = Grid.selModel.store.data.items[k];
+                            row.set('fldMaliyat', data.MablaghMaliat);
+                        }
+                    }
+                    else {
+                        ErrMaliat = 1;
+                        var k = Grid.store.find('fldPersonalInfoId', e.record.data.fldPersonalInfoId);
+                        if (k >= 0) {
+                            var row = Grid.selModel.store.data.items[k];
+                            row.set('fldMaliyat', "0");
+                        }
+                        Ext.MessageBox.show({
+                            title: data.MsgTitle,
+                            msg: data.Msg,
+                            icon: Ext.MessageBox.INFO,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        App.GroupKomakGheyerNaghdi.queryById('GroupKomakGheyerNaghdiGrid').getView().focusRow(e.rowIdx);
+    };
+    function CheckByte(TxT) {
+        if (parseInt(TxT.getValue()) > 255)
+            TxT.setValue("");
+    }
+    function ReloadKomakGheyerNaghdiGroup() {
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/KomakGheyerNaghdi/ReloadKomakGheyerNaghdiGroup',
+            params: {
+                FieldName: '@ViewBag.FieldName',
+                CostCenter_ChartId: '@ViewBag.CostCenter_ChartId',
+                OrganId: '@ViewBag.OrganId'
+            },
+            success: function (result) {
+                App.GroupKomakGheyerNaghdi.queryById('GroupKomakGheyerNaghdiGrid').getStore().loadData(result);
+                SellectAllKomakGheyerNaghdi();
+            }
+        });
+    }
+    function SellectAllKomakGheyerNaghdi() {
+        App.GroupKomakGheyerNaghdi.queryById('GroupKomakGheyerNaghdiGrid').getSelectionModel().selectAll();
+        App.GroupKomakGheyerNaghdi.queryById('GroupKomakGheyerNaghdiGrid').getView().focusRow(0);
+    }
+    function CheckReadonly(TxT) {
+        var SelectedRow = App.GroupKomakGheyerNaghdi.queryById('GroupKomakGheyerNaghdiGrid').selModel.getLastSelected();
+        if (SelectedRow.data.fldNoeEstekhdamId == 1) {
+            TxT.setReadOnly(true);
+        }
+        else
+            TxT.setReadOnly(false);
+    }
+    var y = '@ViewBag.Year';
+    var m = '@ViewBag.Month';
+    var o = '@ViewBag.OrganId';
+
+    function SaveGroupKomakGheyerNaghdi() {
+        var NoeMostamar = true;
+        if ('@ViewBag.NoeMostamer' == "0")
+            NoeMostamar = false;
+        mo = NoeMostamar;
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        var SelectItems = new Array();
+        var SelectedRow = App.GroupKomakGheyerNaghdi.queryById('GroupKomakGheyerNaghdiGrid').getSelectionModel().getSelection();
+        if (SelectedRow.length != 0) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KomakGheyerNaghdi/CheckPardakht',
+                params: {
+                    PersonalId: 0,
+                    Year: '@ViewBag.Year',
+                    Month: '@ViewBag.Month',
+                    OrganId: '@ViewBag.OrganId',
+                    NoeMostamer: NoeMostamar
+
+                },
+                success: function (data) {
+
+                    if (data.AllowGenerate == 1) {
+
+                        var Err = 0;
+                        for (var k = 0; k < SelectedRow.length ; k++) {
+                            if (SelectedRow[k].data.fldShomareHesabId == 0)
+                                Err = 1;
+                            SelectItems.push({
+                                'fldId': SelectedRow[k].data.fldId,
+                                'fldPersonalId': SelectedRow[k].data.fldPersonalInfoId,
+                                'fldMablagh': SelectedRow[k].data.fldMablagh,
+                                'fldMaliyat': SelectedRow[k].data.fldMaliyat,
+                                'fldShomareHesabId': SelectedRow[k].data.fldShomareHesabId,
+                                'fldYear': '@ViewBag.Year',
+                                'fldMonth': '@ViewBag.Month',
+                                'fldNoeMostamer': NoeMostamar
+                            });
+                        }
+                        var data = {
+                            KomakGheyerNaghdiVal: SelectItems,
+                            OrganId: '@ViewBag.OrganId'
+                        };
+                        if (Err == 0) {
+                            $.ajax({
+                                type: "POST",
+                                url: '/PayRoll/KomakGheyerNaghdi/SaveGroup',
+                                datatype: "json",
+                                data: JSON.stringify(data),
+                                contentType: 'application/json',
+                                success: function (data1) {
+                                    Ext.net.Mask.hide();
+                                    var result = data1;/* JSON.parse(data1);*/
+                                    var ico = Ext.MessageBox.INFO;
+                                    if (result.Err == 1)
+                                        ico = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: result.MsgTitle,
+                                        msg: result.Msg,
+                                        icon: ico,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                },
+                                failure: function (data1) {
+                                    alert(data.data1);
+                                }
+                            });
+                        }
+                        else {
+                            Ext.net.Mask.hide();
+                            Ext.MessageBox.show({
+                                title: "خطا",
+                                msg: "انتخاب شماره حساب ضروری است.",
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                    }
+                    else {
+                        Ext.net.Mask.hide();
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "اطلاعات مورد نظر پرداخت شده است، عملیات ذخیره مجاز نیست",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                }
+            });
+
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا حداقل یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteGroupKomakGheyerNaghdi() {
+        var NoeMostamar = true;
+        if ('@ViewBag.NoeMostamer' == "0")
+            NoeMostamar = false;
+        var SelectItems = new Array();
+        var SelectedRow = App.GroupKomakGheyerNaghdi.queryById('GroupKomakGheyerNaghdiGrid').getSelectionModel().getSelection();
+        if (SelectedRow.length != 0) {
+
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/PayRoll/KomakGheyerNaghdi/CheckPardakht',
+                            params: {
+                                PersonalId: 0,
+                                Year: '@ViewBag.Year',
+                                Month: '@ViewBag.Month',
+                                OrganId: '@ViewBag.OrganId',
+                                NoeMostamer: NoeMostamar
+
+                            },
+                            success: function (data) {
+
+                                if (data.AllowGenerate == 1) {
+
+                                    Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                                    for (var k = 0; k < SelectedRow.length ; k++) {
+                                        SelectItems.push({
+                                            'fldId': SelectedRow[k].data.fldId
+                                        });
+                                    }
+                                    var data = {
+                                        KomakGheyerNaghdiGroupVal: SelectItems,
+                                        OrganId: '@ViewBag.OrganId'
+                                    };
+                                    $.ajax({
+                                        type: "POST",
+                                        url: '/PayRoll/KomakGheyerNaghdi/DeleteGroup',
+                                        datatype: "json",
+                                        data: JSON.stringify(data),
+                                        contentType: 'application/json',
+                                        success: function (data1) {
+                                            var result = data1;/*JSON.parse(data1);*/
+                                            ReloadKomakGheyerNaghdiGroup();
+                                            var ico = Ext.MessageBox.INFO;
+                                            if (result.Er == 1)
+                                                ico = Ext.MessageBox.ERROR;
+                                            Ext.MessageBox.show({
+                                                title: result.MsgTitle,
+                                                msg: result.Msg,
+                                                icon: ico,
+                                                buttons: Ext.MessageBox.OK
+                                            });
+                                        },
+                                        failure: function (data1) {
+                                            alert(data.data1);
+                                        }
+                                    });
+                                    Ext.net.Mask.hide();
+                                }
+                                else {
+                                    Ext.net.Mask.hide();
+                                    Ext.MessageBox.show({
+                                        title: "خطا",
+                                        msg: "اطلاعات مورد نظر پرداخت شده است، عملیات حذف مجاز نیست",
+                                        icon: Ext.MessageBox.ERROR,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا حداقل یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

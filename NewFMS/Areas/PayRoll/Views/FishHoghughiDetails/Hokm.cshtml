@@ -1,0 +1,119 @@
+﻿@model NewFMS.Models.HokmDetails
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{
+    var X = Html.X();
+}
+<style>
+    #GridHokm_Detailss .x-column-header-text {
+        white-space: pre-wrap;
+        height: 30px !important;
+    }
+</style>
+@(Html.X().Window()
+    .ID("HokmDetails")
+    .Title("جزئیات حکم")
+    .Modal(true)
+    .Closable(true)
+    .Listeners(li =>li.AfterRender.Handler = "HokmDetailsSetSize();")
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.Fit)
+            .Items(
+                X.GridPanel()
+                    .Border(false)
+                    .AutoScroll(true)
+                    .ID("GridHokm_Detailss")
+                    .Store(
+                        X.StoreFor(Model.Hokm)
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("ReadHokm"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                .ExtraParams(x=>x.Add( new { HokmId = ViewBag.HokmId }))
+                        )
+                        .PageSize(20)
+                        .RemoteFilter(false)
+                        .RemotePaging(false)
+                    )
+                    .ViewConfig(
+                        X.GridView()
+                            .LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(
+                        X.RowExpander()
+                            .Listeners(l => l.BeforeExpand.Fn = "loadGridHokm_Items")
+                            .Component(
+                                X.GridPanel()
+                                    .AutoScroll(true)
+                                    .Border(true)
+                                    .Height(200)
+                                    .ItemID("GridHokm_Items")
+                                    .Store(
+                                        X.StoreFor(Model.Hokm_Items)
+                                            .AutoLoad(false)
+                                            .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadHokm_Items"))
+                                                .Reader(Html.X().JsonReader().Root("data"))
+                                                .ExtraParams(x => x.Add(new { HokmId = ViewBag.HokmId }))
+                                        )
+                                        .PageSize(20)
+                                        .RemoteFilter(false)
+                                        .RemotePaging(false)
+                                    )
+                                    .ViewConfig(
+                                        X.GridView()
+                                            .LoadingText("در حال بارگذاری...").RTL(true)
+                                    )
+                                    .ColumnModel(
+                                        Html.X().RowNumbererColumn(),
+                                        Html.X().Column().DataIndex(Model.Hokm_Items, m => m.fldNameItem_Estekhdam).Text("عنوان").Wrap(true).Flex(5),
+                                        Html.X().Column().DataIndex(Model.Hokm_Items, m => m.fldZarib).Text("ضریب").Flex(2),
+                                        Html.X().Column().DataIndex(Model.Hokm_Items, m => m.fldMablagh).Text("مبلغ").Flex(3).Renderer("return value.toLocaleString()")
+                                    )
+                                    .SelectionModel(
+                                        Html.X().RowSelectionModel()
+                                            .Mode(Ext.Net.SelectionMode.Single)
+                                    )
+                            )
+                    )
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model.Hokm, m => m.fldTarikhSodoor).Text("تاریخ صدور").Flex(2),                        
+                        Html.X().Column().DataIndex(Model.Hokm, m => m.fldTarikhEjra).Text("تاریخ اجرا").Flex(2),
+                        //Html.X().Column().DataIndex(Model.Hokm, m => m.fldTarikhShoroo).Text("تاریخ شروع").Flex(2),                                    
+                        //Html.X().Column().DataIndex(Model.Hokm, m => m.fldTarikhEtmam).Text("تاریخ اتمام").Flex(2),
+                        Html.X().Column().DataIndex(Model.Hokm, m => m.fldNoeEstekhdamName).Text("نوع استخدام").Flex(2),
+                        Html.X().Column().DataIndex(Model.Hokm, m => m.fldTarikhEstekhdam).Text("تاریخ استخدام").Flex(2),  
+                        Html.X().Column().DataIndex(Model.Hokm, m => m.fldGroup).Text("گروه").Flex(1),
+                        Html.X().Column().DataIndex(Model.Hokm, m => m.fldCodeShoghl).Text("کد شغلی").Flex(1),
+                        Html.X().Column().DataIndex(Model.Hokm, m => m.fldStatusTaaholName).Text("وضعیت تأهل").Flex(1),
+                        Html.X().Column().DataIndex(Model.Hokm, m => m.fldTedadFarzand).Text("تعداد فرزند").Flex(1),
+                        Html.X().Column().DataIndex(Model.Hokm, m => m.fldTedadAfradTahteTakafol).Text("تعداد افراد تحت تکفل").Flex(1),
+                        Html.X().Column().DataIndex(Model.Hokm, m => m.fldTypehokm).Text("نوع حکم").Flex(2).Wrap(true),
+                        Html.X().Column().DataIndex(Model.Hokm, m => m.fldHokmTypeName).Text("نوع محاسبات").Flex(2),
+                        Html.X().Column().DataIndex(Model.Hokm, m => m.fldDescriptionHokm).Text("شرح حکم").Wrap(true).Flex(4)            
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+            )
+    )
+)
+<script type="text/javascript">
+
+    var loadGridHokm_Items = function (rowExpanderr, record) {
+        rowExpanderr.component.getStore().load();
+    };
+
+    function HokmDetailsSetSize() {
+        App.HokmDetails.setWidth(App.PayWin.getWidth()-100);
+        App.HokmDetails.queryById('GridHokm_Detailss').setHeight(App.PayWin.getHeight() - 100);
+    }
+</script>

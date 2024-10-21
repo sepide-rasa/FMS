@@ -1,0 +1,260 @@
+﻿@model NewFMS.Models.EzafeKari_TatilKari
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("EzafeKari_TatilKari")
+        .Title("ثبت اضافه کاری")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Border(false)
+        .Listeners(li => li.AfterRender.Handler = "EzafeKari_TatilKariSetSize();")
+       .Items(
+    X.Panel().Border(false)//.Height(250)
+        .Items(
+                X.GridPanel()
+                                .AutoScroll(true)
+                                    .Listeners(l => l.ItemClick.Handler = "ReloadGridDetailEzafeKari_TatilKari();")
+                        //             .TopBar(
+                        //    Html.X().Toolbar()
+                        //    .Items(
+                        //        X.Button().Text("جدید").Icon(Ext.Net.Icon.Add)//.ToolTip("کلید میانبر F8")
+                        //                .Listeners(li => li.Click.Handler = "NewEzafeKari_TatilKari();")
+                        //    )
+                        //)
+                                .ItemID("GridHeader")
+                                .BottomBar(X.PagingToolbar())
+                                .Flex(2)
+                                .Store(
+                                           X.StoreFor(Model.Personal)
+                                        .Proxy(Html.X().AjaxProxy()
+                                            .Url(Url.Action("Read"))
+                                            .Reader(Html.X().JsonReader().Root("data"))
+                                            .ExtraParams(l => l.Add(new { OrganId = ViewBag.OrganId}))
+                                            )
+                                           
+                                .PageSize(9)
+                                .RemotePaging(true)
+        /*.Listeners(l => l.DataChanged.Handler = "App.EzafeKari_TatilKari.queryById('GridHeader').selModel.refresh();")*/)
+                                .View(
+                                    Html.X().GridView()
+                                        .LoadingText("در حال بارگذاری...")
+                                        .RTL(true))
+                                            .Plugins(X.FilterHeader().Remote(true))
+                                    .ColumnModel(
+                                        Html.X().RowNumbererColumn(),
+                                                Html.X().Column().DataIndex(Model.Personal, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                                                Html.X().Column().DataIndex(Model.Personal, m => m.fldName_Father).Text("نام و نام خانوادگی").Flex(5).Wrap(true),
+                                                Html.X().Column().DataIndex(Model.Personal, m => m.fldCodemeli).Text("کد ملی").Flex(2),
+                                                Html.X().Column().DataIndex(Model.Personal, m => m.fldSh_Personali).Text("شماره پرسنلی").Flex(2),
+                                                Html.X().Column().DataIndex(Model.Personal, m => m.fldJobeCode).Text("کد شغلی بیمه").Flex(2),
+                                                Html.X().Column().DataIndex(Model.Personal, m => m.fldStatusId).Text("وضعیت").Hidden(true).Flex(1),/*فعال1:   2:غیرفعال  3:بازنشسته*/
+                                                Html.X().Column().DataIndex(Model.Personal, m => m.fldStatusTitle).Text("وضعیت").Hidden(true).Flex(1)
+                                        
+                                        )
+                                .SelectionModel(
+                                    Html.X().RowSelectionModel()
+                                        .Mode(Ext.Net.SelectionMode.Single)
+                                        )
+        ),
+           X.Panel()
+                                .ItemID("PnlGridDetail")
+                                .Title("اطلاعات اضافه کاری")
+                                .Border(false)
+                                .Layout(Ext.Net.LayoutType.Fit)
+                                .Items(
+                                        X.GridPanel()
+                                                  .TopBar(
+                                Html.X().Toolbar()
+                                .Items(
+                                X.Button().Text("جدید").Icon(Ext.Net.Icon.Add)//.ToolTip("کلید میانبر F8")
+                                        .Listeners(li => li.Click.Handler = "NewEzafeKari_TatilKari();"),
+                                    X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)//.ToolTip("کلید میانبر F2")
+                                            .Listeners(Li => Li.Click.Handler = "EditEzafeKari_TatilKari();"),
+                                    X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)//.ToolTip("کلید میانبر F9")
+                                        .Listeners(de =>
+                                        {
+                                            de.Click.Handler = "if (App.EzafeKari_TatilKari.queryById('GridHeader').selModel.getLastSelected() == null) {Ext.MessageBox.show({ title: 'خطا', msg: 'لطفا یک سطر را انتخاب کنید',icon: Ext.MessageBox.ERROR,buttons: Ext.MessageBox.OK});return false;}else DeleteEzafeKari_TatilKari();";
+                                        })
+
+                                )
+                            )
+                                              .BottomBar(X.PagingToolbar())
+                                        .AutoScroll(true)
+                                            .ID("GridDetailEzafeKari_TatilKari")
+                                        .Flex(2)//.Height(187)
+                                        .Store(
+                                                           X.StoreFor(Model.EzafeKari).AutoLoad(false)
+                                                        .Proxy(Html.X().AjaxProxy()
+                                                                .Url(Url.Action("ReadEzafeKari_TatilKari"))
+                                                    .Reader(Html.X().JsonReader().Root("data")))
+                                                .PageSize(9)
+                                                .RemotePaging(true)
+        /*.Listeners(l => l.DataChanged.Handler = " App.EzafeKari_TatilKari.queryById('GridDetail').selModel.refresh();")*/
+                        )
+                                        .View(
+                                            Html.X().GridView()
+                                                .LoadingText("در حال بارگذاری...")
+                                                .RTL(true)
+                            )
+                                .Plugins(X.FilterHeader().Remote(true))
+                                        .ColumnModel(
+                                            Html.X().RowNumbererColumn(),
+                                                Html.X().Column().DataIndex(Model.EzafeKari, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                                                Html.X().Column().DataIndex(Model.EzafeKari, m => m.fldPersonalId).Text("کد").Hidden(true).Flex(1),
+                                                Html.X().Column().DataIndex(Model.EzafeKari, m => m.fldYear).Text("سال").Flex(4),
+                                                Html.X().Column().DataIndex(Model.EzafeKari, m => m.fldNobatePardakht).Text("نوبت پرداخت").Flex(4),
+                                                Html.X().Column().DataIndex(Model.EzafeKari, m => m.fldCount).Text("تعداد").Flex(4),
+                                                Html.X().Column().DataIndex(Model.EzafeKari, m => m.fldHasBimeName).Text("بیمه").Flex(4),
+                                                Html.X().Column().DataIndex(Model.EzafeKari, m => m.fldHasMaliyatName).Text("مالیات").Flex(10)
+                                                    )
+                                        .SelectionModel(
+                                            Html.X().RowSelectionModel()
+                                                .Mode(Ext.Net.SelectionMode.Single)
+                                )
+                    )
+    )
+)
+<script type="text/javascript">
+    var dadat;
+    function EzafeKari_TatilKariSetSize() {
+        var grid = App.EzafeKari_TatilKari.queryById('GridHeader');
+        grid.setHeight((App.PayWin.getHeight() - 200) / 2);
+        var GridDetail = App.EzafeKari_TatilKari.queryById('GridDetailEzafeKari_TatilKari');
+        GridDetail.setHeight((App.PayWin.getHeight() - 200) / 2);
+
+        if ('@ViewBag.Type' == "2") {
+            App.EzafeKari_TatilKari.setTitle("ثبت تعطیل کاری");
+            App.EzafeKari_TatilKari.queryById('PnlGridDetail').setTitle("اطلاعات تعطیل کاری");
+        }
+    }
+    function ReloadGridDetailEzafeKari_TatilKari() {
+        var SelectedRow = App.EzafeKari_TatilKari.queryById('GridHeader').selModel.getLastSelected();
+
+        /* Ext.net.DirectMethod.request({
+             url: '/PayRoll/EzafeKari_TatilKari/Rload?PersonalId=' + SelectedRow.data.fldId + "&Type=" + 'ViewBag.Type',
+ 
+             success: function (result) {
+                 App.EzafeKari_TatilKari.queryById('GridDetailEzafeKari_TatilKari').getStore().loadData(result);
+             }
+     });*/
+        App.EzafeKari_TatilKari.queryById('GridDetailEzafeKari_TatilKari').getStore().getProxy().setExtraParam("PersonalId", SelectedRow.data.fldId);
+        App.EzafeKari_TatilKari.queryById('GridDetailEzafeKari_TatilKari').getStore().getProxy().setExtraParam("Type", '@ViewBag.Type');
+        App.EzafeKari_TatilKari.queryById('GridDetailEzafeKari_TatilKari').getStore().getProxy().setExtraParam("OrganId", '@ViewBag.OrganId');
+
+        App.EzafeKari_TatilKari.queryById('GridDetailEzafeKari_TatilKari').getStore().load();
+    }
+
+    function EditEzafeKari_TatilKari() {
+        var SelectedRow = App.EzafeKari_TatilKari.queryById('GridDetailEzafeKari_TatilKari').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/EzafeKari_TatilKari/new',
+                params: {
+                    id: SelectedRow.data.fldId,
+                    PersonalId: SelectedRow.data.fldPersonalId,
+                    Year: '@ViewBag.Year',
+                    Month: '@ViewBag.Month',
+                    Type: '@ViewBag.Type',
+                    OrganId:'@ViewBag.OrganId'
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function NewEzafeKari_TatilKari() {
+        var SelectedRow = App.EzafeKari_TatilKari.queryById('GridHeader').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldStatusId == 1) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/PayRoll/EzafeKari_TatilKari/new',
+                    params: {
+                        id: 0,
+                        PersonalId: SelectedRow.data.fldId,
+                        Year: '@ViewBag.Year',
+                        Month: '@ViewBag.Month',
+                        Type: '@ViewBag.Type',
+                        OrganId: '@ViewBag.OrganId'
+                    },
+                    success: function () {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "وضعیت فرد مورد نظر " + SelectedRow.data.fldStatusTitle + " است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک پرسنل را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteEzafeKari_TatilKari() {
+        var SelectedHeaderRow = App.EzafeKari_TatilKari.queryById('GridDetailEzafeKari_TatilKari').selModel.getLastSelected();
+        if (SelectedHeaderRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/PayRoll/EzafeKari_TatilKari/Delete',
+                            params: {
+                                id: SelectedHeaderRow.data.fldId,
+                                OrganId: '@ViewBag.OrganId'
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Err == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                ReloadGridDetailEzafeKari_TatilKari();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

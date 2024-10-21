@@ -1,0 +1,328 @@
+﻿@model IEnumerable<NewFMS.WCF_Budget.OBJ_Budje_khedmatDarsadId>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X()
+    .Window()
+    .Modal(true)
+    .Width(1000)
+    .Title("ثبت/ویرایش خدمت")
+    .ID("KhedmatHa")
+    .Closable(false)
+            .Listeners(l => l.AfterRender.Fn = "addKeyMapKhedmatHa")
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Resizable(false)
+        
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Padding(5)
+                .Items(
+                X.Panel()
+                .Border(false)
+                .Layout(LayoutType.VBox)
+                .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .Padding(5)
+                        .ButtonAlign(Ext.Net.Alignment.Center)
+                    .Buttons(
+                        X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => l.Click.Handler = "SaveKhedmatHa()"),
+                                X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "EditKhedmatHa();"; }),
+                                        X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteKhedmatHa();"; }),
+                    X.Button()
+                        .Text("خروج")
+                        .Icon(Ext.Net.Icon.DoorOut)
+                        //.OnClientClick("CheckClose()"))
+                                .OnClientClick("App.KhedmatHa.destroy();"))
+                        .Items(
+                X.FieldSet()
+                    .Border(false)
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                    .Items(
+                        X.Hidden().ItemID("fldId"),
+                    X.Hidden().ItemID("khedmatId"),
+                             X.Label("خدمت:"),
+                               X.TextField().Width(300).AutoFocus(true)
+                            .ItemID("txtKhedmat")
+                                //.MaxLength(50)
+                                //.EnforceMaxLength(true)
+                                      .Icon(Icon.Add)
+                                .DirectEvents(li =>
+                                    {
+                                        li.SpecialKey.Url = "/Budget/SearchCodingBudget/Index?State=1&Year=" + ViewBag.Year;
+                                        li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                        li.IconClick.Url = "/Budget/SearchCodingBudget/Index?State=1&Year=" + ViewBag.Year;
+                                    })
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AllowBlank(false)
+                        .BlankText("لطفا خدمت را انتخاب کنید.")
+                        , X.Label("درصد:"),
+                            X.NumberField().Width(100)
+                                .MaxLength(5)
+                                .MaxValue(100).AllowDecimals(true)
+                                .EnforceMaxLength(true)
+                                .MaskRe("[0-9 .]")
+                        .ItemID("txtDarsad")
+                        .Value(100)
+        //.MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AllowBlank(false)
+                        .BlankText("لطفا درصد را وارد کنید.")
+                        )
+                    ),
+        X.GridPanel()
+            .AutoScroll(true)
+                .ItemID("GridKhedmatHa")
+            .Width(976)
+            .Height(330)
+        //.Listeners(l => l.AfterRender.Handler = "App.KhedmatHa.queryById('GridParvandeInfo').setHeight(App.AccountingWin.getHeight() - 310)")
+         
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                    .Proxy(Html.X().AjaxProxy()
+                            .Url(Url.Action("ReadKhedmatHa"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+                                                .ExtraParams(l => l.Add(new { CodingAcc = ViewBag.CodingAcc }))
+                        )
+                    .PageSize(20)
+                    .RemoteFilter(false)
+                        .RemotePaging(false)
+                       
+            )
+        //.View(
+        //    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+        //)
+                .ViewConfig(X.GridView().LoadingText("در حال بارگذاری...").RTL(true))
+             
+            .Plugins(X.FilterHeader().Remote(false))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                    Html.X().Column().DataIndex(Model, m => m.fldBudje_khedmatDarsadId).Text("کد").Hidden(true).Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.fldCodeBudje).Text("کد خدمت").Flex(2).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldTitleBudje).Text("عنوان").Flex(2).Wrap(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldDarsad).Text("درصد").Flex(2).Wrap(true)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+        )
+    )
+)
+<script type="text/javascript">
+    /*function CheckClose() {
+        var GridKhedmatHa = App.KhedmatHa.queryById('GridKhedmatHa');
+        var mm = 0;
+        for (var i = 0; i < GridKhedmatHa.getStore().count() ; i++) {
+            mm = mm + GridKhedmatHa.store.data.items[i].data.fldDarsad;
+        }
+        if (parseInt(mm) == 100 || GridKhedmatHa.getStore().count() == 0) {
+
+            App.KhedmatHa.destroy();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "مجموع درصدها باید 100 باشد.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+
+    }*/
+    function EditKhedmatHa() {
+        var SelectedRow = App.KhedmatHa.queryById('GridKhedmatHa').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: ' /Budget/Pishbini/DetailsKhedmatHa',
+                params: {
+                    Id: SelectedRow.data.fldBudje_khedmatDarsadId
+                },
+                success: function (data) { 
+                    var khedmatId = App.KhedmatHa.queryById('khedmatId');
+                    khedmatId.setValue(data.fldCodingBudje_DetailsId);
+                    var txtKhedmat = App.KhedmatHa.queryById('txtKhedmat');
+                    txtKhedmat.setValue(data.fldTitleBudje);
+                    var txtDarsad = App.KhedmatHa.queryById('txtDarsad');
+                    txtDarsad.setValue(data.fldDarsad);
+                    var fldId = App.KhedmatHa.queryById('fldId');
+                    fldId.setValue(data.fldBudje_khedmatDarsadId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveKhedmatHa() {
+        var txtKhedmat = App.KhedmatHa.queryById('txtKhedmat');
+        var fldId = App.KhedmatHa.queryById('fldId');
+        var txtDarsad = App.KhedmatHa.queryById('txtDarsad');
+        var khedmatId = App.KhedmatHa.queryById('khedmatId');
+        var er = false;
+
+        if (txtKhedmat.validate() == false) {
+            er = true;
+        }
+        if (txtDarsad.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: ' /Budget/Pishbini/SaveKhedmatHa',
+            params: {
+                fldBudje_khedmatDarsadId: fldId.getValue(),
+                fldDarsad: txtDarsad.getValue(),
+                fldCodingBudje_DetailsId: khedmatId.getValue(),
+                fldCodingAcc_detailId: '@ViewBag.CodingAcc'
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            App.KhedmatHa.queryById('txtKhedmat').focus();
+                        }
+                    }
+                });
+                
+                if (data.Er != 1) {
+                    App.KhedmatHa.queryById('GridKhedmatHa').store.load();
+                    ClearKhedmatHa();
+                    var grid = App.Eghtesadi.queryById("EghtesadiGrid");
+                    var cc = grid.store.currentPage;
+                    grid.store.load();
+                    grid.store.loadPage(cc);
+                }
+            }
+        });
+    }
+
+    function DeleteKhedmatHa() {
+        var SelectedRow = App.KhedmatHa.queryById('GridKhedmatHa').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: ' /Budget/Pishbini/DeleteKhedmatHa',
+                            params: {
+                                id: SelectedRow.data.fldBudje_khedmatDarsadId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK,
+                                    fn: function (btn) {
+                                        if (btn == "ok") {
+                                            App.KhedmatHa.queryById('txtKhedmat').focus();
+                                        }
+                                    }
+                                });
+                                if (data.Er != 1) {
+                                    App.KhedmatHa.queryById('GridKhedmatHa').store.load();                                    
+                                    ClearKhedmatHa();
+                                    var grid = App.Eghtesadi.queryById("EghtesadiGrid");
+                                    var cc = grid.store.currentPage;
+                                    grid.store.load();
+                                    grid.store.loadPage(cc);
+                                }                                
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearKhedmatHa() {
+        App.KhedmatHa.queryById('fldId').setValue(0);
+        App.KhedmatHa.queryById('khedmatId').setValue(0);
+        App.KhedmatHa.queryById('txtDarsad').setValue("100");
+        App.KhedmatHa.queryById('txtKhedmat').setValue("").focus();
+    }
+
+    var addKeyMapKhedmatHa = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.KhedmatHa.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDarsad") {
+                        SaveKhedmatHa();
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }
+            }]
+        });
+    };
+</script>

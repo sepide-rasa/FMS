@@ -1,0 +1,96 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_UserGroup>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<script src="~/Scripts/accounting.min.js"></script>
+@(Html.X()
+    .Window()
+    .Modal(true)
+        .Width(300)
+        .Title("کپی از دسترسی های گروه های کاربری")
+    .ID("UserGpHa")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .ButtonAlign(Ext.Net.Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("کپی")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveUserGpHa();"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.UserGpHa.destroy()"))
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.Fit)
+        //.LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //   .Padding(5)
+            .Items(
+        X.GridPanel()
+        .Height(150)
+            .AutoScroll(true)
+            .ItemID("GridUserGpHa")
+            .Border(false)
+            .Store(
+                X.StoreForModel()
+                     .Proxy(Html.X().AjaxProxy()
+                    .Url(Url.Action("ReadUserGps"))
+                    .Reader(Html.X().JsonReader().Root("data"))
+                    .ExtraParams(p => p.Add(new { UserGp = @ViewBag.KhaliId }))
+                                )
+                    .PageSize(20000)
+                    .RemoteFilter(false)
+                    .RemotePaging(false)
+            )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .Plugins(Html.X().CellEditing().ClicksToEdit(1))
+            .ColumnModel(
+        //Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("گروه کاربری").Flex(2)
+                )
+            .SelectionModel(
+                    Html.X().CheckboxSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Multi)
+                )
+        )
+    )
+)
+<script type="text/javascript">
+    function SaveUserGpHa() {
+        var gridSelect = App.UserGpHa.queryById("GridUserGpHa").getSelectionModel().getSelection();
+        var UserGroups ="";
+        for (var i = 0; i < gridSelect.length ; i++) {
+            UserGroups = UserGroups + gridSelect[i].data.fldId + ";";
+        }
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/UserGroup/SaveCopyPermi',
+            params: {
+                UserGroups: UserGroups,
+                Khali: '@ViewBag.KhaliId'
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+</script>

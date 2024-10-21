@@ -1,0 +1,365 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+@model IEnumerable<NewFMS.WCF_Personeli.OBJ_PersonalStatus>
+@(Html.X().Window().Modal(true)
+.Width(550)//.Height(220)
+    .Title("تغییر وضعیت")
+    .ID("ChangeStatus")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+    X.Hidden().ItemID("fldId"),
+        X.FormPanel().Border(false)
+        .KeyMap(Html.X().KeyMap()
+            .ID("ChangeStatusMap")
+            .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("SaveChangeStatus(); ")
+                );
+
+            }))
+        .DefaultButton("btn")
+        .Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+        .Items(
+                X.Panel().Border(false)
+                    .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                                .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Label("تاریخ تغییر:"),
+                    X.PDateField()
+                        .ItemID("txtStatusChangeDate")
+                                     .MaskRe("/[0-9 /]/")
+        //.FieldLabel("تاریخ تغییر")
+                    .AllowBlank(false)
+                    .BlankText("لطفا تاریخ را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AutoFocus(true)
+                        , X.Label("وضعیت:")
+                    , X.ComboBox()
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+        //.FieldLabel("وضعیت")
+                    .ItemID("CboStatus")
+                    .TypeAhead(true)
+                    .QueryMode(DataLoadMode.Local)
+                    .ForceSelection(true)
+                    .TriggerAction(TriggerAction.All)
+                        .DisplayField("fldName")
+                        .ValueField("fldId")
+                    .EmptyText("وضعیت")
+                    .Store(X.Store()
+                        .Model(X.Model()
+                                .IDProperty("fldId")
+                            .Fields(
+                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                            )
+                        )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetStatus"))
+                                .Reader(X.JsonReader().Root("data"))
+                                )
+                                        .Listeners(li => li.DataChanged.Handler = "LoadStatus();")
+                                )
+                    )
+
+                ), X.GridPanel().TopBar(
+                            Html.X().Toolbar()
+                            .Items(
+                                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => { l.Click.Handler = "SaveChangeStatus();"; }),
+                                X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "EditChangeStatus();"; }),
+                                X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteChangeStatus();"; }),
+                                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).Listeners(l => { l.Click.Handler = "App.ChangeStatus.destroy();"; })
+
+                            )
+                                ).BottomBar(X.PagingToolbar())
+                        .Height(290)
+                            .ItemID("PersonalStatusGrid")
+                            .Store(
+                            X.StoreForModel()
+                                    .Listeners(l => l.DataChanged.Handler = "App.ChangeStatus.queryById('PersonalStatusGrid').selModel.refresh();")
+                                .Proxy(Html.X().AjaxProxy()
+                                        .Url(Url.Action("ReadStatus"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                                        .ExtraParams(ex => { 
+                                            ex.Add(new { PersonalId = @ViewBag.PrsPersonalInfoId });
+                                            ex.Add(new { State = @ViewBag.State });
+                                        })
+                                        )
+                                .PageSize(20)
+                                .RemotePaging(true)
+                            )
+                        .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+                        .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                    Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("وضعیت").Flex(1),
+                                    Html.X().Column().DataIndex(Model, m => m.fldDateTaghirVaziyat).Text("تاریخ ثبت").Flex(1)
+                        )
+                        .SelectionModel(
+                            Html.X().RowSelectionModel()
+                                .Mode(Ext.Net.SelectionMode.Single)
+                )
+                    //.Layout(Ext.Net.LayoutType.VBox)
+                    //.LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+        )
+)
+
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+
+    function LoadStatus() {
+        if (State == 1) {
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/StatusDetail',
+                params: {
+                    Id: '@ViewBag.PrsPersonalInfoId'
+                },
+                success: function (data) {
+                    var CboStatus = App.ChangeStatus.queryById('CboStatus');
+                    CboStatus.setValue(data.fldStatusId);
+
+                }
+            });
+        }
+        else if (State == 2) {
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/PayPersonalInfo/StatusDetail',
+                params: {
+                    Id: '@ViewBag.PrsPersonalInfoId'
+                },
+                success: function (data) {
+                    var CboStatus = App.ChangeStatus.queryById('CboStatus');
+                    CboStatus.setValue(data.fldStatusId);
+
+                }
+            });
+        }
+    }
+    function SaveChangeStatus() {
+        if (!App.ChangeStatus.active) return false;
+        if (State == 1) {
+            var CboStatus = App.ChangeStatus.queryById('CboStatus');
+            var txtStatusChangeDate = App.ChangeStatus.queryById('txtStatusChangeDate');
+            var id = App.ChangeStatus.queryById('fldId');
+            Ext.MessageBox.show({
+                title: "توجه",
+                msg:"آیا مایلید در ماژول حقوق و دستمزد تغییر وضعیت اعمال گردد؟",
+                icon: Ext.MessageBox.INFO,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Personeli/PersonalInfo/SaveStatus',
+                            params: {
+                                fldid: id.getValue(),
+                                fldStatusId: CboStatus.getValue(),
+                                fldPrsPersonalInfoId: '@ViewBag.PrsPersonalInfoId',
+                                fldDateTaghirVaziyat: txtStatusChangeDate.rawValue,
+                                pay:1
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                id.setValue("0");
+                                App.ChangeStatus.queryById('PersonalStatusGrid').store.load();
+                                App.PersonalInfo.queryById('PersonalInfoGrid').store.load();
+                            }
+
+                        });
+                    }
+                    else {
+
+                        Ext.net.DirectMethod.request({
+                            url: '/Personeli/PersonalInfo/SaveStatus',
+                            params: {
+                                fldid: id.getValue(),
+                                fldStatusId: CboStatus.getValue(),
+                                fldPrsPersonalInfoId: '@ViewBag.PrsPersonalInfoId',
+                                fldDateTaghirVaziyat: txtStatusChangeDate.rawValue,
+                                pay:0
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                id.setValue("0");
+                                App.ChangeStatus.queryById('PersonalStatusGrid').store.load();
+                                App.PersonalInfo.queryById('PersonalInfoGrid').store.load();
+                            }
+
+                        });
+                    }
+                }
+            });
+        }
+        else if (State == 2) {
+            var CboStatus = App.ChangeStatus.queryById('CboStatus');
+            var txtStatusChangeDate = App.ChangeStatus.queryById('txtStatusChangeDate');
+            var id = App.ChangeStatus.queryById('fldId');
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/PayPersonalInfo/SaveStatus',
+                params: {
+                    fldid: id.getValue(),
+                    fldStatusId: CboStatus.getValue(),
+                    fldPrsPersonalInfoId: '@ViewBag.PrsPersonalInfoId',
+                    fldDateTaghirVaziyat: txtStatusChangeDate.rawValue,
+                    pay: 0,
+                    OrganId:'@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    if (data.Err == 1) {
+                        Ext.MessageBox.show({
+                            title: data.MsgTitle,
+                            msg: data.Msg,
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: Ext.MessageBox.INFO,
+                        buttons: Ext.MessageBox.OK,
+                        fn: function (btn) {
+                            if (btn == 'ok') {
+                                App.ChangeStatus.destroy()
+                            }
+                        }
+                    });
+                    id.setValue("0");
+                    App.ChangeStatus.queryById('PersonalStatusGrid').store.load();
+                    App.PayPersonalInfo.queryById('PayPersonalInfoGrid').store.load();
+                }
+            });
+        }
+    }
+
+    function EditChangeStatus() {
+        if (!App.ChangeStatus.active) return false;
+        var SelectedRow = App.ChangeStatus.queryById('PersonalStatusGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/DetailsStatus',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    if (data.Error == 1) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: data.ErrorMsg,
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                    else {
+                        var CboStatus = App.ChangeStatus.queryById('CboStatus');
+                        CboStatus.setValue(data.fldStatusId.toString());
+                        var txtStatusChangeDate = App.ChangeStatus.queryById('txtStatusChangeDate');
+                        txtStatusChangeDate.setValue(data.fldDateTaghirVaziyat);
+                        var id = App.ChangeStatus.queryById('fldId');
+                        id.setValue(data.fldId);
+                    }
+                }
+            });
+            Ext.net.Mask.hide();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteChangeStatus() {
+        if (!App.ChangeStatus.active) return false;
+        var SelectedRow = App.ChangeStatus.queryById('PersonalStatusGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Personeli/PersonalInfo/DeleteStatus',
+                            params: {
+                                Id: SelectedRow.data.fldId,
+                                fldPrsPersonalInfoId: '@ViewBag.PrsPersonalInfoId',
+                            },
+                            success: function (data) {
+                                if (data.Error == 1) {
+                                    Ext.MessageBox.show({
+                                        title: "خطا",
+                                        msg: data.Msg,
+                                        icon: Ext.MessageBox.ERROR,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                }
+                                else {
+                                    App.ChangeStatus.queryById('PersonalStatusGrid').store.load();
+                                    Ext.MessageBox.show({
+                                        title: "حذف موفق",
+                                        msg: data.Msg,
+                                        icon: Ext.MessageBox.ERROR,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                }
+                            }
+                        });
+                        
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function EnterNext() {
+        var keyfield = App.ChangeStatus.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+    }
+</script>

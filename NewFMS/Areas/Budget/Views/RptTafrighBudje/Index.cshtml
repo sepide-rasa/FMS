@@ -1,0 +1,691 @@
+﻿@model NewFMS.Models.CodingStatus
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<style>
+    .custom-icon {
+        margin-right: 210px !important;
+    }
+
+    .x-mcombo-item-unchecked {
+        background-position: right;
+        padding-right: 20px;
+    }
+
+    .x-mcombo-item-checked {
+        background-position: right;
+        padding-right: 20px;
+    }
+</style>
+
+<script>
+    var filterTree = function (tf, e) {
+        var tree = this.up("treepanel"),
+        text = tf.getRawValue();
+        tree.clearFilter();
+
+        if (Ext.isEmpty(text, false)) {
+            return;
+        }
+
+        if (e.getKey() === Ext.EventObject.ESC) {
+            clearFilter();
+        } else {
+            var re = new RegExp(".*" + text + ".*", "i");
+            tree.filterBy(function (node) {
+                return re.test(node.data.text);
+            });
+        }
+    };
+
+    var clearFilter = function () {
+        var field = this,
+        tree = this.up("treepanel");
+        field.setValue("");
+        tree.clearFilter();
+        tree.expandAll();
+        tree.getView().focus();
+    };
+</script>
+@(Html.X().Panel()
+    .Closable(true)
+    .AutoScroll(true)
+    .Border(false)
+    .Title("گزارش تفریغ بودجه")
+    .CloseAction(CloseAction.Destroy)
+    .Listeners(li => { li.AfterRender.Handler = "setSizePnlRptTafrigheBudje()"; li.Render.Fn = "addKeyMapRptTafrigheBudje"; })
+        // .Layout(LayoutType.Fit)
+    .ID("RptTafrigheBudje")
+    .Items(
+                X.Panel()
+        // .AutoScroll(true)
+                    .Border(false)
+                    .ButtonAlign(Alignment.Center)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                            .Buttons(
+                                Html.X().Button()
+                                    .Text("نمایش")
+                                    .Icon(Ext.Net.Icon.Monitor)
+                                    .Listeners(l => l.Click.Handler = "PrintRptTafrigheBudje(1)"),
+                            Html.X().Button()
+                                .Text("چاپ")
+                                .Icon(Ext.Net.Icon.Printer)
+                                .Listeners(l => l.Click.Handler = "PrintRptTafrigheBudje(2)"),
+                            Html.X().Button()
+                                .Text("خروج")
+                                .Icon(Ext.Net.Icon.DoorOut)
+                                .Listeners(l => l.Click.Handler = "App.RptTafrigheBudje.destroy()")
+                        )
+                        .Items(
+                    X.FieldSet()
+                        .Border(true)
+                        .Title("آیتم های جستجو")
+                        .Defaults(new { Margin = 2 })
+                        .Layout(LayoutType.VBox)
+                        .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                        .Items(
+                            X.Panel()
+                                .Border(false).Width(690)
+                                    .Layout(LayoutType.Table)
+                                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                                .Defaults(new { Margin = 2 })
+                                    .Items(
+                            X.Label("نوع فیلتر:"),
+                                         X.ComboBox()//.ColSpan(3)
+                                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                                        .ItemID("CboFilterType")
+                                        .Editable(false)
+                                        .TypeAhead(true)
+                                        .AutoFocus(true)
+                                            .BlankText("لطفا نوع فیلتر را انتخاب کنید.")
+                                        .QueryMode(DataLoadMode.Local)
+                                        .TriggerAction(TriggerAction.All)
+                                        .Items(
+                                            new ListItem("بازه ماهانه", "1"),
+                                            new ListItem("بازه تاریخی", "2")
+                                            )
+        //  .SelectedItems(new { Value = "1" })
+                                                    .Listeners(l => { l.Select.Handler = "ChangeFilter_T()"; l.AfterRender.Handler = "App.RptTafrigheBudje.queryById('CboFilterType').setValue('1');ChangeFilter_T();";
+                                                    }
+                                                    )
+                                            ,
+                                  X.Label().Text("از ماه:").ItemID("lblAzMah")
+                                , X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboAzMonth")
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا ماه را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                    .ForceSelection(true)
+                                        .DisplayField("fldName")
+                                        .ValueField("fldId")
+                                        .EmptyText("از ماه ...")
+                                                            .Listeners(li => li.Select.Handler = "loadCboTaMah()")
+                                        .Store(X.Store()//.AutoLoad(false)
+                 .Listeners(l => l.Load.Handler = "setDefaultAzMah()")
+
+                                            .Model(X.Model()
+                                                .IDProperty("fldId")
+                                                .Fields(
+                                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                )
+                                            )
+                                            .Proxy(X.AjaxProxy()
+                                                    .Url(Url.Action("GetAzMah"))
+                                                .Reader(X.JsonReader().Root("data"))
+                                                )
+                                        )
+        // .SelectedItems(new { Value = "1" })
+        // .Listeners(l => l.Select.Handler = "LoadSanad()")
+                                    ,
+                                         X.Label().Text("تا ماه:").ItemID("lblTaMah")
+                                    , X.ComboBox()
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .ItemID("CboTaMonth")
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .BlankText("لطفا ماه را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                        .ForceSelection(true)
+                                        .DisplayField("fldName")
+                                        .ValueField("fldId")
+                                        .EmptyText("تا ماه ...")
+                                        .Store(X.Store().AutoLoad(false)
+        //   .Listeners(l => l.Load.Handler = "App.RptTafrigheBudje.queryById('CboTaMonth').select(App.RptTafrigheBudje.queryById('CboTaMonth').store.getAt(0))")
+
+                                            .Model(X.Model()
+                                                .IDProperty("fldId")
+                                                .Fields(
+                                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                )
+                                            )
+                                            .Proxy(X.AjaxProxy()
+                                                    .Url(Url.Action("GetTaMah"))
+                                                .Reader(X.JsonReader().Root("data"))
+                                                ).Parameters(ps =>
+                                                    {
+                                                        // ps.Add(new StoreParameter("Year", ViewBag.Year, ParameterMode.Raw));
+                                                        ps.Add(new StoreParameter("AzMah", "App.RptTafrigheBudje.queryById('CboAzMonth').getValue()", ParameterMode.Raw));
+                                                    })
+                                        )
+
+                                                .Listeners(l => { /*l.AfterRender.Handler = "setCurrentMonth()";*/ l.Select.Handler = "LoadSanad()"; }),
+        //.Listeners(l => l.Select.Handler = "setMonthCalss()"),
+                                     X.Label("از تاریخ:").ItemID("lblAzTarikh"),
+                                        X.PDateField()
+                                            .ItemID("txtAzTarikh")
+                                                .Listeners(l => l.Change.Handler = "setDateAzTarikhTafrigheBudje()")
+        //   .Listeners(l => l.AfterRender.Handler = "App.RptTafrigheBudje.queryById('txtAzTarikh').validate();")
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا تاریخ را وارد کنید.")
+                                            .Editable(true)
+                                            .MaskRe("/[0-9/]/")
+                                            .MaxLength(10)
+                                            .MinLength(10)
+                                            .EnforceMaxLength(true),
+                                        X.Label("تا تاریخ:").ItemID("lblTaTarikh"),
+                                        X.PDateField()
+                                            .ItemID("txtTaTarikh")
+                                                .Listeners(l => l.Change.Handler = "setDateTaTarikhTafrigheBudje()")
+        //    .Listeners(l => l.AfterRender.Handler = "App.RptTafrigheBudje.queryById('txtTaTarikh').validate();")
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا تاریخ را وارد کنید.")
+                                            .Editable(true)
+                                            .MaskRe("/[0-9/]/")
+                                            .MaxLength(10)
+                                            .MinLength(10)
+                                                .EnforceMaxLength(true),
+                           X.Label("از سند:"),
+                            X.ComboBox()
+                                .ItemID("CboAzSanad")
+                                .TypeAhead(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .AllowBlank(true)
+                                .BlankText("لطفا سند را انتخاب کنید.")
+                                .AllowBlank(false)
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldName")
+                                .ValueField("fldId")
+                                .EmptyText("سند ...")
+                                                    .Listeners(li => li.Select.Handler = "App.RptTafrigheBudje.queryById('CboTaSanad').clearValue(); App.RptTafrigheBudje.queryById('CboTaSanad').getStore().load()")
+                                .Store(X.Store().AutoLoad(false)
+                   .Listeners(l => l.Load.Handler = "setDefaultSanad()")
+
+                                    .Model(X.Model()
+                                        .IDProperty("fldId")
+                                        .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetAzSanad"))
+                                        .Reader(X.JsonReader().Root("data"))
+               .ExtraParams(l => l.Add(new { Year = ViewBag.Year }))
+
+                                    )
+                                        .Parameters(ps =>
+                                        {
+                                            //ps.Add(new StoreParameter("Year", ViewBag.Year, ParameterMode.Raw));
+                                            ps.Add(new StoreParameter("FilterType", "App.RptTafrigheBudje.queryById('CboFilterType').getValue()", ParameterMode.Raw));
+                                            ps.Add(new StoreParameter("AzMah", "App.RptTafrigheBudje.queryById('CboAzMonth').getValue()", ParameterMode.Raw));
+                                            ps.Add(new StoreParameter("TaMah", "App.RptTafrigheBudje.queryById('CboTaMonth').getValue()", ParameterMode.Raw));
+                                            ps.Add(new StoreParameter("AzTarikh", "App.RptTafrigheBudje.queryById('txtAzTarikh').getRawValue()", ParameterMode.Raw));
+                                            ps.Add(new StoreParameter("TaTarikh", "App.RptTafrigheBudje.queryById('txtTaTarikh').getRawValue()", ParameterMode.Raw));
+                                        })
+                                    )
+                                    ,
+                                        X.Label("تا سند:"),
+                                X.ComboBox()
+                                    .ItemID("CboTaSanad")
+                                    .TypeAhead(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .AllowBlank(true)
+                                         .AllowBlank(false)
+                                    .BlankText("لطفا سند را انتخاب کنید.")
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                    .EmptyText("سند ...")
+                                    .Store(X.Store().AutoLoad(false)
+                       .Listeners(l => l.Load.Handler = "setDefaultSanad2()")
+
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                                .Url(Url.Action("GetTaSanad"))
+                                            .Reader(X.JsonReader().Root("data"))
+               .ExtraParams(l => l.Add(new { Year = ViewBag.Year }))
+
+                                        )
+                                            .Parameters(ps =>
+                                            {
+                                                // ps.Add(new StoreParameter("Year", ViewBag.Year, ParameterMode.Raw));
+                                                ps.Add(new StoreParameter("FilterType", "App.RptTafrigheBudje.queryById('CboFilterType').getValue()", ParameterMode.Raw));
+                                                ps.Add(new StoreParameter("AzMah", "App.RptTafrigheBudje.queryById('CboAzMonth').getValue()", ParameterMode.Raw));
+                                                ps.Add(new StoreParameter("TaMah", "App.RptTafrigheBudje.queryById('CboTaMonth').getValue()", ParameterMode.Raw));
+                                                ps.Add(new StoreParameter("AzTarikh", "App.RptTafrigheBudje.queryById('txtAzTarikh').getRawValue()", ParameterMode.Raw));
+                                                ps.Add(new StoreParameter("TaTarikh", "App.RptTafrigheBudje.queryById('txtTaTarikh').getRawValue()", ParameterMode.Raw));
+                                                ps.Add(new StoreParameter("AzSanad", "App.RptTafrigheBudje.queryById('CboAzSanad').getValue()", ParameterMode.Raw));
+                                            })
+                                        )
+                                    ,
+                                    X.Label("نوع سند:"),
+                                     X.ComboBox()
+        // X.MultiCombo()
+                                            .ItemID("CboTypeSanad")
+                                            .TypeAhead(true)
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا نوع سند انتخاب کنید.")
+                                            .QueryMode(DataLoadMode.Local)
+                                            .TriggerAction(TriggerAction.All)
+                                            .EmptyText(" ...")
+                                            .Listeners(l => l.AfterRender.Handler = "setAllType()")
+                                            .Items(
+                                                new ListItem("موقت", "0"),
+                                                    new ListItem("قطعی", "1"),
+                                                    new ListItem("هردو", "2")
+                                                        ),
+                                        X.Label("نحوه نمایش:"),
+                                         X.ComboBox()
+        // X.MultiCombo()
+                                                    .ItemID("Cbodigits")
+                                                .TypeAhead(true)
+                                                .AllowBlank(false)
+                                                .BlankText("لطفا نحوه نمایش انتخاب کنید.")
+                                                .QueryMode(DataLoadMode.Local)
+                                                .TriggerAction(TriggerAction.All)
+                                                    .EmptyText(" ...")
+                                                    .Listeners(l => l.AfterRender.Handler = "setCbodigits2()")
+                                                .Items(
+                                                    new ListItem("همه ارقام", "1"),
+                                                        new ListItem("هزار ریال", "1000"),
+                                                        new ListItem("میلیون ریال", "1000000")
+                                                        ),
+
+                                       X.FieldSet()
+                                .Border(false)
+                                .Padding(0)
+                                .ColSpan(2)
+                                .Defaults(new { Margin = 2 })
+                                .MarginSpec("0 0 0 -1px")
+                                .Layout(LayoutType.Table)
+                                .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                                .Items(
+                                             X.Checkbox().ItemID("PrintZero").RTL(false),
+                                    X.Label("نمایش مقادیر صفر")
+                                    )
+                                )
+                                )
+            )
+
+    )
+)
+
+<script type="text/javascript">
+   
+    function loadCboTaMah() {
+        App.RptTafrigheBudje.queryById('CboTaMonth').clearValue();
+        App.RptTafrigheBudje.queryById('CboTaMonth').getStore().load();
+        App.RptTafrigheBudje.queryById('CboAzSanad').clearValue();
+        App.RptTafrigheBudje.queryById('CboAzSanad').store.removeAll();
+        App.RptTafrigheBudje.queryById('CboTaSanad').clearValue();
+        App.RptTafrigheBudje.queryById('CboTaSanad').store.removeAll();
+
+
+    }
+    function setDefaultSanad() {
+        if (App.RptTafrigheBudje.queryById("CboAzSanad").store.count() > 0) {
+            App.RptTafrigheBudje.queryById("CboAzSanad").setValue(App.RptTafrigheBudje.queryById("CboAzSanad").store.getAt(0).data.fldId);
+            App.RptTafrigheBudje.queryById('CboTaSanad').clearValue(); App.RptTafrigheBudje.queryById('CboTaSanad').getStore().load();
+        }
+    }
+    function setDefaultSanad2() {
+        App.RptTafrigheBudje.queryById("CboTaSanad").setValue(App.RptTafrigheBudje.queryById("CboTaSanad").store.getAt(App.RptTafrigheBudje.queryById("CboTaSanad").store.count() - 1).data.fldId);
+    }
+    function setMonthCalss() {
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Pardakhtha/SetMonthClass',
+            params: {
+                Month: App.RptTafrigheBudje.queryById("CboMonth").getValue()
+            }
+        });
+    }
+    function ChangeFilter_T() {
+        var CboFilterType = App.RptTafrigheBudje.queryById('CboFilterType');
+        var txtAzTarikh = App.RptTafrigheBudje.queryById('txtAzTarikh');
+        var txtTaTarikh = App.RptTafrigheBudje.queryById('txtTaTarikh');
+        var lblAzTarikh = App.RptTafrigheBudje.queryById('lblAzTarikh');
+        var lblTaTarikh = App.RptTafrigheBudje.queryById('lblTaTarikh');
+        var CboAzMonth = App.RptTafrigheBudje.queryById('CboAzMonth');
+        var CboTaMonth = App.RptTafrigheBudje.queryById('CboTaMonth');
+        var lblAzMah = App.RptTafrigheBudje.queryById('lblAzMah');
+        var lblTaMah = App.RptTafrigheBudje.queryById('lblTaMah');
+        if (CboFilterType.getValue() == "1") {
+            txtAzTarikh.hide();
+            txtTaTarikh.hide();
+            lblAzTarikh.hide();
+            lblTaTarikh.hide();
+            CboAzMonth.show();            
+            CboTaMonth.show();
+            lblAzMah.show();
+            lblTaMah.show();
+            CboAzMonth.allowBlank = false;
+            CboTaMonth.allowBlank = false;
+            txtAzTarikh.allowBlank = true;
+            txtTaTarikh.allowBlank = true;
+        }
+        else {
+            txtAzTarikh.show();
+            txtTaTarikh.show();
+            lblAzTarikh.show();
+            lblTaTarikh.show();
+            CboAzMonth.hide();
+            CboTaMonth.hide();
+            lblAzMah.hide();
+            lblTaMah.hide();
+            CboAzMonth.allowBlank = true;
+            CboTaMonth.allowBlank = true;
+            txtAzTarikh.allowBlank = false;
+            txtTaTarikh.allowBlank = false;
+            App.RptTafrigheBudje.queryById('txtAzTarikh').setValue('@ViewBag.Year' + "/01/01");
+            App.RptTafrigheBudje.queryById('txtTaTarikh').setValue('@ViewBag.CurrentDay');
+        }
+        LoadSanad();
+    }
+
+    function LoadSanad() {
+        var CboFilterType = App.RptTafrigheBudje.queryById('CboFilterType');
+        var txtAzTarikh = App.RptTafrigheBudje.queryById('txtAzTarikh');
+        var txtTaTarikh = App.RptTafrigheBudje.queryById('txtTaTarikh');
+        var CboAzMonth = App.RptTafrigheBudje.queryById('CboAzMonth');
+        var CboTaMonth = App.RptTafrigheBudje.queryById('CboTaMonth');
+        if ((CboFilterType.getValue() == "1" && CboAzMonth.getValue() != "" && CboAzMonth.getValue() != null && CboTaMonth.getValue() != "" && CboTaMonth.getValue() != null) ||
+            (CboFilterType.getValue() == "2" && txtAzTarikh.getRawValue() != "" && txtTaTarikh.getRawValue() != "")) {
+
+            App.RptTafrigheBudje.queryById('CboAzSanad').clearValue(); App.RptTafrigheBudje.queryById('CboAzSanad').getStore().load();
+        }
+    }
+    function setCurrentMonth() {
+        App.RptTafrigheBudje.queryById("CboTaMonth").setValue('@ViewBag.CurrentMonth');
+    }
+    function setDefaultAzMah() {
+        var CboFilterType = App.RptTafrigheBudje.queryById('CboFilterType');
+        App.RptTafrigheBudje.queryById("CboAzMonth").setValue("01");
+        App.RptTafrigheBudje.queryById('CboTaMonth').clearValue(); App.RptTafrigheBudje.queryById('CboTaMonth').getStore().load();
+        App.RptTafrigheBudje.queryById("CboTaMonth").setValue('@ViewBag.CurrentMonth');
+        App.RptTafrigheBudje.queryById('CboAzSanad').clearValue(); App.RptTafrigheBudje.queryById('CboAzSanad').getStore().load();
+    }
+    function setDateAzTarikhTafrigheBudje() {
+        var txtAzTarikh = App.RptTafrigheBudje.queryById('txtAzTarikh');
+        var txtTaTarikh = App.RptTafrigheBudje.queryById('txtTaTarikh');
+        txtTaTarikh.setMinValue(txtAzTarikh.getValue());
+        txtTaTarikh.minText = "فیلد تا تاریخ نباید قبل از فیلد از تاریخ باشد.";
+
+        Ext.net.DirectMethod.request({
+            url: '/Budget/RptTafrighBudje/CheckTarikh',
+            params: {
+                Tarikh: txtAzTarikh.getRawValue()
+            },
+            success: function (data) {
+                txtTaTarikh.setMaxValue(new Date(data.dateTa));
+                txtTaTarikh.maxText = "فیلد از تاریخ و تا تاریخ باید در یک سال باشند.";
+            }
+        });
+
+        LoadSanad();
+    }
+
+    function setDateTaTarikhTafrigheBudje() {
+        var txtAzTarikh = App.RptTafrigheBudje.queryById('txtAzTarikh');
+        var txtTaTarikh = App.RptTafrigheBudje.queryById('txtTaTarikh');
+        txtTaTarikh.setMaxValue(txtTaTarikh.getValue());
+        txtAzTarikh.maxText = "فیلد از تاریخ نباید بعد از فیلد تا تاریخ باشد.";
+
+        Ext.net.DirectMethod.request({
+            url: '/Budget/RptTafrighBudje/CheckTarikh',
+            params: {
+                Tarikh: txtTaTarikh.getRawValue()
+            },
+            success: function (data) {
+                txtTaTarikh.setMinValue(new Date(data.dateAz));
+                txtTaTarikh.minText = "فیلد از تاریخ و تا تاریخ باید در یک سال باشند.";
+            }
+        });
+
+        LoadSanad();
+    }
+   
+
+    function setAllType() {
+        /*const AllType =["0","1"];*/
+        App.RptTafrigheBudje.queryById('CboTypeSanad').setValue("2");
+    }
+    function setCbodigits2() {
+        App.RptTafrigheBudje.queryById('Cbodigits').setValue("1");
+    }
+
+    /*function setSizePnlRptTafrigheBudje2() {
+        App.RptTafrigheBudje.queryById('RptPanel2').setSize(App.AccountingWin.getWidth() - 20, App.AccountingWin.getHeight() - 265);
+    }*/
+
+    function setSizePnlRptTafrigheBudje() {
+        App.RptTafrigheBudje.setSize(App.BudjeWin.getWidth(), App.BudjeWin.getHeight() - 170);
+
+
+
+    }
+
+    function PrintRptTafrigheBudje(st) {
+        var CboFilterType = App.RptTafrigheBudje.queryById('CboFilterType');
+        var txtAzTarikh = App.RptTafrigheBudje.queryById('txtAzTarikh');
+        var txtTaTarikh = App.RptTafrigheBudje.queryById('txtTaTarikh');
+        var CboAzMonth = App.RptTafrigheBudje.queryById('CboAzMonth');
+        var CboTaMonth = App.RptTafrigheBudje.queryById('CboTaMonth');
+        var CboAzSanad = App.RptTafrigheBudje.queryById('CboAzSanad');
+        var CboTaSanad = App.RptTafrigheBudje.queryById('CboTaSanad');
+        var CboTypeSanad = App.RptTafrigheBudje.queryById('CboTypeSanad');
+        var Cbodigits = App.RptTafrigheBudje.queryById('Cbodigits');
+        var PrintZero = App.RptTafrigheBudje.queryById('PrintZero');
+        
+        var height = App.BudjeWin.getHeight() - 270;
+
+        var aztarikh = "";
+        var tatarikh = "";
+        if (CboFilterType.getValue() == "1") {
+            if (CboAzMonth.validate() && CboTaMonth.validate()) {
+                aztarikh = '@ViewBag.Year' + "/" + CboAzMonth.getValue() + "/01";
+                tatarikh = '@ViewBag.Year' + "/" + CboTaMonth.getValue() + "/31";
+                if (parseInt(CboTaMonth.getValue()) > 6)
+                    tatarikh = '@ViewBag.Year' + "/" + CboTaMonth.getValue() + "/30";
+                else {
+                    if ('@ViewBag.isKabise' == 0 && CboTaMonth.getValue() == "12")
+                        tatarikh = '@ViewBag.Year' + "/" + CboTaMonth.getValue() + "/29";
+                }
+            }
+            else {
+                return;
+            }
+        }
+        else if (CboFilterType.getValue() == "2") {
+            if (txtAzTarikh.validate() && txtTaTarikh.validate()) {
+                aztarikh = txtAzTarikh.getRawValue();
+                tatarikh = txtTaTarikh.getRawValue();
+            }
+            else {
+                return;
+            }
+        }
+        
+        if (CboAzSanad.getValue() == null || CboTaSanad.getValue() == null) {
+
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "انتخاب از سند و تا سند ضروی است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK,
+                fn: function (btn) {
+                    if (btn == 'ok') {
+                        App.RptTafrigheBudje.queryById('CboAzSanad').clearValue();
+                        App.RptTafrigheBudje.queryById('CboAzSanad').getStore().load();
+                    }
+                }
+            });
+            return;
+        }
+
+
+        if (aztarikh != "" && tatarikh != "") {
+            Ext.net.DirectMethod.request({
+                url: '/Budget/RptTafrighBudje/CheckAllMapping',
+                params: {
+                    Year: '@ViewBag.Year',
+                    AzTarikh: aztarikh,
+                    TaTarikh: tatarikh,
+                    AzSanad: CboAzSanad.getValue(),
+                    TaSanad: CboTaSanad.getValue(),
+                    sanadtype: CboTypeSanad.getValue()
+                },
+                success: function (dataa) {
+                    if (dataa.Msg == "") {
+                        if (st == 1) {
+                            window.open("/Budget/RptTafrighBudje/ReportPage?Year=" + '@ViewBag.Year' + "&AzTarikh=" + aztarikh + "&TaTarikh=" + tatarikh + "&AzSanad=" + CboAzSanad.getValue() + "&TaSanad=" + CboTaSanad.getValue() + "&PrintZero=" + PrintZero.getValue() + "&sanadtype=" + CboTypeSanad.getValue() + "&digits=" + Cbodigits.getValue());
+                        }
+                        else if (st == 2) {
+                            App.RptTafrigheBudje.body.mask("در حال بارگذاری");
+                            Ext.net.DirectMethod.request({
+                                url: '/Budget/RptTafrighBudje/PrintTafrighBudje',
+                                params: {
+                                    /* containerId: "FirstTabAccounting",*/
+                                    Year: '@ViewBag.Year',
+                                    AzTarikh: aztarikh,
+                                    TaTarikh: tatarikh,
+                                    AzSanad: CboAzSanad.getValue(),
+                                    TaSanad: CboTaSanad.getValue(),
+                                    PrintZero: PrintZero.getValue(),
+                                    sanadtype: CboTypeSanad.getValue(),
+                                    digits: Cbodigits.getValue()
+
+                                },
+                                success: function () {
+                                    App.RptTafrigheBudje.body.mask().hide();
+                                }
+                            });
+                        }
+                    }
+                    else {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: dataa.Msg + " آیا مایل به نمایش آن کدها هستید؟",
+                            icon: Ext.MessageBox.WARNING,
+                            buttons: Ext.MessageBox.YESNO,
+                            fn: function (btn) {
+                                if (btn == 'yes') {
+                                    App.RptTafrigheBudje.body.mask("در حال بارگذاری");
+                                    Ext.net.DirectMethod.request({
+                                        url: '/Budget/RptTafrighBudje/NotInKhedmat',
+                                        params: {
+                                            Year: '@ViewBag.Year',
+                                            AzTarikh: aztarikh,
+                                            TaTarikh: tatarikh,
+                                            AzSanad: CboAzSanad.getValue(),
+                                            TaSanad: CboTaSanad.getValue(),
+                                            sanadtype: CboTypeSanad.getValue()
+                                        },
+                                        success: function (dataa) {
+                                            App.RptTafrigheBudje.body.mask().hide();
+                                        }
+                                    })
+                                }
+                                else {
+                                    if (st == 1) {
+                                        window.open("/Budget/RptTafrighBudje/ReportPage?Year=" + '@ViewBag.Year' + "&AzTarikh=" + aztarikh + "&TaTarikh=" + tatarikh + "&AzSanad=" + CboAzSanad.getValue() + "&TaSanad=" + CboTaSanad.getValue() + "&PrintZero=" + PrintZero.getValue() + "&sanadtype=" + CboTypeSanad.getValue() + "&digits=" + Cbodigits.getValue());
+                                    }
+                                    else if (st == 2) {
+                                        App.RptTafrigheBudje.body.mask("در حال بارگذاری");
+                                        Ext.net.DirectMethod.request({
+                                            url: '/Budget/RptTafrighBudje/PrintTafrighBudje',
+                                            params: {
+                                                /* containerId: "FirstTabAccounting",*/
+                                                Year: '@ViewBag.Year',
+                                                AzTarikh: aztarikh,
+                                                TaTarikh: tatarikh,
+                                                AzSanad: CboAzSanad.getValue(),
+                                                TaSanad: CboTaSanad.getValue(),
+                                                PrintZero: PrintZero.getValue(),
+                                                sanadtype: CboTypeSanad.getValue(),
+                                                digits: Cbodigits.getValue()
+
+                                            },
+                                            success: function () {
+                                                App.RptTafrigheBudje.body.mask().hide();
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                        })
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "انتخاب بازه زمانی ضروری اشت.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    var addKeyMapRptTafrigheBudje = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield;
+                    var nextfld;
+                    if ((Ext.Element.getActiveElement()).name == "") {
+                        PrintRptTafrigheBudje();
+                        return;
+                    }
+                    else {
+                        keyfield = App.RptTafrigheBudje.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    }
+                    if (keyfield.itemId == "Cbodigits") {
+                        nextfld = App.RptTafrigheBudje.queryById("PrintZero");
+                        nextfld.focus();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                        nextfld.focus();
+
+                    }
+                }
+            }]
+        });
+    };
+</script>

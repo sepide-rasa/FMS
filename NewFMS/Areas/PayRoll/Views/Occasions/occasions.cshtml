@@ -1,0 +1,436 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_Monasebat>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+
+@(Html.X().Panel()
+    .ID("occasions")
+    .Title("ثبت مناسبت ها")
+    .Listeners(li => { li.AfterRender.Handler = "occasionsSetSize();"; li.Render.Fn = "addKeyMapoccasions"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l => { l.Click.Handler = "Saveoccasions();"; }),
+                X.Button()
+                    .Text("ویرایش")
+                    .Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "Loadoccasions();"; }),
+                X.Button()
+                    .Text("حذف")
+                    .Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "Deleteoccasions();"; }),
+                //X.Button()
+                //    .Text("راهنما")
+                //    .Icon(Ext.Net.Icon.Help)
+                //    .Listeners(l => { l.Click.Handler = "Helpoccasions();"; }),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.occasions.destroy()")
+            )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Border(true)
+                            .Title("مشخصات مناسبت")
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 8 })
+                            .Items(
+                                X.Hidden()
+                                    .ItemID("fldId"),
+                                X.Label("نوع گروه بندی:"),
+                                X.ComboBox()
+                                    .ItemID("CboGroupingType")
+                                    .AutoFocus(true)
+                                    .ForceSelection(true)
+                                    .Width(100)
+                                    .TypeAhead(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا گروه مناسبت را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldTitle")
+                                    .ValueField("fldId")
+                                    .Store(X.Store()
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" },
+                                                new ModelField("fldId", ModelFieldType.Int) { Mapping = "fldId" }                                                
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetGroupingType"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                        .Listeners(l => l.Load.Handler = "setdefaultCboGroupingType()")
+                                    ),
+                                X.Label("وضعیت:"),
+                                X.ComboBox()
+                                    .ItemID("CboHolidayType")
+                                    .Width(100)
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا وضعیت مناسبت را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Items(
+                                        new ListItem("تعطیل", "1"),
+                                        new ListItem("عادی", "0")
+                                    )
+                                    .SelectedItems(new { Value = "1" }),
+                                X.Label("نوع مناسبت:"),
+                                X.ComboBox()
+                                    .ItemID("CboTypeMonasebat")
+                                    .Editable(false)
+                                    .Width(100)
+                                    .TypeAhead(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا نوع مناسبت را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Items(
+                                        new ListItem("دارای مزایا", "1"),
+                                        new ListItem("بدون مزایا", "0")
+                                    )
+                                    .SelectedItems(new { Value = "1" }),
+                                X.Label("نوع تاریخ:"),
+                                X.ComboBox()
+                                    .ItemID("CboDateType")
+                                    .Width(100)
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا نوع تاریخ را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Items(
+                                        new ListItem("شمسی", "0"),
+                                        new ListItem("قمری", "1")
+                                    )
+                                    .SelectedItems(new { Value = "0" }),
+                                X.Label("ماه:"),
+                                X.TextField()
+                                    .ItemID("txtMonth")
+                                    .Width(100)
+                                    .MaskRe("/[0-9]/")
+                                    .MaxLength(2)
+                                    .EnforceMaxLength(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا ماه را وارد کنید."),
+                                X.Label("روز:"),
+                                X.TextField()
+                                    .ItemID("txtDay")
+                                    .Width(100)
+                                    .MaskRe("/[0-9]/")
+                                    .MaxLength(2)
+                                    .EnforceMaxLength(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا روز را وارد کنید."),                  
+                                X.Label("شرح مناسبت:"),
+                                X.TextField()
+                                    .ItemID("txtName")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا شرح مناسبت را وارد کنید.")
+                                    .ColSpan(3)
+                                    .Width(258)
+                            )
+                    )
+            ),
+        X.GridPanel()
+            .ItemID("occasionsGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.occasions.queryById('occasionsGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Readoccasions"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(false)
+                    .RemotePaging(false)
+            )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .Plugins(X.FilterHeader().Remote(false))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                Html.X().Column().DataIndex(Model, m => m.fldNameMonasebat).Text("شرح مناسبت").Flex(7).Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldDateTypeName).Text("نوع تاریخ").Flex(3),                    
+                Html.X().Column().DataIndex(Model, m => m.fldMonth).Text("ماه").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldDay).Text("روز").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldNameType).Text("عنوان گروه").Flex(3).Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldHolidayName).Text("وضعیت").Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldMazayaName).Text("نوع مناسبت").Flex(3)                    
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+    )
+)
+<script type="text/javascript">
+    function Helpoccasions() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/occasions/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function setdefaultCboGroupingType() {
+        var CboGroupingType = App.occasions.queryById('CboGroupingType');
+        if (CboGroupingType.store.count() > 0) {
+            CboGroupingType.select(CboGroupingType.store.getAt(0));
+        }
+    }
+
+    function occasionsSetSize() {
+        App.occasions.setWidth(App.PayWin.getWidth());
+        var grid = App.occasions.queryById('occasionsGrid');
+        grid.setHeight(App.PayWin.getHeight() - 280);
+    }
+    
+    function Loadoccasions() {
+        var SelectedRow = App.occasions.queryById('occasionsGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/Occasions/DetailsOccasions',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var CboGroupingType = App.occasions.queryById('CboGroupingType');
+                    CboGroupingType.setValue(data.fldMonasebatTypeId);
+
+                    var CboHolidayType = App.occasions.queryById('CboHolidayType');
+                    CboHolidayType.setValue(data.fldHoliday);
+
+                    var CboTypeMonasebat = App.occasions.queryById('CboTypeMonasebat');
+                    CboTypeMonasebat.setValue(data.fldMazaya);
+
+                    var CboDateType = App.occasions.queryById('CboDateType');
+                    CboDateType.setValue(data.fldDateType);
+
+                    var txtMonth = App.occasions.queryById('txtMonth');
+                    txtMonth.setValue(data.fldMonth);
+
+                    var txtDay = App.occasions.queryById('txtDay');
+                    txtDay.setValue(data.fldDay);
+
+                    var txtName = App.occasions.queryById('txtName');
+                    txtName.setValue(data.fldNameMonasebat);
+
+                    var fldId = App.occasions.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function Saveoccasions() {
+        var CboGroupingType = App.occasions.queryById('CboGroupingType');
+        var CboHolidayType = App.occasions.queryById('CboHolidayType');
+        var CboTypeMonasebat = App.occasions.queryById('CboTypeMonasebat');
+        var CboDateType = App.occasions.queryById('CboDateType');
+        var txtMonth = App.occasions.queryById('txtMonth');
+        var txtDay = App.occasions.queryById('txtDay');
+        var txtName = App.occasions.queryById('txtName');
+        var fldId = App.occasions.queryById('fldId');
+        var er = false;
+
+        if (CboGroupingType.validate() == false) {
+            er = true;
+        }
+        if (CboHolidayType.validate() == false) {
+            er = true;
+        }
+        if (CboTypeMonasebat.validate() == false) {
+            er = true;
+        }
+        if (CboDateType.validate() == false) {
+            er = true;
+        }
+        if (txtMonth.validate() == false) {
+            er = true;
+        }
+        if (txtDay.validate() == false) {
+            er = true;
+        }
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        var HolidayType = false;
+        if (CboHolidayType.getValue() == "1")
+            HolidayType = true;
+
+        var TypeMonasebat = false;
+        if (CboTypeMonasebat.getValue() == "1")
+            TypeMonasebat = true;
+
+        var DateType = false;
+        if (CboDateType.getValue() == "1")
+            DateType = true;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Occasions/SaveOccasions',
+            params: {
+                fldId: fldId.getValue(),
+                fldNameMonasebat: txtName.getValue(),
+                fldMonasebatTypeId: CboGroupingType.getValue(),
+                fldMonth: txtMonth.getValue(),
+                fldDay: txtDay.getValue(),
+                fldDateType: DateType,
+                fldHoliday: HolidayType,
+                fldMazaya: TypeMonasebat
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    titke: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            App.occasions.queryById('CboGroupingType').focus();
+                        }
+                    }
+                });
+                App.occasions.queryById('occasionsGrid').store.load();
+                if (data.Er != 1)
+                    Clearoccasions();
+            }
+        });
+    }
+
+    function Deleteoccasions() {
+        var SelectedRow = App.occasions.queryById('occasionsGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/PayRoll/Occasions/DeleteOccasions',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.occasions.queryById('occasionsGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function Clearoccasions() {
+        App.occasions.queryById('txtDay').setValue("");
+        App.occasions.queryById('txtMonth').setValue("");
+        App.occasions.queryById('txtName').setValue("");
+        App.occasions.queryById('fldId').setValue(0);
+    }
+
+    var addKeyMapoccasions = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.occasions.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtName") {
+                        Saveoccasions();
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }
+            }]
+        });
+    }
+</script>

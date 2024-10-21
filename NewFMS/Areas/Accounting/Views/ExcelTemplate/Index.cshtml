@@ -1,0 +1,512 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_BankTemplate_Header>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+
+@{
+    var X = Html.X();
+}
+<script src="~/Scripts/jquery-ajax-native.js"></script>
+<style>
+    .x-mcombo-item-unchecked {
+        background-position: right;
+        padding-right: 20px;
+    }
+
+    .x-mcombo-item-checked {
+        background-position: right;
+        padding-right: 20px;
+    }
+</style>
+
+@(Html.X().Panel()
+    .ID("ExcelTemplate")
+    .Title("تعریف الگوی خروجی بانک")
+    .Closable(true)
+    .Listeners(li => { li.AfterRender.Handler = "ExcelTemplateSetSize();"; li.Render.Fn = "addKeyMapExcelTemplate"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l => l.Click.Handler = "SaveExcelTemplate();"),
+                //X.Button()
+                //    .Text("راهنما")
+                //    .Icon(Ext.Net.Icon.Help)
+                //    .Listeners(l => l.Click.Handler = "HelpExcelTemplate();"),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.ExcelTemplate.destroy()")
+            )
+            .Items(
+                X.FormPanel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Title("مشخصات الگو")
+                            .Height(70)
+                            .Border(true)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                            .Items(
+                                X.Hidden()
+                                    .ItemID("fldId"),
+                                X.Hidden()
+                                    .ItemID("fldFileId"),
+                                X.Label("عنوان الگو:"),
+                                X.TextField()
+                                    .AutoFocus(true)
+                                    .Width(150)
+                                    .ItemID("txtName")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا عنوان الگو را وارد کنید.")
+                                    .MaxLength(200)
+                                    .EnforceMaxLength(true),                                
+                                X.Label("بانک:"),
+                                X.MultiCombo()
+                                    .ItemID("CboBank")
+                                    .TypeAhead(true)
+                                    .Width(250)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا بانک مورد نظر را انتخاب کنید.")
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                    .EmptyText("بانک...")
+                                    .Store(X.Store()
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")                                            
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" },
+                                                new ModelField("fldDetailsId", ModelFieldType.String) { Mapping = "fldDetailsId" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetBank"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                    ),
+                                X.Label("شروع خواندن از ردیف:"),
+                                X.NumberField()
+                                    .ItemID("txtRow")
+                                    .Width(110)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا ردیف شروع را وارد کنید.")
+                                    .Value(1)
+                                    .MinValue(1),
+                                    //.MaxValue(20),
+                                X.Label("توضیحات:"),
+                                X.TextField()
+                                    .ItemID("txtDesc")
+                                    .ColSpan(3)
+                                    .Width(435),
+                                X.Label(),
+                                X.FileUploadField()
+                                    .ButtonOnly(true)
+                                    .Width(110)
+                                    .ButtonText("آپلود فایل اکسل")
+                                    .DirectEvents(l =>
+                                    {
+                                        l.Change.Action = "Upload";
+                                        l.Change.Success = "hideprogressExcelTemplate";
+                                        l.Change.Delay = 1000;
+                                        l.Change.Before = "if(GotoServerTemplate==false){return false;}";
+                                    })
+                                    .Listeners(l => l.Change.Fn = "showFileExcelTemplate")
+                                    .Icon(Ext.Net.Icon.DiskUpload)                                    
+                        )
+                )
+        ),
+        X.GridPanel()
+            .ItemID("ExcelTemplateGrid")
+            .BottomBar(X.PagingToolbar())
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(
+                        X.Button()
+                            .Text("ویرایش")
+                            .Icon(Ext.Net.Icon.Pencil)
+                            .Listeners(l => { l.Click.Handler = "LoadExcelTemplate();"; }),
+                        X.Button()
+                            .Text("حذف")
+                            .Icon(Ext.Net.Icon.Delete)
+                            .Listeners(l => { l.Click.Handler = "DeleteExcelTemplate();"; })
+                    )
+            )
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.ExcelTemplate.queryById('ExcelTemplateGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+            .Plugins(X.FilterHeader().Remote(true))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldNamePattern).Text("عنوان الگو").Flex(4).Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldBankName).Text("نام بانک").Flex(7).Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldStartRow).Text("ردیف شروع").Flex(2).Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(5).Wrap(true),
+                Html.X().ComponentColumn().ItemID("buttonDownloadTemplate").Text("دانلود").Filterable(false)
+                    .Component(Html.X().Button().ItemID("btnbindFileTemplate").Text("دانلود فایل").Listeners(l => l.Click.Handler = "DownloadFileTemplate()"))               
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+    )
+)
+<script type="text/javascript">
+    var GotoServerTemplate = false;
+    var EndUploadExcelTemplate = false;
+
+    var CheckExcelTemplate = setInterval(CheckEndExcelTemplate, 500);
+
+    function CheckEndExcelTemplate() {
+        if (EndUploadExcelTemplate == true) {
+            Ext.MessageBox.hide();
+            clearInterval(CheckEndExcelTemplate);
+            EndUploadExcelTemplate = false;
+            GotoServerTemplate = false;
+            Ext.MessageBox.show({
+                title: "عملیات موفق",
+                msg: 'فایل با موفقیت آپلود شد.',
+                icon: Ext.MessageBox.INFO,
+                buttons: Ext.MessageBox.OK
+            });
+            /*Ext.net.Mask.show({ msg: 'فایل با موفقیت آپلود شد.' });*/
+            /*Ext.net.DirectMethod.request({
+                url: '/InitialConditions/Save',
+                params: {
+                    NahiId: App.InitialConditions.queryById('CboNahi').getValue()
+                    , __RequestVerificationToken: App.InitialConditions.queryById('antiForgeryToken').getValue()
+                },
+                success: function (data) {
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.InitialConditions.queryById('GridInitialConditions').store.load();
+                    Ext.net.Mask.hide();
+                },
+                timeout: 90000
+            });*/
+        }
+    }
+
+    var showFileExcelTemplate = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        if (v) {
+            showProgressBarExcelTemplate();
+            if (v.split('.').pop().toLowerCase() == "xls" || v.split('.').pop().toLowerCase() == "xlsx") {
+                /*if (document.getElementById(id).files[0].size <= 1048576) {*/
+                GotoServerTemplate = true;
+                /*}
+                else {
+                    clearInterval(CheckEndExcelTemplate);
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "حجم فایل انتخاب شده غیرمجاز است.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }*/
+            }
+            else {
+                clearInterval(CheckEndExcelTemplate);
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "فایل انتخاب شده غیرمجاز است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+    };
+
+    var hideprogressExcelTemplate = function (Responsdtxt, ResponseObj) {
+        if (ResponseObj.IsValid == true) {
+            EndUploadExcelTemplate = true;
+        }
+        else {
+            GotoServerTemplate = false;
+            clearInterval(CheckEndExcelTemplate);
+            EndUploadExcelTemplate = false;
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: ResponseObj.Message,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    };
+
+    function showProgressBarExcelTemplate() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+
+    function DownloadFileTemplate() {
+        var fldFileId = App.ExcelTemplate.queryById("buttonDownloadTemplate").activeRecord.record.data.fldFileId;
+        $.ajax({
+            type: "POST",
+            dataType: 'native',
+            url: "/Accounting/ExcelTemplate/Download",
+            xhrFields: {
+                responseType: 'blob'
+            },
+            data: {
+                fldFileId: fldFileId,
+            },
+            success: function (blob) {
+                var link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = "DownloadFileTemplate";
+                link.click();
+            }
+        });
+    }
+
+    function DeleteExcelTemplate() {
+        var SelectedRow = App.ExcelTemplate.queryById('ExcelTemplateGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Accounting/ExcelTemplate/Delete',
+                            params: {
+                                Id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                if (App.ExcelTemplate.queryById('fldId').getValue() == SelectedRow.data.fldId) {
+                                    ClearExcelTemplate();
+                                }
+                                if (data.Er != 1) {
+                                    App.ExcelTemplate.queryById('ExcelTemplateGrid').store.load();
+                                }
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function clearExcelTemplate() {
+        App.ExcelTemplate.queryById('fldId').setValue(0);
+        App.ExcelTemplate.queryById('fldFileId').setValue(0);
+        App.ExcelTemplate.queryById('txtName').setValue("");
+        App.ExcelTemplate.queryById('CboBank').getStore().getProxy().setExtraParam("HeaderId", 0);
+        App.ExcelTemplate.queryById('CboBank').store.load();
+        App.ExcelTemplate.queryById('CboBank').clearValue();
+        App.ExcelTemplate.queryById('txtRow').setValue("1");
+        App.ExcelTemplate.queryById('txtDesc').setValue("");
+    }
+
+    function ExcelTemplateSetSize() {
+        App.ExcelTemplate.setWidth(App.AccountingWin.getWidth());
+        App.ExcelTemplate.queryById('ExcelTemplateGrid').setHeight(App.AccountingWin.getHeight() - 209);
+    }
+
+    function LoadExcelTemplate() {
+        var SelectedRow = App.ExcelTemplate.queryById('ExcelTemplateGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/ExcelTemplate/Details',
+                params: {
+                    HeaderId: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    App.ExcelTemplate.queryById('CboBank').getStore().getProxy().setExtraParam("HeaderId", SelectedRow.data.fldId);
+                    App.ExcelTemplate.queryById('CboBank').store.load();
+
+                    var txtName = App.ExcelTemplate.queryById('txtName');
+                    txtName.setValue(data.fldNamePattern);
+
+                    var txtRow = App.ExcelTemplate.queryById('txtRow');
+                    txtRow.setValue(data.fldStartRow);
+                    
+                    var txtDesc = App.ExcelTemplate.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+
+                    var fldId = App.ExcelTemplate.queryById('fldId');
+                    fldId.setValue(data.fldId);
+
+                    var fldFileId = App.ExcelTemplate.queryById('fldFileId');
+                    fldFileId.setValue(data.fldFileId);
+
+                    var CboBank = App.ExcelTemplate.queryById('CboBank');
+                    CboBank.setValue(data.fldBankId.split(','));
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveExcelTemplate() {
+        var txtName = App.ExcelTemplate.queryById('txtName');
+        var CboBank = App.ExcelTemplate.queryById('CboBank');
+        var txtRow = App.ExcelTemplate.queryById('txtRow');
+        var txtDesc = App.ExcelTemplate.queryById('txtDesc');
+        var fldId = App.ExcelTemplate.queryById('fldId'); 
+        var fldFileId = App.ExcelTemplate.queryById('fldFileId');
+        var BankIdsArray = new Array();
+        var er = false;
+
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (CboBank.validate() == false) {
+            er = true;
+        }
+        if (txtRow.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        for (var i = 0; i < CboBank.getValue().length; i++) {
+            BankIdsArray.push({
+                "BankId": CboBank.getValue()[i],
+                "Id":CboBank.valueModels[i].data.fldDetailsId
+            });
+        }
+        var data = {
+            fldId: fldId.getValue(),
+            fldNamePattern: txtName.getValue(),
+            fldStartRow: txtRow.getValue(),
+            fldDesc: txtDesc.getValue(),
+            BankTemplate_DetailsArray: BankIdsArray,
+            fldFileId: fldFileId.getValue()
+        };
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Accounting/ExcelTemplate/Save',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (result) {
+                var ic = Ext.MessageBox.INFO;
+                if (result.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    closable: false,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            App.ExcelTemplate.queryById('txtName').focus();
+                        }
+                    }
+                });
+                Ext.net.Mask.hide();
+                if (result.Er != 1) {
+                    App.ExcelTemplate.queryById('ExcelTemplateGrid').store.load();
+                    clearExcelTemplate();
+                }
+            },
+            failure: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    var addKeyMapExcelTemplate = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.ExcelTemplate.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        SaveExcelTemplate();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

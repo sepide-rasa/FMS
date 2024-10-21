@@ -1,0 +1,234 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_EtelaatEydi>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+@*<style>
+        #test legend{
+            text-align:right!important;
+        }
+    </style>*@
+<br />
+@(Html.X().Panel()
+        .ID("GroupEydi")
+            .Title("ثبت گروهی اطلاعات عیدی")
+                    //.Listeners(l =>
+                    //                {
+                    //                    l.AfterLayout.Handler = "ReloadEtelaatEydiGroup();";
+                    //                })
+                    // .Listeners(li => li.AfterRender.Handler = "GroupEydiSetSize();")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+        X.GridPanel()
+                          .TopBar(
+                                    Html.X().Toolbar()
+                                    .Items(
+                                        X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)//.ToolTip("کلید میانبر F2")
+                                                    .Listeners(Li => Li.Click.Handler = "SaveGroupEydi();"),
+                                        X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)//.ToolTip("کلید میانبر F9")
+                                                    .Listeners(Li => Li.Click.Handler = "DeleteGroupEydi();")
+
+                                    )
+                                )
+        .ItemID("GroupEydiGrid")
+        .AutoScroll(true)
+            //    .BottomBar(X.PagingToolbar().HideRefresh(true))
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.GroupEydi.queryById('GroupEydiGrid').selModel.refresh();")
+                            //.Proxy(Html.X().AjaxProxy()
+                            //    .Url(Url.Action("Read"))
+                            //    .Reader(Html.X().JsonReader().Root("data"))
+                            //)
+                            .PageSize(20000)
+                            
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true).GetRowClass(l => l.Fn = "getRowClassEydiGroup")
+                )
+                //    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.GroupEydi.queryById('GroupEydiGrid');grid.setHeight(App.PayWin.getHeight() - 170); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().Column().DataIndex(Model, m => m.fldPersonalInfoId).Hidden(true).Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldEtelaatEydiId).Hidden(true).Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام و نام خانوادگی").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کدملی").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldSh_Personali).Text("شماره پرسنلی").Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldDayCount).Text("تعداد روز").Flex(4).Editor(Html.X().TextField()),
+                        Html.X().Column().DataIndex(Model, m => m.fldKosurat).Text("کسورات").Flex(4).Editor(Html.X().TextField())
+    )
+            .Listeners(l =>
+                                {
+                                    l.ViewReady.Handler = "ReloadEtelaatEydiGroup();";
+                                })
+              .SelectionModel(
+                            Html.X().CheckboxSelectionModel().PruneRemoved(false).ShowHeaderCheckbox(false)
+                                .Mode(SelectionMode.Multi).CheckOnly(true))
+                        .Plugins(
+                        Html.X().CellEditing().ClicksToEdit(1)
+                       .Listeners(l =>
+                            {
+                                l.Edit.Fn = "LockOff";
+                                l.BeforeEdit.Fn = "LockOn";
+                            }))
+    )
+)
+<script type="text/javascript">
+
+    var getRowClassEydiGroup = function (record, rowIndex, rowParams, store) {
+        var color = 'white';
+        if (rowIndex % 2 == 1)
+            color = '#dfe8f6';
+        var clsName = "row" + rowIndex,
+            clsStyle = Ext.String.format(".{0} .x-grid-cell, .{0} .x-grid-rowwrap-div { background-color: {1} !important; })", clsName, color);
+        Ext.net.ResourceMgr.registerCssClass(clsName, clsStyle);
+        return clsName;
+    };
+
+    var LockOn = function (editor, e) {
+        App.GroupEydi.queryById('GroupEydiGrid').getSelectionModel().setLocked(true);
+        App.GroupEydi.queryById('GroupEydiGrid').getView().focusRow(e.rowIdx);
+    };
+
+    var LockOff = function (a, b) {
+        App.GroupEydi.queryById('GroupEydiGrid').getSelectionModel().setLocked(false);
+        App.GroupEydi.queryById('GroupEydiGrid').getView().focusRow(b.rowIdx);
+    };
+    function ReloadEtelaatEydiGroup() {
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/EtelaatEydi/ReloadEtelaatEydiGroup',
+            params: {
+                FieldName: '@ViewBag.FieldName',
+                CostCenter_ChartId: '@ViewBag.CostCenter_ChartId',
+                OrganId:'@ViewBag.OrganId'
+            },
+            success: function (result) {
+                App.GroupEydi.queryById('GroupEydiGrid').getStore().loadData(result);
+                SellectAllEtelaatEydi();
+            }
+        });
+    }
+    function SellectAllEtelaatEydi() {
+        App.GroupEydi.queryById('GroupEydiGrid').getSelectionModel().selectAll();
+        App.GroupEydi.queryById('GroupEydiGrid').getView().focusRow(0);
+    }
+    function SaveGroupEydi() {
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        var SelectItems = new Array();
+        var SelectedRow = App.GroupEydi.queryById('GroupEydiGrid').getSelectionModel().getSelection();
+        if (SelectedRow.length != 0) {
+            for (var k = 0; k < SelectedRow.length ; k++) {
+                SelectItems.push({
+                    'fldId': SelectedRow[k].data.fldEtelaatEydiId,
+                    'fldPersonalId': SelectedRow[k].data.fldPersonalInfoId,
+                    'fldDayCount': SelectedRow[k].data.fldDayCount,
+                    'fldKosurat': SelectedRow[k].data.fldKosurat,
+                    'fldYear': '@ViewBag.Year',
+                    'fldNobatePardakht': '@ViewBag.nobatePardakht'
+                });
+            }
+            var data = {
+                EydiVal: SelectItems,
+                OrganId: '@ViewBag.OrganId'
+            };
+            $.ajax({
+                type: "POST",
+                url: '/PayRoll/EtelaatEydi/SaveGroup',
+                datatype: "json",
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                success: function (data1) {
+                    Ext.net.Mask.hide();
+                    var result = data1;/*JSON.parse(data1);*/
+                    var ico = Ext.MessageBox.INFO;
+                    if (result.Err == 1)
+                        ico = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: result.MsgTitle,
+                        msg: result.Msg,
+                        icon: ico,
+                        buttons: Ext.MessageBox.OK
+                    });
+                },
+                failure: function (data1) {
+                    alert(data.data1);
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا حداقل یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteGroupEydi() {
+        var SelectItems = new Array();
+        var SelectedRow = App.GroupEydi.queryById('GroupEydiGrid').getSelectionModel().getSelection();
+        if (SelectedRow.length != 0) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        for (var k = 0; k < SelectedRow.length ; k++) {
+                            SelectItems.push({
+                                'fldId': SelectedRow[k].data.fldEtelaatEydiId
+                            });
+                        }
+                        var data = {
+                            EydiGroupVal: SelectItems,
+                            OrganId: '@ViewBag.OrganId'
+                        };
+                        $.ajax({
+                            type: "POST",
+                            url: '/PayRoll/EtelaatEydi/DeleteGroup',
+                            datatype: "json",
+                            data: JSON.stringify(data),
+                            contentType: 'application/json',
+                            success: function (data1) {
+                                var result = data1;/*JSON.parse(data1);*/
+                                ReloadEtelaatEydiGroup();
+                                var ico = Ext.MessageBox.INFO;
+                                if (result.Er == 1)
+                                    ico = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: result.MsgTitle,
+                                    msg: result.Msg,
+                                    icon: ico,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                            },
+                            failure: function (data1) {
+                                alert(data.data1);
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });           
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا حداقل یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

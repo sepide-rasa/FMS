@@ -1,0 +1,609 @@
+﻿@model IEnumerable<NewFMS.WCF_Deceased.OBJ_Ghete>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net.Utilities
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<style>
+    #StructFieldset legend {
+        text-align:right;
+    }
+</style>
+
+
+@(X.Window().Title("تعریف قطعه بندی")
+    .Modal(true)
+    .Border(false)
+    .ID("NewGhete")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l => { l.AfterRender.Handler = "SetSizeNewGhete()"; l.Render.Fn = "addKeyMapGhete"; })
+    .Layout(Ext.Net.LayoutType.HBox)
+    .LayoutConfig(new Ext.Net.HBoxLayoutConfig { Align = HBoxAlign.Stretch })
+    .Items(
+        X.Panel()
+            .Border(false)
+            .BodyPadding(5)
+            .ItemID("pnlName")
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .ButtonAlign(Alignment.Center)
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                        .Listeners(l => l.Click.Handler = "SaveGhete();"),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .ToolTip("کلید میانبر Esc")
+                    .OnClientClick("App.NewGhete.destroy();")
+            )
+            .Items(
+                X.FieldSet()
+                    .Title("مشخصات قطعه")
+                    .Layout(Ext.Net.LayoutType.Table)
+                    .Border(true)
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Hidden().ItemID("fldId"),
+                        X.Hidden().ItemID("IsUsed").Value(""),                        
+                        X.Label()
+                            .Text("نام قطعه:"),
+                        X.TextField()
+                            .ItemID("txtName")
+                            .AutoFocus(true)
+                            .MaxLength(200)
+                            .EnforceMaxLength(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نام را وارد کنید."),
+                        X.Label()
+                            .Text("توضیحات :"),
+                        X.TextField()
+                            .ItemID("txtDesc")
+                            .Width(300),
+                        X.FieldSet()
+                            .Title("ساختار قطعه")
+                            .ColSpan(4)
+                            .Layout(Ext.Net.LayoutType.VBox)
+                            .LayoutConfig(new VBoxLayoutConfig { Align=VBoxAlign.Center})
+                            .Defaults(new { Margin = 2 })
+                            .Border(true)
+                            .ID("StructFieldset")
+                            .Items(
+                                X.Panel()
+                                    .Border(false)
+                                    .Layout(Ext.Net.LayoutType.Table)
+                                    .LayoutConfig(new TableLayoutConfig { Columns=4})
+                                    .Items(
+                                        //X.Label("نحوه نمایش:"),
+                                        //X.ComboBox()
+                                        //    .ItemID("CboShowType")
+                                        //    .TypeAhead(true)
+                                        //    .AllowBlank(false)
+                                        //    .BlankText("لطفا نحوه نمایش را انتخاب کنید.")
+                                        //    .QueryMode(DataLoadMode.Local)
+                                        //    .TriggerAction(TriggerAction.All)
+                                        //    .EmptyText("نحوه نمایش")
+                                        //    .Listeners(l => {
+                                        //        l.Select.Handler = "ChangeShowing()";
+                                        //        l.AfterRender.Handler = "App.NewGhete.queryById('CboShowType').setValue('Horizontal');";
+                                        //    })
+                                        //    .Width(90)
+                                        //    .Items(
+                                        //        new ListItem("افقی", "Horizontal"),
+                                        //        new ListItem("عمودی", "Vertical")
+                                        //    ),
+                                        X.Label()
+                                            .Text("تعداد ردیف:"),
+                                        X.NumberField()
+                                            .ItemID("txtRowCount")
+                                            .AllowBlank(false)
+                                            .BlankText("لطفا تعداد ردیف را وارد کنید.")
+                                            .MaxValue(Int32.MaxValue)
+                                            .Listeners(l => l.Blur.Handler = "if(App.NewGhete.queryById('txtRowCount').readOnly==false){DrawSprite();}")
+                                            .AllowDecimals(false)
+                                            .AllowExponential(false)
+                                            .Value(1)
+                                            .MinValue(1),
+                                        X.Label()
+                                            .Text("تعداد قبر های هر ردیف:"),
+                                        X.NumberField()
+                                            .ItemID("txtColCount")
+                                            .AllowBlank(false)
+                                            .MaxValue(Int32.MaxValue)
+                                            .AllowDecimals(false)
+                                            .AllowExponential(false)
+                                            .MinValue(1)
+                                            .Value(1)
+                                            .BlankText("لطفا تعداد قبر را وارد کنید."),
+                                        X.Panel()
+                                            .ColSpan(4)
+                                            .Layout(LayoutType.Fit)                                            
+                                            .Items(
+                                                X.DrawComponent()
+                                                    .ID("Draw1")
+                                                    .PaddingSpec("10px 10px 10px 10px")
+                                                    .Region(Region.Center)
+                                                    .RTL(true)
+                                                    .ViewBox(false)
+                                                    .StyleSpec("background:white;")
+                                                    .AutoScroll(true)
+                                            )
+                                    )
+                            )        
+                    )
+                ),
+        X.GridPanel()
+                .Frame(true)
+                .Title("لیست قطعه ها")
+                .ItemID("GridPieces")
+                .BottomBar(X.PagingToolbar())
+                .MarginSpec("10px 0 5px 0")
+                .Store(
+                    X.StoreForModel()
+                        .Proxy(Html.X().AjaxProxy()
+                            .Url(Url.Action("ReadPieces"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+                            .ExtraParams(ex => ex.Add(new { CemeteryId = ViewBag.VadiId }))
+                        )
+                        .PageSize(15)
+                        .RemoteFilter(true)
+                        .RemotePaging(true)
+                )
+                .View(
+                    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                .Plugins(X.FilterHeader().Remote(true))
+                .ColumnModel(
+                    Html.X().RowNumbererColumn(),
+                    Html.X().Column().DataIndex(Model, m => m.fldId).Text("نام قطعه").Hidden(true).Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.fldVadiSalamId).Text("آیدی وادی السلام").Hidden(true).Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.fldNameGhete).Text("نام قطعه").Wrap(true).Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.CountRadif).Text("تعداد ردیف").Flex(1),
+                    Html.X().Column().DataIndex(Model, m => m.CountShomare).Text("تعداد قبر(در هر ردیف)").Flex(2),
+                    Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Wrap(true).Flex(3),
+                    Html.X().ImageCommandColumn()/*.PrepareCommand("HideActionbtn")*/.Listeners(l => l.Command.Fn = "ActionsonPiece").Flex(1).Filterable(false)
+                        .Commands(
+                            Html.X().ImageCommand().CommandName("EditPiece").Icon(Ext.Net.Icon.PageEdit).ToolTip(tt => tt.Text = "ویرایش"),
+                            Html.X().ImageCommand().CommandName("DeletePiece").Icon(Ext.Net.Icon.Delete).ToolTip(tt => tt.Text = "حذف")
+                        )
+                )
+        )
+)
+
+<script type="text/javascript">
+    var EditedFloor=new Array();
+    function SetSizeNewGhete() {
+        App.NewGhete.setSize(App.MotevafiatWin.getWidth() - 100, App.MotevafiatWin.getHeight() - 200);
+        App.NewGhete.queryById("pnlName").setSize((App.MotevafiatWin.getWidth() - 120) / 2, App.MotevafiatWin.getHeight() - 120);
+        App.Draw1.setSize((App.MotevafiatWin.getWidth() - 300) / 2, App.MotevafiatWin.getHeight() - 260);
+        App.NewGhete.queryById("GridPieces").setSize((App.MotevafiatWin.getWidth() - 120) / 2, App.MotevafiatWin.getHeight() - 150);
+        DrawSprite();
+    }
+
+    /*function ChangeShowing(){
+        if(App.NewGhete.queryById('fldId').getValue()==0){
+            DrawSprite();
+        }
+        else{
+            App.Draw1.surface.removeAll();
+            App.Draw1.surface.groups.removeAll();
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/Cemetery/createSavedSprit',
+                params:{
+                    Id: App.NewGhete.queryById('fldId').getValue(),
+                    Align:"Vertical"
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }*/
+
+    /*var HideActionbtn = function (grid, command, record, row) {
+        if (record.data.ExistsRecored) {
+            command.disabled = true;
+            command.hideMode = 'visibility';
+        }
+        else {
+            command.disabled = false;
+            command.hideMode = 'visibility';
+        }
+    };*/
+
+    function ActionsonPiece(grid, command, record, row) {
+        if (command == 'EditPiece') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            App.Draw1.surface.removeAll();
+            App.Draw1.surface.groups.removeAll();
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/Cemetery/DetailsGhete',
+                params: {
+                    Id: record.data.fldId
+                },
+                success: function (data) {
+                    App.NewGhete.queryById('IsUsed').setValue(record.data.ExistsRecored);
+                    App.NewGhete.queryById('txtRowCount').setValue(data.fldRawCount);
+                    App.NewGhete.queryById('txtColCount').setValue(data.fldColCount);
+                    if(record.data.ExistsRecored){
+                        App.NewGhete.queryById('txtRowCount').setReadOnly(true);
+                        App.NewGhete.queryById('txtColCount').setReadOnly(true);
+                    }
+                    else{
+                        App.NewGhete.queryById('txtRowCount').setReadOnly(false);
+                        App.NewGhete.queryById('txtColCount').setReadOnly(false);
+                    }
+                    App.NewGhete.queryById('txtName').setValue(data.fldNameGhete);
+                    App.NewGhete.queryById('txtDesc').setValue(data.fldDesc);
+                    App.NewGhete.queryById('fldId').setValue(data.fldId);
+                    Ext.net.DirectMethod.request({
+                        url: '/Deceased/Cemetery/createSavedSprit',
+                        params:{
+                            Id: record.data.fldId,
+                            Align:"Vertical"
+                        },
+                        success: function () {
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+            });
+        }
+        else if (command == 'DeletePiece') {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Deceased/Cemetery/DeleteGhete',
+                            params: {
+                                id: record.data.fldId
+                            },
+                            success: function (data) {
+                                var ico = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ico = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ico,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.NewGhete.queryById('GridPieces').getStore().load();
+                                ClearGhete();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+    }
+
+    function DrawSprite() {
+        if (App.NewGhete.queryById("txtRowCount").validate() && App.NewGhete.queryById("txtColCount").validate()) {
+            App.Draw1.surface.removeAll();
+            App.Draw1.surface.groups.removeAll();
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/Cemetery/CreateSprite',
+                params: {
+                    Row: App.NewGhete.queryById("txtRowCount").getValue(),
+                    Col: App.NewGhete.queryById("txtColCount").getValue(),
+                    Align:"Vertical"
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+
+    function AddFloor(Spri, grp) {
+        var Child_Group = App.Draw1.surface.getGroup(grp).items;        
+        var xx = Child_Group[0].x;
+        var yy = Child_Group[0].y;
+        var co = Child_Group.length +1;
+        var oldLength=Child_Group.length;
+        var countRez=Child_Group.filter(l=>l.attr.fill=="#ffa64d").length;
+        if (Child_Group.length < 3) {
+            if(Child_Group.findIndex(l=>l.attr.fill!="#a6a6a6")==-1){            
+                App.Draw1.surface.getGroup(grp).each(function () { App.Draw1.surface.getGroup(grp).items[0].remove(); });
+                Ext.net.DirectMethod.request({
+                    url: '/Deceased/Cemetery/ChangeSprite',
+                    params: {
+                        Floor: co,
+                        groupName: grp,
+                        x: xx,
+                        y: yy,
+                        text:Spri.attr.text,
+                        co_Rez:0
+                    },
+                    success: function () {
+                        if(Spri.attr.text!=undefined){
+                            var LastItem=Spri.attr.text.split(";")[0]+";"+oldLength;
+                            var newItem=Spri.attr.text.split(";")[0]+";"+co;
+                            if(EditedFloor.indexOf(LastItem) === -1){
+                                EditedFloor.push(newItem);
+                            }
+                            else{
+                                EditedFloor.splice(EditedFloor.indexOf(LastItem), 1);
+                                EditedFloor.push(newItem);
+                            }
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else if(Child_Group.findIndex(l=>l.attr.fill=="#ff4d4d")==-1){/*اگررنگ خاکستری و نارنجی با هم داشتیم */
+                App.Draw1.surface.getGroup(grp).each(function () { App.Draw1.surface.getGroup(grp).items[0].remove(); });
+                Ext.net.DirectMethod.request({
+                    url: '/Deceased/Cemetery/ChangeSprite',
+                    params: {
+                        Floor: co,
+                        groupName: grp,
+                        x: xx,
+                        y: yy,
+                        text:Spri.attr.text,
+                        co_Rez:countRez
+                    },
+                    success: function () {
+                        if(Spri.attr.text!=undefined){
+                            var LastItem=Spri.attr.text.split(";")[0]+";"+oldLength;
+                            var newItem=Spri.attr.text.split(";")[0]+";"+co;
+                            if(EditedFloor.indexOf(LastItem) === -1){
+                                EditedFloor.push(newItem);
+                            }
+                            else{
+                                EditedFloor.splice(EditedFloor.indexOf(LastItem), 1);
+                                EditedFloor.push(newItem);
+                            }
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else{
+                Ext.MessageBox.show({
+                    title:"خطا",
+                    msg: "ویرایش قبر مورد نظر امکان پذیر نمی باشد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+    }
+
+    function showInf(Spri,grp) {
+        if(Spri.attr.fill!="#a6a6a6"){
+            var Index=Spri.attr.text.split(";")[1];
+            var tip = Ext.create("Ext.tip.ToolTip", {
+                target: Spri.el,
+                html: "",
+                listeners: {
+                    beforeshow: function (tip) {
+                        Ext.net.DirectMethod.request({
+                            url: '/Deceased/Cemetery/GetInfoGhabr',
+                            params: {
+                                shomareId:Spri.attr.text.split(";")[0],
+                                Index:Index,
+                                count:App.Draw1.surface.getGroup(grp).items.length
+                            },
+                            success: function (data) {
+                                if(data.IsNew==0){
+                                    if(data.fldShomareTabaghe==""){
+                                        tip.update("<div style='display: inline-block';><p><strong>نام و نام خانوادگی: " + data.fldName_Family + 
+                                       "</strong></p><p><strong>نام پدر: " + data.fldFatherName+
+                                       "</strong></p>" + "<p><strong>شماره شناسنامه: " + data.fldSh_Shenasname + 
+                                       "</strong></p><p><strong>کد ملی: " + data.fldMeli_Moshakhase +
+                                       "</strong></p><p><strong>تاریخ رزرو: " + data.fldTarikhRezerv + "</strong></p></div>");
+                                    }
+                                    else{
+                                        tip.update("<div style='display: inline-block';><p><strong>نام و نام خانوادگی: " + data.fldName_Family + 
+                                        "</strong></p><p><strong>نام پدر: " + data.fldFatherName+
+                                        "</strong></p>" + "<p><strong>شماره شناسنامه: " + data.fldSh_Shenasname + 
+                                        "</strong></p><p><strong>کد ملی/کد مشخصه: " + data.fldMeli_Moshakhase +
+                                        "</strong></p><p><strong>علت فوت: " + data.fldReason + 
+                                        "</strong></p><p><strong>محل فوت: " + data.fldNameMahal + 
+                                        "</strong></p><p><strong>تاریخ فوت: " + data.fldTarikhFot +
+                                        "</strong></p><p><strong>تاریخ دفن: " + data.fldTarikhDafn + "</strong></p></div>");
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+        }
+    }
+    
+    function RemoveFloor(e,Spri, grp) {        
+        document.oncontextmenu = function (e) {           
+            e.preventDefault();
+            var Child_Group = App.Draw1.surface.getGroup(grp).items;
+            var xx = Child_Group[0].x;
+            var yy = Child_Group[0].y;
+            var co = Child_Group.length - 1;
+            var oldLength=Child_Group.length;
+            var countRez=Child_Group.filter(l=>l.attr.fill=="#ffa64d").length;
+            if (Child_Group.length > 1) {
+                if(Child_Group.findIndex(l=>l.attr.fill!="#a6a6a6")==-1){                  
+                    App.Draw1.surface.getGroup(grp).each(function () { App.Draw1.surface.getGroup(grp).items[0].remove(); });
+                    Ext.net.DirectMethod.request({
+                        url: '/Deceased/Cemetery/ChangeSprite',
+                        params: {
+                            Floor: co,
+                            groupName: grp,
+                            x: xx,
+                            y: yy,
+                            text:Spri.attr.text,
+                            co_Rez:0
+                        },
+                        success: function () {
+                            if(Spri.attr.text!=undefined){
+                                var LastItem=Spri.attr.text.split(";")[0]+";"+oldLength;
+                                var newItem=Spri.attr.text.split(";")[0]+";"+co;
+                                if(EditedFloor.indexOf(LastItem) === -1){
+                                    EditedFloor.push(newItem);
+                                }
+                                else{
+                                    EditedFloor.splice(EditedFloor.indexOf(LastItem), 1);
+                                    EditedFloor.push(newItem);
+                                }
+                            }
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+                else if(Child_Group.findIndex(l=>l.attr.fill=="#ff4d4d")==-1 && Child_Group.findIndex(l=>l.attr.fill=="#a6a6a6")!=-1){/*اگررنگ خاکستری و نارنجی با هم داشتیم */
+                    App.Draw1.surface.getGroup(grp).each(function () { App.Draw1.surface.getGroup(grp).items[0].remove(); });
+                    Ext.net.DirectMethod.request({
+                        url: '/Deceased/Cemetery/ChangeSprite',
+                        params: {
+                            Floor: co,
+                            groupName: grp,
+                            x: xx,
+                            y: yy,
+                            text:Spri.attr.text,
+                            co_Rez:countRez
+                        },
+                        success: function () {
+                            if(Spri.attr.text!=undefined){
+                                var LastItem=Spri.attr.text.split(";")[0]+";"+oldLength;
+                                var newItem=Spri.attr.text.split(";")[0]+";"+co;
+                                if(EditedFloor.indexOf(LastItem) === -1){
+                                    EditedFloor.push(newItem);
+                                }
+                                else{
+                                    EditedFloor.splice(EditedFloor.indexOf(LastItem), 1);
+                                    EditedFloor.push(newItem);
+                                }
+                            }
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+                else{
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "ویرایش قبر مورد نظر امکان پذیر نمی باشد.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                } 
+            }
+        }
+    }
+
+    function SaveGhete() {
+        var txtName = App.NewGhete.queryById('txtName');
+        var txtDesc = App.NewGhete.queryById('txtDesc');
+        var txtRowCount = App.NewGhete.queryById('txtRowCount');
+        var txtColCount = App.NewGhete.queryById('txtColCount');
+        var Id = App.NewGhete.queryById('fldId');
+        var Floors="";
+        var er = false;
+
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (txtRowCount.validate() == false) {
+            er = true;
+        }
+        if (txtColCount.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+        
+        if(App.NewGhete.queryById("IsUsed").getValue()=="true"){
+            Floors=EditedFloor.join("|");
+        }
+        else{
+            var GroupsList=App.Draw1.surface.groups.items;
+            GroupsList.sort(l=>l.id);
+            for(var i=0;i<GroupsList.length;i++){
+                Floors=Floors+GroupsList[i].items.length+",";
+            }
+        }        
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/Cemetery/SaveGhete',
+            params: {
+                fldId: Id.getValue(),
+                fldNameGhete: txtName.getValue(),
+                fldDesc: txtDesc.getValue(),
+                fldVadiSalamId: '@ViewBag.VadiId',
+                CountRadif: txtRowCount.getValue(),
+                CountShomare: txtColCount.getValue(),
+                StrFloors: Floors,
+                IsUsed:App.NewGhete.queryById("IsUsed").getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.NewGhete.queryById('GridPieces').getStore().load();
+                if (data.Err != 1)
+                    ClearGhete();
+            }
+        });
+    }
+
+    function ClearGhete() {
+        App.NewGhete.queryById('txtName').setValue("");
+        App.NewGhete.queryById('fldId').setValue(0);
+        App.NewGhete.queryById('txtColCount').setValue(1);
+        App.NewGhete.queryById('txtRowCount').setValue(1);
+        IsUsed="";
+        EditedFloor=new Array();
+        DrawSprite();
+        App.NewGhete.queryById('txtName').focus();
+    }
+
+    var addKeyMapGhete = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NewGhete.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.NewGhete.queryById("txtRowCount");
+                    }
+                    else if (keyfield.itemId == "txtColCount") {
+                        if(App.NewGhete.queryById('txtRowCount').readOnly==false){
+                            DrawSprite();                            
+                        }
+                        App.StructFieldset.focus();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+
+</script>

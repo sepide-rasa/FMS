@@ -1,0 +1,186 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using Ext.Net.Utilities;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window()
+    .Modal(true)
+    //.Listeners(li => li.AfterRender.Handler = "NewPardakhtFilessetSize();")
+    .Title("ثبت فایل پرداخت الکترونیک جدید")
+    .Width(440)
+    .ID("NewPardakhtFiles")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .ButtonAlign(Ext.Net.Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l =>
+            {
+                l.Click.Handler = "SavePardakhtFiles();";
+            })
+            .ItemID("btnSave"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .ToolTip("کلید میانبر Esc")
+            .OnClientClick("App.NewPardakhtFiles.destroy()"))
+    .Items(
+        X.FormPanel()
+            .Border(false)
+            //.MarginSpec("10px 5px 10px 5px")
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .ItemID("FieldsetFile")
+                    .Width(400)
+                    .Title("آپلود فایل(حداکثر 1MB)")
+                    .LayoutConfig(new VBoxLayoutConfig { Align=VBoxAlign.Right})
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.FileUploadField()
+                            .ID("FileUploadFieldP")
+                            .ButtonOnly(true)
+                            .ButtonText("انتخاب فایل")
+                            .DirectEvents(l =>
+                            {
+                                l.Change.Action = "UploadFile";
+                                l.Change.Success = "hideprogressPardakhtFile();";
+                            })
+                            .Listeners(l => l.Change.Fn = "showFilePardakhtFile")
+                            .Icon(Ext.Net.Icon.DiskUpload),
+                        X.Container()
+                            .Content(@<div dir="rtl" id="fi-button-msg" style="display:inline-block; width:300px;height:25px;text-align:right;">نام فایل انتخاب شده:</div>),
+                        X.Container()
+                            .Content(@<div dir="rtl" id="bank-msg" style="display:inline-block; width:300px;height:25px;text-align:right;">نام بانک:</div>)
+
+                               )
+                    )
+                )
+)
+
+<script type="text/javascript">
+    var MojazFileP = 0;
+    var sizeeFileP = 0;
+    var EndUploadFileP = false;
+
+    function NewPardakhtFilessetSize() {
+        App.NewPardakhtFiles.setWidth(App.DaramadWin.getWidth() - 1000);
+        /*App.NewPardakhtFiles.queryById("FieldsetFile").setWidth(App.DaramadWin.getWidth() - 800);*/
+    }
+
+    var CheckFileP = setInterval(CheckEndFileP, 500);
+
+    function hideprogressPardakhtFile() {
+        if (MojazFileP == 1 && sizeeFileP == 1) {
+            EndUploadFileP = true;
+        }
+        MojazFileP = 0;
+        sizeeFileP = 0;
+    }
+
+    function CheckEndFileP() {
+        if (EndUploadFileP == true) {
+            var el = Ext.get('bank-msg');
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/PardakhtFiles/GetBankName',
+                success: function (BankName) {
+                    el.update('<b>نام بانک:</b> ' + BankName);
+                }
+            });
+            Ext.MessageBox.hide();
+            Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+            clearInterval(CheckEndFileP);
+            EndUploadFileP = false;
+        }
+    }
+
+    var showFilePardakhtFile = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msg');
+        var el2 = Ext.get('bank-msg');
+        if (v) {
+            showProgressBarPardakhtFile();
+            if (v.split('.').pop().toLowerCase() == '@ViewBag.fldCodAnformatic') {
+                MojazFileP = 1;
+                if (document.getElementById(id).files[0].size <= 1048576) {
+                    sizeeFileP = 1;
+                }
+                if (sizeeFileP == 1) {
+                    el.update('<b>نام فایل انتخاب شده:</b> ' + v);
+                }
+                else {
+                    el.update('<b>نام فایل انتخاب شده:</b>');
+                    el2.update('<b>نام بانک:</b>');
+                }
+
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                }
+                else {
+                    el.highlight();
+                }
+            }
+            else {
+                el.update('<b>نام فایل انتخاب شده:</b>');
+                el2.update('<b>نام بانک:</b>');
+            }
+        }
+    };
+
+    function showProgressBarPardakhtFile() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+
+    function SavePardakhtFiles() {
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/PardakhtFiles/Save',
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.PardakhtFiles.queryById('GridPardakhtFiles').store.load();
+                ClearPardakhtFiles();
+                Ext.net.Mask.hide();
+            }
+
+        });
+    }
+
+    function ClearPardakhtFiles() {
+        Ext.get('fi-button-msg').update('<b>نام فایل انتخاب شده:</b>');
+        Ext.get('bank-msg').update('<b>نام بانک:</b>');
+    }
+</script>

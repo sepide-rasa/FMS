@@ -1,0 +1,195 @@
+﻿@model IEnumerable<NewFMS.WCF_AnbarAmval.OBJ_AnbarTree>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+
+@(Html.X().Window().Listeners(l => l.Close.Handler = "GetNode()")
+    .Width(700)
+    .Modal(true)
+    .ID("NewTreeAnbarGroup")
+    .Title("ساختار درختی گروه انبار")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Resizable(false)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                    X.TreePanel()
+                    .ID("TreeAnbarGroup")
+                    .AutoScroll(true)
+                    .Frame(true)
+                    .Title("ساختار درختی")
+                    .Width(670)
+                    .Margin(5)
+                    .UseArrows(true)
+                    .Border(true)
+                    .Listeners(l =>
+                    {
+                        l.Render.Handler = "App.TreeAnbarGroup.setHeight(Ext.getBody().getViewSize().height-250);";
+                        l.AfterRender.Handler = "AddMenuTreeAnbarGroup()";
+                        //l.ItemClick.Handler = "GetNode()";
+                    })
+                    .View(X.TreeView().Listeners(l => l.BeforeDrop.Fn = "moveNodesTreeAnbarGroup").Plugins(X.TreeViewDragDrop().AppendOnly(true)))
+                    .Store(
+                        Html.X().TreeStore()
+                            .Model(
+                                Html.X().Model()
+                                    .Fields(
+                                        X.ModelField().Name(Model, m => m.fldName).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldAnbar_treeId).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldNodeType).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldDesc).Type(ModelFieldType.String)
+                                        )
+                                )
+                            .Proxy(
+                                Html.X().AjaxProxy().Url(Url.Action("LoadTreeAnbarGroup"))
+                            )
+                            .Listeners(l => l.BeforeLoad.Fn = "GetParamTreeAnbarGroup")
+                    )
+                    .Root(Html.X().Node()/*.NodeID("0")*/.Cls("0").Text(ViewBag.GroupName).AttributesObject(new { fldName = "", fldNodeType = "1", fldDesc = "" }).Expanded(true))
+            )
+        )
+)
+<script type="text/javascript">
+
+    var GetParamTreeAnbarGroup = function (store, operation, eOpts) {
+        operation.params.nod = operation.node.data.cls;/*.getId();*/
+        operation.params.GroupId = '@ViewBag.GroupId';
+    };
+    function GetNode() {
+        var SelectedNode = App.TreeAnbarGroup.getSelectionModel().getLastSelected();
+        if (SelectedNode != null && SelectedNode.data.cls != "0" && SelectedNode.data.fldNodeType!=2) {
+            AnbarTree = AnbarTree + SelectedNode.data.cls + ',';
+        }
+    }
+    function AddMenuTreeAnbarGroup() {
+        var menu_grid = new Ext.menu.Menu({
+            bodyStyle: 'background-color:#dfe8f6 !important;',
+            items: [
+                { text: "حذف", iconCls: "Deleteico", handler: function () { DeleteNodeTreeAnbarGroup(); } }
+            ]
+        });
+        App.TreeAnbarGroup.on("itemcontextmenu", function (view, record, item, index, e, eOpts) { if (record.data.fldNodeType != 1) { var position = e.getXY(); e.stopEvent(); menu_grid.showAt(position); } });
+    }
+
+    var moveNodesTreeAnbarGroup = function (a, child, parent, d, e) {
+        if (child.records[0].data.fldNodeType != 1 && parent.data.cls != 0 && parent.data.fldNodeType!=2) {
+            e.wait = true;
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای جابجایی این شاخه مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == "yes") {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/AnbarAmval/Store/MoveNodes',
+                            params: {
+                                parentId: parent.data.cls,
+                                AnbarTreeId: child.records[0].data.fldAnbar_treeId
+                            },
+                            success: function (data) {
+                                if (data.Er == 1) {
+                                    e.cancelDrop();
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: Ext.MessageBox.ERROR,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                }
+                                if (data.Err != 1) {
+                                    e.processDrop();
+                                    Ext.net.Mask.hide();
+                                }
+                            }
+                        });
+                    }
+                    else {
+                        e.cancelDrop();
+                    }
+                }
+            });
+        }
+        else {
+            e.cancelDrop();
+        }
+    };
+
+   
+    function DeleteNodeTreeAnbarGroup() {
+        var SelectedNode = App.TreeAnbarGroup.getSelectionModel().getLastSelected();
+        var ParentNode = SelectedNode.parentNode;
+        if (SelectedNode != null) {
+            if (SelectedNode.data.cls != 0) {
+                if (SelectedNode.childNodes.length == 0) {
+                    Ext.MessageBox.show({
+                        title: "هشدار",
+                        msg: "آیا برای حذف مطمئن هستید؟",
+                        icon: Ext.MessageBox.WARNING,
+                        buttons: Ext.MessageBox.YESNO,
+                        fn: function (btn) {
+                            if (btn == 'yes') {
+                                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                Ext.net.DirectMethod.request({
+                                    url: '/AnbarAmval/Store/DeleteNode',
+                                    params: {
+                                        Id: SelectedNode.data.fldAnbar_treeId
+                                    },
+                                    success: function (data) {
+                                        if (data.Er == 1) {
+                                            Ext.MessageBox.show({
+                                                title: data.MsgTitle,
+                                                msg: data.Msg,
+                                                icon: Ext.MessageBox.ERROR,
+                                                buttons: Ext.MessageBox.OK
+                                            });
+                                        }
+                                        else {
+                                            App.TreeAnbarGroup.getStore().load({ node: ParentNode });
+                                            App.TreeAnbarGroup.getSelectionModel().clearSelections();
+                                        }
+                                    }
+                                });
+                                Ext.net.Mask.hide();
+                            }
+                        }
+                    });
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا ابتدا زیرشاخه های مربوطه را پاک نموده و سپس اقدام به حذف شاخه مورد نظر نمایید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "امکان حذف شاخه مورد نظر وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر (شاخه) را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+</script>

@@ -1,0 +1,219 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+
+@(Html.X().Window()//.Listeners(l => l.AfterRender.Handler = "LoadKosourat_MotalebatWin()")
+    .Closable(true)
+    .CloseAction(CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Modal(true)
+    .Width(280)
+    .ID("Kosourat_MotalebatWin")
+    .Title("کسورات-مطالبات")
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        Html.X().Button()
+            .Text("ادامه")
+            .Icon(Ext.Net.Icon.PageGo)
+            .Listeners(l => l.Click.Handler = "NextKosourat_Motalebat()"),
+        Html.X().Button()
+            .Text("راهنما")
+            .Icon(Ext.Net.Icon.Help)
+            .Listeners(l => l.Click.Handler = "HelpKosourat_Motalebat()"),
+        Html.X().Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => l.Click.Handler = "App.Kosourat_MotalebatWin.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .PaddingSpec("4px 12px 4px 12px")
+            .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .Title("مشخصات پارامتر")
+                    .PaddingSpec("0 7px 7px 7px")
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Label("سازمان:"),
+                        X.ComboBox()
+                            .ItemID("CboOrgan")
+                            .TypeAhead(true)
+                            .AutoFocus(true)
+                            .Editable(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .BlankText("لطفا سازمان را انتخاب کنید.")
+                            .Listeners(l => l.Change.Handler = "LoadKosourat_MotalebatWin();")
+                            .AllowBlank(false)
+                            .ForceSelection(true)
+                            .DisplayField("fldTitle")
+                            .ValueField("fldId")
+                            .EmptyText("سازمان ...")
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetOrgan"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                                .Listeners(l => l.Load.Handler = "setdefaultValueKosourat_Motalebat()")
+                            ),
+                        X.Label("نوع پارامتر:"),
+                        X.ComboBox()
+                            .ItemID("CboParametr")
+                            .Editable(false)
+                            .AllowBlank(false)
+                            .TypeAhead(true)
+                            .BlankText("لطفا نوع پارامترها را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All),
+                            //.Items(
+                            //        new ListItem("کسورات", "1"),
+                            //        new ListItem("مطالبات", "0")
+                            //    ),
+                         //.SelectedItems(new { Value = "1" })
+                        X.Label("ورود اطلاعات:"),
+                        X.ComboBox()
+                            .ItemID("CboType")
+                                .Listeners(l => l.AfterRender.Handler = "App.Kosourat_MotalebatWin.queryById('CboType').setValue('1');")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا اطلاعات را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Items(
+                                new ListItem("انفرادی", "1"),
+                                new ListItem("گروهی", "2")
+                            )
+                        )
+            )
+    )
+)
+
+<script type="text/javascript">
+    function setdefaultValueKosourat_Motalebat() {
+        App.Kosourat_MotalebatWin.queryById('CboOrgan').select(App.Kosourat_MotalebatWin.queryById('CboOrgan').store.getAt(0));
+    }
+    function HelpKosourat_Motalebat() {
+        Ext.net.Mask.show({ msg: 'در حال بارگزاری...' });
+            App.Kosourat_MotalebatWin.destroy();
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KosuratParametri/Help',
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+    }
+    function LoadKosourat_MotalebatWin() {
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/KosuratParametri/CheckPermission',
+            params:{
+                OrganId: App.Kosourat_MotalebatWin.queryById('CboOrgan').getValue()
+            },
+            success: function (data) {
+                var store=App.Kosourat_MotalebatWin.queryById("CboParametr").store;
+                if (data.Permission_Parametr == "2") {
+                    if (store.findExact("field1", "0") == -1) {
+                        store.add({ field1: "0", field2: "مطالبات" });
+                    }
+                    if (store.findExact("field1", "1") != -1) {
+                        store.removeAt(store.findExact("field1", "1"));
+                    }
+                    App.Kosourat_MotalebatWin.queryById('CboParametr').setValue("0");
+                }
+                else if (data.Permission_Parametr == "3") {                    
+                    if (store.findExact("field1", "1") == -1) {
+                        store.add({ field1: "1", field2: "کسورات" });
+                    }
+                    if (store.findExact("field1", "0") != -1) {
+                        store.removeAt(store.findExact("field1", "0"));
+                    }
+                    App.Kosourat_MotalebatWin.queryById('CboParametr').setValue("1");
+                }
+                else {
+                    if (store.findExact("field1", "1") == -1) {
+                        store.add({ field1: "1", field2: "کسورات" });
+                    }
+                    if (store.findExact("field1", "0") == -1) {
+                        store.add({ field1: "0", field2: "مطالبات" });
+                    }                    
+                    App.Kosourat_MotalebatWin.queryById('CboParametr').setValue("1");
+                }
+            }
+        });
+        @*if ('@ViewBag.Permission_Parametr' == "2") {
+            App.Kosourat_MotalebatWin.queryById('CboParametr').store.removeAt(0);
+            App.Kosourat_MotalebatWin.queryById('CboParametr').setValue("0");
+        }
+        else if ('@ViewBag.Permission_Parametr' == "3") {
+            App.Kosourat_MotalebatWin.queryById('CboParametr').store.removeAt(1);
+             App.Kosourat_MotalebatWin.queryById('CboParametr').setValue("1");
+        }
+        else {
+            App.Kosourat_MotalebatWin.queryById('CboParametr').setValue("1");
+        }*@
+    }
+    function NextKosourat_Motalebat() {
+        var CboType = App.Kosourat_MotalebatWin.queryById('CboType').getValue();
+        var CboParametr = App.Kosourat_MotalebatWin.queryById('CboParametr').getValue();
+        var OrganId = App.Kosourat_MotalebatWin.queryById('CboOrgan').getValue();
+
+        Ext.net.Mask.show({ msg: 'در حال بارگزاری...' });
+        if (CboParametr == "1" && CboType == "1") {
+            App.Kosourat_MotalebatWin.destroy();
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KosuratParametri/KosuratParametriSingle?containerId=FirstTabPay&OrganId=' + OrganId,
+                success: function () {
+                    /*Ext.net.Mask.hide();*/
+                }
+            });
+        }
+        else if (CboParametr == "0" && CboType == "1") {
+            App.Kosourat_MotalebatWin.destroy();
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/MotalebatParametri/MotalebatParametriSingle?containerId=FirstTabPay&OrganId=' + OrganId,
+                success: function () {
+                    /*Ext.net.Mask.hide();*/
+                }
+            });
+        }
+        else if (CboParametr == "1" && CboType == "2") {
+            App.Kosourat_MotalebatWin.destroy();
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KosuratParametri/KosuratParametriGroup?containerId=FirstTabPay&OrganId=' + OrganId,
+                success: function () {
+                    /*Ext.net.Mask.hide();*/
+                }
+            });
+        }
+        else if (CboParametr == "0" && CboType == "2") {
+            App.Kosourat_MotalebatWin.destroy();
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/MotalebatParametri/MotalebatParametriGroup?containerId=FirstTabPay&OrganId=' + OrganId,
+                success: function () {
+                    /*Ext.net.Mask.hide();*/
+                }
+            });
+        }
+    }
+</script>

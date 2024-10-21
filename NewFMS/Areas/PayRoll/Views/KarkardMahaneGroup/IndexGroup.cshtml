@@ -1,0 +1,366 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_KarKardeMahane>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+@*<style>
+        #test legend{
+            text-align:right!important;
+        }
+    </style>*@
+<br />
+@(Html.X().Panel()
+            .ID("GroupKarkardMahane")
+            .Title("ثبت گروهی کارکرد ماهانه")
+        //.Listeners(l =>
+        //                {
+        //                    l.AfterLayout.Handler = "ReloadKarkardMahaneGroupGroup();";
+        //                })
+        // .Listeners(li => li.AfterRender.Handler = "GroupKarkardMahaneSetSize();")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+        X.GridPanel()
+            .TopBar(
+                    Html.X().Toolbar()
+                    .Items(
+                        X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)//.ToolTip("کلید میانبر F2")
+                                    .Listeners(Li => Li.Click.Handler = "SaveGroupKarkardMahane();"),
+                        X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)//.ToolTip("کلید میانبر F9")
+                                    .Listeners(Li => Li.Click.Handler = "DeleteGroupKarkardMahane();")
+
+                    )
+                )
+        .ItemID("GroupKarkardMahaneGrid")
+        .AutoScroll(true)
+              //  .BottomBar(X.PagingToolbar().HideRefresh(true))
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.GroupKarkardMahane.queryById('GroupKarkardMahaneGrid').selModel.refresh();")
+        //.Proxy(Html.X().AjaxProxy()
+        //    .Url(Url.Action("Read"))
+        //    .Reader(Html.X().JsonReader().Root("data"))
+        //)
+                            .PageSize(200000)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                                    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true).GetRowClass(l => l.Fn = "getRowClassGroupKarkardMahane")
+                )
+        //    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.GroupKarkardMahane.queryById('GroupKarkardMahaneGrid');grid.setHeight(App.PayWin.getHeight() - 170); ";
+
+                     })
+            .ColumnModel(
+                        Html.X().Column().DataIndex(Model, m => m.fldGhatiEzafeKar).Text("fldGhatiEzafeKar").Hidden(true).Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldPersonalInfoId).Hidden(true).Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldFlag).Text("fldFlag").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldKarKardeMahaneId).Hidden(true).Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام و نام خانوادگی").Flex(5),
+                        Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کدملی").Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldSh_Personali).Text("شماره پرسنلی").Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldKarkard).Text("کارکرد").Flex(2).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtKarkard").EnforceMaxLength(true).MaxLength(3)),
+                        Html.X().Column().DataIndex(Model, m => m.fldGheybat).Text("غیبت").Flex(2).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtGheybat").EnforceMaxLength(true).MaxLength(3)),
+                        Html.X().Column().DataIndex(Model, m => m.fldNobateKari).Text("نوبت کاری").Flex(2).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtNobateKari").EnforceMaxLength(true).MaxLength(3)),
+                                Html.X().Column().DataIndex(Model, m => m.fldEzafeKari).Text("اضافه کاری").Flex(2).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtEzafeKari").EnforceMaxLength(true).MaxLength(3).Listeners(l => l.Change.Handler = "CheckEzafeKari(App.GroupKarkardMahane.queryById('txtEzafeKari'),App.GroupKarkardMahane.queryById('txtTatileKari'));")),
+                        Html.X().Column().DataIndex(Model, m => m.fldTatileKari).Text("تعطیل کاری").Flex(2).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtTatileKari").EnforceMaxLength(true).MaxLength(3).Listeners(l => l.Change.Handler = "CheckEzafeKari(App.GroupKarkardMahane.queryById('txtEzafeKari'),App.GroupKarkardMahane.queryById('txtTatileKari'));")),
+                        Html.X().Column().DataIndex(Model, m => m.fldMosaedeh).Text("مساعده").Flex(3).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtMosaedeh").Listeners(l => { l.Change.Handler = "App.GroupKarkardMahane.queryById('txtMosaedeh').setValue(accounting.formatNumber(App.GroupKarkardMahane.queryById('txtMosaedeh').getValue()));CheckInt(App.GroupKarkardMahane.queryById('txtMosaedeh'));"; })),
+                        Html.X().Column().DataIndex(Model, m => m.fldMamoriatBaBeitote).Text("ماموریت با بیتوته").Flex(3).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtMamoriatBaBeitote").EnforceMaxLength(true).MaxLength(3)),
+                        Html.X().Column().DataIndex(Model, m => m.fldBa10).Text("10 درصد").Flex(2).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtBa10").EnforceMaxLength(true).MaxLength(3)),
+                        Html.X().Column().DataIndex(Model, m => m.fldBa20).Text("20 درصد").Flex(2).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtBa20").EnforceMaxLength(true).MaxLength(3)),
+                        Html.X().Column().DataIndex(Model, m => m.fldBa30).Text("30 درصد").Flex(2).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtBa30").EnforceMaxLength(true).MaxLength(3)),
+                        Html.X().Column().DataIndex(Model, m => m.fldMamoriatBedoneBeitote).Text("ماموریت بدون بیتوته").Flex(3).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtMamoriatBedoneBeitote").EnforceMaxLength(true).MaxLength(3)),
+                        Html.X().Column().DataIndex(Model, m => m.fldBe10).Text("10 درصد").Flex(2).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtBe10").EnforceMaxLength(true).MaxLength(3)),
+                        Html.X().Column().DataIndex(Model, m => m.fldBe20).Text("20 درصد").Flex(2).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtBe20").EnforceMaxLength(true).MaxLength(3)),
+                        Html.X().Column().DataIndex(Model, m => m.fldBe30).Text("30 درصد").Flex(2).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtBe30").EnforceMaxLength(true).MaxLength(3)),
+                        Html.X().Column().DataIndex(Model, m => m.fldShift).Text("حق شیفت").Flex(2).Editor(Html.X().TextField().MaskRe("/[0-9-.]/").ItemID("txtShift").EnforceMaxLength(true).MaxLength(3)),
+                        X.CheckColumn().Text("معوقه").DataIndex(Model, m => m.fldMoavaghe).Editable(true).Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldAzTarikhMoavagheS).Text("تاریخ شروع معوقه").Flex(2).Editor(Html.X().TextField().MaskRe("/[0-9-/]/").ItemID("txtaz").EnforceMaxLength(true).MaxLength(6)),
+                        Html.X().Column().DataIndex(Model, m => m.fldTaTarikhMoavagheS).Text("تاریخ پایان معوقه").Flex(2).Editor(Html.X().TextField().MaskRe("/[0-9-/]/").ItemID("txtta").EnforceMaxLength(true).MaxLength(6))
+    )//txtKarkard  txtGheybat  txtNobateKari  txtEzafeKari  txtTatileKari  txtMosaedeh  txtMamoriatBaBeitote  txtBa10  txtBa20  txtBa30  txtMamoriatBedoneBeitote  txtBe10  txtBe20  txtBe30
+            .Listeners(l =>
+                                {
+                                    l.ViewReady.Handler = "ReloadKarkardMahaneGroupGroup();";
+                                })
+              .SelectionModel(
+                            Html.X().CheckboxSelectionModel().PruneRemoved(false).ShowHeaderCheckbox(false)
+                                .Mode(SelectionMode.Multi).CheckOnly(true))
+                        .Plugins(
+                        Html.X().CellEditing().ClicksToEdit(1)
+                       .Listeners(l =>
+                            {
+                                l.Edit.Fn = "LockOff";
+                                l.BeforeEdit.Fn = "LockOn";
+                            }))
+    )
+)
+<script type="text/javascript">
+    var getRowClassGroupKarkardMahane = function (record, rowIndex, rowParams, store) {
+        /*alert(rowIndex % 2);*/
+        var color = 'white';
+        if (rowIndex % 2 == 1)
+            color = '#dfe8f6';
+        var clsName = "row" + rowIndex,
+            clsStyle = Ext.String.format(".{0} .x-grid-cell, .{0} .x-grid-rowwrap-div { background-color: {1} !important; })", clsName, color);
+        Ext.net.ResourceMgr.registerCssClass(clsName, clsStyle);
+        return clsName;
+    };
+    var LockOn = function (editor, e) {
+        App.GroupKarkardMahane.queryById('GroupKarkardMahaneGrid').getSelectionModel().setLocked(true);
+        App.GroupKarkardMahane.queryById('GroupKarkardMahaneGrid').getView().focusRow(e.rowIdx);
+    };
+    var LockOff = function (editor, e) {
+     App.GroupKarkardMahane.queryById('GroupKarkardMahaneGrid').getSelectionModel().setLocked(false);
+      
+        var Grid = App.GroupKarkardMahane.queryById("GroupKarkardMahaneGrid");
+        if (e.field != "fldEzafeKari" && e.field != "fldMosaedeh" && e.field != "fldShift" && e.field != "fldMoavaghe" && e.field != "fldAzTarikhMoavagheS" && e.field != "fldTaTarikhMoavagheS") {
+            Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KarkardMahaneGroup/CheckDay',
+                params: {
+                    PersonalId: e.record.data.fldPersonalInfoId,
+                    OrganId:'@ViewBag.OrganId'
+                },
+                success: function (result) {
+                    if (editor.context.value > parseInt(result.days))
+                    {
+                        var k = Grid.store.find('fldPersonalInfoId', e.record.data.fldPersonalInfoId);
+                        if (k >= 0) {
+                            var row = Grid.selModel.store.data.items[k];
+                            row.set(editor.context.field, "0");
+                        }
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });         
+        }
+        else if (e.field == "fldEzafeKari") {
+            var k = Grid.store.find('fldPersonalInfoId', e.record.data.fldPersonalInfoId);
+            if (e.record.data.fldGhatiEzafeKar != 0) {
+                var row = Grid.selModel.store.data.items[k];
+                row.set(editor.context.field, e.record.data.fldGhatiEzafeKar);
+            }
+        }
+        App.GroupKarkardMahane.queryById('GroupKarkardMahaneGrid').getView().focusRow(e.rowIdx);
+    };
+    function CheckDayCount(txt) {
+        var SelectedRow = App.GroupKarkardMahane.queryById("GroupKarkardMahaneGrid").getSelectionModel().getSelection();
+        /*ss = SelectedRow;
+          alert(SelectedRow.data.fldPersonalInfoId);
+        Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KarkardMahaneGroup/CheckDay',
+                params: {
+                    PersonalId: SelectedRow.data.fldPersonalInfoId
+                },
+                success: function (result) {
+                    if (txt.getValue() > parseInt(result.days)) 
+                        txt.setValue("0");
+                    
+                    Ext.net.Mask.hide();
+                }
+            });*/
+    }
+    function CheckEzafeKari(txtEzafeKari,txtTatilkari) {
+        if (parseInt(txtEzafeKari.getValue()) + (parseInt(txtTatilkari.getValue()) * 7.33)>175) {
+            txtEzafeKari.setValue("0");
+            txtTatilkari.setValue("0");
+        }
+    }
+    function ReloadKarkardMahaneGroupGroup() {
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/KarkardMahaneGroup/ReloadKarkardMahaneGroup',
+            params: {
+                FieldName: '@ViewBag.FieldName',
+                CostCenter_ChartId: '@ViewBag.CostCenter_ChartId',
+                Sal: '@ViewBag.Sal',
+                Mah: '@ViewBag.Mah',
+                NobatPardakht: '@ViewBag.NobatPardakht',
+                OrganId: '@ViewBag.OrganId'
+            },
+            success: function (result) {
+                App.GroupKarkardMahane.queryById('GroupKarkardMahaneGrid').getStore().loadData(result);
+                SellectAllKarkardMahaneGroup();
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SellectAllKarkardMahaneGroup() {
+        App.GroupKarkardMahane.queryById('GroupKarkardMahaneGrid').getSelectionModel().selectAll();
+        App.GroupKarkardMahane.queryById('GroupKarkardMahaneGrid').getView().focusRow(0);
+    }
+    function SaveGroupKarkardMahane() {
+        var HaveErr = 0;
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        var SelectItems = new Array();
+        var SelectedRow = App.GroupKarkardMahane.queryById('GroupKarkardMahaneGrid').getSelectionModel().getSelection();
+        if (SelectedRow.length != 0) {
+            for (var k = 0; k < SelectedRow.length ; k++) {
+               /* if (SelectedRow[k].data.fldKarkard == 0 || SelectedRow[k].data.fldNobateKari == 0)
+                    HaveErr = 1;*/
+                if (SelectedRow[k].data.fldMoavaghe == true) {
+                    if (SelectedRow[k].data.fldAzTarikhMoavagheS == "" || SelectedRow[k].data.fldAzTarikhMoavagheS.length<6) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "تاریخ شروع معوقه معتبر نیست.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                        Ext.net.Mask.hide();
+                        return;
+                    }
+                    if (SelectedRow[k].data.fldTaTarikhMoavagheS == "" || SelectedRow[k].data.fldAzTarikhMoavagheS > SelectedRow[k].data.fldTaTarikhMoavagheS || SelectedRow[k].data.fldTaTarikhMoavagheS.length < 6) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "تاریخ پایان معوقه معتبر نیست.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                        Ext.net.Mask.hide();
+                        return;
+                    }
+                }
+                SelectItems.push({
+                    'fldId': SelectedRow[k].data.fldKarKardeMahaneId,
+                    'fldPersonalId': SelectedRow[k].data.fldPersonalInfoId,
+                    'fldKarkard':SelectedRow[k].data.fldKarkard,
+                    'fldGheybat': SelectedRow[k].data.fldGheybat,
+                    'fldNobateKari': SelectedRow[k].data.fldNobateKari,
+                    'fldShift': SelectedRow[k].data.fldShift,
+                    'fldEzafeKari': SelectedRow[k].data.fldEzafeKari,
+                    'fldTatileKari':SelectedRow[k].data.fldTatileKari,
+                    'fldMamoriatBaBeitote': SelectedRow[k].data.fldMamoriatBaBeitote,
+                    'fldMamoriatBedoneBeitote': SelectedRow[k].data.fldMamoriatBedoneBeitote,
+                    'fldMosaedeh': SelectedRow[k].data.fldMosaedeh,
+                    'fldNobatePardakht': SelectedRow[k].data.fldNobatePardakht,
+                    'fldBa10': SelectedRow[k].data.fldBa10,
+                    'fldBa20': SelectedRow[k].data.fldBa20,
+                    'fldBa30': SelectedRow[k].data.fldBa30,
+                    'fldBe10': SelectedRow[k].data.fldBe10,
+                    'fldBe20': SelectedRow[k].data.fldBe20,
+                    'fldBe30': SelectedRow[k].data.fldBe30,
+                    'fldYear': '@ViewBag.Sal',
+                    'fldMah': '@ViewBag.Mah',
+                    'fldNobatePardakht': '@ViewBag.NobatPardakht',
+                    'fldMoavaghe':SelectedRow[k].data.fldMoavaghe,
+                'fldAzTarikhMoavaghe': SelectedRow[k].data.fldAzTarikhMoavagheS,
+                'fldTaTarikhMoavaghe':SelectedRow[k].data.fldTaTarikhMoavagheS,
+                });
+            }
+            var data = {
+                KarkardVal: SelectItems,
+                DelCalc: '@ViewBag.DelCalc',
+                OrganId: '@ViewBag.OrganId'
+            };
+            if (HaveErr == 1) {
+                Ext.net.Mask.hide();
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg:"میزان کارکرد و نوبت کاری موارد انتخاب شده باید بیشتر از 0 باشد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+            else {
+                $.ajax({
+                    type: "POST",
+                    url: '/PayRoll/KarkardMahaneGroup/Save',
+                    datatype: "json",
+                    data: JSON.stringify(data),
+                    contentType: 'application/json; charset=utf-8',
+                    success: function (data1) {
+                        Ext.net.Mask.hide();
+                        var result = data1;/*JSON.parse(data1);*/
+                        var ico = Ext.MessageBox.INFO;
+                        if (result.Er == 1)
+                            ico = Ext.MessageBox.ERROR;
+                        Ext.MessageBox.show({
+                            title: result.MsgTitle,
+                            msg: result.Msg,
+                            icon: ico,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    },
+                    failure: function (data1) {
+                        alert(data.data1);
+                    }
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا حداقل یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteGroupKarkardMahane() {
+        var SelectItems = new Array();
+        var SelectedRow = App.GroupKarkardMahane.queryById('GroupKarkardMahaneGrid').getSelectionModel().getSelection();
+        if (SelectedRow.length != 0) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        for (var k = 0; k < SelectedRow.length ; k++) {
+                            SelectItems.push({
+                                'fldId': SelectedRow[k].data.fldKarKardeMahaneId
+                            });
+                        }
+                        var data = {
+                            KarkardGroupVal: SelectItems,
+                            DelCalc: '@ViewBag.DelCalc',
+                            fldYear: '@ViewBag.Sal',
+                            fldMah: '@ViewBag.Mah',
+                            fldNobatePardakht: '@ViewBag.NobatPardakht',
+                            OrganId: '@ViewBag.OrganId'
+                        };
+                        $.ajax({
+                            type: "POST",
+                            url: '/PayRoll/KarkardMahaneGroup/Delete',
+                            datatype: "json",
+                            data: JSON.stringify(data),
+                            contentType: 'application/json',
+                            success: function (data1) {
+                                var result = data1;/* JSON.parse(data1);*/
+                                ReloadKarkardMahaneGroupGroup();
+                                var ico = Ext.MessageBox.INFO;
+                                if (result.Er == 1)
+                                    ico = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: result.MsgTitle,
+                                    msg: result.Msg,
+                                    icon: ico,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                            },
+                            failure: function (data1) {
+                                alert(data.data1);
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا حداقل یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

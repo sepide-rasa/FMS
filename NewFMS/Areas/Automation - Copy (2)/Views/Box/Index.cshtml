@@ -1,0 +1,334 @@
+﻿@model IEnumerable<NewFMS.WCF_Automation.OBJ_Box>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+
+@(Html.X().Window().Modal(true)//.Listeners(li => { li.Render.Fn = "addKeyMapBox"; })
+.Width(400)//.Height(300)
+.Listeners(l=>l.AfterRender.Handler="SetDisableBtn()")
+    .Title("مدیریت پوشه های شخصی")
+    .ID("NewBox")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+            
+    .Items(
+            X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(true).Title("پوشه های شخصی")
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                .Defaults(new { Margin = 1 }).Height(50)
+                .Items(
+                X.Hidden().ItemID("fldId").Value(0),
+                    X.Hidden().ItemID("PId"),
+                 X.Label("نام:"),
+                        X.TextField()
+                        .ItemID("txtName")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نام را وارد کنید.")
+                            .AutoFocus(true),
+                X.Label("پست:"),
+                         X.ComboBox()
+                            .ItemID("CboCommision")
+                                    .EmptyText("...")
+                                .AllowBlank(false)
+                                    .BlankText("لطفا پست را انتخاب نمایید.")
+                                .TypeAhead(true)
+                                .Editable(false)
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldName")
+                                .ValueField("fldId")
+                                .Listeners(l=>l.Change.Handler="ChangeComision()")
+                                .Store(
+                                 X.Store()
+
+                                        .Listeners(l => l.Load.Handler = "setDefaultCboCommision();")
+                                        .Model(X.Model()
+                                        .IDProperty("fldId")
+                                        .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" })
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                                            .Url(Url.Action("GetCommision"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                )
+                                )
+                                ,X.FieldSet().Border(false)
+                               .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                .Defaults(new { Margin = 1 })
+                                .Items(
+                                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l =>{l.Click.Handler = "SaveBox();";})
+                            .ItemID("btnSaveBox")
+                            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "EditBox();"; }).ItemID("btnEditBox")
+                            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteBox();"; }).ItemID("btnDeleteBox")
+                            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                                .OnClientClick("App.NewBox.hide();")
+                                )
+                                ,
+                                        X.TreePanel().ColSpan(4)
+                                        .ID("TreeBox")
+                                        .Width(300)
+                                        .Height(200)
+                                        .AutoScroll(true)
+                                    .UseArrows(true)
+                                    .Border(false)
+                                    .Store(
+                                        X.TreeStore()//.AutoLoad(false)
+                                            .Proxy(
+                                                    X.AjaxProxy().Url(Url.Action("NodeLoad"))
+                                                .ActionMethods(l => l.Read = HttpMethod.POST)
+                                            )
+                                                .Model(
+                                                Html.X().Model()
+                                                    .Fields(
+                                                        X.ModelField().Name(Model, m => m.fldID).Type(ModelFieldType.String),
+                                                            X.ModelField().Name(Model, m => m.fldName).Type(ModelFieldType.String),
+                                                                    X.ModelField().Name(Model, m => m.fldBoxTypeID).Type(ModelFieldType.String)
+                                                    )
+                                            )
+                                        .Listeners(l =>
+                                        {
+                                            l.BeforeLoad.Fn = "GetParamTreeBox";
+                                        })
+                                    )
+                                    .Listeners(a =>
+                                    {
+                                        a.ItemClick.Handler = "GetIdTreeBox(record)";
+                                        a.AfterRender.Handler = "App.TreeBox.expandAll();";
+                                       // a.Load.Handler = "App.TreeBox.expandAll();";
+                                    })
+                                    
+                                    .Root(Html.X().Node().NodeID("0").Text("پوشه های شخصی"))
+                        
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+        )
+)
+<script type="text/javascript">
+    var TreeId;
+    var fldPId;
+    var GetParamTreeBox = function (store, operation, eOpts) {
+        var nodeId = operation.node.getId();
+        operation.params.nod = nodeId;
+        operation.params.ComisionID = App.NewBox.queryById('CboCommision').getValue();
+    };
+    function ChangeComision() {
+        
+        App.TreeBox.store.load();
+        
+    }
+    function GetIdTreeBox(record) {
+        TreeId = record.getId();
+        if (App.TreeBox.getSelectionModel().getLastSelected().data.cls == "6") {
+            App.NewBox.queryById('btnEditBox').enable(true);
+            App.NewBox.queryById('btnDeleteBox').enable(true);
+        }
+        else {
+            App.NewBox.queryById('btnEditBox').disable(true);
+            App.NewBox.queryById('btnDeleteBox').disable(true);
+        }
+    };
+    function SetDisableBtn() { 
+        App.NewBox.queryById('btnEditBox').disable(true);
+        App.NewBox.queryById('btnDeleteBox').disable(true);
+    }
+    function setDefaultCboCommision() {
+        if (App.NewBox.queryById('fldId').getValue() == 0) {
+            App.NewBox.queryById("CboCommision").setValue(App.NewBox.queryById("CboCommision").store.getAt(0));
+        }
+    }
+    function EditBox() {
+        if (TreeId != null && TreeId != 0) {
+            App.NewBox.body.mask("در حال بارگذاری...");
+            Ext.net.DirectMethod.request({
+                url: '/Automation/Box/Details',
+                params: {
+                    Id: TreeId
+                },
+                success: function (data) {
+                    var txtName = App.NewBox.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var CboCommision = App.NewBox.queryById('CboCommision');
+                    CboCommision.setValue(data.fldComisionID);
+                    var PId = App.NewBox.queryById('PId');
+                    PId.setValue(data.fldPID);
+                    var Id = App.NewBox.queryById('fldId');
+                    Id.setValue(data.fldID);
+
+                    
+
+
+
+                    App.NewBox.body.mask().hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک مورد از ساختار درختی را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteBox() {
+        if (TreeId != null && TreeId != 0){
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Automation/Box/Delete',
+                            params: {
+                                id: TreeId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1) {
+                                    ic = Ext.MessageBox.ERROR;
+                                }
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.TreeBox.store.load();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک مورد از ساختار درختی را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveBox() { 
+        var txtName = App.NewBox.queryById('txtName');
+        var CboCommision = App.NewBox.queryById('CboCommision');
+        var Id = App.NewBox.queryById('fldId');
+        var PId = App.NewBox.queryById('PId');
+        var er = false;
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (CboCommision.validate() == false) {
+            er = true;
+        }
+        
+        
+        if (TreeId == null) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک گزینه از ساختار درختی را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK,
+            });
+            er = true;
+        }
+
+        if (er == true)
+            return;
+          if (Id.getValue() == '' || Id.getValue() == 0) {
+             fldPId = TreeId;
+             fldId = Id.getValue();
+         }
+         else {
+             fldPId = PId.getValue();
+             fldId = Id.getValue();
+         }
+        if (fldPId == 0)
+            fldPId = null;
+
+        App.NewBox.body.mask("در حال ذخیره سازی");
+
+        $.ajax({
+            type: "POST",
+            url: '/Automation/Box/Save',
+            datatype: "json",
+
+            /*contentType: 'application/json',*/
+            data: {
+                fldId: Id.getValue(),
+                fldComisionID: CboCommision.getValue(),
+                fldName: txtName.getValue(),
+                fldPID: fldPId,
+                fldBoxTypeID:6
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                });
+                App.TreeBox.store.load();
+                if (data.Er != 1)
+                    ClearBox();
+                App.NewBox.body.mask().hide();
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+
+        });
+    }
+    function ClearBox() {
+        App.NewBox.queryById('fldId').setValue(0);
+        App.NewBox.queryById('txtName').setValue("");
+       App.NewBox.queryById('PId').setValue(0);
+    }
+    var addKeyMapBox = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NewBox.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "CboCommision") {
+                        nextfld = App.NewBox.queryById('btnSaveBox');
+                        SaveBox();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

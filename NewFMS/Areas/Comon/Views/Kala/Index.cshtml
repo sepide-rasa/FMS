@@ -1,0 +1,579 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_Kala>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+<script src="~/Scripts/jsQR.js"></script>
+@(Html.X().Panel()
+                .ID("Kala")
+            .Title("ثبت کالا و خدمات")
+                    .Listeners(li => { li.AfterRender.Handler = "KalaSetSize();"; li.Render.Fn = "addKeyMapKala"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveInsuranceType")
+            .Listeners(l => { l.Click.Handler = "SaveKala();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+            .Listeners(l => { l.Click.Handler = "LoadKala();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+            .Listeners(l => { l.Click.Handler = "DeleteKala();"; })
+        //, X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpInsuranceType();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.Kala.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+            X.FieldSet().Border(false)
+            .Items(
+                X.FieldSet().Border(true).Title("اطلاعات کالا")
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 8 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.Label("نام کالا:"),
+                        X.TextField()
+                        .ItemID("txtName")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                            //.MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                            .AllowBlank(false)
+                                .AutoFocus(true)
+                            .BlankText("لطفا نام کالا را وارد کنید."),
+                    X.Label("نوع:"),
+                        X.ComboBox().Width(100)
+                            .ItemID("CboTypeKala")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .BlankText("لطفا نوع را انتخاب نمایید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .AllowBlank(false)
+                            .Items(
+                                new ListItem("کالا", "1"),
+                                new ListItem("خدمات", "2")
+                                    ).Listeners(l => l.Change.Handler = "ChangeTypeKala()"),
+                        X.Label("کد کالا:"),
+                        X.TextField()
+                        .ItemID("txtCodeKala")
+                            .MaxLength(20)
+                            .EnforceMaxLength(true)
+                            .MaskRe("[0-9]")
+                            .AllowBlank(false)
+                            .BlankText("لطفا کد را وارد کنید.")
+                            
+
+                            , X.Label("وضعیت:"),
+                    X.ComboBox().Width(100)
+                            .ItemID("CboStatus")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .BlankText("لطفا وضعیت را انتخاب نمایید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .AllowBlank(false)
+                            .Items(
+                                new ListItem("فعال", "1"),
+                                new ListItem("غیر فعال", "2")
+                                ),
+
+                            X.Label("ایران کد:"),
+                        X.TextField()
+                        .ItemID("txtIranCode")
+                            .MaxLength(50)
+                            .EnforceMaxLength(true)
+                            .MaskRe("[0-9]")
+                            .AllowBlank(false)
+                            .BlankText("لطفا ایران کد را وارد کنید.")
+                            , X.FieldSet().ColSpan(2).Border(false)//.MarginSpec("0 30px 0 0")
+                                    .Defaults(new { Margin = 2 })
+                                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                                    .Items(
+                                        X.Label("قابل فروش").ItemID("lblSell"),
+                                        X.Checkbox().ItemID("CheckSell"),
+                                        X.Label("مشمول ارزش افزوده"),
+                                        X.Checkbox().ItemID("CheckArzeshAfzode")
+                                    )
+
+                )
+                ,
+                    X.FieldSet().ColSpan(2).Border(true).Title("اطلاعات مشخصه")//.MarginSpec("0 30px 0 0")
+                    .Defaults(new { Margin = 2 })
+                    .LayoutConfig(new TableLayoutConfig { Columns = 5 }).ColSpan(4)
+                    .Items(
+                            X.Label("نوع مشخصه:"),
+                    X.ComboBox().Width(100)
+                            .ItemID("CboMoshakhaseType")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .BlankText("لطفا نوع مشخصه را انتخاب نمایید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .AllowBlank(false)
+                            .Items(
+                                new ListItem("بارکد", "1"),
+                                new ListItem("QRCode", "2")
+                                    ).Listeners(l => l.Change.Handler = "ChangeMoshakhaseType()"),
+                        X.Label("بارکد:").ItemID("lblMoshakhase"),
+                        X.TextField()
+                            .ItemID("txtMoshakhase")
+                            .MaxLength(50)
+                            .EnforceMaxLength(true)
+                            .Listeners(l => l.Blur.Handler = "CreateCode()")
+                            .AllowBlank(true),
+                            X.FieldSet().ColSpan(2).Border(false).MarginSpec("0 0 0 250px")
+                            .Defaults(new { Margin = 2 })
+                            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Left }).ColSpan(4)
+                            .Items(
+                             X.Container().ColSpan(4)
+                            .Content(@<div style="width:150px;"> <div id="qrcode" align="center"></div><svg id="barcode" style="width:50px; height:50px;"></svg> </div>)
+                            // ,X.Container()
+                            //.Content(@<svg id="barcode"></svg>)
+                           )
+                           )
+                , X.FieldSet().Border(true).Title("واحدهای کالا")
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 9 })
+                .Items(
+                    X.Label("واحد اصلی:"),
+                        X.ComboBox().Width(100)
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ItemID("CboVahedAsli")
+                        .TypeAhead(true)
+                        .Editable(true)
+                        .QueryMode(DataLoadMode.Local)
+                        .BlankText("لطفا واحد اصلی را انتخاب کنید.")
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                        .DisplayField("fldTitle")
+                        .ValueField("fldId")
+                        .EmptyText("واحد اصلی ...")
+                        .Store(X.Store()
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                            new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                )
+                                    )
+                        .Proxy(X.AjaxProxy()
+                        .Url(Url.Action("GetVahedAsli"))
+                        .Reader(X.JsonReader().Root("data"))
+                                )
+                                )
+                        .AllowBlank(false),
+                            X.Label("واحد فرعی:"),
+                            X.ComboBox().Width(100)
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .ItemID("CboVahedFaree")
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .BlankText("لطفا واحد فرعی را انتخاب کنید.")
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldTitle")
+                            .ValueField("fldId")
+                            .EmptyText("واحد فرعی ...")
+                            .Store(X.Store()
+                            .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                    )
+                                        )
+                            .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetVahedFaree"))
+                            .Reader(X.JsonReader().Root("data"))
+                                    )
+                                    )
+                            .AllowBlank(false),
+                X.Label("نوع نسبت:"),
+                    X.ComboBox()
+                        .ItemID("CboTypeNesbat")
+                        .Editable(false)
+                        .TypeAhead(true)
+                        .BlankText("لطفا نوع نسبت را انتخاب نمایید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .AllowBlank(false).Width(100)
+                        .Items(
+                            new ListItem("ثابت", "1"),
+                            new ListItem("متغیر", "2")
+                                ).Listeners(l => l.Change.Handler = "ChangeTypeNesbat()"),
+                        X.Label("هر واحد فرعی معادل"),
+                        X.TextField().Width(100)
+                            .ItemID("txtVahedMoadel")
+                            .MaxLength(50)
+                            .EnforceMaxLength(true)
+                            .MaskRe("[0-9]"),
+                       X.Label("واحد اصلی است.")
+                )
+            )
+            )
+        ),
+        X.GridPanel()
+                .ItemID("KalaGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.Kala.queryById('KalaGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.Kala.queryById('KalaGrid');grid.setHeight(App.Win.getHeight() - 435); ";
+
+                     })
+                  .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام کالا").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldKalaCode).Text("کد کالا").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldStatusName).Text("وضعیت").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldVahedAsli_Name).Text("واحد اصلی").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldVahedFaree_Name).Text("واحد فرعی").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldIranCode).Text("ایران کد").Flex(2),
+                            Html.X().CheckColumn().DataIndex(Model, m => m.fldArzeshAfzodeh).Text("مشمول ارزش افزوده").Flex(2).Renderer("hidecheck_kala").Editable(false).StopSelection(false).Wrap(true),
+                                Html.X().CheckColumn().DataIndex(Model, m => m.fldSell).Text("قابل فروش").Flex(2).Renderer("hidecheck_kala").Editable(false).StopSelection(false).Wrap(true)
+                       )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+           )
+      )
+)
+<script type="text/javascript">
+    var canvas;
+    var hidecheck_kala = function (value, metaData, record, rowIndex, colIndex, store) {
+        if (record.data.id != 1)
+            return Ext.ux.CheckColumn.prototype.renderer.apply(this, arguments);
+    };
+    function ChangeTypeNesbat() {
+        var CboTypeNesbat = App.Kala.queryById('CboTypeNesbat');
+        if (CboTypeNesbat.getValue() == "1") {
+            App.Kala.queryById('txtVahedMoadel').enable();
+        }
+        else {
+            App.Kala.queryById('txtVahedMoadel').disable();
+            App.Kala.queryById('txtVahedMoadel').setValue("");
+        }
+    }
+    function ChangeMoshakhaseType() {
+        var CboMoshakhaseType = App.Kala.queryById('CboMoshakhaseType');
+        App.Kala.queryById('txtMoshakhase').setValue("");
+        if (CboMoshakhaseType.getValue() == "1") {
+            App.Kala.queryById('lblMoshakhase').setText("بارکد:");
+        }
+        else {
+            App.Kala.queryById('lblMoshakhase').setText("QRCode:");
+        }
+        CreateCode();
+    }
+    function CreateCode() {
+        document.getElementById("qrcode").innerHTML = "";
+        document.getElementById("barcode").innerHTML = "";
+        var CboMoshakhaseType = App.Kala.queryById('CboMoshakhaseType').getValue();
+        var txtMoshakhase = App.Kala.queryById('txtMoshakhase').getValue();
+        if (txtMoshakhase != "") {
+            if (CboMoshakhaseType == "1") {
+                document.getElementById("qrcode").style.display = 'none';
+                document.getElementById("barcode").style.display = 'block';
+                JsBarcode("#barcode", txtMoshakhase, {
+                    fontSize: 12,
+                    marginLeft:0,
+                    width: 1,
+                    height: 20,
+                    displayValue: true
+                });
+            }
+            else {
+                document.getElementById("barcode").style.display = 'none';
+                document.getElementById("qrcode").style.display = 'block';
+                var qrcode = new QRCode(document.getElementById("qrcode"), { width: 50, height: 50 });
+                qrcode.makeCode(txtMoshakhase);
+            }
+        }
+    }
+    function ChangeTypeKala() {
+        var CboTypeKala = App.Kala.queryById('CboTypeKala');
+        var CheckSell = App.Kala.queryById('CheckSell');
+        if (CboTypeKala.getValue() == "1") {
+            CheckSell.enable();
+        }
+        else {
+            CheckSell.setValue(false);
+            CheckSell.disable();
+        }
+
+    }
+    function HelpKala() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/comon/InsuranceType/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function KalaSetSize() {
+        App.Kala.setWidth(App.Win.getWidth());
+        var grid = App.Kala.queryById('KalaGrid');
+        grid.setHeight(App.Win.getHeight() - 435);
+
+        App.Kala.queryById('CboTypeKala').setValue("1");
+        App.Kala.queryById('CboMoshakhaseType').setValue("1");
+        App.Kala.queryById('lblMoshakhase').setText("بارکد:");
+        App.Kala.queryById('CboTypeNesbat').setValue("1");
+    }
+    function LoadKala() {
+        /*var data = document.getElementById("imgqr").getImageData();*/
+        /*var txtMoshakhase = App.Kala.queryById('txtMoshakhase');
+         canvas = document.createElement('canvas');
+        var context = canvas.getContext('2d');
+        var img = document.getElementById('imgqr');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        context.drawImage(img, 0, 0);
+        var myData = context.getImageData(0, 0, img.width, img.height);
+        decoded = jsQR.decodeQRFromImage(myData.data, img.width, img.height);
+        txtMoshakhase.setValue(decoded);*/
+        var SelectedRow = App.Kala.queryById('KalaGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/comon/Kala/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var CboTypeKala = App.Kala.queryById('CboTypeKala');
+                    CboTypeKala.setValue(data.fldKalaType);
+                    var txtCodeKala = App.Kala.queryById('txtCodeKala');
+                    txtCodeKala.setValue(data.fldKalaCode);
+                    var txtName = App.Kala.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var CboStatus = App.Kala.queryById('CboStatus');
+                    CboStatus.setValue(data.fldStatus);
+                    var CheckSell = App.Kala.queryById('CheckSell');
+                    CheckSell.setValue(data.fldSell);
+                    var CheckArzeshAfzode = App.Kala.queryById('CheckArzeshAfzode');
+                    CheckArzeshAfzode.setValue(data.fldArzeshAfzodeh);
+                    var txtIranCode = App.Kala.queryById('txtIranCode');
+                    txtIranCode.setValue(data.fldIranCode);
+                    var CboMoshakhaseType = App.Kala.queryById('CboMoshakhaseType');
+                    CboMoshakhaseType.setValue(data.fldMoshakhaseType);
+                    var txtMoshakhase = App.Kala.queryById('txtMoshakhase');
+                    txtMoshakhase.setValue(data.fldMoshakhase);
+                    var CboVahedAsli = App.Kala.queryById('CboVahedAsli');
+                    CboVahedAsli.setValue(data.fldVahedAsli);
+                    var CboVahedFaree = App.Kala.queryById('CboVahedFaree');
+                    CboVahedFaree.setValue(data.fldVahedFaree);
+                    var CboTypeNesbat = App.Kala.queryById('CboTypeNesbat');
+                    CboTypeNesbat.setValue(data.fldNesbatType);
+                    var txtVahedMoadel = App.Kala.queryById('txtVahedMoadel');
+                    txtVahedMoadel.setValue(data.fldVahedMoadel);
+                    var fldId = App.Kala.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                    CreateCode();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveKala() {
+        var CboTypeKala = App.Kala.queryById('CboTypeKala');
+        var txtCodeKala = App.Kala.queryById('txtCodeKala');
+        var txtName = App.Kala.queryById('txtName');
+        var CboStatus = App.Kala.queryById('CboStatus');
+        var CheckSell = App.Kala.queryById('CheckSell');
+        var CheckArzeshAfzode = App.Kala.queryById('CheckArzeshAfzode');
+        var txtIranCode = App.Kala.queryById('txtIranCode');
+        var CboMoshakhaseType = App.Kala.queryById('CboMoshakhaseType');
+        var txtMoshakhase = App.Kala.queryById('txtMoshakhase');
+        var CboVahedAsli = App.Kala.queryById('CboVahedAsli');
+        var CboVahedFaree = App.Kala.queryById('CboVahedFaree');
+        var CboTypeNesbat = App.Kala.queryById('CboTypeNesbat');
+        var txtVahedMoadel = App.Kala.queryById('txtVahedMoadel');
+        var fldId = App.Kala.queryById('fldId');
+            var er = false;
+
+            if (CboTypeKala.validate() == false) {
+                er = true;
+            }
+            if (txtCodeKala.validate() == false) {
+                er = true;
+            }
+            if (txtName.validate() == false) {
+                er = true;
+            }
+            if (CboStatus.validate() == false) {
+                er = true;
+            }
+            if (txtIranCode.validate() == false) {
+                er = true;
+            }
+            if (CboMoshakhaseType.validate() == false) {
+                er = true;
+            }
+            if (CboVahedAsli.validate() == false) {
+                er = true;
+            }
+            if (CboVahedFaree.validate() == false) {
+                er = true;
+            }
+            if (CboTypeNesbat.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/comon/Kala/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldKalaType: CboTypeKala.getValue(),
+                    fldKalaCode: txtCodeKala.getValue(),
+                    fldStatus:CboStatus.getValue(),
+                    fldName: txtName.getValue(),
+                    fldSell: CheckSell.getValue(),
+                    fldArzeshAfzodeh: CheckArzeshAfzode.getValue(),
+                    fldIranCode: txtIranCode.getValue(),
+                    fldMoshakhaseType: CboMoshakhaseType.getValue(),
+                    fldMoshakhase: txtMoshakhase.getValue(),
+                    fldVahedAsli: CboVahedAsli.getValue(),
+                    fldVahedFaree: CboVahedFaree.getValue(),
+                    fldNesbatType: CboTypeNesbat.getValue(),
+                    fldVahedMoadel: txtVahedMoadel.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.Kala.queryById('KalaGrid').store.load();
+                    if (data.Err != 1)
+                        ClearKala();
+                }
+
+            });
+    }
+    function DeleteKala() {
+        var SelectedRow = App.Kala.queryById('KalaGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/comon/Kala/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.Kala.queryById('KalaGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearKala() {
+        App.Kala.queryById('fldId').setValue(0);
+        App.Kala.queryById('txtCodeKala').setValue("");
+        App.Kala.queryById('txtName').setValue("");
+        App.Kala.queryById('txtIranCode').setValue("");
+        App.Kala.queryById('txtMoshakhase').setValue("");
+        App.Kala.queryById('txtVahedMoadel').setValue("");
+        document.getElementById("qrcode").innerHTML = "";
+        document.getElementById("barcode").innerHTML = "";
+        App.Kala.queryById('CheckSell').setValue(false);
+        App.Kala.queryById('CheckArzeshAfzode').setValue(false);
+    }
+    var addKeyMapKala = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.Kala.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtIranCode") {
+                        nextfld = App.Kala.queryById('CboMoshakhaseType');
+                    }
+                    else if (keyfield.itemId == "txtVahedMoadel") {
+                        nextfld = App.Kala.queryById('btnSaveInsuranceType');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

@@ -1,0 +1,708 @@
+﻿@model IEnumerable<NewFMS.WCF_Automation.OBJ_LetterTemplate>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<script src="~/Scripts/jquery-ajax-native.js"></script>
+<br />
+<style>
+    #fieldsetfile legend {
+        text-align: right;
+        font-family: Tahoma !important;
+    }
+</style>
+@(Html.X().Panel()
+            .ID("LetterTemplate")
+            .Title("ثبت الگو نامه")
+               // .Listeners(li => { li.AfterRender.Handler = "SetEnablebtnUpload();"; })
+        //.Listeners(li => { li.AfterRender.Handler = "LetterTemplateSetSize();"; li.Render.Fn = "addKeyMapLetterTemplate"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveLetterTemplate")
+                .Listeners(l => { l.Click.Handler = "SaveLetterTemplate();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadLetterTemplate();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteLetterTemplate();"; })
+        //, X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpLetterTemplate();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.LetterTemplate.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("الگو نامه")
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldID"),
+                             X.Hidden().ItemID("fldFileId"),
+                                 X.Hidden().ItemID("fldLetterFileId"),
+                           X.Label("نام الگو:"),
+                            X.TextField()
+                            .ItemID("txtName")
+                                .MaxLength(300)
+                                .EnforceMaxLength(true)
+                                .AllowBlank(false)
+                                .BlankText("لطفا نام الگو را وارد کنید.")
+                                .AutoFocus(true)
+
+                         , X.Label("MergeField:"),
+                                    X.MultiCombo()
+                                            .ItemID("CboMergeField")
+                                        .TypeAhead(true).Width(300)
+                                        .QueryMode(DataLoadMode.Local)
+                                        .AllowBlank(false)
+                                            .BlankText("لطفا MergeField را انتخاب کنید.")
+                                        .TriggerAction(TriggerAction.All)
+                                        .DisplayField("fldName")
+                                        .ValueField("fldId")
+                                            .EmptyText("MergeField...")
+                                        .Store(X.Store()
+                                            .Model(X.Model()
+                                                .IDProperty("fldId")
+                                                .Fields(
+                                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                )
+                                            )
+                                            .Proxy(X.AjaxProxy()
+                                                    .Url(Url.Action("GetMergeField"))
+                                                .Reader(X.JsonReader().Root("data"))
+                                            )
+                                        )
+                                                      , X.FieldSet()
+                                .Border(true).Cls("fieldsetfile")
+                            .AutoScroll(true)
+                            .Height(90)
+                                        .Title("فایل متنی نامه")
+                            .ColSpan(4)
+        //.Title("انتخاب فایل(حداکثر حجم مجاز: 10MB)")
+                            .ID("fieldsetLet")
+                            .Layout(LayoutType.HBox)
+                            .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Middle })
+                            .Items(
+                                X.FormPanel()
+                                    .Border(false)
+                                    .Layout(LayoutType.VBox)
+                                    .ItemID("fieldsetShowLet")
+                                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Right })
+                                    .Width(346)
+                                 .Items(
+                                        X.FileUploadField().ItemID("btnUploadLet")
+                                            .MarginSpec("0 10px 10px 0")
+                                            .Icon(Ext.Net.Icon.DiskUpload)
+                                            .ButtonOnly(true)
+                                            .ButtonText("انتخاب فایل")
+                                            .DirectEvents(l =>
+                                            {
+                                                l.Change.Action = "UploadLet";
+                                                l.Change.Delay = 1000;
+                                                l.Change.Before = "if(GotoServerLet==false){return false;}";
+                                                l.Change.Success = "hideprogressLet";
+                                            })
+        .Listeners(l => l.Change.Fn = "showFileLett")
+                                                ,
+                                        X.Container()
+                                            .Content(@<div id="fi-button-msgLet" class="Wrap-label" style="width:336px;height:auto; text-align:right;"><b>فایل انتخاب شده:</b></div>)
+                                        )
+                                        )
+       
+                               @*, X.FieldSet()
+                                .Border(true).Cls("fieldsetfile")
+                            .AutoScroll(true)
+                            .Height(90)
+                                        .Title("<div><input type='checkbox' id='checkboxIsBackGround' onChange='EnableCboFormat()'>تصویر زمینه</input></div>")
+                            .ColSpan(4)
+        //.Title("انتخاب فایل(حداکثر حجم مجاز: 10MB)")
+                            .ID("fieldsetfile")
+                            .Layout(LayoutType.HBox)
+                            .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Middle })
+                            .Items(
+                                X.FormPanel()
+                                    .Border(false)
+                                    .Layout(LayoutType.VBox)
+                                    .ItemID("fieldsetShowFile")
+                                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Right })
+                                    .Width(346)
+        //.Listeners(l => l.AfterRender.Handler = "App.LetterTemplate.queryById('fieldsetShowFile').setWidth(App.BasicInfWin.getWidth() - 1050)")
+                                    .Items(
+                                        X.FileUploadField().ItemID("btnUpload")
+                                            .MarginSpec("0 10px 10px 0")
+                                            .Icon(Ext.Net.Icon.DiskUpload)
+                                            .ButtonOnly(true)
+                                            .ButtonText("انتخاب فایل")
+                                            .DirectEvents(l =>
+                                            {
+                                                l.Change.Action = "Upload";
+                                                l.Change.Delay = 1000;
+                                                l.Change.Before = "if(GotoServerBackGround==false){return false;}";
+                                                l.Change.Success = "hideprogressBackGround";
+                                            })
+                                                .Listeners(l => l.Change.Fn = "showFileBackGround"),
+                                        X.Container()
+                                            .Content(@<div id="fi-button-msg" class="Wrap-label" style="width:336px;height:auto; text-align:right;"><b>فایل انتخاب شده:</b></div>)
+                                        )
+        //,X.Panel()
+        //    .Border(false)
+        //    .Layout(LayoutType.VBox)
+        //    .LayoutConfig(new VBoxLayoutConfig { Align=VBoxAlign.Center})
+        //    .Items(
+        //        X.Label("پیش نمایش"),
+        //        X.Panel()
+        //            .Frame(true)
+        //            .MarginSpec("3px 0 0 0")
+        //            .Layout(LayoutType.Fit)
+        //            .Items(
+        //        X.Image()
+        //                .ItemID("ImageBackGround")
+        //            .Flex(1)
+        //            .ImageUrl("/Content/Blank.jpg")
+        //            .Width(80)
+        //            .Height(80)
+        //            .Border(true)
+        //            .Frame(true)))
+                            )*@
+                )
+            )
+        ),
+        X.GridPanel()
+                .ItemID("LetterTemplateGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.LetterTemplate.queryById('LetterTemplateGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.LetterTemplate.queryById('LetterTemplateGrid');grid.setHeight(App.AutomationWin.getHeight() - 350); ";
+
+                     })
+                  .ColumnModel(
+                            Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام الگو").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldNameMergeField).Text("MergeField").Flex(10),
+                            //Html.X().ComponentColumn().ItemID("buttonDownloadFile").Listeners(l => l.Bind.Fn = "CheckEnable").Text("دانلود").Filterable(false)
+                            //        .Component(Html.X().Button().ItemID("btnbindFileBackGround").Text("دانلود تصویر").Listeners(l => l.Click.Handler = "DownloadFileBackGround()")),
+                                             Html.X().ComponentColumn().ItemID("buttonDownloadLetter").Listeners(l => l.Bind.Fn = "CheckEnable2").Text("دانلود").Filterable(false)
+                                            .Component(Html.X().Button().ItemID("btnbindFileLetter").Text("دانلود فایل").Listeners(l => l.Click.Handler = "DownloadFileLetter()"))
+                       )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+           )
+      )
+)
+<script type="text/javascript">
+    var GotoServerBackGround = false;
+    var EndUploadBackGround = false;
+
+    var CheckBackGround = setInterval(CheckBackGround, 500);
+
+    var GotoServerLet = false;
+    var EndUploadLet = false;
+
+    var CheckLet = setInterval(CheckLet, 500);
+
+    var CheckEnable = function (columnn, component, record, rowIndex) {
+        if (record.data.fldFileId == 0) {
+            component.disable();
+        }
+    };
+    var CheckEnable2 = function (columnn, component, record, rowIndex) {
+        if (record.data.fldLetterFileId == 0) {
+            component.disable();
+        }
+    };
+    function DownloadFileBackGround() {
+        var fldFileId = App.LetterTemplate.queryById("buttonDownloadFile").activeRecord.record.data.fldFileId;
+        $.ajax({
+            type: "POST",
+            dataType: 'native',
+            url: "/Automation/LetterTemplate/Download",
+            xhrFields: {
+                responseType: 'blob'
+            },
+            data: {
+                fldFileId: fldFileId,
+            },
+            success: function (blob) {
+                var link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = "DownloadFile";
+                link.click();
+            }
+        });
+    }
+    function DownloadFileLetter() {
+        var fldFileId = App.LetterTemplate.queryById("buttonDownloadLetter").activeRecord.record.data.fldLetterFileId;
+        $.ajax({
+            type: "POST",
+            dataType: 'native',
+            url: "/Automation/LetterTemplate/Download",
+            xhrFields: {
+                responseType: 'blob'
+            },
+            data: {
+                fldFileId: fldFileId,
+            },
+            success: function (blob) {
+                var link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = "DownloadFileLet";
+                link.click();
+            }
+        });
+    }
+    function EnableCboFormat() {
+        if (document.getElementById("checkboxIsBackGround").checked == true) {
+            App.LetterTemplate.queryById("btnUpload").enable();
+        }
+        else {
+            App.LetterTemplate.queryById("btnUpload").disable();
+        }
+    }
+
+    function CheckBackGround() {
+        if (EndUploadBackGround == true) {
+            /* Ext.net.DirectMethod.request({
+                 url: '/Automation/LetterTemplate/ShowPic',
+                 success: function (data) {
+                     value = "data:image/gif;base64," + data.image;
+                     App.LetterTemplate.queryById('ImageBackGround').setImageUrl(value);
+                 }
+             });*/
+            GotoServerBackGround = false;
+            Ext.MessageBox.hide();
+            Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+            clearInterval(CheckBackGround);
+            EndUploadBackGround = false;
+        }
+    }
+    function CheckLet() {
+        if (EndUploadLet == true) {
+            /* Ext.net.DirectMethod.request({
+                 url: '/Automation/LetterTemplate/ShowPic',
+                 success: function (data) {
+                     value = "data:image/gif;base64," + data.image;
+                     App.LetterTemplate.queryById('ImageBackGround').setImageUrl(value);
+                 }
+             });*/
+            GotoServerLet = false;
+            Ext.MessageBox.hide();
+            Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+            clearInterval(CheckLet);
+            EndUploadLet = false;
+        }
+    }
+  
+    var showFileBackGround = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msg');
+        if (v) {
+            showProgressBarBackGround();
+            if (v.split('.').pop().toLowerCase() == "jpg" || v.split('.').pop().toLowerCase() == "png" || v.split('.').pop().toLowerCase() == "jpeg"
+                || v.split('.').pop().toLowerCase() == "tif" || v.split('.').pop().toLowerCase() == "tiff" || v.split('.').pop().toLowerCase() == "gif"
+                || v.split('.').pop().toLowerCase() == "bmp") {
+                if (document.getElementById(id).files[1].size <= 10485760) {
+                    GotoServerBackGround = true;
+                    el.update('<b>فایل انتخاب شده: ' + v + '</b>' + "&nbsp;&nbsp;" + '<img id="DeleteActionFileimg6" title="حذف فایل" src="/Content/cancel.png" style="width:15px;height:15px;margin-bottom: -4px;" onclick="javascript:DeleteFileHuman()" />');
+                }
+                else {
+                    clearInterval(CheckBackGround);
+                    el.update('<b>فایل انتخاب شده:</b> ');
+                    /*App.LetterTemplate.queryById('ImageBackGround').setImageUrl("/Content/Blank.jpg");*/
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "حجم فایل انتخاب شده غیرمجاز است.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                } else {
+                    el.highlight();
+                }
+            }
+            else {
+                clearInterval(CheckBackGround);
+                el.update('<b>فایل انتخاب شده:</b> ');
+                /*App.LetterTemplate.queryById('ImageBackGround').setImageUrl("/Content/Blank.jpg");*/
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "فایل انتخاب شده غیرمجاز است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+    };
+    var showFileLett = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msgLet');
+        if (v) {
+            showProgressBarLet();
+            if (v.split('.').pop().toLowerCase() == "doc" || v.split('.').pop().toLowerCase() == "docx") {
+                if (document.getElementById(id).files[0].size <= 10485760) {
+                    GotoServerLet = true;
+                    el.update('<b>فایل انتخاب شده: ' + v);
+                }
+                else {
+                    clearInterval(CheckLet);
+                    el.update('<b>فایل انتخاب شده:</b> ');
+                    /*App.LetterTemplate.queryById('ImageBackGround').setImageUrl("/Content/Blank.jpg");*/
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "حجم فایل انتخاب شده غیرمجاز است.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                } else {
+                    el.highlight();
+                }
+            }
+            else {
+                clearInterval(CheckLet);
+                el.update('<b>فایل انتخاب شده:</b> ');
+                /*App.LetterTemplate.queryById('ImageBackGround').setImageUrl("/Content/Blank.jpg");*/
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "فایل انتخاب شده غیرمجاز است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+    };
+
+    var DeleteFileHu = false;
+    function DeleteFileHuman() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/LetterTemplate/DeleteSessionFile',
+            success: function (data) {
+                DeleteFileHu = true;
+                /*App.LetterTemplate.queryById('ImageBackGround').setImageUrl("/Content/Blank.jpg");*/
+                Ext.get('fi-button-msg').update('<b>فایل انتخاب شده:</b>');
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    var hideprogressBackGround = function (Responsdtxt, ResponseObj) {
+        if (ResponseObj.IsValid == true) {
+            EndUploadBackGround = true;
+        }
+        else {
+            var el = Ext.get('fi-button-msg');
+            GotoServerBackGround = false;
+            clearInterval(CheckBackGround);
+            EndUploadBackGround = false;
+            el.update('<b>فایل انتخاب شده:</b> ');
+            /*App.LetterTemplate.queryById('ImageBackGround').setImageUrl("/Content/Blank.jpg");*/
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: ResponseObj.Message,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    };
+    var hideprogressLet = function (Responsdtxt, ResponseObj) {
+        if (ResponseObj.IsValid == true) {
+            EndUploadLet = true;
+        }
+        else {
+            var el = Ext.get('fi-button-msgLet');
+            GotoServerLet = false;
+            clearInterval(CheckLet);
+            EndUploadLet = false;
+            el.update('<b>فایل انتخاب شده:</b> ');
+            /*App.LetterTemplate.queryById('ImageBackGround').setImageUrl("/Content/Blank.jpg");*/
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: ResponseObj.Message,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    };
+
+    function showProgressBarBackGround() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+    function showProgressBarLet() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+
+    function HelpLetterTemplate() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/LetterTemplate/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SetEnablebtnUpload() {
+        if (document.getElementById("checkboxIsBackGround").checked == true) {
+            App.LetterTemplate.queryById("btnUpload").enable();
+        }
+        else {
+            App.LetterTemplate.queryById("btnUpload").disable();
+        }
+    }
+    function LetterTemplateSetSize() {
+        App.LetterTemplate.setWidth(App.AutomationWin.getWidth());
+        var grid = App.LetterTemplate.queryById('LetterTemplateGrid');
+        grid.setHeight(App.AutomationWin.getHeight() - 335);
+
+    }
+    function LoadLetterTemplate() {
+        var SelectedRow = App.LetterTemplate.queryById('LetterTemplateGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/LetterTemplate/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtName = App.LetterTemplate.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    /*  document.getElementById("checkboxIsBackGround").checked = data.fldIsBackGround;
+
+                   if (data.fldIsBackGround == true) {
+                        App.LetterTemplate.queryById("btnUpload").enable();
+                    }
+                    else {
+                        App.LetterTemplate.queryById("btnUpload").disable();
+                    }*/
+
+                    var fldID = App.LetterTemplate.queryById('fldID');
+                    fldID.setValue(data.fldID);
+
+
+                    var fldIdMergeFieldArray = data.fldIdMergeField.split(",");
+                    fldIdMergeFieldArray = fldIdMergeFieldArray.splice(0, fldIdMergeFieldArray.length - 1);
+                    App.LetterTemplate.queryById('CboMergeField').setValue(fldIdMergeFieldArray);
+
+                    var fldFileId = App.LetterTemplate.queryById('fldFileId');
+                    fldFileId.setValue(data.fldFileId);
+
+                    var fldLetterFileId = App.LetterTemplate.queryById('fldLetterFileId');
+                    fldLetterFileId.setValue(data.fldLetterFileId);
+                    
+
+                   /* if (data.FileName != "") {
+
+                        Ext.get('fi-button-msg').update('<b>فایل انتخاب شده: ' + data.FileName + '</b>' + "&nbsp;&nbsp;" + '<img id="DeleteActionFileimg6" title="حذف فایل" src="/Content/cancel.png" style="width:15px;height:15px;margin-bottom: -4px;" onclick="javascript:DeleteFileHuman()" />');
+                    }
+                    else {
+                        Ext.get('fi-button-msg').update('<b>فایل انتخاب شده:</b>');
+                    }*/
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveLetterTemplate() {
+        var txtName = App.LetterTemplate.queryById('txtName');
+        /*var ChkAllowFile = document.getElementById("checkboxIsBackGround");*/
+        var CboMergeField = App.LetterTemplate.queryById('CboMergeField');
+        var fldID = App.LetterTemplate.queryById('fldID');
+        var fldFileId = App.LetterTemplate.queryById('fldFileId');
+        var fldLetterFileId = App.LetterTemplate.queryById('fldLetterFileId');
+        var MergeFieldArray = new Array();
+        var er = false;
+
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (CboMergeField.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        var values = "";
+        for (var i = 0; i < CboMergeField.getValue().length; i++) {
+            values = values + CboMergeField.getValue()[i] + ",";
+        }
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/LetterTemplate/Save',
+            params: {
+                DeleteFileHu: DeleteFileHu,
+                fldId: fldID.getValue(),
+                fldName: txtName.getValue(),
+                fldIsBackGround:false,/* ChkAllowFile.checked,*/
+                fldFileId: fldFileId.getValue(),
+                fldIdMergeField: values,
+                fldLetterFileId: fldLetterFileId.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.LetterTemplate.queryById('LetterTemplateGrid').store.load();
+                if (data.Err != 1)
+                    ClearLetterTemplate();
+            }
+
+        });
+    }
+    function DeleteLetterTemplate() {
+        var SelectedRow = App.LetterTemplate.queryById('LetterTemplateGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Automation/LetterTemplate/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.LetterTemplate.queryById('LetterTemplateGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearLetterTemplate() {
+        App.LetterTemplate.queryById('fldID').setValue(0);
+        App.LetterTemplate.queryById('txtName').setValue("");
+       /* document.getElementById("checkboxIsBackGround").checked = false;
+        Ext.get('fi-button-msg').update('<b>فایل انتخاب شده:</b> ');*/
+        Ext.get('fi-button-msgLet').update('<b>فایل انتخاب شده:</b> ');
+    }
+    var addKeyMapLetterTemplate = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.LetterTemplate.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "IsBackGround") {
+                        nextfld = App.LetterTemplate.queryById('btnSaveLetterTemplate');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+
+
+</script>

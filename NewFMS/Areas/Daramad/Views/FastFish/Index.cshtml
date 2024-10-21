@@ -1,0 +1,325 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<style>
+    .custom-IncomeIc {
+        margin-right: 405px !important;
+    }
+
+    .custom-IncomeIcsh {
+        margin-right: 125px !important;
+    }
+</style>
+
+@(Html.X().Window()
+    .Closable(true)
+    .CloseAction(CloseAction.Destroy)
+        .Listeners(l =>
+        {
+            l.Render.Fn = "addKeyMapFastFish";
+        })
+    .Title("ثبت فیش سریع")
+    .Layout(LayoutType.Fit)
+    .ID("FastFish")
+    .Modal(true)
+    .Width(520)
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        Html.X().Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .ItemID("btnSaveFastFish")
+                .Listeners(l => { l.Click.Handler = "SaveFastFish()"; })
+                    , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                     .Listeners(l => { l.Click.Handler = "HelpFastFish();"; })
+                , Html.X().Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => l.Click.Handler = "App.FastFish.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.PaddingSpec("4px 12px 4px 12px")
+            .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .Title("اطلاعات فیش")
+        //.Height(200)
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Hidden().ItemID("FishId")
+                        ,X.Label("نحوه پرداخت:"),
+                        X.ComboBox()
+                            .ItemID("CboPardakht")
+                            .TypeAhead(true)
+                            .BlankText("لطفا نحوه پرداخت را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .AllowBlank(false)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .Editable(true)
+                            .Listeners(l => l.Select.Handler = "BlurTarikhPardakht()")
+                            .EmptyText("نحوه پرداخت ...")
+                            .Store(X.Store()
+                                        .Listeners(l => l.Load.Handler = "loadDefults()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                    )
+                                .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetTypePardakht"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                    )
+                            )
+                       
+        //.DirectEvents(li =>
+        //{
+        //    li.SpecialKey.Url = "/Daramad/SearchFish/Index?State=1";
+        //    li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+        //    li.IconClick.Url = "/Daramad/SearchFish/Index?State=1";
+        //})
+                        , X.Label("مبلغ فیش:"),
+                        X.TextField()
+                            .ItemID("txtMablagh")
+                            .AllowBlank(true)
+                            .RTL(false)
+                            .ReadOnly(true)
+                        , X.Label().Text("تاریخ پرداخت:")
+                        , X.PDateField()
+                        .ItemID("txtTarikhPardakht")
+                        .Editable(false)
+                        .AllowBlank(false)
+                        .BlankText("لطفا تاریخ مجوز را وارد کنید.")
+                        .Listeners(l => l.Change.Handler = "BlurTarikhPardakht()")
+                        .LabelAlign(Ext.Net.LabelAlign.Right),
+                         X.Label().Text("تاریخ واریز:")
+                        , X.PDateField()
+                        .ItemID("txtTarikhVariz")
+                        .Editable(false)
+                        .AllowBlank(false)
+                        .RTL(false)
+                        .Listeners(l => l.Change.Handler = "setTarikhVariz()")
+                        .BlankText("لطفا تاریخ واریز را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Right)
+                        , 
+                         X.Label("سریال فیش:"),
+                            X.TextField()
+                                .ItemID("txtSerialFish")
+                                .AllowBlank(false)
+                                .AutoFocus(true)
+                                .Width(385)
+                                .MaskRe("[0-9]")
+                                .FieldStyle("direction:ltr;")
+                                .BlankText("لطفا سریال فیش را وارد کنید.")
+        // .Icon(Icon.BulletPlus)
+                                .Listeners(l =>
+                                {
+                                    l.SpecialKey.Handler = "ChangeSerialFish(e.getKey());";
+                                    //  l.Blur.Handler = "ChangeSerialFish(0);";
+                                })
+                                .ColSpan(3),
+                            X.FieldSet().Border(false)
+            .Layout(LayoutType.VBox).ColSpan(4)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Right })
+            .Items(
+                        X.Label().ItemID("LblMablaghHoruf")
+            )
+                ,
+                     X.Label("نام مؤدی:"),
+                    X.TextField()
+                        .ItemID("txtMoadi")
+                        .ReadOnly(true),
+                    X.Label("کد/شناسه ملی:"),
+                    X.TextField()
+                        .ItemID("txtCode")
+                        .ReadOnly(true)
+                
+                        )
+            )
+    )
+)
+
+<script type="text/javascript">
+    function setTarikhVariz() {
+        var txtTarikhPardakht = App.FastFish.queryById('txtTarikhPardakht');
+        var txtTarikhVariz = App.FastFish.queryById('txtTarikhVariz');
+        txtTarikhVariz.setMinValue(txtTarikhPardakht.getValue());
+        txtTarikhVariz.minText = "تاریخ واریز نباید قبل از تاریخ پرداخت باشد.";
+    }
+    function BlurTarikhPardakht() {
+        var txtTarikhPardakht = App.FastFish.queryById('txtTarikhPardakht');
+        var txtTarikhVariz = App.FastFish.queryById('txtTarikhVariz');
+        var CboPardakht = App.FastFish.queryById('CboPardakht');
+        if (CboPardakht.getValue() == "9" || CboPardakht.getValue() == "10") {
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/AnnouncementComplications_Fish/GetTarikh',
+                params: {
+                    Tarikh: txtTarikhPardakht.rawValue
+                },
+                success: function (data) {
+                    txtTarikhVariz.setValue(data.date);
+                }
+            });
+
+        }
+        else {
+            txtTarikhVariz.setValue(txtTarikhPardakht.getValue());
+        }
+    }
+    function HelpFastFish() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/FastFish/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function loadDefults() {
+        var txtTarikhPardakht = App.FastFish.queryById('txtTarikhPardakht');
+        txtTarikhPardakht.setValue('@ViewBag.DateNow');
+        App.FastFish.queryById('CboPardakht').setValue("2");
+    }
+    function ChangeSerialFish(code) {
+        var txtSerialFish = App.FastFish.queryById('txtSerialFish');
+        if (txtSerialFish.getValue() != "") {
+            if (code == 13) {
+                Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/FastFish/CheckSerialFish',
+                    params: {
+                        SerialFish: txtSerialFish.getValue()
+                    },
+                    success: function (data) {
+                        if (data.Err != 0) {
+                            Ext.MessageBox.show({
+                                title: data.MsgTitle,
+                                msg: data.Msg,
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK,
+                                fn: function (btn) {
+                                    if (btn == 'ok') {
+                                        ClearItems();
+                                    }
+                                }
+                            });
+                        }
+                        else {
+                            App.FastFish.queryById('LblMablaghHoruf').setText(data.MablaghHoruf);
+                            App.FastFish.queryById('txtMablagh').setValue(accounting.formatNumber(data.Mablagh));
+                            App.FastFish.queryById('FishId').setValue(data.fldId);
+                            App.FastFish.queryById('txtMoadi').setValue(data.FName);
+                            App.FastFish.queryById('txtCode').setValue(data.fldShenase_CodeMeli);
+                            var nextfld = App.FastFish.queryById("btnSaveFastFish");
+                            nextfld.focus();
+                        } 
+
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+    }
+
+    function SaveFastFish() {
+        var FishId = App.FastFish.queryById('FishId');
+        var txtMablagh = App.FastFish.queryById('txtMablagh');
+        var txtSerialFish = App.FastFish.queryById('txtSerialFish');
+        var txtTarikhPardakht = App.FastFish.queryById('txtTarikhPardakht');
+        var txtTarikhVariz = App.FastFish.queryById('txtTarikhVariz');
+        var CboPardakht = App.FastFish.queryById('CboPardakht');
+        var er = false;
+        if (txtTarikhPardakht.validate() == false) {
+            er = true;
+        }
+        if (txtTarikhVariz.validate() == false) {
+            er = true;
+        }
+        if (CboPardakht.validate() == false) {
+            er = true;
+        }
+        if (txtSerialFish.validate() == false) {
+            er = true;
+        }
+
+        if (FishId.getValue() == 0 || FishId.getValue() == null) {
+            txtSerialFish.setValue("");
+            if (txtSerialFish.validate() == false) {
+                er = true;
+            }
+        }
+
+        if (er == true) {
+            txtSerialFish.focus();
+            return;
+        }
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/FastFish/SavePardakht',
+            params: {
+                fldFishId: FishId.getValue(),
+                fldTarikh: txtTarikhPardakht.rawValue,
+                fldTarikhVariz: txtTarikhVariz.rawValue,
+                fldNahvePardakhtId: CboPardakht.getValue(),
+                FiscalYearId: '@ViewBag.FiscalYearId'
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (data.Er != 1) {
+                            ClearItems();
+                        }
+                    }
+                });
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function ClearItems() {
+        App.FastFish.queryById('FishId').setValue(0);
+        App.FastFish.queryById('LblMablaghHoruf').setText("");
+        App.FastFish.queryById('txtMablagh').setValue("");
+        App.FastFish.queryById('txtSerialFish').setValue("");
+        App.FastFish.queryById('txtMoadi').setValue("");
+        App.FastFish.queryById('txtCode').setValue("");
+          
+        var nextfld = App.FastFish.queryById("txtSerialFish");
+        nextfld.focus();
+    }
+    var kkk;
+    var addKeyMapFastFish = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    if (App.FastFish.queryById("btnSaveFastFish").hasFocus)
+                        SaveFastFish();
+                }
+            }]
+        });
+    }
+</script>

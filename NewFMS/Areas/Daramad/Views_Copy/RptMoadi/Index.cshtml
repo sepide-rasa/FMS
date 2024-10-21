@@ -1,0 +1,235 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_Ashkhas_ElamAvarez>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+            .ID("RptMoadi")
+            .Title("عملیات مودیان")
+           .Listeners(li => { li.AfterRender.Handler = "RptMoadiSetSize();"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("نام مودی")//.Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 5 })
+                    .Items(
+                           X.Hidden().ItemID("AshkhasId"),
+                        X.Label("کد/شناسه ملی: "),
+                        X.TextField().MarginSpec("5px 5px 5px 0")
+                            .MaskRe("/[0-9]/")
+                        .MaxLength(11)
+                        .ReadOnly(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا شخص را انتخاب کنید.")
+                        .Width(100)
+                        .EnforceMaxLength(true)
+                            .ItemID("txtShenase_Code")
+                        .Icon(Icon.UserAdd)
+// .Listeners(l => l.AfterRender.Handler = "App.MainAnnouncementComplication.queryById('txtShenase_Code').icon.dom.classList.add('custom-BaratDar');")
+                                .DirectEvents(li =>
+                                {
+                                    li.SpecialKey.Url = "/Daramad/SearchAshkhas/Index?State=7";
+                                    li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                    li.IconClick.Url = "/Daramad/SearchAshkhas/Index?State=7";
+                                })
+                                ,
+                                X.Label().ItemID("lblName"),
+                        X.Button().Text("جستجو").Icon(Ext.Net.Icon.Magnifier).ItemID("btnSearchPerson")
+                            .Listeners(l => { l.Click.Handler = "SearchPerson();"; }),
+                            X.Button().Text("چاپ").Icon(Ext.Net.Icon.Printer).ItemID("btnPrint")
+                            .Listeners(l => { l.Click.Handler = "Print();"; })
+                )
+            )
+        ),
+        X.GridPanel()
+        .AutoScroll(true)
+        .ItemID("RptMoadiGrid")
+            //.BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                                .Listeners(l => l.DataChanged.Handler = "App.RptMoadi.queryById('RptMoadiGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                            
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            ).AutoLoad(false)
+                            .PageSize(200000)
+                            .RemoteFilter(true)
+                            //.RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.RptMoadi.queryById('RptMoadiGrid');grid.setHeight(App.DaramadWin.getHeight() - 278); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                             Html.X().Column().DataIndex(Model, m => m.fldId).Flex(2).Text("کد شناسایی"),//.Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldOrganId).Text("کد سازمان").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.FishId).Text("کد سازمان").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.ReplyId).Text("کد سازمان").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.Noe).Text("نوع درآمد").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldTarikh).Text("تاریخ اعلام عوارض").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldMablaghKoli).Text("مبلغ کلی").Renderer("LocalString").Flex(3),
+                            Html.X().Column().DataIndex(Model, m => m.fldMablaghTakhfif).Text("مبلغ تخفیف").Renderer("LocalString").Flex(3),
+                            Html.X().Column().DataIndex(Model, m => m.fldMablaghGHabelPardakht).Text("مبلغ قابل پرداخت").Renderer("LocalString").Flex(3),
+                            Html.X().Column().DataIndex(Model, m => m.SharhDesc).Text("شرح کددرآمد").Flex(15),
+                            Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات"),
+                            Html.X().CommandColumn().Text("فیش").ItemID("FishColumn").PrepareToolbar("disablebtn1")
+                                                    .Flex(1)
+                                                    .Commands(
+                                                        Html.X().GridCommand()
+                                                            .CommandName("Fish")
+                                                            .StandOut(true)
+                                                            .Text("فیش")
+                                                            .ToolTip(tt => tt.Text = "فیش های صادر شده")
+                                                    )
+                                                        .Listeners(ls => ls.Command.Handler = "ShowFish(record);"),
+                            Html.X().CommandColumn().Text("اسناد تقسیط").ItemID("TaghsitColumn").PrepareToolbar("disablebtn2")
+                                                    .Flex(2)
+                                                    .Commands(
+                                                        Html.X().GridCommand()
+                                                            .CommandName("Taghsit")
+                                                            .StandOut(true)
+                                                            .Text("اسناد تقسیط")
+                                                            .ToolTip(tt => tt.Text = "اسناد تقسیط ثبت شده")
+                                                    )
+                                                        .Listeners(ls => ls.Command.Handler = "ShowTaghsit(record);")
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.Win.addListener('resize', function () {
+        App.RptMoadi.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.RptMoadi.queryById('RptMoadiGrid');
+        grid.setHeight(App.Win.getHeight()-260);
+    });*/
+
+    var disablebtn1 = function (grid, toolbar, rowIndex, record) {
+        var Button = toolbar.items.get(0);
+        if (record.data.FishId == 0) {
+            Button.setDisabled(true);
+        }
+    };
+    var disablebtn2 = function (grid, toolbar, rowIndex, record) {
+        var Button = toolbar.items.get(0);
+        if (record.data.ReplyId == 0) {
+            Button.setDisabled(true);
+        }
+    };
+    var LocalString = function (value) {
+        return value.toLocaleString();
+    };
+       function RptMoadiSetSize() {
+           App.RptMoadi.setWidth(App.DaramadWin.getWidth());
+           var grid = App.RptMoadi.queryById('RptMoadiGrid');
+            grid.setHeight(App.DaramadWin.getHeight() - 235);
+        }
+       function SearchPerson() {
+           var AshkhasId = App.RptMoadi.queryById('AshkhasId');
+           var er = false;
+
+           if (AshkhasId.validate() == false) {
+               er = true;
+           }
+           if (er == true)
+               return;
+            App.RptMoadi.queryById('RptMoadiGrid').getStore().getProxy().setExtraParam("ashkhasID", App.RptMoadi.queryById("AshkhasId").getValue());
+            App.RptMoadi.queryById('RptMoadiGrid').getStore().load();
+       }
+       function Print() {
+           var AshkhasId = App.RptMoadi.queryById('AshkhasId');
+           var er = false;
+
+           if (AshkhasId.validate() == false) {
+               er = true;
+           }
+           if (er == true)
+               return;
+           var shakhsId=App.RptMoadi.queryById("AshkhasId").getValue();
+           App.RptMoadi.body.mask('در حال بارگذاری...');
+           Ext.net.DirectMethod.request({
+               url: '/Daramad/RptMoadi/ShowPrint',
+               params: {
+                   fldShakhsId: shakhsId
+               },
+               success: function () {
+                   App.RptMoadi.body.mask().hide();
+               }
+           });
+       }
+       function ShowFish(record) {
+           App.RptMoadi.body.mask('در حال بارگذاری...');
+           Ext.net.DirectMethod.request({
+               url: '/Daramad/RptMoadi/ShowFishWin',
+               params: {
+                   ElamAvarezId: record.data.fldId
+               },
+               success: function () {
+                   App.RptMoadi.body.mask().hide();
+               }
+           });
+       }
+       function ShowTaghsit(record) {
+           Ext.net.Mask.show('در حال بارگذاری...');
+           /*Ext.net.DirectMethod.request({
+               url: '/Daramad/RptMoadi/ShowTaghsitWin',
+               params: {
+                   ElamAvarezId: record.data.fldId
+               },
+               success: function () {
+                   App.RptMoadi.body.mask().hide();
+               }
+           });*/
+           $.ajax({
+               url: '/Daramad/RptMoadi/getReply',
+               data: { ElamAvarezId: record.data.fldId },
+               success: function (data) {
+                   Ext.net.Mask.hide();
+                   if (data.ReplyTaghsitId != 0) {
+                       Ext.net.DirectMethod.request({
+                           url: '/Daramad/instalments/Index',
+                           params: {
+                               ReplyTaghsitId: data.ReplyTaghsitId,
+                               ElameAvarezId: record.data.fldId,
+                               OrganId: "@Session["OrganId"]"
+                           },
+                           success: function () {
+                               Ext.net.Mask.hide();
+                           }
+                       });
+                   } else {
+                       Ext.MessageBox.show({
+                           title: "خطا",
+                           msg: "کاربر گرامی؛ امکان تقسیط برای عوارض مورد نظر وجود ندارد.",
+                           icon: Ext.MessageBox.ERROR,
+                           buttons: Ext.MessageBox.OK
+                       });
+                   }
+               }
+           }); 
+       }
+</script>

@@ -1,0 +1,159 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(li => li.AfterRender.Handler = "LoadAnvaGroupTashvighi();")
+    .Width(350)
+    .Title("ثبت انواع گروه تشویقی")
+                            .ID("NewAnvaGroupTashvighi")
+                    .Resizable(false)
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+
+        .DefaultButton("btn")
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+               .Buttons(X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ToolTip("کلید میانبر F8")
+                           .Listeners(l =>
+                           {
+                               l.Click.Handler = "SaveAnvaGroupTashvighi();";
+
+                           })
+                           .ItemID("btnSave")
+                            ,
+                            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                                                        .OnClientClick("App.NewAnvaGroupTashvighi.destroy();"))
+
+
+                .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 1 })
+                    .Defaults(new { Margin = 10 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                     X.TextField()
+                    .ItemID("txtName")
+                    .FieldLabel("عنوان")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AutoFocus(true)
+                    , X.TextArea()
+                    .ItemID("txtDesc")
+                    .FieldLabel("توضیحات")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(160).ColSpan(3)
+
+                    //, X.Image().ItemID("Image").ImageUrl("~/Content/Blank.jpg").Width(90).Height(110).Border(true)
+        //.Align(System.Web.UI.WebControls.ImageAlign.Middle)
+
+
+                    //, X.Image().ItemID("ImageSign").ImageUrl("~/Content/Blank.jpg").Width(90).Height(110).Border(true)
+        //.Align(System.Web.UI.WebControls.ImageAlign.Middle)
+
+
+                        )
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+)
+        )
+)
+@(Html.X().KeyMap()
+                          .ID("NewAnvaGroupTashvighiMap")
+                                     .Target("={App.NewAnvaGroupTashvighi.getTargetEl()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("if(App.BasicInfTab.activeTab.id=='AnvaGroupTashvighi')SaveAnvaGroupTashvighi();")
+                );
+
+            }))
+
+
+
+<script type="text/javascript">
+    function LoadAnvaGroupTashvighi() {
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/AnvaGroupTashvighi/Details',
+                params: {
+                    id: '@ViewBag.Id'
+                },
+                success: function (data) {
+
+                    var txtName = App.NewAnvaGroupTashvighi.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var txtDesc = App.NewAnvaGroupTashvighi.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.NewAnvaGroupTashvighi.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                }
+            });
+        }
+    }
+
+    function SaveAnvaGroupTashvighi() {
+
+        var txtName = App.NewAnvaGroupTashvighi.queryById('txtName');
+        var txtDesc = App.NewAnvaGroupTashvighi.queryById('txtDesc');
+        var fldId = App.NewAnvaGroupTashvighi.queryById('fldId');
+        var er = false;
+
+        if (txtName.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/AnvaGroupTashvighi/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldTitle: txtName.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.AnvaGroupTashvighi.queryById('GridAnvaGroupTashvighi').store.load();
+                if (data.Err == 0)
+                    ClearAnvaGroupTashvighi();
+            }
+
+        });
+    }
+    function ClearAnvaGroupTashvighi() {
+        App.NewAnvaGroupTashvighi.queryById('fldId').setValue(0);
+        App.NewAnvaGroupTashvighi.queryById('txtName').setValue("");
+        App.NewAnvaGroupTashvighi.queryById('txtDesc').setValue("");
+    }
+    function EnterNext() {
+        var keyfield = App.NewAnvaGroupTashvighi.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+
+    }
+</script>

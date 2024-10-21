@@ -1,0 +1,317 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_Coding_Header>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Panel()
+    .ID("Coding_Header")
+    .Title("تعریف کدینگ")
+    .Closable(true)
+    .Listeners(li => li.AfterRender.Handler = "Coding_HeaderSetSize();")
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l =>l.Click.Handler = "SaveCoding_Header();"),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.Coding_Header.destroy()")
+            )
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Title("سال مالی")
+                            .Border(true)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                            .Items(
+                                X.Hidden()
+                                    .ItemID("fldId"),
+                                X.Label("ســـال:"),
+                                X.ComboBox()
+                                    .ItemID("CboYear")
+                                    .AutoFocus(true)
+                                    .DisplayField("fldYear")
+                                    .ValueField("fldId")
+                                    .TypeAhead(true)
+                                    .Editable(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا سال را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Listeners(l => l.AfterRender.Handler = "App.Coding_Header.queryById('CboYear').validate()")
+                                    .Store(X.Store()
+                                        //.Listeners(l => l.Load.Handler = "setDefaultYearCoding_Header()")
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" },
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetSal"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                    ),
+                            X.Label("توضیحات:"),
+                            X.TextField()
+                                .ItemID("txtDesc")
+                                .Width(375)
+                        )
+                )
+        ),
+        X.GridPanel()
+            .ItemID("Coding_HeaderGrid")
+            .BottomBar(X.PagingToolbar())
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(
+                        X.Button()
+                            .Text("ویرایش")
+                            .Icon(Ext.Net.Icon.Pencil)
+                            .Listeners(l => l.Click.Handler = "LoadCoding_Header();"),
+                        X.Button()
+                            .Text("حذف")
+                            .Icon(Ext.Net.Icon.Delete)
+                            .Listeners(l => l.Click.Handler = "DeleteCoding_Header();"),
+                        X.Button()
+                            .Text("کپی از الگو")
+                            .Icon(Ext.Net.Icon.PageCopy)
+                            .Listeners(l => l.Click.Handler = "CopyFromTemplateCoding();"),
+                        X.Button()
+                            .Text("تعریف ساختار کدینگ")
+                            .IconCls("treeIcon")
+                            .Listeners(l => l.Click.Handler = "Coding_Detail();")
+                    )
+            )
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.Coding_Header.queryById('Coding_HeaderGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+            )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .Plugins(X.FilterHeader().Remote(true))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldYear).Text("سال").Flex(10)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+    )
+)
+<script type="text/javascript">
+
+    function setDefaultYearCoding_Header() {
+        App.Coding_Header.queryById('CboYear').setValue(App.Coding_Header.queryById('CboYear').store.getAt(App.Coding_Header.queryById('CboYear').store.count() - 1));
+    }
+
+    function DeleteCoding_Header() {
+        var SelectedRow = App.Coding_Header.queryById('Coding_HeaderGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Accounting/Coding/Delete',
+                            params: {
+                                Id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                if (data.Er != 1) {
+                                    App.Coding_Header.queryById('Coding_HeaderGrid').store.load();
+                                }
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function Coding_HeaderSetSize() {
+        App.Coding_Header.setWidth(App.AccountingWin.getWidth());
+        App.Coding_Header.queryById('Coding_HeaderGrid').setHeight(App.AccountingWin.getHeight() - 250);
+    }
+
+    function SaveCoding_Header() {
+        var CboYear = App.Coding_Header.queryById('CboYear');
+        var txtDesc = App.Coding_Header.queryById('txtDesc');
+        var fldId = App.Coding_Header.queryById('fldId');
+        var er = false;
+
+        if (CboYear.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/Coding/SaveHeader',
+            params: {
+                fldId: fldId.getValue(),
+                fldYear: CboYear.getDisplayValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.Coding_Header.queryById('Coding_HeaderGrid').store.load();
+                if (data.Er != 1)
+                    ClearCoding_Header();
+            }
+        });
+    }
+
+    function ClearCoding_Header() {
+        App.Coding_Header.queryById('fldId').setValue(0);
+        App.Coding_Header.queryById('CboYear').setValue("");
+        App.Coding_Header.queryById('txtDesc').setValue("");
+    }
+
+    function LoadCoding_Header() {
+        var SelectedRow = App.Coding_Header.queryById('Coding_HeaderGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/Coding/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var CboYear = App.Coding_Header.queryById('CboYear');
+                    CboYear.setValue(CboYear.findRecordByDisplay(String(data.fldYear)).data.fldId);
+                    var txtDesc = App.Coding_Header.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.Coding_Header.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function Coding_Detail() {
+        var SelectedRow = App.Coding_Header.queryById('Coding_HeaderGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/Coding/Coding',
+                params: {
+                    HeaderId: SelectedRow.data.fldId,
+                    Year: SelectedRow.data.fldYear,
+                    Status: 1,
+                    rowIdx:0
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function CopyFromTemplateCoding() {
+        var SelectedRow = App.Coding_Header.queryById('Coding_HeaderGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/Coding/SelectTemplate',
+                params: {
+                    HeaderId: SelectedRow.data.fldId,
+                    Year: SelectedRow.data.fldYear
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

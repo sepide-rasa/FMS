@@ -1,0 +1,357 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_MoghayeratBanki>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+
+@{
+    var X = Html.X();
+}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X().Panel()
+    .ID("MoghayeratBanki")
+    .Title("مغایرت بانکی")
+    .Closable(true)
+    .Listeners(li => { li.AfterRender.Handler = "MoghayeratBankiSetSize();"; li.Render.Fn = "addKeyMapMoghayeratBanki"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Height(500)                    
+            .Items(
+                X.FieldSet()
+                    .Border(false)
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 9 })
+                    .Defaults(new { Margin=2})
+                    .Items(
+                        X.Label("بانک:"),
+                        X.ComboBox()
+                            .AutoFocus(true)
+                            .ItemID("CboBank")
+                            .Width(100)
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا بانک مورد نظر را انتخاب کنید.")
+                            .Listeners(l => l.Change.Handler = "if(App.MoghayeratBanki.queryById('CboBank').getValue()!=null){App.MoghayeratBanki.queryById('CboAccountNum').clearValue();App.MoghayeratBanki.queryById('CboAccountNum').store.load();}")
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("بانک...")
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetBank"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            ),
+                        X.Label("شماره حساب:"),
+                        X.ComboBox()
+                            .ItemID("CboAccountNum")
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا شماره حساب را انتخاب کنید.")
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("شماره حساب...")
+                            .Listeners(l => l.Change.Handler = "GetMaxMinDate()")
+                            .Store(X.Store()
+                                .AutoLoad(false)
+                                .Listeners(l => l.Load.Handler = "setDefaultCboAccountNumMB()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()                                    
+                                    .Url(Url.Action("GetAccountNum"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                                .Parameters(ps => ps.Add(new StoreParameter("BankId", "App.MoghayeratBanki.queryById('CboBank').getValue()", ParameterMode.Raw)))
+                                .Parameters(ps => ps.Add(new StoreParameter("FiscalYearId", ViewBag.FiscalYearId, ParameterMode.Raw)))
+                            ),
+                        X.Label("از تاریخ:"),
+                        X.PDateField()
+                            .ItemID("txtAzTarikh")
+                            .Width(100)
+                            .Listeners(l => {
+                                l.Change.Handler = "setDateAzTarikhMoghayeratBanki()";
+                            })
+                            .AllowBlank(false)
+                            .BlankText("لطفا تاریخ را وارد کنید.")
+                            .Editable(true)
+                            .MaskRe("/[0-9/]/")
+                            .MaxLength(10)
+                            .MinLength(10)
+                            .EnforceMaxLength(true),
+                        X.Label("تا تاریخ:").ItemID("lblTaTarikh"),
+                        X.PDateField()
+                            .ItemID("txtTaTarikh")
+                            .Listeners(l => {
+                                l.Change.Handler = "setDateTaTarikhMoghayeratBanki()";                         
+                            })
+                            .AllowBlank(false)
+                            .Width(100)                            
+                            .BlankText("لطفا تاریخ را وارد کنید.")
+                            .Editable(true)
+                            .MaskRe("/[0-9/]/")
+                            .MaxLength(10)
+                            .MinLength(10)
+                            .EnforceMaxLength(true),
+                        //X.Label("صورتحساب:"),
+                        //X.ComboBox()
+                        //    .ItemID("CboBankBill")
+                        //    .TypeAhead(true)
+                        //    .QueryMode(DataLoadMode.Local)
+                        //    .AllowBlank(false)
+                        //    .BlankText("لطفا صورتحساب مورد نظر را انتخاب کنید.")
+                        //    .TriggerAction(TriggerAction.All)
+                        //    .DisplayField("fldName")
+                        //    .ValueField("fldId")
+                        //    .EmptyText("صورتحساب...")
+                        //    .Store(X.Store()
+                        //        .AutoLoad(false)
+                        //        .Model(X.Model()
+                        //            .IDProperty("fldId")
+                        //            .Fields(
+                        //                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                        //                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                        //            )
+                        //        )
+                        //        .Proxy(X.AjaxProxy()
+                        //            .Url(Url.Action("GetBankBill"))
+                        //            .Reader(X.JsonReader().Root("data"))
+                        //        )
+                        //        .Parameters(ps => ps.Add(new StoreParameter("ShomareHesabId", "App.MoghayeratBanki.queryById('CboAccountNum').getValue()", ParameterMode.Raw)))
+                        //        .Parameters(ps => ps.Add(new StoreParameter("FiscalYearId", ViewBag.FiscalYearId, ParameterMode.Raw)))
+                        //    ),
+                        X.Button()
+                            .Text("اعمال")
+                            .Icon(Ext.Net.Icon.Magnifier)
+                            .Listeners(l => { l.Click.Handler = "ReadGrids();"; })
+                    ),
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig{Columns=2})
+                    .Items(
+                        X.GridPanel()
+                            .ItemID("BankGrid")
+                            .Title("تراکنش های بانک")
+                            .BottomBar(X.PagingToolbar())
+                            .TitleAlign(TitleAlign.Right)
+                            .Padding(5)
+                            .Frame(true)
+                            .Store(
+                                X.StoreForModel()
+                                    .Listeners(l => l.Load.Handler = "Ext.net.Mask.hide();")
+                                    .AutoLoad(false)
+                                    .Proxy(Html.X().AjaxProxy()
+                                        .Url(Url.Action("Read"))
+                                        .Reader(Html.X().JsonReader().Root("data"))
+                                        .ExtraParams(l => l.Add(new { State = 2 }))
+                                    )
+                                    .PageSize(100)
+                                    .RemoteFilter(false)
+                                    .RemotePaging(false)
+                                    .Parameters(ps => ps.Add(new StoreParameter("AzTarikh", "App.MoghayeratBanki.queryById('txtAzTarikh').getRawValue()", ParameterMode.Raw)))
+                                    .Parameters(ps => ps.Add(new StoreParameter("TaTarikh", "App.MoghayeratBanki.queryById('txtTaTarikh').getRawValue()", ParameterMode.Raw)))
+                                    .Parameters(ps => ps.Add(new StoreParameter("State", "2", ParameterMode.Raw)))
+                                    .Parameters(ps => ps.Add(new StoreParameter("FiscalYearId", ViewBag.FiscalYearId, ParameterMode.Raw)))
+                                    .Parameters(ps => ps.Add(new StoreParameter("ShomareHesabId", "App.MoghayeratBanki.queryById('CboAccountNum').getValue()", ParameterMode.Raw)))                                    
+                            )
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+                            .Plugins(X.FilterHeader().Remote(false))
+                            .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model, m => m.fldCodePeygiri).Text("کد پیگیری").Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.fldTarikh).Text("تاریخ").Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.fldBedehkar).Text("بدهکار").Flex(5).Renderer("return value.toLocaleString()"),
+                                Html.X().Column().DataIndex(Model, m => m.fldBestankar).Text("بستانکار").Flex(5).Renderer("return value.toLocaleString()"),
+                                Html.X().Column().DataIndex(Model, m => m.fldMandeh).Text("مانده").Flex(7).Renderer("return value.toLocaleString()")
+                            )
+                            .SelectionModel(
+                                Html.X().RowSelectionModel()
+                                    .Mode(Ext.Net.SelectionMode.Single)
+                            ),
+                        X.GridPanel()
+                            .Title("اسناد حسابداری")
+                            .TitleAlign(TitleAlign.Right)
+                            .ItemID("AccountingGrid")
+                            .BottomBar(X.PagingToolbar())
+                            .Padding(5)
+                            .Frame(true)
+                            .Store(
+                                X.StoreForModel()
+                                    .AutoLoad(false)
+                                    .Proxy(Html.X().AjaxProxy()
+                                        .Url(Url.Action("Read"))
+                                        .Reader(Html.X().JsonReader().Root("data"))
+                                    )
+                                    .PageSize(100)
+                                    .RemoteFilter(false)
+                                    .RemotePaging(false)
+                                    .Parameters(ps => ps.Add(new StoreParameter("AzTarikh", "App.MoghayeratBanki.queryById('txtAzTarikh').getRawValue()", ParameterMode.Raw)))
+                                    .Parameters(ps => ps.Add(new StoreParameter("TaTarikh", "App.MoghayeratBanki.queryById('txtTaTarikh').getRawValue()", ParameterMode.Raw)))                                    
+                                    .Parameters(ps => ps.Add(new StoreParameter("State", "1", ParameterMode.Raw)))
+                                    .Parameters(ps => ps.Add(new StoreParameter("FiscalYearId", ViewBag.FiscalYearId, ParameterMode.Raw)))
+                                    .Parameters(ps => ps.Add(new StoreParameter("ShomareHesabId", "App.MoghayeratBanki.queryById('CboAccountNum').getValue()", ParameterMode.Raw)))                                
+                            )
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+                            .Plugins(X.FilterHeader().Remote(false))
+                            .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model, m => m.fldDocumentNum).Text("شماره سند").Flex(2),                                        
+                                Html.X().Column().DataIndex(Model, m => m.fldCode).Text("کد حساب").Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان حساب").Flex(5).Wrap(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldTarikh).Text("تاریخ").Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.fldBedehkar).Text("بدهکار").Flex(5).Renderer("return value.toLocaleString()"),
+                                Html.X().Column().DataIndex(Model, m => m.fldBestankar).Text("بستانکار").Flex(5).Renderer("return value.toLocaleString()")
+                            )
+                            .SelectionModel(
+                                Html.X().RowSelectionModel()
+                                    .Mode(Ext.Net.SelectionMode.Single)
+                            )
+                    )
+            )
+        )
+)
+
+<script type="text/javascript">
+    function ReadGrids() {
+        if (App.MoghayeratBanki.queryById('CboAccountNum').validate() && App.MoghayeratBanki.queryById('txtAzTarikh').validate() && App.MoghayeratBanki.queryById('txtTaTarikh').validate()) {
+            Ext.net.Mask.show({ msg: 'در حال بارگزاری...' });
+            App.MoghayeratBanki.queryById('BankGrid').store.load();
+            App.MoghayeratBanki.queryById('AccountingGrid').store.load();
+        }
+    }
+
+    function setDefaultCboAccountNumMB() {
+        if (App.MoghayeratBanki.queryById('CboAccountNum').store.count() >0) {
+            App.MoghayeratBanki.queryById('CboAccountNum').select(App.MoghayeratBanki.queryById('CboAccountNum').store.getAt(0));
+        }
+    }
+
+    function GetMaxMinDate() {
+        if (App.MoghayeratBanki.queryById('CboAccountNum').validate()) {
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/MoghayeratBanki/GetMaxMinDate',
+                params: {
+                    ShomareHesabId: App.MoghayeratBanki.queryById('CboAccountNum').getValue(),
+                    FiscalYearId: '@ViewBag.FiscalYearId'
+                },
+                success: function (data) {
+                    var txtAzTarikh = App.MoghayeratBanki.queryById('txtAzTarikh');
+                    var txtTaTarikh = App.MoghayeratBanki.queryById('txtTaTarikh');
+                    if (data.AzTarikh == "" || data.AzTarikh == null) {
+                        txtAzTarikh.setDisabledDates(true);
+                        txtTaTarikh.setDisabledDates(true);
+                        txtAzTarikh.validate();
+                        txtTaTarikh.validate();
+                    }
+                    else {
+                        txtAzTarikh.setDisabledDates([null]);
+                        txtTaTarikh.setDisabledDates([null]);
+                        txtAzTarikh.setMinValue(data.AzTarikh);
+                        txtAzTarikh.setMaxValue(data.TaTarikh);
+                        txtAzTarikh.minText = "فیلد از تاریخ نمیتواند قبل از تاریخ " + data.AzTarikh + " باشد.";
+
+                        txtTaTarikh.setMinValue(data.AzTarikh);
+                        txtTaTarikh.setMaxValue(data.TaTarikh);
+                        txtTaTarikh.maxText = "فیلد تا تاریخ نمیتواند بعد از تاریخ " + data.TaTarikh + " باشد.";
+                        txtAzTarikh.validate();
+                        txtTaTarikh.validate();
+                    }
+                }
+            });
+        }
+        else {
+            App.MoghayeratBanki.queryById('txtAzTarikh').setRawValue("");
+            App.MoghayeratBanki.queryById('txtAzTarikh').setDisabledDates(true);
+            App.MoghayeratBanki.queryById('txtTaTarikh').setRawValue("");
+            App.MoghayeratBanki.queryById('txtTaTarikh').setDisabledDates(true);
+        }
+    }
+
+    function setDateAzTarikhMoghayeratBanki() {
+        var txtAzTarikh = App.MoghayeratBanki.queryById('txtAzTarikh');
+        var txtTaTarikh = App.MoghayeratBanki.queryById('txtTaTarikh');
+        txtTaTarikh.setMinValue(txtAzTarikh.getValue());
+        txtTaTarikh.minText = "فیلد تا تاریخ نباید قبل از فیلد از تاریخ باشد.";
+    }
+
+    function setDateTaTarikhMoghayeratBanki() {
+        var txtAzTarikh = App.MoghayeratBanki.queryById('txtAzTarikh');
+        var txtTaTarikh = App.MoghayeratBanki.queryById('txtTaTarikh');
+        txtAzTarikh.setMaxValue(txtTaTarikh.getValue());
+        txtAzTarikh.maxText = "فیلد از تاریخ نباید بعد از فیلد تا تاریخ باشد.";
+    }
+
+    function MoghayeratBankiSetSize() {
+        App.MoghayeratBanki.queryById('txtAzTarikh').setDisabledDates(true);
+        App.MoghayeratBanki.queryById('txtTaTarikh').setDisabledDates(true);
+        App.MoghayeratBanki.setWidth(App.AccountingWin.getWidth());
+        App.MoghayeratBanki.queryById('AccountingGrid').setSize((App.AccountingWin.getWidth()-10) / 2,App.AccountingWin.getHeight() - 209);
+        App.MoghayeratBanki.queryById('BankGrid').setSize((App.AccountingWin.getWidth()-10) / 2,App.AccountingWin.getHeight() - 209);
+    }
+
+    var addKeyMapMoghayeratBanki = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.MoghayeratBanki.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtTaTarikh") {
+                        ReadGrids();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>
+

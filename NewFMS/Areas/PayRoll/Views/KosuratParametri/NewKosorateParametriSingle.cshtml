@@ -1,0 +1,763 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using Ext.Net.Utilities;
+@{
+    var X = Html.X();
+}
+<script src="~/Scripts/accounting.js"></script>
+
+@(Html.X().Window()
+    .Width(550)
+    .Modal(true)
+    .Title("ثبت کسورات پارامتری")
+    .Closable(true)
+    .ID("NewKosouratParametriSingle")
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .ButtonAlign(Ext.Net.Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+    //.ToolTip("کلید میانبر F8")
+            .Listeners(l =>
+            {
+                l.Click.Handler = "checkSaveKosouratParametriSingle();";
+            }),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+    //.ToolTip("کلید میانبر Esc")
+            .OnClientClick("App.NewKosouratParametriSingle.destroy()"))
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(
+                X.FieldSet()
+                    .Title("مشخصات کسورات")
+                    .Border(true)
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Hidden().ItemID("fldId"),
+                        X.Label("نام و نام خانوادگی:"),
+                        X.TextField()
+                            .ItemID("txtName")
+                            .AllowBlank(false),
+                        X.Label("کد ملی:"),
+                        X.TextField()
+                            .ItemID("txtNationalCode")
+                            .AllowBlank(false),
+                        X.Label("شماره پرسنلی:"),
+                        X.TextField()
+                            .ItemID("txtShomarePersoneli")
+                            .AllowBlank(false),
+                        X.Label("نوع پارامترها:"),
+                        X.ComboBox()
+                            .ItemID("CboParametrha")
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .AllowBlank(false)
+                            .AutoFocus(true)
+                            .BlankText("لطفا نوع پارامتر را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldParametrName")
+                            .ValueField("fldId")
+                            //.SelectedItems(new { Value = "1" })
+                            .Store(X.Store().Listeners(li => li.Load.Handler = "LoadKosouratParametri()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldParametrName", ModelFieldType.String) { Mapping = "fldParametrName" }
+                                            )
+                                        )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetKosouratParametri"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                                .ExtraParams(l => l.Add(new { OrganId = ViewBag.OrganId }))
+                                    )
+                                ),
+                        X.Label("نوع پرداخت:"),
+                        X.ComboBox()
+                            .ItemID("CboNoePardakht")
+                            .EmptyText("نوع پرداخت...")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع پرداخت را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Items(
+                                new ListItem("تعدادی", "0"),
+                                new ListItem("دائمی", "1")
+                                )
+                            .Listeners(a =>
+                                {
+                                    a.Change.Handler = "ChangeStatus()";
+                                }),
+                        X.Label("مبلغ:"),
+                        X.TextField()
+                            .ItemID("txtMablagh")
+                            .MaskRe("/[0-9-.]/")
+                            .Listeners(l => { l.Change.Handler = "App.NewKosouratParametriSingle.queryById('txtMablagh').setValue(accounting.formatNumber(App.NewKosouratParametriSingle.queryById('txtMablagh').getValue()));CheckInt(App.NewKosouratParametriSingle.queryById('txtMablagh'))"; })
+                            .AllowBlank(false)                            
+                            .BlankText("لطفا مبلغ را وارد کنید."),
+                        X.Label("تعداد:").ItemID("lblTedad"),
+                        X.TextField()
+                            .ItemID("txtTedad")
+                            .MaskRe("/[0-9]/")
+                            .AllowBlank(false)
+                            .BlankText("لطفا تعداد را وارد کنید.")
+                            .Listeners(a =>
+                                {
+                                    a.Change.Handler = "CheckInt(App.NewKosouratParametriSingle.queryById('txtTedad'));ChangeStatus()";
+                                }),
+                        X.Label("تاریخ پرداخت:"),
+                        X.PDateField()
+                            .ItemID("txtTrikhePardakht")
+                            .AllowBlank(false)
+                            .BlankText("لطفا تاریخ پرداخت را وارد کنید.")
+                            .Listeners(a =>
+                                {
+                                    a.Change.Handler = "ChangeStatus()";
+                                }),
+                        X.Label("وضعیت:"),
+                        X.ComboBox()
+                            .ItemID("CboStatus")
+                            .EmptyText("وضعیت...")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا وضعیت را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Items(
+                                new ListItem("غیر فعال", "0"),
+                                new ListItem("فعال", "1")
+                                )
+                            .Listeners(a =>
+                                {
+                                    a.Change.Handler = "ChangeStatus()";
+                                }),
+                        X.Label().Text("تاریخ غیر فعالی:"),
+                        X.FieldSet()
+                            .Border(false)
+                            .ColSpan(3)
+                            .PaddingSpec("0 0 0 0")
+                            .Layout(LayoutType.HBox)
+                            .Items(
+                                X.Label("ماه:"),
+                                X.TextField()
+                                    .ItemID("txtMonth")
+                                    .Listeners(l => l.Change.Handler = "if(App.NewKosouratParametriSingle.queryById('CboStatus').getValue()=='0'&& App.NewKosouratParametriSingle.queryById('txtMonth').getValue()>12){App.NewKosouratParametriSingle.queryById('txtMonth').setValue('');}")
+                                    .Text("0")
+                                    .MaskRe("/[0-9]/")
+                                    .Width(30)                                    
+                                    .MaxLength(2)
+                                    .MinLength(2)
+                                    .EnforceMaxLength(true)
+                                    .AllowBlank(false)
+                                    .PaddingSpec("0 0 0 6px")
+                                    .BlankText("لطفا ماه را وارد کنید."),
+                                X.Label().Text("/").MarginSpec("0 5px 0 0"),
+                                X.Label("سال:"),
+                                X.TextField()
+                                    .ItemID("txtYear")
+                                    .MaxLength(4)
+                                    .MinLength(4)
+                                    .EnforceMaxLength(true)
+                                    .Text("0")
+                                    .MaskRe("/[0-9]/")
+                                    .Width(50)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا سال را وارد کنید.")
+                            ),
+                        X.FieldSet()
+                            .Layout(LayoutType.Table)
+                            .ColSpan(2)
+                            .Border(false)
+                            .LayoutConfig(new TableLayoutConfig{Columns=2})
+                            .PaddingSpec("0 0 0 75px")
+                            .Defaults(new { Margin = 2 })
+                            .Items(
+                                X.Checkbox()
+                                    .ItemID("chkCheckedSumFish")
+                                    .PaddingSpec("0 0 0 4px")
+                                    .Listeners(a =>
+                                    {
+                                        a.Change.Handler = "CheckedSumFish()";
+                                    }),
+                                X.Label("نمایش جمع در فیش")),
+                                X.Label("جمع پرداختی قبل:"),
+                                X.TextField()
+                                    .ItemID("txtSumPardakhtiGHabl")
+                                    .Text("0")
+                                    .MaskRe("/[0-9-.]/")
+                                    .Listeners(l => { l.Change.Handler = "App.NewKosouratParametriSingle.queryById('txtSumPardakhtiGHabl').setValue(accounting.formatNumber(App.NewKosouratParametriSingle.queryById('txtSumPardakhtiGHabl').getValue()));CheckInt(App.NewKosouratParametriSingle.queryById('txtSumPardakhtiGHabl'));"; })
+                                    .ReadOnly(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا مبلغ جمع پرداختی را وارد کنید."),
+                        X.FieldSet()
+                            .Layout(LayoutType.Table)
+                            .ColSpan(2)
+                            .LayoutConfig(new TableLayoutConfig{Columns=2})
+                            .PaddingSpec("0 0 0 75px")
+                            .Border(false)
+                            .Defaults(new { Margin = 2 })
+                            .Items(
+                                X.Checkbox()
+                                    .ItemID("chkCheckedMondeFish")
+                                    .PaddingSpec("0 0 0 4px")
+                                    .Listeners(a =>
+                                        {
+                                            a.Change.Handler = "CheckedMondeFish()";
+                                        }),
+                                X.Label("نمایش مانده در فیش")),
+                                X.Label("مانده از قبل:"),
+                                X.TextField()
+                                    .ItemID("txtMondeGHabl")
+                                    .Text("0")
+                                    .MaskRe("/[0-9-.]/")
+                                    .Listeners(l => { l.Change.Handler = "App.NewKosouratParametriSingle.queryById('txtMondeGHabl').setValue(accounting.formatNumber(App.NewKosouratParametriSingle.queryById('txtMondeGHabl').getValue()));CheckInt(App.NewKosouratParametriSingle.queryById('txtMondeGHabl'));"; })
+                                    .ReadOnly(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا مبلغ مانده از قبل را وارد کنید.")
+                                    ,X.Label("توضیحات:"),
+                                    X.TextField().Width(200)
+                                        .ItemID("txtdesc").ColSpan(3)                                    
+                                    
+                  )
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })        
+                    )
+)
+
+<script type="text/javascript">
+    function ChangeStatus() {
+        var Status = App.NewKosouratParametriSingle.queryById('CboStatus');
+        var CboNoePardakht = App.NewKosouratParametriSingle.queryById('CboNoePardakht');
+        var txtTedad = App.NewKosouratParametriSingle.queryById('txtTedad');
+        var lblTedad = App.NewKosouratParametriSingle.queryById('lblTedad');
+        var txtMonth = App.NewKosouratParametriSingle.queryById('txtMonth');
+        var txtYear = App.NewKosouratParametriSingle.queryById('txtYear');
+        var TrikhePardakht = App.NewKosouratParametriSingle.queryById('txtTrikhePardakht');
+
+        if (Status.getValue() == "1" && CboNoePardakht.getValue() == "1") {/*دایمی و فعال*/
+            txtTedad.setReadOnly(true);
+            txtTedad.setValue(0);
+            txtMonth.setValue("99");
+            txtMonth.setReadOnly(true);
+            txtYear.setValue("9999");
+            txtYear.setReadOnly(true);
+        }
+        else if (Status.getValue() == "0" && CboNoePardakht.getValue() == "1") {/*دایمی و غیرفعال*/
+            txtTedad.setReadOnly(true);
+            txtTedad.setValue(0);
+            txtMonth.setValue('@ViewBag.TarikhPardakht'.substr(5, 2));
+            txtMonth.setReadOnly(false);
+            txtYear.setValue('@ViewBag.TarikhPardakht'.substr(0, 4));
+            txtYear.setReadOnly(false);
+        }
+        else if (CboNoePardakht.getValue() == "0" && Status.getValue() == "0") {/*تعدادی و غیرفعال*/
+            txtTedad.setReadOnly(false);
+            txtMonth.setValue('@ViewBag.TarikhPardakht'.substr(5, 2));
+            txtMonth.setReadOnly(false);
+            txtYear.setValue('@ViewBag.TarikhPardakht'.substr(0, 4));
+            txtYear.setReadOnly(false);
+        }
+        else {
+            txtTedad.setReadOnly(false);
+            if (txtTedad.getValue() != 0 && TrikhePardakht.rawValue != "" && TrikhePardakht.validate() == true && txtTedad.getValue() != "") {
+                Ext.net.DirectMethod.request({
+                    url: '/PayRoll/KosuratParametri/DateDeactive',
+                    params: {
+                        TrikhePardakht: TrikhePardakht.rawValue,
+                        Tedad: txtTedad.getValue()
+                    },
+                    success: function (data) {
+                        if (data.Mah > 12 || data.Year.toString().length > 4) {
+                            txtMonth.setValue(0);
+                            txtYear.setValue(0);
+                        }
+                        else {
+                            txtMonth.setValue(data.Mah);
+                            txtYear.setValue(data.Year);
+                        }
+                        txtMonth.setReadOnly(true);
+                        txtYear.setReadOnly(true);
+                    }
+                });
+            }
+            else if (txtTedad.getValue() == 0 || txtTedad.getValue() == "") {
+                txtMonth.setValue(0);
+                txtYear.setValue(0);
+            }
+        }
+    }
+
+    function CheckedSumFish() {
+        var chkCheckedSumFish = App.NewKosouratParametriSingle.queryById('chkCheckedSumFish');
+        var txtSumPardakhtiGHabl = App.NewKosouratParametriSingle.queryById('txtSumPardakhtiGHabl');
+
+        if (chkCheckedSumFish.getValue() == true) {
+            txtSumPardakhtiGHabl.setReadOnly(false);
+        }
+        else if (chkCheckedSumFish.getValue() == false) {
+            txtSumPardakhtiGHabl.setReadOnly(true);
+            txtSumPardakhtiGHabl.setValue(0);
+        }
+    }
+
+    function CheckedMondeFish() {
+        var chkCheckedMondeFish = App.NewKosouratParametriSingle.queryById('chkCheckedMondeFish');
+        var txtMondeGHabl = App.NewKosouratParametriSingle.queryById('txtMondeGHabl');
+
+        if (chkCheckedMondeFish.getValue() == true) {
+            txtMondeGHabl.setReadOnly(false);
+        }
+        else if (chkCheckedMondeFish.getValue() == false) {
+            txtMondeGHabl.setReadOnly(true);
+            txtMondeGHabl.setValue(0);
+        }
+    }
+
+    /*function CheckedNoePardakht() {
+        var CboNoePardakht = App.KosuratParametriTab.activeTab.queryById('CboNoePardakht');
+        var txtMonth = App.KosuratParametriTab.activeTab.queryById('txtMonth');
+        var txtYear = App.KosuratParametriTab.activeTab.queryById('txtYear');
+        if (CboNoePardakht.getValue() == "0") {
+            var txtTedad = App.KosuratParametriTab.activeTab.queryById('txtTedad');
+            txtTedad.setReadOnly(false); txtMonth.setValue(0); txtYear.setValue(0);
+
+          }
+        else if (CboNoePardakht.getValue() == "1") {
+            var txtTedad = App.KosuratParametriTab.activeTab.queryById('txtTedad');
+            txtTedad.setReadOnly(true);
+            txtTedad.setValue("0");
+            var txtMonth = App.KosuratParametriTab.activeTab.queryById('txtMonth');
+            txtMonth.setValue("99");
+            var txtYear = App.KosuratParametriTab.activeTab.queryById('txtYear');
+            txtYear.setValue("9999");
+        }
+    }
+
+    function DateDeactive() {
+        var TrikhePardakht = App.KosuratParametriTab.activeTab.queryById('txtTrikhePardakht');
+        var txtTedad = App.KosuratParametriTab.activeTab.queryById('txtTedad');
+        var Tedad = 0;
+        if (txtTedad.getValue() != 0 && TrikhePardakht.rawValue != "") {
+            Tedad = txtTedad.getValue();
+            Ext.net.DirectMethod.request({
+                url: '/KosuratParametri/DateDeactive',
+                params: {
+                    TrikhePardakht: TrikhePardakht.rawValue,
+                    Tedad: Tedad
+                },
+                success: function (data) {
+                    var Month = App.KosuratParametriTab.activeTab.queryById('txtMonth');
+                    Month.setValue(data.Mah);
+                    var Year = App.KosuratParametriTab.activeTab.queryById('txtYear');
+                    Year.setValue(data.Year);
+                }
+            });
+        }
+    }*/
+
+    function LoadKosouratParametri() {
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KosuratParametri/Details',
+                params: {
+                    id: '@ViewBag.Id',
+                    OrganId:'@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    App.NewKosouratParametriSingle.queryById('CboNoePardakht').suspendEvent("change");
+                    App.NewKosouratParametriSingle.queryById('txtTrikhePardakht').suspendEvent("change");
+                    App.NewKosouratParametriSingle.queryById('txtTedad').suspendEvent("change");
+
+                    var txtName = App.NewKosouratParametriSingle.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    txtName.setReadOnly(true);
+                    txtName.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                    var txtNationalCode = App.NewKosouratParametriSingle.queryById('txtNationalCode');
+                    txtNationalCode.setValue(data.fldNationalCode);
+                    txtNationalCode.setReadOnly(true);
+                    txtNationalCode.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                    var txtShomarePersoneli = App.NewKosouratParametriSingle.queryById('txtShomarePersoneli');
+                    txtShomarePersoneli.setValue(data.fldShomarePersoneli);
+                    txtShomarePersoneli.setReadOnly(true);
+                    txtShomarePersoneli.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                    var CboParametrha = App.NewKosouratParametriSingle.queryById('CboParametrha');
+                    CboParametrha.setValue(data.fldParametrId);
+
+                    var CboNoePardakht = App.NewKosouratParametriSingle.queryById('CboNoePardakht');
+                    CboNoePardakht.setValue(data.fldNoePardakht);
+
+                    var txtMablagh = App.NewKosouratParametriSingle.queryById('txtMablagh');
+                    txtMablagh.setValue(data.fldMablagh);
+
+                    var txtTedad = App.NewKosouratParametriSingle.queryById('txtTedad');
+                    txtTedad.setValue(data.fldTedad);
+
+                    var txtTrikhePardakht = App.NewKosouratParametriSingle.queryById('txtTrikhePardakht');
+                    txtTrikhePardakht.setValue(data.fldTarikhPardakht);
+
+                    var chkCheckedSumFish = App.NewKosouratParametriSingle.queryById('chkCheckedSumFish');
+                    chkCheckedSumFish.setValue(data.fldSumFish);
+
+                    var txtSumPardakhtiGHabl = App.NewKosouratParametriSingle.queryById('txtSumPardakhtiGHabl');
+                    txtSumPardakhtiGHabl.setValue(data.fldSumPardakhtiGHabl);
+
+                    var chkCheckedMondeFish = App.NewKosouratParametriSingle.queryById('chkCheckedMondeFish');
+                    chkCheckedMondeFish.setValue(data.fldMondeFish);
+
+                    var txtMondeGHabl = App.NewKosouratParametriSingle.queryById('txtMondeGHabl');
+                    txtMondeGHabl.setValue(data.fldMondeGHabl);
+
+                    var CboStatus = App.NewKosouratParametriSingle.queryById('CboStatus');
+                    CboStatus.setValue(data.fldStatus);
+
+                    var txtYear = App.NewKosouratParametriSingle.queryById('txtYear');
+                    txtYear.setValue(data.Sal);
+
+                    var txtMonth = App.NewKosouratParametriSingle.queryById('txtMonth');
+                    txtMonth.setValue(data.Month);
+
+                    var Id = App.NewKosouratParametriSingle.queryById('fldId');
+                    Id.setValue(data.fldId);
+
+                    var txtdesc = App.NewKosouratParametriSingle.queryById('txtdesc');
+                    txtdesc.setValue(data.fldDesc);
+
+                   /* if (data.use == true) {
+                        CboParametrha.setReadOnly(true);
+                        CboParametrha.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                        CboNoePardakht.setReadOnly(true);
+                        CboNoePardakht.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                        txtMablagh.setReadOnly(true);
+                        txtMablagh.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                        txtTedad.setReadOnly(true);
+                        txtTedad.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                        txtTrikhePardakht.setReadOnly(true);
+                        txtTrikhePardakht.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                        chkCheckedSumFish.setReadOnly(true);
+
+                        chkCheckedMondeFish.setReadOnly(true);
+
+                        txtMondeGHabl.setReadOnly(true);
+                        txtMondeGHabl.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                        txtSumPardakhtiGHabl.setReadOnly(true);
+                        txtSumPardakhtiGHabl.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                        /*CboParametrha.disable();
+                        CboNoePardakht.disable();
+                        txtMablagh.disable();
+                        txtTedad.disable();
+                        txtTrikhePardakht.disable();
+                        chkCheckedSumFish.disable();
+                        chkCheckedMondeFish.disable();
+                        txtMondeGHabl.disable();
+                        txtSumPardakhtiGHabl.disable();*/
+                  /*  }
+                    else {
+                        CboParametrha.setReadOnly(false);
+                        CboParametrha.setFieldStyle("");
+
+                        CboNoePardakht.setReadOnly(false);
+                        CboNoePardakht.setFieldStyle("");
+
+                        txtMablagh.setReadOnly(false);
+                        txtMablagh.setFieldStyle("");
+
+                        txtTedad.setReadOnly(false);
+                        txtTedad.setFieldStyle("");
+
+                        txtTrikhePardakht.setReadOnly(false);
+                        txtTrikhePardakht.setFieldStyle("");
+
+                        chkCheckedSumFish.setReadOnly(false);
+
+                        chkCheckedMondeFish.setReadOnly(false);
+
+                        txtMondeGHabl.setReadOnly(false);
+                        txtMondeGHabl.setFieldStyle("");
+
+                        txtSumPardakhtiGHabl.setReadOnly(false);
+                        txtSumPardakhtiGHabl.setFieldStyle("");
+                    }*/
+                    Ext.net.Mask.hide();
+                    App.NewKosouratParametriSingle.queryById('CboNoePardakht').resumeEvent('change');
+                    App.NewKosouratParametriSingle.queryById('txtTrikhePardakht').resumeEvent('change');
+                    App.NewKosouratParametriSingle.queryById('txtTedad').resumeEvent('change');
+                }
+            });
+        }
+        else {
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/KosuratParametri/DetailsHeader',
+                params: {
+                    id: '@ViewBag.PersonalId',
+                    OrganId: '@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    var txtName = App.NewKosouratParametriSingle.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    txtName.setReadOnly(true);
+                    txtName.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                    var txtNationalCode = App.NewKosouratParametriSingle.queryById('txtNationalCode');
+                    txtNationalCode.setValue(data.fldNationalCode);
+                    txtNationalCode.setReadOnly(true);
+                    txtNationalCode.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                    var txtShomarePersoneli = App.NewKosouratParametriSingle.queryById('txtShomarePersoneli');
+                    txtShomarePersoneli.setValue(data.fldShomarePersoneli);
+                    txtShomarePersoneli.setReadOnly(true);
+                    txtShomarePersoneli.setFieldStyle("background-image:none;background-color:#dfe8f6");
+                    Ext.net.Mask.hide();
+                }
+            });
+            App.NewKosouratParametriSingle.queryById('txtTrikhePardakht').setValue('@ViewBag.TarikhPardakht');
+            App.NewKosouratParametriSingle.queryById('CboStatus').setValue("1");
+            App.NewKosouratParametriSingle.queryById('CboNoePardakht').setValue("0");
+            App.NewKosouratParametriSingle.queryById('CboParametrha').setValue(ParametrDefult);
+        }
+    }
+
+    function checkSaveKosouratParametriSingle() {
+        var SelectedRow = App.KosouratParametriSingle.queryById('GridHeader').selModel.getLastSelected();
+        if (SelectedRow.data.fldStatusId == 1) {
+            SaveKosouratParametriSingle();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "وضعیت فرد مورد نظر " + SelectedRow.data.fldStatusTitle + " است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SaveKosouratParametriSingle() {
+        var CboParametrha = App.NewKosouratParametriSingle.queryById('CboParametrha');
+        var CboNoePardakht = App.NewKosouratParametriSingle.queryById('CboNoePardakht');
+        var txtMablagh = App.NewKosouratParametriSingle.queryById('txtMablagh');
+        var txtTedad = App.NewKosouratParametriSingle.queryById('txtTedad');
+        var txtTrikhePardakht = App.NewKosouratParametriSingle.queryById('txtTrikhePardakht');
+        var chkCheckedSumFish = App.NewKosouratParametriSingle.queryById('chkCheckedSumFish');
+        var txtSumPardakhtiGHabl = App.NewKosouratParametriSingle.queryById('txtSumPardakhtiGHabl');
+        var chkCheckedMondeFish = App.NewKosouratParametriSingle.queryById('chkCheckedMondeFish');
+        var txtMondeGHabl = App.NewKosouratParametriSingle.queryById('txtMondeGHabl');
+        var CboStatus = App.NewKosouratParametriSingle.queryById('CboStatus');
+        var txtMonth = App.NewKosouratParametriSingle.queryById('txtMonth');
+        var txtYear = App.NewKosouratParametriSingle.queryById('txtYear');
+        var Id = App.NewKosouratParametriSingle.queryById('fldId');
+        var txtdesc = App.NewKosouratParametriSingle.queryById('txtdesc');
+        var er = false;
+
+        if (CboParametrha.validate() == false) {
+            er = true;
+        }
+
+        if (CboNoePardakht.validate() == false) {
+            er = true;
+        }
+        if (txtMablagh.validate() == false) {
+            er = true;
+        }
+        if (txtTedad.validate() == false) {
+            er = true;
+        }
+        if (txtTrikhePardakht.validate() == false) {
+            er = true;
+        }
+        if (txtSumPardakhtiGHabl.validate() == false) {
+            er = true;
+        }
+        if (txtMondeGHabl.validate() == false) {
+            er = true;
+        }
+
+        if (CboStatus.validate() == false) {
+            er = true;
+        }
+
+        if (txtMonth.validate() == false) {
+            er = true;
+        }
+
+        if (txtYear.validate() == false) {
+            er = true;
+        }
+        
+        if (er == true)
+            return;
+
+        if (txtMonth.getValue() == 0 || txtYear.getValue() == 0) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "تاریخ غیر فعالی معتبر نیست.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+        if (CboNoePardakht.getValue() == 0 && txtTedad.getValue() == 0) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا تعداد را وارد کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+        if (chkCheckedMondeFish.getValue() == 1 && txtMondeGHabl.getValue() == 0) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا مبلغ مانده از قبل را وارد کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+        if (chkCheckedSumFish.getValue() == 1 && txtSumPardakhtiGHabl.getValue() == 0) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا مبلغ جمع پرداختی قبل را وارد کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        var NoePardakht = false;
+        if (CboNoePardakht.getValue() == "1")
+            NoePardakht = true;
+        var Status = false;
+        if (CboStatus.getValue() == "1")
+            Status = true;
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/KosuratParametri/SaveSingle',
+            params: {
+                fldId: Id.getValue(),
+                fldPersonalId: '@ViewBag.PersonalId',
+                fldParametrId: CboParametrha.getValue(),
+                fldNoePardakht: NoePardakht,
+                fldMablagh: txtMablagh.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                fldTedad: txtTedad.getValue(),
+                fldTarikhePardakht: txtTrikhePardakht.rawValue,
+                fldSumFish: chkCheckedSumFish.getValue(),
+                fldSumPardakhtiGHabl: txtSumPardakhtiGHabl.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                fldMondeFish: chkCheckedMondeFish.getValue(),
+                fldMondeGHabl: txtMondeGHabl.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                fldYear: txtYear.getValue(),
+                fldMonth: txtMonth.getValue(),
+                fldStatus: Status,
+                fldDesc: txtdesc.getValue(),
+                DelCalc: '@ViewBag.DelCalc',
+                OrganId:'@ViewBag.OrganId'
+
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == 'ok' && data.Er != 1) {
+                            App.NewKosouratParametriSingle.destroy();
+                        }
+                    }
+                });
+                ReloadKosouratParametriSingle();
+                ParametrDefult = CboParametrha.getValue();
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function EnterNext() {
+        var nextfld;
+        if (Ext.Element.getActiveElement().name != "") {
+            var keyfield = App.NewKosouratParametriSingle.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+            if (keyfield.itemId == "txtMablagh") {
+                if (App.NewKosouratParametriSingle.queryById('CboNoePardakht').getValue() == "1") {
+                    nextfld = App.NewKosouratParametriSingle.queryById('txtTrikhePardakht');
+                }
+                else {
+                    nextfld = App.NewKosouratParametriSingle.queryById('txtTedad');
+                }
+            }
+            else if (keyfield.itemId == "CboStatus") {
+                if (App.NewKosouratParametriSingle.queryById('CboStatus').getValue() == "0") {
+                    nextfld = App.NewKosouratParametriSingle.queryById('txtMonth');
+                }
+                else {
+                    nextfld = App.NewKosouratParametriSingle.queryById('chkCheckedSumFish');
+                    nextfld.focus();
+                    return;
+                }
+            }
+            else if (keyfield.itemId == "txtMonth") {
+                nextfld = App.NewKosouratParametriSingle.queryById('txtYear');
+            }
+            else if (keyfield.itemId == "txtYear") {
+                nextfld = App.NewKosouratParametriSingle.queryById('chkCheckedSumFish');
+                nextfld.focus();
+                return;
+            }
+            else if (keyfield.itemId == "txtSumPardakhtiGHabl") {
+                nextfld = App.NewKosouratParametriSingle.queryById('chkCheckedMondeFish');
+                nextfld.focus();
+                return;
+            }
+            else if (keyfield.itemId == "txtMondeGHabl") {
+                return;
+            }
+            else {
+                nextfld = keyfield.nextSibling().nextSibling();
+            }
+        }
+        else {
+            if (App.NewKosouratParametriSingle.queryById('chkCheckedSumFish').hasFocus == true) {
+                if (App.NewKosouratParametriSingle.queryById('chkCheckedSumFish').getValue() == true) {
+                    nextfld = App.NewKosouratParametriSingle.queryById('txtSumPardakhtiGHabl');
+                }
+                else {
+                    nextfld = App.NewKosouratParametriSingle.queryById('chkCheckedMondeFish');
+                    nextfld.focus();
+                    return;
+                }
+            }
+            else {
+                if (App.NewKosouratParametriSingle.queryById('chkCheckedMondeFish').getValue() == true) {
+                    nextfld = App.NewKosouratParametriSingle.queryById('txtMondeGHabl');
+                }
+                else {
+                    return;
+                }
+            }
+        }        
+        nextfld.focus();
+        nextfld.selectText();
+    }
+</script>

@@ -1,0 +1,196 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(li => li.AfterRender.Handler = "LoadCity();")
+    .Width(560)
+    .Title("ثبت شهرستان")
+                        .ID("NewCity")
+                    .Resizable(false)
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+
+        .DefaultButton("btn")
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+               .Buttons(X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ToolTip("کلید میانبر F8")
+                           .Listeners(l =>
+                           {
+                               l.Click.Handler = "SaveCity();";
+
+                           })
+                           .ItemID("btnSave")
+                            ,
+                            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                                                    .OnClientClick("App.NewCity.destroy();"))
+
+
+                .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                    .Defaults(new { Margin = 10 })
+                .Items(
+                    X.Hidden().ItemID("fldId")
+                        , X.ComboBox()
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .FieldLabel("استان")
+                        .ItemID("CboState")
+                        .TypeAhead(true)
+                        .Editable(false)
+                        .QueryMode(DataLoadMode.Local)
+                        .BlankText("لطفا استان را انتخاب کنید.")
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                        .ValueField("fldId")
+                        .EmptyText("استان ...")
+        //.SelectedItems(new { Value = "1" })
+                        .Store(X.Store()
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                )
+                                    )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetState"))
+                        .Reader(X.JsonReader().Root("data"))
+                                )
+                                   .Listeners(li => li.BeforeLoad.Handler = "LoadCity();")
+                                )
+                        .AllowBlank(false)
+                    ,X.TextField()
+                    .ItemID("txtName")
+                    .FieldLabel("نام شهرستان")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا نام شهرستان را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                    .AutoFocus(true)
+                    , X.TextArea()
+                    .ItemID("txtDesc")
+                    .FieldLabel("توضیحات")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(160).ColSpan(3)
+
+                    //, X.Image().ItemID("Image").ImageUrl("~/Content/Blank.jpg").Width(90).Height(110).Border(true)
+        //.Align(System.Web.UI.WebControls.ImageAlign.Middle)
+
+
+                    //, X.Image().ItemID("ImageSign").ImageUrl("~/Content/Blank.jpg").Width(90).Height(110).Border(true)
+        //.Align(System.Web.UI.WebControls.ImageAlign.Middle)
+
+
+                        )
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+)
+        )
+)
+@(Html.X().KeyMap()
+                      .ID("NewCityMap")
+                             .Target("={App.NewCity.getTargetEl()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("if(App.BasicInfTab.activeTab.id=='City')SaveCity();")
+                );
+
+            }))
+
+
+
+<script type="text/javascript">
+    function LoadCity() {
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/Comon/City/Details',
+                params: {
+                    id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    
+                    var txtName = App.NewCity.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var CboState = App.NewCity.queryById('CboState');
+                    CboState.setValue(data.fldStateId);
+                    var txtDesc = App.NewCity.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.NewCity.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                }
+            });
+        }
+    }
+
+    function SaveCity() {
+        
+        var txtName = App.NewCity.queryById('txtName');
+        var CboState = App.NewCity.queryById('CboState');
+        var txtDesc = App.NewCity.queryById('txtDesc');
+        var fldId = App.NewCity.queryById('fldId');
+        var er = false;
+
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (CboState.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.DirectMethod.request({
+            url: '/Comon/City/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldName: txtName.getValue(),
+                fldStateId: CboState.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+               
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.City.queryById('GridCity').store.load();
+                if (data.Err == 0)
+                    ClearCity();
+            }
+
+        });
+    }
+    function ClearCity() {
+        App.NewCity.queryById('fldId').setValue(0); 
+        App.NewCity.queryById('txtName').setValue("");
+        App.NewCity.queryById('CboState').setValue("");
+        App.NewCity.queryById('txtDesc').setValue("");
+    }
+    function EnterNext() {
+        var keyfield = App.NewCity.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+    }
+</script>

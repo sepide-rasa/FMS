@@ -1,0 +1,335 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_ChartOrgan>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+<script src="~/Scripts/accounting.js"></script>
+<script>
+</script>
+
+@(X.Window().Maximized(true).Title("چارت سازمانی").Border(false).Modal(true)
+                .ID("ChartOrgan")
+            .Closable(true)
+                .AutoScroll(true).Height(630)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+                   .KeyMap(Html.X().KeyMap()
+                            .ID("ChartOrganMap")
+                        .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+                        .Binding(b =>
+                        {
+                            b.Add(Html.X().KeyBinding()
+                                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                                .Handler("SaveChartOrgan(); ")
+                            );
+                            b.Add(Html.X().KeyBinding()
+                                .KeysString(((int)Ext.Net.KeyCode.F2).ToString())
+                                .Handler("EditChartOrgan(); ")
+                            );
+                            b.Add(Html.X().KeyBinding()
+                                .KeysString(((int)Ext.Net.KeyCode.F9).ToString())
+                                .Handler("DeleteChartOrgan(); ")
+                            );
+
+                        }))
+            .Items(
+
+                X.Panel().Border(false)
+                .Border(false)
+                .AutoScroll(true)
+                    .TopBar(
+                            Html.X().Toolbar()
+                            .Items(
+                                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Add).ToolTip("کلید میانبر F8")
+                                            .Listeners(li => li.Click.Handler = "SaveChartOrgan();"),
+                                X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).ToolTip("کلید میانبر F2")
+                                            .Listeners(Li => Li.Click.Handler = "EditChartOrgan();"),
+                                X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).ToolTip("کلید میانبر F9")
+                                .Listeners(de =>
+                                    {
+                                        de.Click.Handler = "DeleteChartOrgan();";
+                                    })
+                            )
+                        )
+                .Items(
+                         X.TabPanel().ID("ChartOrganTab")
+                    .AutoScroll(true).Border(false)
+                    .Items(
+                        X.Panel().ItemID("Panel")
+                        .Layout(Ext.Net.LayoutType.Table)
+                        .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns =4 })
+                        .Title("سازمان ها")
+                        .Defaults(new { Margin = 10 })
+                        .Items(
+                            X.Hidden().ItemID("fldId"),
+                            X.Hidden().ItemID("fldFatherId"),
+                          X.TextField()
+                                .ItemID("txtTitle")
+                                .FieldLabel("عنوان")
+                                .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(false)
+                                .BlankText("لطفا عنوان را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                       , X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .FieldLabel("واحد")
+                                .ItemID("CboUnit")
+                                .AllowBlank(false)
+                                .BlankText("لطفا واحد را انتخاب کنید.")
+                                .EmptyText("واحد")
+                                .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .Items(
+                                    Html.X().ListItem().Text("عادی").Value("1"),
+                                    Html.X().ListItem().Text("دبیرخانه").Value("2")
+                                    )
+                                .SelectedItems(new { Value = "1" })
+                        ,X.TextField()
+                                .ItemID("txtOrgan")
+                                .FieldLabel("سازمان(INS)").IconCls("Organ")
+                                .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ReadOnly(true)
+                                .Listeners(l =>
+                                {
+                                    l.IconClick.Handler = "SelectOrgan(45);";
+                                    l.SpecialKey.Handler = "SelectOrgan(e.getKey());";
+                                }
+                        
+                                    )
+                             , X.TextArea()
+                                    .ItemID("txtDesc")
+                                    .FieldLabel("توضیحات")
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .Width(200)
+                                    .ColSpan(2)   
+                       )   
+                    )
+                    , X.Panel().Border(false)
+                    .Items(
+                            X.TreePanel()
+                                .ID("TreeChartOrgan")
+                                    .AutoScroll(true)
+                                    .Width(300)
+                                    .ColSpan(2)
+                                    .Height(450)
+                                    .UseArrows(true)
+                                    .Border(false)
+                                        .Store(
+                    Html.X().TreeStore()
+                        .Proxy(
+                                    Html.X().AjaxProxy().Url(Url.Action("Node"))
+                        )
+                )
+
+                                    .Listeners(a =>
+                                    {
+                                        a.ItemClick.Handler = "GetId(record)";
+                                    })
+                       .Root(Html.X().Node().NodeID("0").Text("چارت سازمانی"))
+                      .Listeners(l =>
+                      {
+                          l.BeforeLoad.Fn = "nodeLoad";
+                      })
+
+                                    .View(
+                                    X.TreeView()
+                                    .Plugins(
+                                    X.TreeViewDragDrop().AppendOnly(true).ContainerScroll(true)
+
+                                )
+                        )
+
+                )
+            )
+        )
+
+)
+<script type="text/javascript">
+    var NodeId;
+    var id;
+    var newParentid;
+    var fldFatherId;
+    var fldId;
+    var UserImageId = 0;
+    var UsersId = 0;
+    var OrganId = null;
+
+    function SelectOrgan(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/comon/SearchOrganization/Index',
+                params: {
+                    State: 1,
+                    FieldName: ""
+                }
+            });
+        }
+    }
+
+    var nodeLoad = function (store, operation, options) {
+        var node = operation.node;
+         Ext.net.DirectMethod.request({
+             url: '/Comon/ChartOrgan/NodeLoad',
+            params: {
+                nod: node.getId()
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+
+    function Reload() {
+        App.ChartOrgan.store.load();
+    };
+
+    function GetId(record) {
+        NodeId = record.getId();
+    };
+
+    function EditChartOrgan() {
+
+        if (NodeId != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/ChartOrgan/Details',
+                params: {
+                    id: NodeId
+                },
+                success: function (data) {
+
+                    var CboUnit = App.ChartOrganTab.activeTab.queryById("CboUnit");
+                    CboUnit.setValue(data.fldNoeVahed);
+                    var txtTitle = App.ChartOrganTab.activeTab.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var txtOrgan = App.ChartOrganTab.activeTab.queryById('txtOrgan');
+                    txtOrgan.setValue(data.fldOrganizationName);
+                    var txtDesc = App.ChartOrganTab.activeTab.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var FatherId = App.ChartOrganTab.activeTab.queryById('fldFatherId');
+                    FatherId.setValue(data.fldPId);
+                    var Id = App.ChartOrganTab.activeTab.queryById('fldId');
+                    Id.setValue(data.fldId);
+                    OrganId = data.fldOrganId;
+                    Ext.net.Mask.hide();
+                }
+            });
+
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SaveChartOrgan() {
+
+        var Id = App.ChartOrganTab.activeTab.queryById('fldId');
+        var CboUnit = App.ChartOrganTab.activeTab.queryById("CboUnit");
+        var FatherId = App.ChartOrganTab.activeTab.queryById("fldFatherId");
+        var txtTitle = App.ChartOrganTab.activeTab.queryById('txtTitle');
+        var txtDesc = App.ChartOrganTab.activeTab.queryById('txtDesc');
+        var er =false;
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+       
+        if (Id.getValue() == '' || Id.getValue() == 0) {
+            fldFatherId = NodeId;
+            fldId = Id.getValue();
+        }
+        else
+        {
+            fldFatherId = FatherId.getValue();
+            fldId = Id.getValue();
+        }
+        if (OrganId != null)
+            fldFatherId = null;
+        if (er == true)
+            return;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/ChartOrgan/Save',
+            params: {
+                fldId: fldId,
+                fldPId: fldFatherId,
+                fldTitle: txtTitle.getValue(),
+                fldNoeVahed: CboUnit.getValue(),
+                fldOrganId: OrganId,
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: Ext.MessageBox.INFO,
+                    buttons: Ext.MessageBox.OK
+                });
+                Reload();
+               ClearChartOrgan();
+            }
+
+        });
+    }
+
+
+    function DeleteChartOrgan() {
+
+        if (NodeId != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/ChartOrgan/Delete',
+                            params: {
+                                id: NodeId
+                            },
+                            success: function (data) {
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.INFO,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                Reload()
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearChartOrgan() {
+        App.ChartOrganTab.activeTab.queryById('fldId').setValue(0);
+        App.ChartOrganTab.activeTab.queryById("fldFatherId").setValue(0);
+        App.ChartOrganTab.activeTab.queryById('txtTitle').setValue('');
+        App.ChartOrganTab.activeTab.queryById('txtOrgan').setValue('');
+        App.ChartOrganTab.activeTab.queryById('txtDesc').setValue('');
+        OrganId = null;
+    }
+</script>

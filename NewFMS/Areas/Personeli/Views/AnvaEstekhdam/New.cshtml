@@ -1,0 +1,232 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(li => li.AfterRender.Handler = "LoadAnvaEstekhdam();")
+    .Width(300)
+    .Title("ثبت انواع استخدام")
+                            .ID("NewAnvaEstekhdam")
+                    .Resizable(false)
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+
+        .DefaultButton("btn")
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+               .Buttons(X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ToolTip("کلید میانبر F8")
+                           .Listeners(l =>
+                           {
+                               l.Click.Handler = "SaveAnvaEstekhdam();";
+
+                           })
+                           .ItemID("btnSave")
+                            ,
+                            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                                                        .OnClientClick("App.NewAnvaEstekhdam.destroy();"))
+
+
+                .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 1 })
+                    .Defaults(new { Margin = 10 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                     X.TextField()
+                    .ItemID("txtName")
+                    .FieldLabel("عنوان")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                    .AutoFocus(true)
+                    , X.ComboBox()
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .FieldLabel("نوع استخدام")
+                        .ItemID("CboNoeEstekhdam")
+                    .TypeAhead(true)
+                    .Editable(false)
+                    .QueryMode(DataLoadMode.Local)
+                    .BlankText("لطفا نوع استخدام را انتخاب کنید.")
+                    .ForceSelection(true)
+                    .TriggerAction(TriggerAction.All)
+                        .DisplayField("fldName")
+                    .ValueField("fldId")
+                    .EmptyText("نوع استخدام ...")
+        //.SelectedItems(new { Value = "1" })
+                    .Store(X.Store()
+                    .Model(X.Model()
+                    .IDProperty("fldId")
+                    .Fields(
+                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                            )
+                                )
+                    .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetNoeEstekhdam"))
+                    .Reader(X.JsonReader().Root("data"))
+                            )
+                                   .Listeners(li => li.BeforeLoad.Handler = "LoadAnvaEstekhdam();")
+                            )
+                    .AllowBlank(false)
+                         , X.ComboBox()
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .FieldLabel("نوع استخدام در فرمول")
+                            .ItemID("CboNoeEstekhdamFormul")
+                        .TypeAhead(true)
+                        .Editable(false)
+                        .QueryMode(DataLoadMode.Local)
+                        .BlankText("لطفا نوع استخدام در فرمول را انتخاب کنید.")
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                        .ValueField("fldId")
+                        .EmptyText("نوع استخدام در فرمول ...")
+        //.SelectedItems(new { Value = "1" })
+                        .Store(X.Store()
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                )
+                                    )
+                        .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetTypeEstekhdamFormul"))
+                        .Reader(X.JsonReader().Root("data"))
+                                )
+                                   
+                                )
+                        .AllowBlank(false)
+                    , X.TextArea()
+                    .ItemID("txtDesc")
+                    .FieldLabel("توضیحات")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(100).ColSpan(3)
+
+                    //, X.Image().ItemID("Image").ImageUrl("~/Content/Blank.jpg").Width(90).Height(110).Border(true)
+        //.Align(System.Web.UI.WebControls.ImageAlign.Middle)
+
+
+                    //, X.Image().ItemID("ImageSign").ImageUrl("~/Content/Blank.jpg").Width(90).Height(110).Border(true)
+        //.Align(System.Web.UI.WebControls.ImageAlign.Middle)
+
+
+                        )
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+)
+        )
+)
+@(Html.X().KeyMap()
+                          .ID("NewAnvaEstekhdamMap")
+                                 .Target("={App.NewAnvaEstekhdam.getTargetEl()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("if(App.BasicInfTab.activeTab.id=='AnvaEstekhdam')SaveAnvaEstekhdam();")
+                );
+
+            }))
+
+
+
+<script type="text/javascript">
+    function LoadAnvaEstekhdam() {
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/AnvaEstekhdam/Details',
+                params: {
+                    id: '@ViewBag.Id'
+                },
+                success: function (data) {
+
+                    var txtName = App.NewAnvaEstekhdam.queryById('txtName');
+                    txtName.setValue(data.fldTitle);
+                    var CboNoeEstekhdam = App.NewAnvaEstekhdam.queryById('CboNoeEstekhdam');
+                    CboNoeEstekhdam.setValue(data.fldNoeEstekhdamId);
+                    var CboNoeEstekhdamFormul = App.NewAnvaEstekhdam.queryById('CboNoeEstekhdamFormul');
+                    CboNoeEstekhdamFormul.setValue(data.fldTypeEstekhdamFormul);
+                    var txtDesc = App.NewAnvaEstekhdam.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.NewAnvaEstekhdam.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                }
+            });
+        }
+    }
+
+    function SaveAnvaEstekhdam() {
+
+        var txtName = App.NewAnvaEstekhdam.queryById('txtName');
+        var CboNoeEstekhdam = App.NewAnvaEstekhdam.queryById('CboNoeEstekhdam');
+        var CboNoeEstekhdamFormul = App.NewAnvaEstekhdam.queryById('CboNoeEstekhdamFormul');
+        var txtDesc = App.NewAnvaEstekhdam.queryById('txtDesc');
+        var fldId = App.NewAnvaEstekhdam.queryById('fldId');
+        var er = false;
+
+        if (txtName.validate() == false) {
+            er = true;
+        }
+        if (CboNoeEstekhdam.validate() == false) {
+            er = true;
+        }
+        if (CboNoeEstekhdamFormul.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/AnvaEstekhdam/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldTitle: txtName.getValue(),
+                fldNoeEstekhdamId: CboNoeEstekhdam.getValue(),
+                fldTypeEstekhdamFormul: CboNoeEstekhdamFormul.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.AnvaEstekhdam.queryById('GridAnvaEstekhdam').store.load();
+                if (data.Err == 0)
+                    ClearCity();
+            }
+
+        });
+    }
+    function ClearAnvaEstekhdam() {
+        App.NewAnvaEstekhdam.queryById('fldId').setValue(0);
+        App.NewAnvaEstekhdam.queryById('txtName').setValue("");
+        App.NewAnvaEstekhdam.queryById('CboNoeEstekhdam').setValue("");
+        App.NewAnvaEstekhdam.queryById('CboNoeEstekhdamFormul').setValue("");
+        App.NewAnvaEstekhdam.queryById('txtDesc').setValue("");
+    }
+    function EnterNext() {
+        var keyfield = App.NewAnvaEstekhdam.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+    }
+</script>

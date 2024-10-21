@@ -1,0 +1,229 @@
+﻿@model IEnumerable<NewFMS.Models.Letter>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("FullTextSearch")
+            .Title("جستجو در متن نامه")
+                            .Listeners(li => { li.AfterRender.Handler = "LetterActionTypeSetSize();"; li.Render.Fn = "addKeyMapFullTextSearch"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                X.Button().Text("جستجو").Icon(Ext.Net.Icon.Zoom).ItemID("btnSearchMatnLetter")
+                .Listeners(l => { l.Click.Handler = "SearchMatnLetter();"; })
+                , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpLetterActionType();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.FullTextSearch.destroy();")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("جستجو متن نامه").Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                        X.Label("عبارت جستجو:"),
+                       X.TextField()
+                        .ItemID("txtSearch")
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان را وارد کنید.")
+                    .AutoFocus(true).Width(300)
+                )
+            )
+        ),
+        X.GridPanel()
+            .ItemID("GridFullTextSearch")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                            .AutoLoad(false)
+                                                .Listeners(l => l.DataChanged.Handler = "App.FullTextSearch.queryById('GridFullTextSearch').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                   // .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.FullTextSearch.queryById('GridFullTextSearch');grid.setHeight(App.AutomationWin.getHeight() - 260); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                         Html.X().ImageCommandColumn().Hideable(false).Listeners(l => l.Command.Handler = "GoTowinLetter(record);")
+                                        .Width(30).Commands(Html.X().ImageCommand().Icon(Ext.Net.Icon.ArrowOutLonger).CommandName("Client").ToolTip(tt => tt.Text = "بازکردن نامه")
+                                        ),
+                            Html.X().Column().DataIndex(Model, m => m.fldLetterTypeID).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldComisionID).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldAssignmentId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldID).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldOrderId).Text("ش ثبت در رایانه").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldSubject).Text("موضوع").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldLetterNumber).Text("شماره نامه").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldLetterDate).Text("تاریخ نامه").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.Win.addListener('resize', function () {
+        App.State.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.State.queryById('StateGrid');
+        grid.setHeight(App.Win.getHeight()-260);
+    });*/
+    function GoTowinLetter(record) {
+        if (record.data.fldLetterTypeID == 1)/*نامه صادره*/
+        {
+            Ext.net.Mask.show({
+                msg: 'در حال بارگذاری...'
+            });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/LetterKartabl/UpdateReadFlag',
+                params: {
+                    ComisionId: record.data.fldComisionID,
+                    AssignmentID: record.data.fldAssignmentId
+                },
+                success: function () {
+                   /* SearchSK();*/
+                    Ext.net.DirectMethod.request({
+                        url: '/Automation/SadereLetter/Index',
+                        params: {
+                            CommisionId: record.data.fldComisionID,
+                            LetterId: record.data.fldID,
+                            SourceAssId: record.data.fldAssignmentId,
+                            HistoryLetterID:0
+                        },
+                        success: function () {
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+            });
+        }
+        else if (record.data.fldLetterTypeID == 2) {
+            Ext.net.Mask.show({
+                msg: 'در حال بارگذاری...'
+            });
+            Ext.net.DirectMethod.request({
+                url: '/Automation/LetterKartabl/UpdateReadFlag',
+                params: {
+                    ComisionId: record.data.fldComisionID,
+                    AssignmentID: record.data.fldAssignmentId
+                },
+                success: function () {
+                  /*  SearchSK();*/
+                    Ext.net.DirectMethod.request({
+                        url: '/Automation/VaredeLetter/Index',
+                        params: {
+                            CommisionId: record.data.fldComisionID,
+                            LetterId: record.data.fldID,
+                            SourceAssId: record.data.fldAssignmentId
+                        },
+                        success: function () {
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+            });
+        }
+    }
+    function HelpLetterActionType() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/LetterActionType/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function LetterActionTypeSetSize() {
+        App.FullTextSearch.setWidth(App.AutomationWin.getWidth());
+        var grid = App.FullTextSearch.queryById('GridFullTextSearch');
+        grid.setHeight(App.AutomationWin.getHeight() - 260);
+    }
+    
+    function SearchMatnLetter() {
+        var txtSearch = App.FullTextSearch.queryById('txtSearch');
+        var er = false;
+
+        if (txtSearch.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Automation/FullTextSearch/Search',
+            params: {
+                Text: txtSearch.getValue(),
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                if (data.Er == 0) {
+                    App.FullTextSearch.queryById('GridFullTextSearch').store.loadData(data.Letter);
+                    App.FullTextSearch.queryById('GridFullTextSearch').getSelectionModel().clearSelections();
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            },
+            timeout: 7200000
+        });
+    }
+    
+    var addKeyMapFullTextSearch = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.FullTextSearch.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtSearch") {
+                        nextfld = App.FullTextSearch.queryById('btnSearchMatnLetter');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

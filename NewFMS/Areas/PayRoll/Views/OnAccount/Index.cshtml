@@ -1,0 +1,299 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_OnAccount>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("OnAccountForm")
+        .Title("پرداخت علی الحساب")
+                .Listeners(li => { li.AfterRender.Handler = "OnAccountFormSetSize();"; li.Render.Fn = "addKeyMapOnAccountForm"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+        X.FormPanel().Border(false)
+        .Buttons(
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.OnAccountForm.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+                         .Layout(LayoutType.VBox)
+                                     .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("اطلاعات پرداخت")//.Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                          X.Label("سازمان:"),
+                         X.ComboBox()
+                                .ItemID("CboOrgan")
+                                .TypeAhead(true)
+                                .AutoFocus(true)
+                                .Editable(true)
+                                     .QueryMode(DataLoadMode.Local)
+                                            .TriggerAction(TriggerAction.All)
+                                    .BlankText("لطفا سازمان را انتخاب کنید.")
+                                        .Listeners(l => l.Change.Handler = "ChangeCboOrgan()")
+                                    .AllowBlank(false)
+                                .ForceSelection(true)
+                                    .DisplayField("fldTitle")
+                                .ValueField("fldId")
+                                    .EmptyText("سازمان ...")
+                                .Store(X.Store()
+                                .Model(X.Model()
+                                .IDProperty("fldId")
+                                .Fields(
+                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                    new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                        )
+                                            )
+                                .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetOrgan"))
+                                .Reader(X.JsonReader().Root("data"))
+                                                )
+                .Listeners(l => l.Load.Handler = "setdefaultValueOnAcc()")
+                                        )
+                                 , X.Label().Text("نوع:")
+                                , X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboType")
+                                .Editable(false)
+                                .TypeAhead(true)
+                                    .BlankText("لطفا نوع را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .Items(
+                                    new ListItem("غیر قطعی", "0"),
+                                    new ListItem("قطعی", "1")
+                                    )
+                                    .SelectedItems(new { Value = "0" }),
+                                 X.Label(""),
+                                X.FileUploadField()
+                                    .ButtonOnly(true)
+                                    .ButtonText("آپلود فایل اکسل")
+                                    .DirectEvents(l =>
+                                    {
+                                        l.Change.Action = "Upload";
+                                        l.Change.Success = "hideprogressExcel";
+                                        l.Change.Delay = 1000;
+                                        l.Change.Before = "if(GotoServerOnAcc==false){return false;}";
+                                    })
+                                    .Listeners(l => l.Change.Fn = "showFileExcel")
+                                    .Icon(Ext.Net.Icon.DiskUpload) 
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("OnAccountFormGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                                X.StoreForModel().AutoLoad(false)
+                                        .Listeners(l => l.DataChanged.Handler = "App.OnAccountForm.queryById('OnAccountFormGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                                .Parameters(ps => ps.Add(new StoreParameter("OrganId", "App.OnAccountForm.queryById('CboOrgan').getValue()", ParameterMode.Raw)))
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.OnAccountForm.queryById('OnAccountFormGrid');grid.setHeight(App.PayWin.getHeight() - 260); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldFlag).Text("فلگ").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldGhatei).Text("قطعی").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان").Flex(3),
+                                    Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام خانوادگی_نام").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldCodeMeli).Text("کدملی").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldKhalesPardakhti).Text("مبلغ پرداختی").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldShomareHesab).Text("شماره حساب").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldGhateiName).Text("نوع").Flex(1),
+                                    Html.X().Column().DataIndex(Model, m => m.fldYear).Text("سال").Flex(1),
+                                    Html.X().Column().DataIndex(Model, m => m.fldMonth).Text("ماه").Flex(1),
+                                    Html.X().Column().DataIndex(Model, m => m.fldNobatePardakt).Text("نوبت پرداخت").Flex(1)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    var GotoServerOnAcc = false;
+    var EndUploadExcel = false;
+
+    var CheckExcel = setInterval(CheckEndExcel, 500);
+    function ChangeCboOrgan() {
+        if (App.OnAccountForm.queryById('CboOrgan').getValue() != null) {
+            App.OnAccountForm.queryById('OnAccountFormGrid').store.load();
+        }
+    }
+    function setdefaultValueOnAcc() {
+        App.OnAccountForm.queryById('CboOrgan').select(App.OnAccountForm.queryById('CboOrgan').store.getAt(0));
+    }
+   
+    function CheckEndExcel() {
+        if (EndUploadExcel == true) {
+            Ext.MessageBox.hide();
+            clearInterval(CheckEndExcel);
+            EndUploadExcel = false;
+            GotoServerOnAcc = false;
+            var m = "";
+            var CboOrgan = App.OnAccountForm.queryById('CboOrgan');
+            var CboType = App.OnAccountForm.queryById('CboType');
+            if (CboOrgan.validate() == false) {
+                return;
+            }
+            if (CboType.validate() == false) {
+                return;
+            }
+            var ghatei = false;
+            if (CboType.getValue() == "1")
+                ghatei = true;
+            Ext.net.Mask.show({ msg: 'فایل با موفقیت آپلود شد. در حال ذخیره سازی اطلاعات....' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/OnAccount/ImportFile',
+                params: {
+                    OrganId: CboOrgan.getValue(),
+                    ghatei: ghatei
+                },
+                success: function (data) {
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+
+                    App.OnAccountForm.queryById('OnAccountFormGrid').store.load();
+                    Ext.net.Mask.hide();
+                },
+                timeout: 90000
+            });
+        }
+    }
+
+    var showFileExcel = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        if (v) {
+            showProgressBarExcel();
+            if (v.split('.').pop().toLowerCase() == "xls" || v.split('.').pop().toLowerCase() == "xlsx") {
+                if (document.getElementById(id).files[0].size <= 1048576) {
+                    GotoServerOnAcc = true;
+                }
+                else {
+                    clearInterval(CheckEndExcel);
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "حجم فایل انتخاب شده غیرمجاز است.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                clearInterval(CheckEndExcel);
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "فایل انتخاب شده غیرمجاز است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+    };
+
+    var hideprogressExcel = function (Responsdtxt, ResponseObj) {
+        if (ResponseObj.IsValid == true) {
+            EndUploadExcel = true;
+        }
+        else {
+            GotoServerOnAcc = false;
+            clearInterval(CheckEndExcel);
+            EndUploadExcel = false;
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: ResponseObj.Message,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    };
+
+    function showProgressBarExcel() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+
+
+    function OnAccountFormSetSize() {
+        App.OnAccountForm.setWidth(App.PayWin.getWidth());
+        var grid = App.OnAccountForm.queryById('OnAccountFormGrid');
+        grid.setHeight(App.PayWin.getHeight() - 255);
+    }
+   
+
+    
+    function HelpOnAccountForm() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/OnAccount/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    
+    var addKeyMapOnAccountForm = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.OnAccountForm.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.OnAccountForm.queryById('btnSave');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

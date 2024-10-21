@@ -1,0 +1,120 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_Fiscal_Header>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true)
+.Width(515).Height(415)
+    .Title("کپی مشمول مالیاتی")
+            .ID("CopyFiscal")
+    .Closable(true)
+    .Items(
+        X.FormPanel().Border(false)
+
+        .DefaultButton("btn")
+        .Buttons(
+                X.Button().Text("کپی").Icon(Ext.Net.Icon.Disk)
+               .Listeners(l =>
+               {
+                   l.Click.Handler = "SaveCopyFiscal();";
+
+               })
+                           .ItemID("btnSaveCopyFiscal")
+
+            ,
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                        .OnClientClick("App.CopyFiscal.destroy()")
+        ).Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+        .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 1 })
+                .Items(
+
+                    )
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            ),
+                X.Panel().Border(false)//.Width(500)
+                .Items(
+                    X.GridPanel().AutoScroll(true)
+                    .ItemID("Grid")
+                    .Height(343)
+                    .ColumnWidth(0.6)
+                    .Store(
+                           X.StoreForModel()
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("ReadHeaderCopy"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                           .ExtraParams(x => x.Add(new { FiscalHeaderId = @ViewBag.FiscalHeaderId }))
+                            )
+                    )
+                    .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+
+                    )
+                        .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldEffectiveDate).Text("تاریخ اجرا").Flex(5),
+                            Html.X().Column().DataIndex(Model, m => m.fldDateOfIssue).Text("تاریخ صدور").Flex(10)
+
+                    )
+                        .Plugins(
+                                Html.X().CellEditing().ClicksToEdit(1)
+                                )
+
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+                )
+        )
+)
+
+<script type="text/javascript">
+    function SaveCopyFiscal() {
+        var SelectedRow = App.CopyFiscal.queryById('Grid').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Fiscal/Copy',
+                params: {
+                    idHeader: SelectedRow.data.fldId,
+                    id:'@ViewBag.FiscalHeaderId'
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را برای مقصد کپی انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+</script>

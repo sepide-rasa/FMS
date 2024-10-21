@@ -1,0 +1,98 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+
+@(Html.X().Window()
+    .Closable(true)
+    .CloseAction(CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Modal(true)
+    .Width(280)
+    .ID("ChangeStatus_Tankhah")
+    .Title("تغییر وضعیت")
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        Html.X().Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.BulletDisk)
+            .Listeners(l => l.Click.Handler = "SaveStatus_Tankhah()"),
+        Html.X().Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => l.Click.Handler = "App.ChangeStatus_Tankhah.destroy()")
+    )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .PaddingSpec("4px 12px 4px 12px")
+            .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .Title("وضعیت")
+                    .PaddingSpec("0 7px 7px 7px")
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Label("وضعیت:"),
+                        X.ComboBox()
+                            .ItemID("CboStatus")
+                            .Editable(false)
+                            .AllowBlank(false)
+                            .TypeAhead(true)
+                            .BlankText("لطفاوضعیت را انتخاب کنید.")
+                            .Listeners(l=>l.AfterRender.Handler="setDefaultStatus()")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Items(
+                                new ListItem("فعال", "1"),
+                                new ListItem("غیرفعال", "0")
+                            )
+                    )
+            )
+    )
+)
+
+<script type="text/javascript">
+
+    function setDefaultStatus() {
+        App.ChangeStatus_Tankhah.queryById('CboStatus').setValue('@ViewBag.Status');
+    }
+
+    function SaveStatus_Tankhah() {
+        Ext.net.DirectMethod.request({
+            url: '/Contracts/TankhahGardan/UpdateStatus',
+            params: {
+                Id: '@ViewBag.Id',
+                Status: App.ChangeStatus_Tankhah.queryById("CboStatus").getValue()
+            },
+            success: function (data) {                
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            App.ChangeStatus_Tankhah.destory();
+                        }
+                    }
+                });
+                App.pettyCashier.queryById('pettyCashierGrid').store.load();
+            }
+        });
+    }
+</script>

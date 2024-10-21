@@ -1,0 +1,242 @@
+﻿@model IEnumerable<NewFMS.WCF_Budget.OBJ_BudjeLevel>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using NewFMS.WCF_AnbarAmval
+
+@{
+    var X = Html.X();
+}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X().Panel()
+    .ID("CodingLevel")
+    .Title("سطوح سرفصل کدینگ")
+    .Closable(true)
+    .Listeners(li => li.AfterRender.Handler = "CodingLevelSetSize();")
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Border(false)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                            .Items(
+                                X.Hidden()
+                                    .ItemID("fldId"),
+                                X.Label("ســـال:"),
+                                X.ComboBox()
+                                    .ItemID("CboYear")
+                                    .AutoFocus(true)
+                                    .DisplayField("fldYear")
+                                    .ValueField("fldId")
+                                    .TypeAhead(true)
+                                    .Editable(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا سال را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Listeners(l => l.Change.Handler = "LoadGridCodingLevel()")
+                                    .Store(X.Store()
+                                        .Listeners(l => l.Load.Handler = "setDefaultYearCodingLevel()")
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" },
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetSal"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                    )
+                            )
+                    )
+            ),
+        X.GridPanel()
+            .ItemID("CodingLevelGrid")
+            .BottomBar(X.PagingToolbar())
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(
+                        Html.X().Button()
+                            .Text("ذخیره")
+                            .Icon(Ext.Net.Icon.Disk)
+                            .Listeners(l => l.Click.Handler = "SaveCodingLevel();")
+                    )
+            )
+            .Store(
+                X.StoreForModel()
+                    .AutoLoad(false)
+                    .Listeners(l => l.DataChanged.Handler = "App.CodingLevel.queryById('CodingLevelGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(false)
+                    .RemotePaging(false)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+            .Plugins(X.FilterHeader().Remote(false))
+            .Plugins(Html.X().CellEditing().ClicksToEdit(1).Listeners(l => l.Edit.Fn = "nextcellRowBud"))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان سطح").Flex(9),
+                Html.X().Column().DataIndex(Model, m => m.fldArghamNum).Text("تعداد ارقام").Flex(4).Editor(Html.X().TextField()
+                    .ItemID("txtCount").AutoFocus(true).MaskRe("[0-9]").EnableKeyEvents(true).Listeners(l =>
+                    {
+                        l.SpecialKey.Handler = "checkhintkeyBud(e.getKey())";
+                    }))
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+    )
+)
+<script type="text/javascript">
+    var HintEnterBud = 0;
+    function setDefaultYearCodingLevel() {
+        App.CodingLevel.queryById('CboYear').setValue(App.CodingLevel.queryById('CboYear').store.getAt(App.CodingLevel.queryById('CboYear').store.count() - 1));
+    }
+
+    function checkhintkeyBud(e) {
+        if (e == 13) {
+            HintEnterBud = 1;
+        }
+    };
+
+    var nextcellRowBud = function (a, b) {
+        if (b.field == "fldArghamNum") {
+            if (parseInt(b.value) > 2147483647 || parseInt(b.value) <= 0) {
+                b.record.set("fldArghamNum", 1);
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "مقدار وارد شده غیرمجاز است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK,
+                    closable: false,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            App.CodingLevel.queryById("CodingLevelGrid").editingPlugin.startEdit(b.rowIdx, 2);
+                            a.getEditor(b.row, b.column).field.selectText();
+                        }
+                    }
+                });
+            }
+            else {
+                if (HintEnterBud == 1) {
+                    HintEnterBud = 0;
+                    App.CodingLevel.queryById("CodingLevelGrid").editingPlugin.startEdit(b.rowIdx + 1, 2);
+                    a.getEditor(b.row, b.column).field.selectText();
+                }
+            }
+        }
+    };    
+
+    function CodingLevelSetSize() {
+        App.CodingLevel.setWidth(App.BudjeWin.getWidth());
+        App.CodingLevel.queryById('CodingLevelGrid').setHeight(App.BudjeWin.getHeight() - 209);
+    }
+
+    function LoadGridCodingLevel() {
+        App.CodingLevel.queryById('CodingLevelGrid').getStore().getProxy().setExtraParam("Year", App.CodingLevel.queryById('CboYear').getDisplayValue());
+        App.CodingLevel.queryById('CodingLevelGrid').getStore().load();
+    }
+
+    function SaveCodingLevel() {
+        var Grid=App.CodingLevel.queryById('CodingLevelGrid');
+        var CboYear = App.CodingLevel.queryById('CboYear');
+        var CodingLevelArray = new Array();
+        var er = false;
+
+        if (CboYear.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        for (var i = 0; i < Grid.getStore().count() ; i++) {
+            if (Grid.store.data.items[i].data.fldArghamNum == 0) {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "تعداد ارقام نمی تواند صفر باشد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                return;
+            }
+            else {
+                CodingLevelArray.push({
+                    fldId: Grid.store.data.items[i].data.fldId,
+                    fldName: Grid.store.data.items[i].data.fldName,
+                    fldArghamNum: Grid.store.data.items[i].data.fldArghamNum,
+                    fldFiscalBudjeId: CboYear.getValue()
+                });
+            }
+        }
+        var data = {
+            CodingLevelArray: CodingLevelArray
+        };
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Budget/HeadingLevel/Save',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (result) {
+                var ic = Ext.MessageBox.INFO;
+                if (result.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+                if (result.Er != 1) {
+                    Grid.store.load();
+                }
+            },
+            failure: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+</script>

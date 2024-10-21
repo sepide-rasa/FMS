@@ -1,0 +1,292 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_Module_Organ>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("Module_Organ")
+                .Title("ثبت ماژول- سازمان")
+                    .Listeners(li => li.AfterRender.Handler = "Module_OrganSetSize();")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                .Listeners(l => { l.Click.Handler = "SaveModule_Organ();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadModule_Organ();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteModule_Organ();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.Module_Organ.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+            .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("اطلاعات ماژول سازمان").Height(80)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                            X.Label("ماژول(INS):"),
+                     X.TextField()
+                        .ItemID("txtModule")
+                       // .FieldLabel(" ماژول(INS)")
+                           // .IconCls("OrganIns")
+                        .Icon(Ext.Net.Icon.Add)
+                        //.MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AllowBlank(false)
+                        .BlankText("لطفا ماژول را انتخاب کنید .")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ReadOnly(true)
+                        .Listeners(l =>
+                        {
+                            l.IconClick.Handler = "SelectModule(45);";
+                            l.SpecialKey.Handler = "SelectModule(e.getKey());";
+                        }
+
+                            )
+                        .AutoFocus(true)
+                        , X.Label("سازمان(INS):")
+                        , X.TextField()
+                        .ItemID("txtOrgan")
+                        .AllowBlank(false)
+                        //.FieldLabel("سازمان(INS)")
+                          //  .IconCls("OrganIns")
+                               .Icon(Ext.Net.Icon.Add)
+                        //.MsgTarget(Ext.Net.MessageTarget.Side)
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .BlankText("لطفا سازمان را انتخاب کنید .")
+                        .ReadOnly(true)
+                        .Listeners(l =>
+                        {
+                            l.IconClick.Handler = "SelectOrgan(45);";
+                            l.SpecialKey.Handler = "SelectOrgan(e.getKey());";
+                        }
+
+                            )
+                       , X.Label("توضیحات:"),
+                       X.TextField()
+                        .ItemID("txtDesc")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Width(395).ColSpan(3)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("Module_OrganGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                                X.StoreForModel()
+                                .Listeners(l => l.DataChanged.Handler = "App.Module_Organ.queryById('Module_OrganGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.Module_Organ.queryById('Module_OrganGrid');grid.setHeight(App.Win.getHeight() - 290); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                   Html.X().Column().DataIndex(Model, m => m.fldNameModule).Text("ماژول").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldNameOrgan).Text("سازمان").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    var OrganId_M = 0, ModuleId = 0;
+    /*App.Win.addListener('resize', function () {
+        App.Module_Organ.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.Module_Organ.queryById('Module_OrganGrid');
+        grid.setHeight(App.Win.getHeight()-240);
+    });*/
+
+    function Module_OrganSetSize() {
+        App.Module_Organ.setWidth(App.Win.getWidth());
+        var grid = App.Module_Organ.queryById('Module_OrganGrid');
+        grid.setHeight(App.Win.getHeight() - 290);
+    }
+
+    function SelectOrgan(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/comon/SearchOrganization/Index',
+                params: {
+                    State: 2,
+                    FieldName: ""
+                }
+            });
+        }
+    }
+
+    function SelectModule(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/comon/SearchModule/Index',
+                params: {
+                    State: 1,
+                    FieldName: ""
+                }
+            });
+        }
+    }
+    function LoadModule_Organ() {
+        var SelectedRow = App.Module_Organ.queryById('Module_OrganGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Module_Organ/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtModule = App.Module_Organ.queryById('txtModule');
+                    txtModule.setValue(data.fldNameModule);
+                    var txtOrgan = App.Module_Organ.queryById('txtOrgan');
+                    txtOrgan.setValue(data.fldNameOrgan);
+                    var txtDesc = App.Module_Organ.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.Module_Organ.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    ModuleId = data.fldModuleId;
+                    OrganId_M = data.fldOrganId;
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveModule_Organ() {
+        var txtModule = App.Module_Organ.queryById('txtModule');
+        var txtOrgan = App.Module_Organ.queryById('txtOrgan');
+        var txtDesc = App.Module_Organ.queryById('txtDesc');
+        var fldId = App.Module_Organ.queryById('fldId');
+            var er = false;
+
+            if (txtModule.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Module_Organ/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldOrganId: OrganId_M,
+                    fldModuleId: ModuleId,
+                    fldDesc: txtDesc.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.Module_Organ.queryById('Module_OrganGrid').store.load();
+                    if (data.Err != 1)
+                        ClearModule_Organ();
+                }
+
+            });
+    }
+    function DeleteModule_Organ() {
+        var SelectedRow = App.Module_Organ.queryById('Module_OrganGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Module_Organ/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.INFO,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.Module_Organ.queryById('Module_OrganGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearModule_Organ() {
+        App.Module_Organ.queryById('fldId').setValue(0);
+        App.Module_Organ.queryById('txtModule').setValue("");
+        App.Module_Organ.queryById('txtOrgan').setValue("");
+        App.Module_Organ.queryById('txtDesc').setValue("");
+        OrganId_M = 0;
+        ModuleId = 0;
+    }
+    function EnterNext() {
+        var keyfield = App.Module_Organ.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtDesc") {
+            nextfld = App.Module_Organ.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+    }
+</script>

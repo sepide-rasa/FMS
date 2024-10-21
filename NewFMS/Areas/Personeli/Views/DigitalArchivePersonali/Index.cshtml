@@ -1,0 +1,392 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_DigitalArchiveTreeStructure>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+<script src="~/Scripts/accounting.js"></script>
+<script>
+</script>
+
+@(X.Panel()
+    .Title("بایگانی دیجیتال")//.Maximized(true)
+    .Listeners(l => l.BeforeRender.Handler = "setSize();")
+    .Border(false)
+        .ID("ArchivePersonali")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .KeyMap(
+        Html.X().KeyMap()
+                .ID("ArchivePersonaliMap")
+            .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                    .Handler("SaveArchivePersonali(); ")
+                );
+                b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F2).ToString())
+                    .Handler("EditArchivePersonali(); ")
+                );
+                b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F9).ToString())
+                    .Handler("DeleteArchivePersonali(); ")
+                );
+
+            }))
+    .Items(
+            X.Panel()
+                .Border(false)
+                .Layout(LayoutType.VBox)
+                .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Stretch })
+                .TopBar(
+                    Html.X().Toolbar()
+                        .Items(
+                            X.Button()
+                                .Text("آپلود فایل")
+                                .Icon(Ext.Net.Icon.Add)
+                                .Listeners(Li => Li.Click.Handler = "AttFile();"),
+                            X.Button()
+                                .Text("نمایش فایل")
+                                .Icon(Icon.Pictures)
+                                .Listeners(l => l.Click.Handler = "ShowFiles2();"),
+                            X.Button()
+                                .Text("راهنما")
+                                .Icon(Ext.Net.Icon.Help)
+                                .Listeners(de =>
+                                {
+                                    de.Click.Handler = "";
+                                })
+
+                            )
+
+                        )
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .ID("pnlLowS")
+                    .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                    .AutoScroll(true)
+                    .Border(false)
+                    .Items(
+                        X.Panel()
+                            .Border(false)
+                            .Margin(5)
+                            .ID("pnlTreeS")
+                            .Width(280)
+                            .AutoScroll(true)
+                            .Layout(LayoutType.Fit)
+                            .Items(
+                                X.Panel()
+                                    .Title("بایگانی")
+                                    .AutoScroll(true)
+                                    .ColSpan(2)
+                                    .Items(
+                                        X.FieldSet().Border(false)
+                                          .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align=Ext.Net.VBoxAlign.Center})
+                                .Items(
+                                    X.Label()
+                                ,X.Label()
+                                       ,X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .FieldLabel("پوشه")
+                                .ItemID("CboPoshe")
+                                .TypeAhead(true)
+                                .Editable(false)
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldName")
+                                .ValueField("fldId")
+                                .EmptyText("پوشه ...")
+        //.SelectedItems(new { Value = "1" })
+                                .Store(X.Store()
+                                .Model(X.Model()
+                                .IDProperty("fldId")
+                                .Fields(
+                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                        )
+                                            )
+                                .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetArchiveTree"))
+                                .Reader(X.JsonReader().Root("data"))
+                                        )
+        //  .Listeners(li => li.BeforeLoad.Handler = "LoadCity();")
+                                        ).ColSpan(2)
+                                        //,X.Label()
+                                        //, X.Button().ItemID("Save").Icon(Ext.Net.Icon.Add)
+                                        //.Text("ذخیره")
+                                        )
+                                    )
+                                            ),
+                                 X.Panel()
+                        .ID("MenuPanel2")
+
+
+        //.Title("dd")
+        //.Width(1000)
+                        .Border(false)
+        //.Title("d")
+        //.LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 5 })
+                        .Defaults(new { Margin = 2 })
+        //.LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Stretch })
+                        .AutoScroll(true)
+                        .Items(
+                                X.Panel()
+                                    .Border(false)
+                                    .ID("pnlImageS")
+                                    //.Buttons(
+                                    //    X.Button()
+                                    //        .Text("نمایش تمامی فایل ها")
+                                    //        .Flat(true)
+                                    //        .Listeners(l => l.Click.Handler = "AddAllFiles2();")
+                                    //)
+                                    .ButtonAlign(Alignment.Left)
+                                    .AutoScroll(true)
+                                    .Title("عکسهای مربوطه")
+                                    .Frame(true)
+                                    .Margin(5)
+
+                    )
+               )
+           )
+      )
+)
+<script type="text/javascript">
+    var NodeIdS = 0;
+    var dragS = 0;
+    var id;
+    var newParentid;
+    var fldFatherIdS;
+    var fldIdS;
+    var HeightFieldsetS = Ext.getBody().getViewSize().height - 132;
+    function setSize() {
+        var heightwin = App.ArchiveWin.height;
+        var widthwin = App.ArchiveWin.width;
+        App.pnlTreeS.setHeight(heightwin - 120);
+        App.MenuPanel2.setSize(widthwin - 300, heightwin - 120);
+        App.pnlImageS.setSize(widthwin - 312, heightwin - 130);
+        App.pnlLowS.setHeight(heightwin - 60);
+        App.ArchivePersonali.setHeight(heightwin - 84);
+
+    }
+    
+
+    function GetId(record) {
+        NodeIdS = record.getId();
+    }
+
+
+    function ShowFiles2() {
+        if (NodeIdS == 0 || NodeIdS == "0") {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک مورد را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else if (NodeIdS != "0") {
+            App.pnlImageS.removeAll(true);
+            /*Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });*/
+            Ext.net.DirectMethod.request({
+                url: '/ArchivePersonali/GetImageCount2',
+                params: {
+                    id: NodeIdS
+                },
+                success: function (FileIdS) {
+                    if (FileIdS.length == 0) { Ext.net.Mask.hide(); return; }
+                    else if (FileIdS.length > 20 || FileIdS.length == 20) {
+                        for (var i = 0; i < 20; i++) {
+                            var ImageItemS = new Ext.Img({
+                                xtype: 'image',
+                                id: String(FileIdS[i]),
+                                width: 100,
+                                height: 100,
+                                margin: 10,
+                                style: 'border: 5px double #87CEEB;border-radius: 5px;',
+                                overCls: "changetohand",
+                                src: '@Url.Action("ShowPicture", "ArchivePersonali", new { id = "ID" })'.replace("ID", String(FileIdS[i])),
+                                listeners: {
+                                    el: {
+                                        click: function () {
+                                            Ext.net.DirectMethod.request({
+                                                url: '/ArchivePersonali/ShowReallySizeS',
+                                                params: {
+                                                    id: this.id
+                                                }
+                                            });
+                                        }
+                                    }
+                                }
+                            });
+                            App.pnlImageS.add(ImageItemS);
+                        }
+                    }
+                    else if (FileIdS.length < 20) {
+                        for (var i = 0; i < FileIdS.length; i++) {
+                            var ImageItemS = new Ext.Img({
+                                xtype: 'image',
+                                id: String(FileIdS[i]),
+                                width: 100,
+                                height: 100,
+                                margin: 10,
+                                style: 'border: 5px double #87CEEB;border-radius: 5px;',
+                                overCls: "changetohand",
+                                src: '@Url.Action("ShowPicture", "ArchivePersonali", new { id = "ID" })'.replace("ID", String(FileIdS[i])),
+                                listeners: {
+                                    el: {
+                                        click: function () {
+                                            Ext.net.DirectMethod.request({
+                                                url: '/ArchivePersonali/ShowReallySizeS',
+                                                params: {
+                                                    id: this.id
+                                                }
+                                            });
+                                        }
+                                    }
+                                }
+                            });
+                            App.pnlImageS.add(ImageItemS);
+                        }
+                        /*App.pnlImageS.items.items[FileId.length - 1].on('added', function () { Ext.net.Mask.hide(); });*/
+                    }
+                }
+            });
+        }
+    }
+
+
+    function AddAllFiles2() {
+        /*Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });*/
+        Ext.net.DirectMethod.request({
+            url: '/ArchivePersonali/GetImageCount2',
+            params: {
+                id: NodeIdS
+            },
+            success: function (FileIdS) {
+                var AxinpnlImageS = App.pnlImageS.items.length;
+                if (FileIdS.length == AxinpnlImageS) {
+                    return;
+                }
+                else {
+                    for (var i = 20; i < FileIdS.length; i++) {
+                        var ImagesAllIteS = Ext.Img({
+                            xtype: 'image',
+                            id: String(FileIdS[i]),
+                            width: 100,
+                            height: 100,
+                            margin: 10,
+                            style: 'border: 5px double #87CEEB;border-radius: 5px;',
+                            overCls: "changetohand",
+                            src: '@Url.Action("ShowPicture", "ArchivePersonali", new { id = "ID" })'.replace("ID", String(FileIdS[i])),
+                            listeners: {
+                                el: {
+                                    click: function () {
+                                        Ext.net.DirectMethod.request({
+                                            url: '/ArchivePersonali/ShowReallySizeS',
+                                            params: {
+                                                id: this.id
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                        });
+                        App.pnlImageS.add(ImagesAllIteS);
+                    }
+                }
+            }
+        });
+    }
+
+
+
+    var nodeLoadStudent = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/DigitalArchivePersonali/NodeLoad',
+            params: {
+                node: node.getId()
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+        return false;
+    };
+
+    function Reload() {
+        App.TreeStudent.store.load();
+    };
+
+
+    function AttFile() {
+        if (NodeIdS != 0) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/DigitalArchivePersonali/CheckFileUpload',
+                params: {
+                    id: NodeIdS
+                },
+                success: function (data1) {
+                    if (data1.UplodFile == 1) {
+                        Ext.net.DirectMethod.request({
+                            url: '/Personeli/DigitalArchivePersonali/UploadFile',
+                            params: {
+                                id: NodeIdS
+                            },
+                            success: function (data) {
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                    else {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "برای مورد انتخاب شده امکان آپلود فایل وجود ندارد.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک مورد را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    /*function HelpStudentArchive() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/StudentArchive/Help',
+            params: {
+
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    */
+  
+
+</script>

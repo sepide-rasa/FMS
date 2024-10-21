@@ -1,0 +1,190 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+@(Html.X().Window().Modal(true).Listeners(l => l.AfterRender.Handler = "LoadOlgoReport()")
+            .Width(290).Height(160)
+            .Title("الگو گزارش")
+            .ID("OlgoReport")
+            .Closable(true)
+        .Border(false)
+        .AutoScroll(true)
+        .CloseAction(CloseAction.Destroy)
+        .Layout(LayoutType.Fit)
+            .ButtonAlign(Alignment.Center)
+        .Buttons(
+            Html.X().Button()
+                .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk).ItemID("BtnSave")
+                    .Listeners(l => l.Click.Handler = "SaveOlgoReport()")
+                    , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                 .Listeners(l => { l.Click.Handler = "HelpOlgoReport();"; }),
+            Html.X().Button()
+                .Text("خروج")
+                .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.OlgoReport.destroy();")
+            )
+            .Items(
+            X.FormPanel().Border(false)
+                 .Layout(LayoutType.VBox)
+                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                                 X.FieldSet().Border(true).Height(90).Width(250).Title("فایل گزارش")
+        //.LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                                                    .Layout(Ext.Net.LayoutType.VBox)
+                        .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Right })
+                            .Items(
+                            X.FieldSet().Border(false)
+                                 .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                            .Items(
+                                X.FileUploadField()
+                                .ItemID("FileUploadField1")
+                                    .ButtonOnly(true).ButtonText("انتخاب فایل")
+                                .DirectEvents(l =>
+                                        {
+                                            l.Change.Action = "Upload";
+                                            l.Change.Success = "hideprogressPatternR();";
+                                        }
+                                    )
+                                    .Listeners(l => l.Change.Fn = "showFilePatternR")
+                                        .Icon(Ext.Net.Icon.DiskUpload)
+                                                , X.Button().Text("طراحی گزارش").ItemID("BtnDesign").Listeners(l => l.Click.Handler = "DesignPattern()").Icon(Ext.Net.Icon.Report)
+                            ).ColSpan(2)
+                             , X.FieldSet().Border(false).Width(250)
+                                // .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                                 .Items(
+                                   X.Container().Content(@<div id="fi-button-msgPatternR" style="display:none;width:250px;height:90px"></div>)//.ColSpan(3)
+
+                                 )
+                                 
+                                //, X.Button()
+        //.ID("ShowButton")
+        //.Text("دانلود عکس")
+        //.Listeners
+        //(l =>
+        //    {
+        //        l.Click.Handler = "Download();";
+        //    }
+        //)
+
+                                //, X.Label()
+        //    .Text("حداکثر حجم مجاز برای بارگذاری 100 کیلوبایت می باشد.")
+                                )
+                    )
+                )
+)
+
+)
+
+
+<script type="text/javascript">
+    var MojazPatternR = 0;
+    var EndUploadPatternR = false;
+    function HelpOlgoReport() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/PatternReport/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function LoadOlgoReport() {
+        
+        App.OlgoReport.queryById('BtnSave').disable(true);
+        if ('@ViewBag.isFile' == 1)
+            App.OlgoReport.queryById('BtnDesign').disable(true);
+        else
+            App.OlgoReport.queryById('BtnDesign').enable(true);
+    }
+    var Check = setInterval(CheckEndPatternR, 500);
+
+    function CheckEndPatternR() {
+        if (EndUploadPatternR == true) {
+
+            Ext.MessageBox.hide();
+            Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+            clearInterval(CheckEndPatternR);
+            EndUploadPatternR = false;
+        }
+    }
+    var showFilePatternR = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msgPatternR');
+        if (v) {
+            showProgressBarPatternR();
+            if (v.split('.').pop().toLowerCase() == "frx") {
+                MojazPatternR = 1;
+                    el.update('<b>فایل انتخاب شده:</b> ' + v);
+                    App.OlgoReport.queryById('BtnSave').enable(true);
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                } else {
+                    el.highlight();
+                }
+            }
+            else {
+                el.update('<b>فایل انتخاب شده:</b> ');
+            }
+        }
+    };
+    
+
+    function hideprogressPatternR() {
+        if (MojazPatternR == 1) {
+            EndUploadPatternR = true;
+        }
+        MojazPatternR = 0;
+    }
+
+    function showProgressBarPatternR() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+    function SaveOlgoReport() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/PatternReport/Save',
+            params: {
+                ShomareHesabCodeDaramadId: '@ViewBag.ShomareHesabCodeDaramadId'
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                else
+                    App.OlgoReport.queryById('BtnDesign').enable(true);
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+
+        });
+    }
+    function DesignPattern() {
+        window.open("/Daramad/PatternReport/ReportIndex?Id=" + '@ViewBag.ShomareHesabCodeDaramadId', "_blank");
+    }
+</script>

@@ -1,0 +1,886 @@
+﻿@model NewFMS.Models.SaleRules
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<script>
+    var SetComboVal = function (value, meta) {
+        if (meta.record.data.fldNoeField == 5) {
+            return meta.record.data.fldValue_Combox;
+        }
+        return value;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+
+    var setComponent = function (editor, e, eOpts) {
+        var Typee = e.record.data.fldNoeField;
+        if (Typee == 0 || Typee == 1) {
+            e.column.setEditor(new Ext.create('Ext.form.field.Number', {
+                allowDecimals: false,
+                allowExponential: false,
+                maskRe: "[0-9]",
+                emptyText: "عدد صحیح",
+                allowBlank: false,
+                enableKeyEvents: true,
+                blankText: "این فیلد باید مقداری داشته باشد.",
+                listeners: {
+                    Blur: function (field, event) {
+                        if (e.record.data.fldId > 0) {
+                            CheckFormul(field,field.getValue(), e.record.data.fldId);
+                        }
+                    },
+                    SpecialKey: function (f, e) {
+                        checkhintenterkey(e);
+                    }
+                }
+            }));
+        }
+        else if (Typee == 2) {
+            e.column.setEditor(new Ext.create('Ext.form.field.Number', {
+                emptyText: "عدد اعشاری",
+                allowBlank: false,
+                blankText: "این فیلد باید مقداری داشته باشد.",
+                allowDecimals: true,
+                allowExponential: false,
+                enableKeyEvents: true,
+                decimalPrecision: 4,
+                listeners: {
+                    Blur: function (field, event) {
+                        CheckFormul(field,field.getValue(), e.record.data.fldId);
+                    },
+                    SpecialKey: function (f, e) {
+                        checkhintenterkey(e);
+                    }
+                }
+            }));
+        }
+        else if (Typee == 3) {
+            e.column.setEditor(new Ext.create('Ext.form.field.Text', {
+                enforceMaxLength: true,
+                maxLength: 450,
+                allowBlank: false,
+                blankText: "این فیلد باید مقداری داشته باشد.",
+                enableKeyEvents: true,
+                listeners: {
+                    Blur: function (field, event) {
+                        CheckFormul(field,field.getValue(), e.record.data.fldId);
+                    },
+                    SpecialKey: function (f, e) {
+                        checkhintenterkey(e);
+                    }
+                }
+            }));
+        }
+        else if (Typee == 4) {
+            e.column.setEditor(new Ext.create('Ext.form.field.PDate', {
+                format: "Y/m/d",
+                editable: false,
+                allowBlank: false,
+                blankText: "این فیلد باید مقداری داشته باشد.",
+                enableKeyEvents: true,
+                listeners: {
+                    Blur: function (field, event) {
+                        CheckFormul(field,field.getRawValue(), e.record.data.fldId);
+                    },
+                    SpecialKey: function (f, e) {
+                        checkhintenterkey(e);
+                    },
+                    AfterRender: function (field) {
+                        @*field.setValue('@ViewBag.tarikhNow');*@
+                    }
+                }
+            }));
+        }
+        else if (Typee == 5) {
+            Ext.define('User', {
+                extend: 'Ext.data.Model',
+                fields: [
+                    { name: 'value', type: 'string' },
+                    { name: 'text', type: 'string' }
+                ]
+            });
+
+            e.column.setEditor(new Ext.create('Ext.form.field.ComboBox', {
+                displayField: "text",
+                valueField: "value",
+                triggerAction: 'all',
+                editable: false,
+                blankText: "این فیلد باید مقداری داشته باشد.",
+                allowBlank: false,
+                enableKeyEvents: true,
+                idProperty: "value",
+                listeners: {
+                    blur: function (f, event) {
+                        setTimeout(function () {
+                            e.record.set('fldValue_Combox', f.getRawValue());
+                            e.record.set('fldvalue', f.getValue());
+                            CheckFormul(f,f.getValue(), e.record.data.fldId);
+                        }, 100);
+                    },
+                    SpecialKey: function (f, e) {
+                        checkhintenterkey(e);
+                    },
+                },
+                store: Ext.create('Ext.data.Store', {
+                    model: 'User',
+                    id: "StoreCombo",
+                    proxy: {
+                        type: 'ajax',
+                        url: '/Daramad/AnnouncementComplications/combodata?Id=' + e.record.data.fldId,
+                        reader: {
+                            type: 'json',
+                            root: 'data' /*you may need to modify this*/
+                        }
+                    },
+                    autoLoad: true,
+                    listeners: {
+                        Load: function (f, event) {
+                        }
+                    }
+                })
+            }));
+        }
+    };
+</script>
+<style>
+    #FieldSetKala legend{
+        text-align:right !important;
+    }
+    .left-icon{
+        margin-right: 320px !important;
+    }
+    .x-grid-group-title {
+        text-align: right !important;
+    }
+</style>
+<link href="~/Content/StyleSheet2.css" rel="stylesheet" />
+@(Html.X().Panel()
+    .ID("SalesRules")
+    .Title("قوانین قروش")
+    .Listeners(li => { li.AfterRender.Handler = "SalesRulesSetSize();"; li.Render.Fn = "addKeyMapSalesRules"; })
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Table)
+    .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+    .Border(false)
+    .Defaults(new { Margin = 5 })
+    .Items(
+        X.FieldSet()
+            .AutoScroll(true)
+            .Title("مشخصات کالا")
+            .Border(true)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .MarginSpec("0 0 0 10px")
+            .ID("FieldSetKala")
+            .Items(
+                X.FieldSet()
+                    .AutoScroll(true)
+                    .Padding(0)
+                    .Margin(0)
+                    .Border(false)
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                    .Items(
+                        X.Hidden()
+                            .ItemID("fldShomareHesabCodeDaramadId"),
+                        X.Hidden()
+                            .ItemID("fldId")
+                            .Value(0),
+                        X.PDateField()
+                            .Hidden(true),
+                        X.Label("سازمان:"),
+                        X.ComboBox()
+                            .ItemID("CboOrgan")
+                            .ColSpan(5)
+                            .AutoFocus(true)
+                            .Width(350)
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .Listeners(l => l.Change.Handler = "loadCboKala()")
+                            .AllowBlank(false)
+                            .BlankText("لطفا سازمان را انتخاب کنید.")
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("Name")
+                            .ValueField("ID")
+                            .EmptyText("سازمان ...")
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("ID")
+                                    .Fields(
+                                        new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                        new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetOrganization"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                                .Listeners(l => l.Load.Handler = "setdefaultValueOrgan()")
+                            ),
+                        X.Label("کالا:"),
+                        X.ComboBox()
+                                .ItemID("CboKala")
+                                .Width(100)
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا کالا را انتخاب کنید.")
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("Name")
+                            .ValueField("ID")
+                            .EmptyText("کالا ...")
+                            .Store(X.Store()
+                                .AutoLoad(false)
+                                .Model(X.Model()
+                                    .IDProperty("ID")
+                                    .Fields(
+                                        new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                        new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetKala"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                                .Listeners(l => l.Load.Handler = "setdefaultValueKala()")
+                            ),
+                        X.Label("نحوه فروش:"),
+                        X.ComboBox()
+                            .ItemID("CboType")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .Width(70)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نحوه فروش را انتخاب کنید.")
+                            .Listeners(l => l.Select.Handler = "setTitleCol()")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .SelectedItems(new { value = "0" })
+                            .Items(
+                                new ListItem("وزنی", "0"),
+                                new ListItem("تعدادی", "1")
+                            ),
+                                    X.Label("وزن واحد:"),
+                                  X.TextField().Width(50)
+                                    .BlankText("لطفا وزن واحد را وارد کنید.")
+                                    .AllowBlank(false)
+                                        .ItemID("txtVaznVahed")
+                                    .MaskRe("[0-9]")
+                                    ,
+                        X.Label("کد درآمد (Ins):"),
+                        X.TextField()
+                            .ItemID("txtCodeDaramad")
+                            //.FieldStyle("padding-right:15px;")
+                            .AllowBlank(false)
+                            .BlankText("لطفا کد درآمد را وارد کنید.")
+                            .ColSpan(5)
+                            .Icon(Icon.BulletPlus)
+                            .ReadOnly(true)
+                            .Listeners(l =>
+                            {
+                                l.Change.Handler = "LoadGridParams()";
+                                //l.AfterRender.Handler = "setIconPosition()";
+                            })
+                            .Listeners(li =>
+                            {
+                                li.SpecialKey.Handler = "GotoSearchDaramadCode(e.getKey())";
+                                li.IconClick.Handler = "GotoSearchDaramadCode2()";
+                            }),
+                        X.GridPanel()
+                            .AutoScroll(true)
+                            .Title("لیست پارامترها")
+                            .TitleAlign(TitleAlign.Right)
+                            .Frame(true)
+                            .ColSpan(6)
+                            .ItemID("GridParams")
+                            .Store(
+                                X.StoreFor(Model.Params)
+                                    .AutoLoad(false)
+                                    .Proxy(Html.X().AjaxProxy()
+                                        .Url(Url.Action("ReadParams"))
+                                        .Reader(Html.X().JsonReader().Root("data"))
+                                    )
+                                    .PageSize(2000)
+                                    .RemoteFilter(false)
+                                    .RemotePaging(false)
+                            )
+                            .Plugins(X.CellEditing().ClicksToEdit(1).Listeners(l=>
+                            {
+                                l.BeforeEdit.Fn="setComponent";
+                                l.Edit.Fn="nextcellRowGridParams";
+                            }))
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+                            .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                Html.X().CheckColumn().ID("ColCheck").DataIndex(Model.Params, m => m.fldFlag).Editable(true).Listeners(l => l.BeforeCheckChange.Fn = "unCheckAllRec").Text("معادل وزن").Width(60),
+                                Html.X().Column().DataIndex(Model.Params, m => m.fldNameParametreFa).Text("نام پارامتر").Flex(1).Wrap(true),
+                                Html.X().Column().ID("ColDynamicComponent").DataIndex(Model.Params, m => m.fldvalue).Flex(1).Text("مقدار").Renderer("SetComboVal")
+                                    .Editor(X.TextField().EnableKeyEvents(true).Listeners(l=>l.KeyDown.Handler = "checkhintenterkey(e.getKey())"))
+                            ),
+                        X.Panel()
+                            .Border(false)
+                            .Padding(0)
+                            .ColSpan(6)
+                            .ItemID("pnlSave")
+                            .Margin(0)
+                            .ButtonAlign(Alignment.Center)
+                            .Buttons(
+                                X.Button()
+                                    .Text("ذخیره")
+                                    .Icon(Ext.Net.Icon.Disk)
+                                    .Listeners(l => l.Click.Handler = "SaveSalesRules()")
+                            )
+                    )
+            ),
+        X.GridPanel()
+            .AutoScroll(true)
+            .Title("لیست کالاهای ثبت شده")
+            .TitleAlign(TitleAlign.Right)
+            .ItemID("GridSalesRules")
+            .Frame(true)
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreFor(Model.Arze)
+                    .GroupField("fldOrganName").GroupDir(Ext.Net.SortDirection.ASC)
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("ReadSalesRules"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                        .ExtraParams(l => l.Add(new { BaskoolId = @ViewBag.BaskoolId }))
+                    )
+                    .PageSize(5000)
+                    .RemoteFilter(false)
+                    .RemotePaging(false)
+            )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .Features(X.Grouping().EnableGroupingMenu(true).StartCollapsed(false).GroupHeaderTplString("سازمان: {name}"))
+            .Plugins(X.FilterHeader().Remote(false),
+                X.RowExpander()
+                    .Listeners(l => l.BeforeExpand.Fn = "loadGridSalesRules_Details")
+                    .Component(
+                        X.GridPanel()
+                            .AutoScroll(true)
+                            .ItemID("GridSalesRules_Details")
+                            .Store(
+                                X.StoreFor(Model.Arze_Details)
+                                    .AutoLoad(false)
+                                    .Proxy(Html.X().AjaxProxy()
+                                        .Url(Url.Action("ReadDetail"))
+                                        .Reader(Html.X().JsonReader().Root("data"))
+                                    )
+                                    .PageSize(100)
+                                    .RemoteFilter(false)
+                                    .RemotePaging(false)
+                            )
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+                            .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model.Arze_Details, m => m.fldNameParametreFa).Text("نام پارامتر").Flex(3).Wrap(true),
+                                Html.X().Column().DataIndex(Model.Arze_Details, m => m.fldValue).Text("مقدار").Flex(3).Wrap(true),
+                                Html.X().CheckColumn().DataIndex(Model.Arze_Details, m => m.fldFlag).Text("معادل وزن").Editable(false).Flex(5)
+                            )
+                            .SelectionModel(
+                                Html.X().RowSelectionModel()
+                                    .Mode(Ext.Net.SelectionMode.Single)
+                            )
+                        )
+            )
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),                
+                Html.X().Column().DataIndex(Model.Arze, m => m.fldId).Text("کد").Flex(1).Hidden(true).Hideable(false),
+                Html.X().Column().DataIndex(Model.Arze, m => m.fldShomareHesabCodeDaramadId).Text("کد").Flex(1).Hidden(true).Hideable(false),
+                Html.X().Column().DataIndex(Model.Arze, m => m.fldNameKala).Text("نام کالا").Flex(2).Wrap(true),
+                Html.X().Column().DataIndex(Model.Arze, m => m.fldStatusForooshName).Text("نحوه فروش").Flex(1).Wrap(true),
+                Html.X().Column().DataIndex(Model.Arze, m => m.fldDaramadCode).Text("کد درآمد").Flex(2).Wrap(true),
+                Html.X().Column().DataIndex(Model.Arze, m => m.fldDaramadTitle).Text("شرح کد درآمد").Wrap(true).Flex(8),
+                Html.X().ImageCommandColumn().Listeners(l => l.Command.Fn = "ActionsInGridSalesRules").Flex(1)
+                    .Commands(
+                        Html.X().ImageCommand().CommandName("EditSalesRules").Icon(Ext.Net.Icon.PageEdit).ToolTip(tt => tt.Text = "ویرایش"),
+                        Html.X().ImageCommand().CommandName("DelSalesRules").Icon(Ext.Net.Icon.Delete).ToolTip(tt => tt.Text = "حذف")
+                    )
+            )
+    )
+)
+<script type="text/javascript">
+    var EnterGridParams = 0;
+
+    function setTitleCol() {
+        if(App.SalesRules.queryById('CboType').getValue()==0){
+            App.ColCheck.setText("معادل وزن");
+            App.SalesRules.queryById('txtVaznVahed').setDisabled(true);
+        }
+        else{
+            App.ColCheck.setText("معادل تعداد");
+            App.SalesRules.queryById('txtVaznVahed').setDisabled(false);
+        }
+    }
+
+    function setIconPosition() {
+        var W = Ext.getBody().getViewSize().width - 600;
+        setTimeout(function () { alert();App.SalesRules.queryById('txtCodeDaramad').icon.dom.style.setProperty("margin-right", String(W) + "px !important"); }, 500);
+    }
+
+    function CheckFormul(field,value, ParamId) {
+        var fldShomareHesabCodeDaramadId = App.SalesRules.queryById("fldShomareHesabCodeDaramadId");
+        Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/AnnouncementComplications/ValidateOneParam',
+            params: {
+                ShomareHesabCodeDaramadId: fldShomareHesabCodeDaramadId.getValue(),
+                ParamId: ParamId,
+                Value: value
+            },
+            success: function (data) {
+                if (!data.Valid) {
+                    field.setValue("");
+                    field.allowBlank = false;
+                    field.validate();
+                }
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function checkhintenterkey(e) {
+        if (e.getKey() == 13) {
+            EnterGridParams = 1;
+        }
+    };
+
+    var unCheckAllRec = function () {
+        App.SalesRules.queryById("GridParams").store.each(function (rec) { rec.set("fldFlag", false);});
+    };
+
+    var loadGridSalesRules_Details = function (rowExpanderr, record) {
+        rowExpanderr.component.setSize(App.TasisatWin.width - 800, App.TasisatWin.height - 500);
+        rowExpanderr.component.getStore().getProxy().setExtraParam("HeaderId", record.data.fldId);
+        rowExpanderr.component.getStore().load();
+    };
+
+    function GotoSearchDaramadCode(Code) {
+        if (Code == 45) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/SearchCodeDaramad_Baskool/Index',
+                params: {
+                    State:1,
+                    OrganId: App.SalesRules.queryById("CboOrgan").getValue(),
+                    SaleRuleId: App.SalesRules.queryById("fldId").getValue(),
+                    FiscalYearId: '@ViewBag.FiscalYearId'
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+
+    function GotoSearchDaramadCode2() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Weigh/SearchCodeDaramad_Baskool/Index',
+            params: {
+                State: 1,
+                OrganId: App.SalesRules.queryById("CboOrgan").getValue(),
+                SaleRuleId: App.SalesRules.queryById("fldId").getValue(),
+                FiscalYearId: '@ViewBag.FiscalYearId'
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function SalesRulesSetSize() {
+        App.SalesRules.setWidth(App.TasisatWin.getWidth());
+        var myWidth = (App.TasisatWin.getWidth() - 35) / 3;
+        App.SalesRules.queryById("FieldSetKala").setSize(myWidth+30 , App.TasisatWin.getHeight() - 190);
+        App.SalesRules.queryById("GridSalesRules").setSize(myWidth * 2-30, App.TasisatWin.getHeight() - 190);
+        App.SalesRules.queryById("GridParams").setSize(myWidth , App.TasisatWin.getHeight() - 320);
+        App.SalesRules.queryById("pnlSave").setWidth(myWidth );
+        App.SalesRules.queryById("CboOrgan").setWidth(myWidth - 117+30);
+        /*App.SalesRules.queryById("CboKala").setWidth(myWidth - 140);*/
+        App.SalesRules.queryById("txtCodeDaramad").setWidth(myWidth - 117+30);
+        App.SalesRules.queryById('txtCodeDaramad').validate();
+
+        App.SalesRules.queryById('txtVaznVahed').setDisabled(true);
+    }
+
+    function LoadGridParams() {
+        App.SalesRules.queryById('GridParams').getStore().getProxy().setExtraParam("ShomareHesabCodeDaramadId", App.SalesRules.queryById('fldShomareHesabCodeDaramadId').getValue());
+        App.SalesRules.queryById('GridParams').getStore().getProxy().setExtraParam("BaskoolId", '@ViewBag.BaskoolId');
+        App.SalesRules.queryById('GridParams').getStore().getProxy().setExtraParam("OrganId", App.SalesRules.queryById('CboOrgan').getValue());
+        App.SalesRules.queryById('GridParams').getStore().load();
+    }
+
+    var nextcellRowGridParams = function (a, b) {
+        if (EnterGridParams == 1) {
+            EnterGridParams = 0;
+            if (b.rowIdx == App.SalesRules.queryById('GridParams').getStore().count() - 1) {
+                SaveSalesRules();
+            }
+            else {
+                App.SalesRules.queryById("GridParams").editingPlugin.startEdit(b.rowIdx + 1, 3);
+            }
+        }
+    };
+
+    function setdefaultValueOrgan() {
+        var CboOrgan = App.SalesRules.queryById('CboOrgan');
+        CboOrgan.setValue(CboOrgan.store.getAt(0));
+    }
+
+    function setdefaultValueKala() {
+        if (App.SalesRules.queryById("fldId").getValue() == 0) {
+            var CboKala = App.SalesRules.queryById('CboKala');
+            CboKala.setValue(CboKala.store.getAt(0));
+        }
+    }
+
+    function loadCboKala() {
+        var CboOrgan = App.SalesRules.queryById('CboOrgan');
+        if (CboOrgan.validate()) {
+            App.SalesRules.queryById('CboKala').getStore().getProxy().setExtraParam("OrganId", CboOrgan.getValue());
+            App.SalesRules.queryById('CboKala').getStore().getProxy().setExtraParam("Id", App.SalesRules.queryById("fldId").getValue());
+            App.SalesRules.queryById('CboKala').getStore().load();
+        }
+    }
+
+    function ActionsInGridSalesRules(grid, command, record, row) {
+        if (command == 'EditSalesRules') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Weighbridge/DetailSalesRules',
+                params: {
+                    Id: record.data.fldId
+                },
+                success: function (result) {
+                    var fldId = App.SalesRules.queryById("fldId");
+                    fldId.setValue(result.fldId);
+
+                    var CboOrgan = App.SalesRules.queryById("CboOrgan");
+                    CboOrgan.setValue(result.fldOrganId).setReadOnly(true);
+
+                    var CboType = App.SalesRules.queryById("CboType");
+                    CboType.setValue(result.fldStatusForoosh);
+
+                    if(result.fldStatusForoosh==0){
+                        App.ColCheck.setText("معادل وزن");
+                    }
+                    else{
+                        App.ColCheck.setText("معادل تعداد");
+                    }
+                    
+                    var fldShomareHesabCodeDaramadId = App.SalesRules.queryById("fldShomareHesabCodeDaramadId");
+                    fldShomareHesabCodeDaramadId.setValue(result.fldShomareHesabCodeDaramadId);
+
+                    var txtCodeDaramad = App.SalesRules.queryById("txtCodeDaramad");
+                    txtCodeDaramad.setValue(result.fldDaramadCode + "(" + result.fldDaramadTitle + ")");
+                    
+
+                    setTitleCol();
+                    var txtVaznVahed = App.SalesRules.queryById("txtVaznVahed");
+                    txtVaznVahed.setValue(result.fldVaznVahed);
+
+                    var CboKala = App.SalesRules.queryById("CboKala");
+                    CboKala.getStore().getProxy().setExtraParam("OrganId", result.fldOrganId);
+                    CboKala.getStore().getProxy().setExtraParam("Id", result.fldId);
+                    CboKala.getStore().load();
+                    CboKala.setValue(result.fldKalaId);
+
+                    App.SalesRules.queryById('GridParams').getStore().getProxy().setExtraParam("ShomareHesabCodeDaramadId", result.fldShomareHesabCodeDaramadId);
+                    App.SalesRules.queryById('GridParams').getStore().getProxy().setExtraParam("BaskoolId", '@ViewBag.BaskoolId');
+                    App.SalesRules.queryById('GridParams').getStore().getProxy().setExtraParam("OrganId", result.fldOrganId);
+                    App.SalesRules.queryById("GridParams").store.load();
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else if (command == 'DelSalesRules') {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        if (App.SalesRules.queryById("fldId").getValue() == record.data.fldId)
+                            ClearItems();
+
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Weigh/Weighbridge/DeleteSalesRules',
+                            params: {
+                                id: record.data.fldId,
+                                KalaId: record.data.fldKalaId,
+                                OrganId: record.data.fldOrganId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SalesRules.queryById("GridSalesRules").store.load();
+                                App.SalesRules.queryById('CboKala').getStore().getProxy().setExtraParam("OrganId", App.SalesRules.queryById("CboOrgan").getValue());
+                                App.SalesRules.queryById('CboKala').getStore().getProxy().setExtraParam("Id", 0);
+                                App.SalesRules.queryById('CboKala').getStore().load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+    }
+
+    function ClearItems() {
+        App.SalesRules.queryById("fldId").setValue(0);
+        App.SalesRules.queryById("fldShomareHesabCodeDaramadId").setValue(0);
+        App.SalesRules.queryById("txtCodeDaramad").setValue("");
+        App.SalesRules.queryById("CboType").setValue("0");
+        App.ColCheck.setText("معادل وزن");
+        App.SalesRules.queryById('CboKala').getStore().getProxy().setExtraParam("OrganId", App.SalesRules.queryById("CboOrgan").getValue());
+        App.SalesRules.queryById('CboKala').getStore().getProxy().setExtraParam("Id", 0);
+        App.SalesRules.queryById('CboKala').getStore().load();
+        App.SalesRules.queryById("CboOrgan").setReadOnly(false);
+    }
+
+    var idParam = 0;
+    function GoToCheckField(Field, ParamId) {
+        var er = false;
+        var k = App.SalesRules.queryById(ParamId);
+        if (k.el.id.substring(0, 8) == "combobox") {
+            if (Field == null || Field == "null") {
+                k.allowBlank = false;
+                k.validate();
+                er = true;
+            }
+        }
+        else if (Field == null || Field == "null" || Field == "") {
+            k.allowBlank = false;
+            k.validate();
+            er = true;
+        }
+        if (er == false) {
+            var fldShomareHesabCodeDaramadId = App.SalesRules.queryById("fldShomareHesabCodeDaramadId");
+            App.SalesRules.body.mask("در حال بررسی...");
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/AnnouncementComplications/ValidateOneParam',
+                params: {
+                    ShomareHesabCodeDaramadId: fldShomareHesabCodeDaramadId.getValue(),
+                    ParamId: ParamId,
+                    Value: Field
+                },
+                success: function (data) {
+                    var k = App.SalesRules.queryById(ParamId);
+                    if (!data.Valid) {
+                        k.setValue("");
+                        k.allowBlank = false;
+                        k.validate();
+                    }
+                    App.SalesRules.body.mask().hide();
+                }
+            });
+        }
+    }
+
+    function SaveSalesRules() {
+        var Detail = new Array();
+        var fldId = App.SalesRules.queryById("fldId");
+        var GridParams = App.SalesRules.queryById("GridParams");
+        var fldShomareHesabCodeDaramadId = App.SalesRules.queryById("fldShomareHesabCodeDaramadId");
+        var CboOrgan = App.SalesRules.queryById("CboOrgan");
+        var CboKala = App.SalesRules.queryById("CboKala");
+        var txtCodeDaramad = App.SalesRules.queryById("txtCodeDaramad");
+        var CboType = App.SalesRules.queryById("CboType");
+        var txtVaznVahed = App.SalesRules.queryById("txtVaznVahed");
+
+        var Count = 1;
+        var Price = 0;
+        var er = false;
+
+        if (CboOrgan.validate() == false)
+            er = true;
+        if (CboKala.validate() == false)
+            er = true;
+        if (txtCodeDaramad.validate() == false)
+            er = true;
+        if (CboType.validate() == false)
+            er = true;
+
+        var VaznVahed = null;
+        if (App.SalesRules.queryById('CboType').getValue() == 1) {
+            if (txtVaznVahed.validate() == false)
+                er = true;
+            else
+                VaznVahed = txtVaznVahed.getValue();
+        }
+
+        
+
+        for (var i = 0; i < GridParams.store.count() ; i++) {
+            var rec = GridParams.store.data.items[i];
+            if (rec.data.fldvalue != null && rec.data.fldvalue != "" && rec.data.fldvalue != 0) {
+                if (rec.data.fldId > 0) {
+                    var val = rec.data.fldvalue;
+                    /*if (rec.data.fldNoeField == 5)
+                        val = rec.data.ComboId;*/
+                    Detail.push({
+                        "fldParametrSabetCodeDaramd": rec.data.fldId,
+                        "fldParametreSabetId": rec.data.fldId,
+                        "fldValue": val,
+                        "fldFlag": rec.data.fldFlag
+                    });
+                }
+                else {
+                    if (rec.data.fldId == "0") {
+                        Count = rec.data.fldvalue;
+                    }
+                    else {
+                        Price = rec.data.fldvalue;
+                    }
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title:"خطا",
+                    msg:"لطفا مقادیر را برای تمامی پارامترها وارد نمایید.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                er = true;
+            }
+        }
+
+        
+
+        if (er == true)
+            return;
+
+        var data1 = {
+            Detail: Detail,
+            fldId: fldId.getValue(),
+            fldShomareHesabCodeDaramadId: fldShomareHesabCodeDaramadId.getValue(),            
+            fldOrganId: CboOrgan.getValue(),
+            fldKalaId: CboKala.getValue(),
+            fldBaskoolId: '@ViewBag.BaskoolId',
+            fldMablagh: Price,
+            fldTedad: Count,
+            fldStatusForoosh: CboType.getValue(),
+            fldVaznVahed:VaznVahed
+        };
+
+        Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Daramad/AnnouncementComplications/ValidateAllParams',
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify({
+                val: Detail,
+                ShomareHesabCodeDaramadId: fldShomareHesabCodeDaramadId.getValue(),
+                FiscalYearId:'@ViewBag.FiscalYearId'
+            }),
+            datatype: "json",
+            success: function (data) {
+                if (data.Valid != "") {
+                    Ext.net.Mask.hide();
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: data.Valid,
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+                else {
+                    Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+                    $.ajax({
+                        type: "POST",
+                        url: '/Weigh/Weighbridge/SaveSalesRules',
+                        contentType: "application/json; charset=utf-8",
+                        data: JSON.stringify(data1),
+                        datatype: "json",
+                        success: function (result) {
+                            Ext.net.Mask.hide();
+                            var ic = Ext.MessageBox.INFO;
+                            if (result.Err == 1)
+                                ic = Ext.MessageBox.ERROR;
+                            Ext.MessageBox.show({
+                                title: result.MsgTitle,
+                                msg: result.Msg,
+                                icon: ic,
+                                buttons: Ext.MessageBox.OK,
+                                fn: function (btn) {
+                                    if (btn == "ok") {
+                                        App.SalesRules.queryById("CboOrgan").focus();
+                                    }
+                                }
+                            });
+                            if (result.Err != 1) {
+                                ClearItems();
+                            }
+                            App.SalesRules.queryById("GridSalesRules").store.load();
+                        }
+                    });
+                }
+            }
+        });        
+    }
+
+    var addKeyMapSalesRules = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SalesRules.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    if (keyfield.itemId == "txtCodeDaramad") {
+                        if (keyfield.getValue() != "") {
+                            App.SalesRules.queryById("GridParams").editingPlugin.startEdit(0, 3);
+                        }
+                    }
+                    else {
+                        var nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                        nextfld.focus();
+                    }
+                }
+            }]
+        });
+    }
+</script>

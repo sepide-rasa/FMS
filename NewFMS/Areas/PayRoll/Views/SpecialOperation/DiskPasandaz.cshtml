@@ -1,0 +1,622 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_Disket>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+
+
+
+@(Html.X().Panel()
+    .Closable(true)
+    .Border(false)
+    .CloseAction(CloseAction.Destroy)
+    .Title("تهیه دیسکت پس انداز")
+    .Layout(LayoutType.Fit)
+    .Listeners(l => l.AfterRender.Fn = "addKeyMapPasandazDisk")
+    .ID("PasandazDisk")
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .ButtonAlign(Alignment.Center)
+                    .Layout(LayoutType.Fit)
+                    .Buttons(
+                        Html.X().Button()
+                            .Text("تهیه دیسکت")
+                            .Icon(Ext.Net.Icon.ReportDisk)
+                            .Listeners(l => l.Click.Handler = "DiscPasandaz()"),
+                        Html.X().Button()
+                            .Text("تهیه دیسکت مجدد")
+                            .Icon(Ext.Net.Icon.ReportDisk)
+                            .ItemID("btnDisc")
+                            .Listeners(l => {
+                                l.Click.Handler = "DiscPasandaz2()";
+                                l.AfterRender.Handler = "hidebtnPasandaz()";
+                            }),
+                        /*Html.X().Button()
+                            .Text("چاپ لیست پرداخت")
+                            .Icon(Ext.Net.Icon.Printer)
+                            .Listeners(l => l.Click.Handler = "PrintListPardakhtPasandaz()"),*/
+                            X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpDiscPasandaz();"; }),
+
+                        Html.X().Button()
+                            .Text("خروج")
+                            .Icon(Ext.Net.Icon.DoorOut)
+                            .OnClientClick("App.PasandazDisk.destroy();")
+                    )
+                    .Items(
+                        X.FieldSet()
+                            .Border(true)
+                            .Title("مشخصات دیسکت")
+                            .PaddingSpec("0 7px 7px 7px")
+                            .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                            .Defaults(new { Margin = 2 })
+                            .Items(
+                                X.Label("سال:").ItemID("lblYear"),
+                                X.ComboBox()
+                                    .ItemID("CboYear")
+                                    .Editable(false)
+                                    .AutoFocus(true)
+                                    .TypeAhead(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا سال را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Listeners(l =>
+                                    {
+                                        l.AfterRender.Handler = "setValueYearDiscPasandaz()";
+                                        l.Select.Handler = "ReloadBank()";
+                                    })
+                                    .Items(
+                                        new ListItem("1387", "1387"),
+                                        new ListItem("1388", "1388"),
+                                        new ListItem("1389", "1389"),
+                                        new ListItem("1390", "1390"),
+                                        new ListItem("1391", "1391"),
+                                        new ListItem("1392", "1392"),
+                                        new ListItem("1393", "1393"),
+                                        new ListItem("1394", "1394"),
+                                        new ListItem("1395", "1395"),
+                                        new ListItem("1396", "1396"),
+                                        new ListItem("1397", "1397"),
+                                        new ListItem("1398", "1398"),
+                                        new ListItem("1399", "1399"),
+                                        new ListItem("1400", "1400"),
+                                        new ListItem("1401", "1401"),
+                                            new ListItem("1402", "1402"),
+                                            new ListItem("1403", "1403")
+                                ),
+                                X.Label("ماه:").ItemID("lblMonth"),
+                                X.ComboBox()
+                                    .ItemID("CboMonth")
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا ماه را انتخاب کنید.")
+                                    .Listeners(l =>
+                                    {
+                                        l.AfterRender.Handler = "setValueMonthDiscPasandaz()";
+                                        l.Select.Handler = "ReloadBank()";
+                                    })
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Items(
+                                        new ListItem("فروردین", "01"),
+                                        new ListItem("اردیبهشت", "02"),
+                                        new ListItem("خرداد", "03"),
+                                        new ListItem("تیر", "04"),
+                                        new ListItem("مرداد", "05"),
+                                        new ListItem("شهریور", "06"),
+                                        new ListItem("مهر", "07"),
+                                        new ListItem("آبان", "08"),
+                                        new ListItem("آذر", "09"),
+                                        new ListItem("دی", "10"),
+                                        new ListItem("بهمن", "11"),
+                                        new ListItem("اسفند", "12")
+                                    ),
+                                X.Label("نوبت پرداخت:").ItemID("lblNobatePardakht"),
+                                X.ComboBox()
+                                    .ItemID("CboNobatePardakht")
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا نوبت پرداخت را انتخاب کنید.")
+                                    .Listeners(l =>
+                                    {
+                                        l.AfterRender.Handler = "setValueNobatePardakhtdiscPasandaz()";
+                                    })
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Items(
+                                        new ListItem("یک", "1"),
+                                        new ListItem("دو", "2"),
+                                        new ListItem("سه", "3"),
+                                        new ListItem("چهار", "4"),
+                                        new ListItem("پنج", "5")
+                                    ),
+                                X.Label("بانک:"),
+                                X.ComboBox()
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .ItemID("CboBank")
+                                        .TypeAhead(true)
+                                        .AllowBlank(false)
+                                    .Editable(true)
+                                    .ReadOnly(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .BlankText("لطفا بانک را انتخاب کنید.")
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                    .EmptyText("بانک ...")
+                                    .SelectedItems(new { Value = @ViewBag.BankId })
+                                    .Store(X.Store()
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                    )
+                                            )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetBank"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                    )
+                            )),
+        Html.X().Panel()
+            .ItemID("pnlGridPasandaz")
+            //.Hidden(true)
+            .Border(false)
+            .Items(
+                X.GridPanel()
+                    .ItemID("DisketGridPasandaz")
+                    .BottomBar(Html.X().PagingToolbar())
+                    .Store(
+                        X.StoreForModel()
+                            .AutoLoad(false)
+                            .Listeners(l => l.DataChanged.Handler = "App.PasandazDisk.queryById('DisketGridPasandaz').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("ReadPasandaz"))
+                                //.ExtraParams(ex => ex.Add(new { BankId = @ViewBag.BankId }))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(1000)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.PasandazDisk.queryById('DisketGridPasandaz');grid.setHeight(App.PayWin.getHeight() - 290); ";
+                     })
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldTarikh).Text("تاریخ تهیه دیسکت").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.fldTedad).Text("تعداد افراد").Flex(3),
+                            Html.X().Column().DataIndex(Model, m => m.fldJam).Text("جمع پس انداز کارکنان").Flex(4).Renderer("seperatePasAndaz")
+                        )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                        )
+                        ),
+        Html.X().Panel()
+            .Border(false)
+            .Listeners(L => L.AfterRender.Handler = "setSizePnlDiscPasandaz()")
+            .AutoScroll(true)
+            .ItemID("PnlDiscPasandaz")
+            )
+    )
+)
+
+<script type="text/javascript">
+    function HelpDiscPasandaz() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/SpecialOperation/HelpDiskPasandaz',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var seperatePasAndaz = function (value, metadata, record, rowIndex, colIndex, store) {
+        return value.toLocaleString();
+    };
+
+    function setSizePnlDiscPasandaz() {
+        App.PasandazDisk.queryById('PnlDiscPasandaz').setSize(App.PayWin.getWidth() - 20, App.PayWin.getHeight() - 285);
+        App.PasandazDisk.queryById('pnlGridPasandaz').setWidth(App.PayWin.getWidth() - 20);
+
+        if ('@ViewBag.BankId' == "1") {
+            App.PasandazDisk.queryById('PnlDiscPasandaz').hide();/*ملی*/
+            App.PasandazDisk.queryById('pnlGridPasandaz').show();
+            App.PasandazDisk.queryById('DisketGridPasandaz').getStore().getProxy().setExtraParam("BankId", '@ViewBag.BankId');
+            App.PasandazDisk.queryById('DisketGridPasandaz').getStore().load();
+        }
+        else {
+            App.PasandazDisk.queryById('pnlGridPasandaz').hide();
+            App.PasandazDisk.queryById('PnlDiscPasandaz').show();
+        }
+    }
+
+    function setValueYearDiscPasandaz() {
+        var CboYear = App.PasandazDisk.queryById('CboYear');
+        CboYear.setValue('@ViewBag.Year');
+    }
+
+    function setValueNobatePardakhtdiscPasandaz() {
+        var CboNobatePardakht = App.PasandazDisk.queryById('CboNobatePardakht');
+        CboNobatePardakht.setValue('@ViewBag.nobatePardakht');
+    }
+
+    function setValueMonthDiscPasandaz() {
+        var CboMonth = App.PasandazDisk.queryById('CboMonth');
+        CboMonth.setValue('@ViewBag.Month');
+    }
+
+    function ReloadBank() {
+        var CboMonth = App.PasandazDisk.queryById('CboMonth');
+        var CboYear = App.PasandazDisk.queryById('CboYear');
+        Ext.net.Mask.show({ msg: 'در حال بارگزاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/SpecialOperation/ReloadBank',
+            params: {
+                Month: CboMonth.getValue(),
+                Year: CboYear.getValue()
+            },
+            success: function (data) {
+                var CboBank = App.PasandazDisk.queryById('CboBank');
+                CboBank.setValue(data.BankId);
+                if (data.BankId != "") {
+                    App.PasandazDisk.queryById('DisketGridPasandaz').getStore().getProxy().setExtraParam("BankId", data.BankId);
+                    App.PasandazDisk.queryById('DisketGridPasandaz').getStore().load();
+                }
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function hidebtnPasandaz() {
+        if ('@ViewBag.BankId' == "1") {
+            App.PasandazDisk.queryById('btnDisc').show();
+        }
+        else {
+            App.PasandazDisk.queryById('btnDisc').hide();
+        }
+    }
+
+    function DiscPasandaz() {
+        var CboYear = App.PasandazDisk.queryById('CboYear');
+        var CboMonth = App.PasandazDisk.queryById('CboMonth');
+        var CboNobatePardakht = App.PasandazDisk.queryById('CboNobatePardakht');
+        var CboBank = App.PasandazDisk.queryById('CboBank');
+
+        if (CboYear.validate() == false) {
+            return;
+        }
+        else if (CboMonth.validate() == false) {
+            return;
+        }
+        else if (CboNobatePardakht.validate() == false) {
+            return;
+        }
+        else if (CboBank.validate() == false) {
+            return;
+        }
+
+        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+        Ext.net.DirectMethod.request({
+            url: "/PayRoll/SpecialOperation/CheckDiskMaliat",
+            params: {
+                Year: CboYear.getValue(),
+                Month: CboMonth.getValue(),
+                NobatPardakht: CboNobatePardakht.getValue(),
+                NobatPardakht: CboNobatePardakht.getValue(),
+                type: 4
+            },
+            success: function (data) {
+                if (data.AllowGenerate == 1 || parseInt(CboYear.getValue() + CboMonth.getValue()) < 140306) {
+                    Ext.net.DirectMethod.request({
+                        url: "/PayRoll/SpecialOperation/DiscPasandaz",
+                        params: {
+                            Year: CboYear.getValue(),
+                            Month: CboMonth.getValue(),
+                            NobatePardakht: CboNobatePardakht.getValue(),
+                            BankId: CboBank.getValue(),
+                            Id: 0
+                        },
+                        success: function (data) {
+                            var ic = Ext.MessageBox.INFO;
+                            if (data.Er == 1)
+                                ic = Ext.MessageBox.ERROR;
+                            Ext.MessageBox.show({
+                                title: data.MsgTitle,
+                                msg: data.Msg,
+                                closable: false,
+                                icon: ic,
+                                buttons: Ext.MessageBox.OK,
+                                fn: function (btn) {
+                                    if (data.Er == 0 && btn == "ok") {
+                                        if (CboBank.getValue() == 2) {/*ملت*/
+                                            for (var i = 0; i < 2; i++) {
+                                                var masir = "";
+                                                var FileName = "";
+                                                var Passvand = ".PAY";
+                                                if (i == 0) {
+                                                    masir = data.masir;
+                                                    FileName = data.FileName;
+                                                }
+                                                else if (i == 1) {
+                                                    masir = data.masir2;
+                                                    FileName = data.FileName2;
+                                                }
+                                                downloadURL('@Url.Content("/PayRoll/SpecialOperation/Download?Masir=")' + masir + "&FileName=" + FileName + "&Passvand=" + Passvand, i);
+                                            }
+                                        }
+                                        else {
+                                            window.location.href = '@Url.Content("/PayRoll/SpecialOperation/Download?Masir=")' + data.masir + "&FileName=" + data.FileName + "&Passvand=" + data.Passvand;
+                                        }
+                                        if (CboBank.getValue() == 1) {
+                                            Ext.net.Mask.show({ msg: 'در حال بارگزاری...' });
+                                            Ext.net.DirectMethod.request({
+                                                url: '/PayRoll/SpecialOperation/rptPasAndaz',
+                                                params: {
+                                                    DisketId: data.DisketId
+                                                },
+                                                success: function () {
+                                                    Ext.net.Mask.hide();
+                                                }
+                                            });
+                                            App.PasandazDisk.queryById('DisketGridPasandaz').getStore().getProxy().setExtraParam("BankId", CboBank.getValue());
+                                            App.PasandazDisk.queryById('DisketGridPasandaz').getStore().load();
+                                        }
+                                    }
+                                }
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+                else {
+                    Ext.net.Mask.hide();
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا ابتدا اقدام به تهیه دیسکت مالیات نمایید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+        });        
+    }
+
+    var downloadURL = function downloadURL(url, count) {
+        var hiddenIFrameID = 'hiddenDownloader' + count;
+        var iframe = document.createElement('iframe');
+        iframe.id = hiddenIFrameID;
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        iframe.src = url;
+    };
+
+    @*function PrintListPardakht() {
+        /*var CboTypePardakht = App.PasandazDisk.queryById('CboTypePardakht');*/
+        var CboYear = App.PasandazDisk.queryById('CboYear');
+        var CboMonth = App.PasandazDisk.queryById('CboMonth');
+        var CboNobatePardakht = App.PasandazDisk.queryById('CboNobatePardakht');
+        /*var CboMarhalePardakht = App.PasandazDisk.queryById('CboMarhalePardakht');*/
+
+        if (CboYear.validate() == false) {
+            return;
+        }
+        else if (CboMonth.validate() == false) {
+            return;
+        }
+        else if (CboNobatePardakht.validate() == false) {
+            return;
+        }
+        /*else if (CboTypePardakht.validate() == false) {
+            return;
+        }
+        if (CboTypePardakht.getValue() == "3") {
+            if (CboMarhalePardakht.validate() == false) {
+                return;
+            }
+        }
+
+        var FieldName = "";
+
+        if (CboTypePardakht.getValue() == "1") {
+            FieldName = 'Hoghogh';
+        }
+        else if (CboTypePardakht.getValue() == "2") {
+            FieldName = 'Eydi';
+        }
+        else if (CboTypePardakht.getValue() == "3") {
+            FieldName = 'SayerPardakht';
+        }
+        else if (CboTypePardakht.getValue() == "4") {
+            FieldName = 'EzafeKari';
+        }
+        else if (CboTypePardakht.getValue() == "5") {
+            FieldName = 'TatilKari';
+        }
+        else if (CboTypePardakht.getValue() == "6") {
+            FieldName = 'Morakhasi';
+        }
+        else if (CboTypePardakht.getValue() == "7") {
+            FieldName = 'Mamuriyat';
+        }
+        else if (CboTypePardakht.getValue() == "8") {
+            FieldName = 'KomakGheyerNaghdi_Mostamer';
+        }
+        else if (CboTypePardakht.getValue() == "9") {
+            FieldName = 'KomakGheyerNaghdi_GheyreMostamer';
+        }*/
+
+        if ('@ViewBag.BankId' == "1" || '@ViewBag.BankId' == "5" || '@ViewBag.BankId' == "15" || '@ViewBag.BankId' == "4") {
+            Ext.net.Mask.show({ msg: 'در حال بارگزاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/SpecialOperation/rptListPardakht',
+                params: {
+                    Year: CboYear.getValue(),
+                    Month: CboMonth.getValue(),
+                    NobatePardakht: CboNobatePardakht.getValue()
+                    /* MarhalePardakht: CboMarhalePardakht.getValue(),
+                     FieldName: FieldName*/
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            if (CboYear.validate() == true && CboMonth.validate() == true && CboNobatePardakht.validate() == true /*&& CboMarhalePardakht.validate() == true*/) {
+                App.PasandazDisk.queryById('PnlDiscPasandaz').update("<center><object style='width: 1200px;height: 360px;border: 1px solid #ccc;' type='application/pdf' data='/PayRoll/SpecialOperation/GeneratePDFListPardakhti?Year=" + CboYear.getValue() + "&Month=" + CboMonth.getValue() + "&NobatePardakht=" + CboNobatePardakht.getValue() + "&MarhalePardakht=" + CboNobatePardakht.getValue() + "&FieldName=" + FieldName + "'></object></center>");
+            }
+            else {
+                return;
+            }
+        }
+    }*@
+
+    function DiscPasandaz2() {
+        var CboYear = App.PasandazDisk.queryById('CboYear');
+        var CboMonth = App.PasandazDisk.queryById('CboMonth');
+        var CboNobatePardakht = App.PasandazDisk.queryById('CboNobatePardakht');
+        var CboBank = App.PasandazDisk.queryById('CboBank');
+
+        var FieldName = "";
+
+        var SelectedRow = App.PasandazDisk.queryById('DisketGridPasandaz').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا مایل هستید محتوای دیسکت انتخاب شده بروز شود؟ در صورت انتخاب گزینه خیر محتوای دیسکت قبلی کپی خواهد شد. در صورتی که گزینه بله را انتخاب می کنید از انتخاب آیتم ها در فرم تهیه دیسکت اطمینان حاصل نمایید.",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        if (CboYear.validate() == false) {
+                            return;
+                        }
+                        else if (CboMonth.validate() == false) {
+                            return;
+                        }
+                        else if (CboNobatePardakht.validate() == false) {
+                            return;
+                        }
+
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: "/PayRoll/SpecialOperation/DiscPasandaz",
+                            params: {
+                                NobatePardakht: CboNobatePardakht.getValue(),
+                                Year: CboYear.getValue(),
+                                Month: CboMonth.getValue(),
+                                BankId: CboBank.getValue(),
+                                Id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    closable: false,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK,
+                                    fn: function (btn) {
+                                        if (data.Er == 0 && btn == "ok") {
+                                            window.location.href = '@Url.Content("/PayRoll/SpecialOperation/Download?Masir=")' + data.masir + "&FileName=" + data.FileName + "&Passvand=" + data.Passvand;
+                                            Ext.net.Mask.show({ msg: 'در حال بارگزاری...' });
+                                            App.PasandazDisk.queryById('DisketGridPasandaz').getStore().getProxy().setExtraParam("BankId", CboBank.getValue());
+                                            App.PasandazDisk.queryById('DisketGridPasandaz').getStore().load();
+                                            Ext.net.DirectMethod.request({
+                                                url: '/PayRoll/SpecialOperation/rptPasAndaz',
+                                                params: {
+                                                    DisketId: SelectedRow.data.fldId
+                                                },
+                                                success: function () {
+                                                    Ext.net.Mask.hide();
+                                                }
+                                            });
+                                        }
+                                    }
+                                });
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                    else if (btn == "no") {
+                        window.location.href = '@Url.Content("/PayRoll/SpecialOperation/DownloadFile?DisketId=")' + SelectedRow.data.fldId;
+                        Ext.MessageBox.show({
+                            title: "عملیات موفق",
+                            msg: "تهيه ديسكت پس انداز با موفقيت به پايان رسید.",
+                            icon: Ext.MessageBox.INFO,
+                            closable: false,
+                            buttons: Ext.MessageBox.OK,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                    Ext.net.DirectMethod.request({
+                                        url: '/PayRoll/SpecialOperation/rptPasAndaz',
+                                        params: {
+                                            DisketId: SelectedRow.data.fldId
+                                        },
+                                        success: function () {
+                                            Ext.net.Mask.hide();
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    var addKeyMapPasandazDisk = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.PasandazDisk.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld = keyfield.nextSibling().nextSibling();
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

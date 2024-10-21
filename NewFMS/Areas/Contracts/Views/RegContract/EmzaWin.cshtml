@@ -1,0 +1,374 @@
+﻿@model IEnumerable<NewFMS.Areas.Contracts.Models.spr_tblContractSignersSelect>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<script src="~/Scripts/jsQR.js"></script>
+
+@(Html.X().Window().Modal(true)
+    .Width(630)//.Height(220)
+                .Title("امضاکنندگان قرارداد")
+            .ID("SabtSigners")
+                .Listeners(li => { li.AfterRender.Fn = "addKeyMapSabtSigners"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+
+    .Items(
+                X.Panel()
+                                    .Defaults(new { Margin = 5 })
+                 .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                .Border(false)
+                    .Buttons(
+                    X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveSigners")
+                    .Listeners(l => { l.Click.Handler = "SaveSigners();"; })
+                , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                        .Listeners(l => { l.Click.Handler = "LoadSigners();"; })
+                , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                            .Listeners(l => { l.Click.Handler = "DeleteSigners();"; })
+        // , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpSigners();"; })
+
+                , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.SabtSigners.destroy()")
+            )
+                .ButtonAlign(Ext.Net.Alignment.Center)
+                .Items(
+        //X.Panel()
+        //    .Border(true)
+        //        .Layout(Ext.Net.LayoutType.VBox)
+        //    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+        //    .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .Title("اطلاعات امضا کننده")
+                    .Width(600)
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                        .Items(
+                        X.Hidden().ItemID("fldId"),
+                            X.Hidden().ItemID("EmployeeId"),
+                            X.Hidden().ItemID("PostEjraeeId"),
+                                X.Hidden().ItemID("CompanyPostId"),
+                        X.Label("نوع شخص:"),
+                            X.ComboBox()
+                                .Width(80)
+                                    .ItemID("CboTypeShakhs")
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا نوع شخص را انتخاب نمایید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .AllowBlank(false)
+                                .Items(
+                                    new ListItem("داخلی", "0"),
+                                    new ListItem("خارجی", "1")
+                                    )
+                                 //   .SelectedItems(new { Value = "0" })
+                                                    .Listeners(l => { l.Change.Handler = "ChangeTypeShakhs()"; l.Render.Handler = "App.SabtSigners.queryById('CboTypeShakhs').setValue('0')"; })
+                   
+                                    ,
+                        X.Label("نام شخص:").ItemID("lblShakhs"),
+                            X.TextField().Width(150)
+                            .ReadOnly(true)
+                            .Icon(Ext.Net.Icon.UserAdd)
+                            .ItemID("txtShakhs")
+                            .AllowBlank(false)
+                            .BlankText("لطفا نام شخص را وارد کنید.")
+                           .DirectEvents(li =>
+                            {
+                                li.SpecialKey.Url = "/Comon/SearchEmployee/Index?State=8";
+                                li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                li.IconClick.Url = "/Comon/SearchEmployee/Index?State=8";
+                            })
+                            ,
+                                        X.Label("پست:").ItemID("lblPostEjraee"),
+                                X.TextField().Width(170)
+                                .ReadOnly(true)
+                                .Icon(Ext.Net.Icon.UserAdd)
+                                    .ItemID("txtPostEjraee")
+                                .AllowBlank(false)
+                                .BlankText("لطفا پست شخص را ثبت کنید.")
+                                  ,
+                                X.Label("پست:").ItemID("lblCompanyPost"),
+                                X.TextField().Width(170)
+                                .ReadOnly(true)
+                                .Icon(Ext.Net.Icon.UserAdd)
+                                    .ItemID("txtCompanyPost")
+                                .AllowBlank(false)
+                                .BlankText("لطفا پست شخص را انتخاب کنید.")
+                               .DirectEvents(li =>
+                                {
+                                    li.SpecialKey.Url = "/Comon/SearchCompanyPost/Index?State=1";
+                                    li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                    li.IconClick.Url = "/Comon/SearchCompanyPost/Index?State=1";
+                                })
+                            
+                        )
+        //)
+        ),
+                  X.GridPanel().AutoScroll(true)
+                                    .ItemID("SignersGrid").Flex(2)
+                        .BottomBar(X.PagingToolbar())
+                        .Height(200)
+        //.ColumnWidth(0.6)
+        //.Layout(Ext.Net.LayoutType.Column)
+                        .Store(
+                            X.StoreForModel()
+                                         .Listeners(l => l.DataChanged.Handler = "App.SabtSigners.queryById('SignersGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadEmza"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                                                    .ExtraParams(p => p.Add(new { ContractId = @ViewBag.ContractId }))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+
+                        )
+                        .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+
+                        .Plugins(X.FilterHeader().Remote(true))
+                        .ColumnModel(
+                                 Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldName_family).Text("نام شخص").Flex(3),
+                                Html.X().Column().DataIndex(Model, m => m.fldPost).Text("پست").Flex(3)
+                            )
+        //.Layout(Ext.Net.LayoutType.VBox)
+        //.LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+)
+
+
+<script type="text/javascript">
+    function ChangeTypeShakhs() {
+        var CboTypeShakhs = App.SabtSigners.queryById('CboTypeShakhs');
+        if (CboTypeShakhs.getValue() == "0") {
+            App.SabtSigners.queryById('txtCompanyPost').hide();
+            App.SabtSigners.queryById('lblCompanyPost').hide();
+            App.SabtSigners.queryById('txtPostEjraee').show();
+            App.SabtSigners.queryById('lblPostEjraee').show();
+        }
+        else {
+            App.SabtSigners.queryById('txtCompanyPost').show();
+            App.SabtSigners.queryById('lblCompanyPost').show();
+            App.SabtSigners.queryById('txtPostEjraee').hide();
+            App.SabtSigners.queryById('lblPostEjraee').hide();
+        }
+    }
+    
+    function LoadSigners() {
+        var SelectedRow = App.SabtSigners.queryById('SignersGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Contracts/RegContract/DetailsSigners',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var EmployeeId = App.SabtSigners.queryById('EmployeeId');
+                    EmployeeId.setValue(data.fldEmpolyId);
+                    var PostEjraeeId = App.SabtSigners.queryById('PostEjraeeId');
+                    PostEjraeeId.setValue(data.fldPostEjraeeId);
+                    var CompanyPostId = App.SabtSigners.queryById('CompanyPostId');
+                    CompanyPostId.setValue(data.fldCompanyPostId);
+                    var CboTypeShakhs = App.SabtSigners.queryById('CboTypeShakhs');
+                    CboTypeShakhs.setValue(data.typeShakhs);
+                    var txtShakhs = App.SabtSigners.queryById('txtShakhs');
+                    txtShakhs.setValue(data.fldName_family);
+
+                    var fldId = App.SabtSigners.queryById('fldId');
+                    fldId.setValue(data.fldId);
+
+                    if (CboTypeShakhs.getValue() == "0") {
+                        App.SabtSigners.queryById('txtCompanyPost').hide();
+                        App.SabtSigners.queryById('lblCompanyPost').hide();
+                        App.SabtSigners.queryById('txtPostEjraee').show();
+                        App.SabtSigners.queryById('txtPostEjraee').setValue(data.fldPost);
+                        App.SabtSigners.queryById('lblPostEjraee').show();
+                    }
+                    else {
+                        App.SabtSigners.queryById('txtCompanyPost').show();
+                        App.SabtSigners.queryById('txtCompanyPost').setValue(data.fldPost);
+                        App.SabtSigners.queryById('lblCompanyPost').show();
+                        App.SabtSigners.queryById('txtPostEjraee').hide();
+                        App.SabtSigners.queryById('lblPostEjraee').hide();
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SaveSigners() {
+        var EmployeeId = App.SabtSigners.queryById('EmployeeId');
+        var PostEjraeeId = App.SabtSigners.queryById('PostEjraeeId');
+        var CompanyPostId = App.SabtSigners.queryById('CompanyPostId');
+        var CboTypeShakhs = App.SabtSigners.queryById('CboTypeShakhs');
+        var txtShakhs = App.SabtSigners.queryById('txtShakhs');
+        var txtPostEjraee = App.SabtSigners.queryById('txtPostEjraee');
+        var txtCompanyPost = App.SabtSigners.queryById('txtCompanyPost');
+        var fldId = App.SabtSigners.queryById('fldId');
+        var er = false;
+        var postEjraee=PostEjraeeId.getValue();
+        var postcompany = CompanyPostId.getValue();
+
+        if (CboTypeShakhs.validate() == false) {
+            er = true;
+        }
+        if (txtShakhs.validate() == false) {
+            er = true;
+        }
+        if (CboTypeShakhs.getValue() == "0") {
+            postcompany=null;
+            if (txtPostEjraee.validate() == false) {
+                er = true;
+            }
+        }
+        else {
+            postEjraee=null;
+            if (txtCompanyPost.validate() == false) {
+                er = true;
+            }
+        }
+
+
+        if (er == true)
+            return;
+
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Contracts/RegContract/SaveSigners',
+            params: {
+                fldId: fldId.getValue(),
+                fldContractId: '@ViewBag.ContractId',
+                fldCompanyPostId:postcompany,
+                fldEmpolyId: EmployeeId.getValue(),
+                fldPostEjraeeId:postEjraee
+             },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.SabtSigners.queryById('SignersGrid').store.load();
+                App.RegContract.queryById('RegContractGrid').store.load();
+                if (data.Er != 1)
+                    ClearSigners();
+            }
+
+        });
+    }
+    function DeleteSigners() {
+        var SelectedRow = App.SabtSigners.queryById('SignersGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Contracts/RegContract/DeleteSigners',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtSigners.queryById('SignersGrid').store.load();
+                                App.RegContract.queryById('RegContractGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearSigners() {
+        App.SabtSigners.queryById('fldId').setValue(0);
+        App.SabtSigners.queryById('EmployeeId').setValue(null);
+        App.SabtSigners.queryById('PostEjraeeId').setValue(null);
+        App.SabtSigners.queryById('CompanyPostId').setValue(null);
+        App.SabtSigners.queryById('txtShakhs').setValue("");
+        App.SabtSigners.queryById('txtPostEjraee').setValue("");
+        App.SabtSigners.queryById('txtCompanyPost').setValue("");
+    }
+
+    function HelpSigners() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Contracts/RegContract/HelpSigners',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+
+    var addKeyMapSabtSigners = function (cmp) {
+        App.SabtSigners.queryById('txtCompanyPost').hide();
+        App.SabtSigners.queryById('lblCompanyPost').hide();
+
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtSigners.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtMablagh") {
+                        nextfld = App.SabtSigners.queryById('btnSaveSigners');
+                    }
+                    else /*if (keyfield.itemId != "txtFormooleCheck")*/ {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

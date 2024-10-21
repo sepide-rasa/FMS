@@ -1,0 +1,491 @@
+﻿@model NewFMS.Models.PersonalHokm
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();
+   NewFMS.WCF_Common.CommonService servic = new NewFMS.WCF_Common.CommonService();
+   NewFMS.WCF_Common.ClsError Err = new NewFMS.WCF_Common.ClsError();}
+<br />
+@(Html.X().Panel()
+        .ID("PersonalHokm")
+        .Title("حکم پرسنل")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Border(false)
+        .Listeners(li => li.AfterRender.Handler = "PersonalHokmSetSize();")
+       .Items(
+    X.Panel().Border(false)//.Height(250)
+        .Items(
+                X.GridPanel()
+                                .AutoScroll(true)
+                                //.Listeners(l => l.ItemClick.Handler = "ReloadGridDetail();")
+                                //.TopBar(
+                                //    Html.X().Toolbar()
+                                //        .Items(
+                                           
+                                                 
+                                //                )
+                                //        )
+                                .ItemID("GridAshkhas")
+                                .BottomBar(X.PagingToolbar())
+                                .Flex(2)
+                                .Store(
+                                                   X.StoreFor(Model.PersonalInfo)
+                                        .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadAshkhas"))
+                                            .Reader(Html.X().JsonReader().Root("data")))
+                                .PageSize(9)
+                                .RemotePaging(true)
+        /*.Listeners(l => l.DataChanged.Handler = "App.PersonalHokm.queryById('GridAshkhas').selModel.refresh();")*/)
+                                .View(
+                                    Html.X().GridView()
+                                        .LoadingText("در حال بارگذاری...")
+                                        .RTL(true))
+                                .ColumnModel(
+                                    Html.X().RowNumbererColumn(),
+                                    Html.X().Column().DataIndex(Model.PersonalInfo, m => m.fldId).Text("کد").Flex(1),
+                                    Html.X().Column().DataIndex(Model.PersonalInfo, m => m.fldName).Text("نام").Flex(2),
+                                    Html.X().Column().DataIndex(Model.PersonalInfo, m => m.fldFamily).Text("نام خانوادگی").Flex(3),
+                                    Html.X().Column().DataIndex(Model.PersonalInfo, m => m.fldFatherName).Text("نام پدر").Flex(2),
+                                    Html.X().Column().DataIndex(Model.PersonalInfo, m => m.fldCodemeli).Text("کدملی").Flex(2),
+                                    Html.X().Column().DataIndex(Model.PersonalInfo, m => m.fldSh_Personali).Text("شماره پرسنلی").Flex(2),
+                                    Html.X().Column().DataIndex(Model.PersonalInfo, m => m.fldTitleStatus).Text("وضعیت").Hidden(true).Flex(1)/*فعال1:   2:غیرفعال  3:بازنشسته*/
+                                )
+                                    .Plugins(X.FilterHeader().Remote(true))
+                                .SelectionModel(
+                                    Html.X().RowSelectionModel()
+                                        .Mode(Ext.Net.SelectionMode.Single)
+                                             .Listeners(l =>
+                                        {
+                                            l.Select.Handler = "ReloadAshkhasHokm();";
+                                        })
+                                        )
+        ),
+           X.Panel()
+                                .ItemID("PnlGridDetail")
+                                .Title("اطلاعات حکم")
+                                .Border(false)
+                                .Layout(Ext.Net.LayoutType.Fit)
+                                .Items(
+                                        X.GridPanel()
+                                            .TopBar(
+                                        Html.X().Toolbar()
+                                            .Items(
+                                              X.Button().Text("جدید").Icon(Ext.Net.Icon.Add)
+                                                .Listeners(li => li.Click.Handler = "NewHokm();"),
+                                                     X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                                                        .ItemID("btnEdit")
+                                                        .Listeners(Li => Li.Click.Handler = "EditHokm();"),
+                                                X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                                                    .ItemID("btnDelete")
+                                                    .Listeners(de =>
+                                                    {
+                                                        de.Click.Handler = "if (App.PersonalHokm.queryById('GridHokm').selModel.getLastSelected() == null) {Ext.MessageBox.show({ title: 'خطا', msg: 'لطفا یک سطر را انتخاب کنید',icon: Ext.MessageBox.ERROR,buttons: Ext.MessageBox.OK});return false;}else DeleteHokm();";
+                                                    }),
+                                                X.Button().Text("کپی حکم").Icon(Ext.Net.Icon.PageCopy)
+                                                                .ItemID("btnCopy").Hidden(!servic.Permission(699, Convert.ToInt32(Session["OrganId"]), Session["Username"].ToString(), Session["Password"].ToString(), out Err))
+                                                        .Listeners(Li => Li.Click.Handler = "CopyHokm();"),
+                                                X.Button().Text("تایید").Icon(Ext.Net.Icon.Accept)
+                                                            .ItemID("btnConfirm").Hidden(!servic.Permission(700, Convert.ToInt32(Session["OrganId"]), Session["Username"].ToString(), Session["Password"].ToString(), out Err))
+                                                .Listeners(de =>
+                                                {
+                                                    de.Click.Handler = "if (App.PersonalHokm.queryById('GridHokm').selModel.getLastSelected() == null) {Ext.MessageBox.show({ title: 'خطا', msg: 'لطفا یک سطر را انتخاب کنید',icon: Ext.MessageBox.ERROR,buttons: Ext.MessageBox.OK});return false;}else ConfirmHokm();";
+                                                }),
+                                                    X.Button().Text("چاپ").Icon(Ext.Net.Icon.Printer)
+                                                    .Listeners(li => li.Click.Handler = "PrintHokm(0);"),
+                                                    X.Button().Text("چاپ جزئیات حکم").Icon(Ext.Net.Icon.Printer)
+                                                    .Listeners(li => li.Click.Handler = "PrintHokm(1);"),
+                                                    X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpPersonalHokm();"; })
+
+                                            ))
+                                              .BottomBar(X.PagingToolbar().HideRefresh(true))
+                                        .AutoScroll(true)
+                                        .ID("GridHokm")
+                                        .Flex(2).Height(187)
+                                        //.Listeners(li => li.ItemClick.Handler = "CheckEdit();")
+                                        .Store(
+                                                       X.StoreFor(Model._PersonalHokm)
+                                                           .AutoLoad(false)
+                                                            .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("Read"))
+                                                .Reader(Html.X().JsonReader().Root("data")))
+                                                .PageSize(9)
+                                                .RemotePaging(true)
+                                                  
+        /*.Listeners(l => l.DataChanged.Handler = " App.PersonalHokm.queryById('GridHokm').selModel.refresh();")*/
+                        )
+                                        .View(
+                                            Html.X().GridView()
+                                                .LoadingText("در حال بارگذاری...")
+                                                .RTL(true)
+                        )
+                                            .ColumnModel(
+                                                Html.X().RowNumbererColumn(),
+                                                Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldId).Text("کد").Flex(1),
+                                                Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldNoeEstekhdamName).Text("نوع استخدام").Flex(2),
+                                                Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldTarikhEjra).Text("تاریخ اجرا").Flex(2),
+                                                Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldTarikhSodoor).Text("تاریخ صدور").Flex(2),
+                                                Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldShomareHokm).Text("شماره حکم").Flex(2),
+                                                Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldStatusHokmName).Text("وضعیت حکم").Flex(2),
+                                                Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldStatusHokm).Text("کد وضعیت حکم").Flex(2).Hidden(true),
+                                                Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldStatusTaaholName).Text("نوع تاهل").Flex(2), 
+                                                Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldPrs_PersonalInfoId).Hidden(true),
+                                                Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldHokmType).Hidden(true),
+                                                Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldHokmTypeName).Text("نوع محاسبات حکم").Flex(2),
+                                                Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldGroup).Text("گروه").Flex(1),
+                                                //Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldMoreGroup).Text("گروه بالاتر").Flex(2),
+                                                Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldTypehokm).Text("نوع حکم").Flex(3),
+                                                Html.X().Column().DataIndex(Model._PersonalHokm, m => m.fldSumItem).Text("مجموع").Flex(2)
+                                 )
+                                        .Plugins(
+                                            Html.X().CellEditing().ClicksToEdit(1),
+                                            X.FilterHeader().Remote(true)
+                                            )
+                                        .SelectionModel(
+                                            Html.X().RowSelectionModel()
+                                                .Mode(Ext.Net.SelectionMode.Single)
+                                )
+                    )
+    )
+)
+)
+<script type="text/javascript">
+    var dadat;
+  /*  App.PersoneliWin.addListener('resize', function () {
+        App.PersonalHokm.setWidth(App.PersoneliWin.getWidth());
+    });
+    App.PersoneliWin.addListener('resize', function () {
+        var grid = App.PersonalHokm.queryById('GridAshkhas');
+        grid.setHeight(App.PersoneliWin.getHeight() - 120);
+        var grid = App.PersonalHokm.queryById('PnlGridDetail');
+    });*/
+    function CheckEdit() {
+        var SelectedRow = App.PersonalHokm.queryById('GridHokm').selModel.getLastSelected();
+        var btnEdit = App.PersonalHokm.queryById('btnEdit');
+        var btnDelete = App.PersonalHokm.queryById('btnDelete');
+        var btnConfirm = App.PersonalHokm.queryById('btnConfirm');
+        if (SelectedRow.data.fldStatusHokm == true) {
+            btnEdit.setDisabled(true);
+            btnDelete.setDisabled(true);
+            btnConfirm.setDisabled(true);
+        }
+        else {
+            btnEdit.setDisabled(false);
+            btnDelete.setDisabled(false);
+            btnConfirm.setDisabled(false);
+        }
+    }
+    function PersonalHokmSetSize() {
+     /*   var grid = App.PersonalHokm.queryById('GridAshkhas');
+       grid.setHeight(App.PersoneliWin.getHeight() - 387);
+       var GridHokm = App.PersonalHokm.queryById('GridHokm');*/
+
+       var grid = App.PersonalHokm.queryById('GridAshkhas');
+       grid.setHeight((App.PersoneliWin.getHeight() - 200) / 2);
+       var GridDetail = App.PersonalHokm.queryById('GridHokm');
+       GridDetail.setHeight((App.PersoneliWin.getHeight() - 200) / 2);
+    }
+    function ReloadAshkhasHokm() {
+        var SelectedRow = App.PersonalHokm.queryById('GridAshkhas').selModel.getLastSelected();
+
+        App.PersonalHokm.queryById('GridHokm').getStore().getProxy().setExtraParam("PersonalId", SelectedRow.data.fldId);
+        App.PersonalHokm.queryById('GridHokm').getStore().load();
+
+      /*  Ext.net.DirectMethod.request({
+            url: '/Personeli/PersonalHokm/Rload?PersonalId=' + SelectedRow.data.fldId,
+
+            success: function (result) {
+                App.PersonalHokm.queryById('GridHokm').getStore().loadData(result);
+
+            }
+
+        });*/
+    }
+    function HelpPersonalHokm() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/PersonalHokm/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function PrintHokm(Details) {
+        var SelectedRow = App.PersonalHokm.queryById('GridHokm').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalHokm/Print',
+                params: {
+                    PersonalHokmId: SelectedRow.data.fldId,
+                    containerId: "HokmTab",
+                    PersonalId: SelectedRow.data.fldPrs_PersonalInfoId,
+                    AnvaeEstekhdamId: SelectedRow.data.fldAnvaeEstekhdamId,
+                    TarikhEjra: SelectedRow.data.fldTarikhSodoor,
+                    Details:Details
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    
+    function EditHokm() {
+        var SelectedRow = App.PersonalHokm.queryById('GridHokm').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldStatusHokm) {
+                Ext.MessageBox.show({
+                    title: "",
+                    msg: "کاربر گرامی؛ حکم مورد نظر تایید شده است، شما مجاز به ویرایش حکم نمی باشید.",
+                    icon: Ext.MessageBox.INFO,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+            else {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Personeli/PersonalHokm/new',
+                    params: {
+                        id: SelectedRow.data.fldId,
+                        containerId: "HokmTab",
+                        PersonalId: SelectedRow.data.fldPrs_PersonalInfoId,
+                        Status: 1,
+                        HokmType: SelectedRow.data.fldHokmType
+                    },
+                    success: function () {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function CopyHokm() {
+        var SelectedRow = App.PersonalHokm.queryById('GridHokm').selModel.getLastSelected();
+        var SelectedRow1 = App.PersonalHokm.queryById('GridAshkhas').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow1.data.fldTitleStatus == 'فعال') {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Personeli/PersonalHokm/new',
+                    params: {
+                        id: SelectedRow.data.fldId,
+                        containerId: "HokmTab",
+                        PersonalId: SelectedRow.data.fldPrs_PersonalInfoId,
+                        Status: 2,
+                        HokmType: 1
+                    },
+                    success: function () {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            } else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "وضعیت فرد مورد نظر " + SelectedRow1.data.fldTitleStatus + " است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function NewHokm() {
+        var SelectedRow = App.PersonalHokm.queryById('GridAshkhas').selModel.getLastSelected();
+        var length = App.PersonalHokm.queryById('GridHokm').store.data.length;
+        if (SelectedRow != null) {
+
+            if (SelectedRow.data.fldTitleStatus == 'فعال') {
+                Ext.net.DirectMethod.request({
+                    url: '/Personeli/PersonalHokm/CheckPayPrsonel',
+                    params: {
+                        PersonalId: SelectedRow.data.fldId
+                    },
+                    success: function (data) {
+                        Ext.net.Mask.hide();
+                        if(data.h==1)
+                        {
+                            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Personeli/PersonalHokm/new',
+                                params: {
+                                    id: 0,
+                                    containerId: "HokmTab",
+                                    PersonalId: SelectedRow.data.fldId,
+                                    Status: 1,
+                                    length: length,
+                                    HokmType:1
+                                },
+                                success: function () {
+                                    Ext.net.Mask.hide();
+                                }
+                            });
+                        }
+                        else
+                        {
+                            Ext.MessageBox.show({
+                                title: "خطا",
+                                msg: "لطفا ابتدا اطلاعات فرد مورد نظر را در ماژول حقوق و دستمزد، در منوی ثبت پرنسل وارد نمایید.",
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                    }
+                });
+               
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "وضعیت فرد مورد نظر " + SelectedRow.data.fldTitleStatus + " است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک شخص را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteHokm() {
+        var SelectedHeaderRow = App.PersonalHokm.queryById('GridHokm').selModel.getLastSelected();
+        if (SelectedHeaderRow != null) {
+            if (SelectedHeaderRow.data.fldStatusHokm) {
+                Ext.MessageBox.show({
+                    title: "",
+                    msg: "کاربر گرامی؛ حکم مورد نظر تایید شده است، شما مجاز به حذف حکم نمی باشید.",
+                    icon: Ext.MessageBox.INFO,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+            else {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Personeli/PersonalHokm/Delete',
+                            params: {
+                                id: SelectedHeaderRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ico = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ico = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ico,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                
+                                ReloadAshkhasHokm();
+                            }
+                        });
+                    }
+                }
+            });
+                }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ConfirmHokm() {
+        var SelectedHeaderRow = App.PersonalHokm.queryById('GridHokm').selModel.getLastSelected();
+        if (SelectedHeaderRow != null) {
+            if (SelectedHeaderRow.data.fldStatusHokm) {
+                Ext.MessageBox.show({
+                    title: "",
+                    msg: "کاربر گرامی؛ حکم مورد نظر تایید شده است، شما مجاز به تایید مجدد حکم نمی باشید.",
+                    icon: Ext.MessageBox.INFO,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "کاربر گرامی؛ در صورت تایید امکان ویرایش حکم را نخواهید داشت. آیا برای انجام عملیات مطمئن هستید یا خیر؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Personeli/PersonalHokm/ConfirmHokm',
+                            params: {
+                                HokmId: SelectedHeaderRow.data.fldId,
+                                Prs_PersonalInfoId: SelectedHeaderRow.data.fldPrs_PersonalInfoId,
+                                AnvaeEstekhdamId: SelectedHeaderRow.data.fldAnvaeEstekhdamId,
+                                TarikhEjra: SelectedHeaderRow.data.fldTarikhSodoor,
+                                fldNoeEstekhdamName: SelectedHeaderRow.data.fldNoeEstekhdamName
+                            },
+                            success: function (data) {
+                                Ext.net.Mask.hide();
+                                var ico = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ico = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ico,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                ReloadAshkhasHokm();
+                            }
+                        });
+                    }
+                }
+            });
+                }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

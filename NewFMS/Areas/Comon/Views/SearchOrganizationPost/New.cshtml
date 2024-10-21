@@ -1,0 +1,207 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_OrganizationalPosts>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .x-grid-cell {
+        background-color: transparent;
+    }
+</style>
+@(Html.X().Window()
+            .ID("NewSearchO")
+            .Title("تعریف پست سازمانی").Width(700)
+            .Listeners(li => li.AfterRender.Handler = "LoadDetailOrganizationalPosts();")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+            .Buttons(
+                    X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                        .Listeners(l => { l.Click.Handler = "SaveNewSearchO();"; })
+                , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.NewSearchO.destroy()")
+            ).ButtonAlign(Ext.Net.Alignment.Center)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                    X.FieldSet().Border(true).Width(650).Title("اطلاعات پست سازمانی").Height(220)
+                     .Defaults(new { Margin = 10 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 3 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.FieldSet().Border(false)//.Width(920)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                .Items(
+                    X.Label("عنوان پست:"),
+                    X.TextField()
+                    .ItemID("txtTitle")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان پست را وارد کنید.")
+                    .AutoFocus(true),
+                    X.Label("کد پست:"),
+                    X.TextField()
+                        .ItemID("txtOrgPostCode")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا کد پست را وارد کنید.")
+                        , X.Label("توضیحات:"),
+                            X.TextArea()
+                        .ItemID("txtDesc")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Width(150)
+                    )
+                    ,
+                       X.TreePanel()
+                            .ID("Tree")
+                                    .AutoScroll(true)
+                                    .Width(300)
+                                    .ColSpan(2)
+                                    .Height(150)
+                                    .UseArrows(true)
+                                    .Border(false)
+                                        .Store(
+                    Html.X().TreeStore()
+                        .Proxy(
+                                    Html.X().AjaxProxy().Url(Url.Action("Node"))
+                        )
+                )
+
+                                    .Listeners(a =>
+                                    {
+                                        a.ItemClick.Handler = "GetIdChartOrgan(record)";
+                                        a.AfterRender.Handler = "this.getRootNode().expand();";
+                                    })
+                       .Root(Html.X().Node().NodeID("0").Text("چارت سازمانی"))
+                      .Listeners(l =>
+                      {
+                          l.BeforeLoad.Fn = "nodeLoad";
+                      })
+                     ,
+                     X.Label().ItemID("LbLname").ColSpan(2)
+
+                )
+            )
+        )
+    )
+)
+<script type="text/javascript">
+    var NodeId_O = 0;
+    function GetIdChartOrgan(record) {
+        NodeId_O = record.getId();
+        App.NewSearchO.queryById('LbLname').setText("چارت سازمانی: " + record.data.text);
+    };
+    var nodeLoad = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/OrganizationalPosts/NodeLoad',
+            params: {
+                nod: node.getId()
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+    function SaveNewSearchO() {
+        var txtTitle = App.NewSearchO.queryById('txtTitle');
+        var txtOrgPostCode = App.NewSearchO.queryById('txtOrgPostCode');
+        var txtDesc = App.NewSearchO.queryById('txtDesc');
+        var fldId = App.NewSearchO.queryById('fldId');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (txtOrgPostCode.validate() == false) {
+            er = true;
+        }
+        if (NodeId_O == 0) {
+            er = true;
+            alert("چارت سازمانی را انتخاب کنید.");
+        }
+        if (er == true)
+            return;
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/OrganizationalPosts/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldTitle: txtTitle.getValue(),
+                fldOrgPostCode: txtOrgPostCode.getValue(),
+                fldDesc: txtDesc.getValue(),
+                fldChartOrganId: NodeId_O,
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.NewSearchO.destroy();
+                App.SearchOrganizationalPosts.queryById('GridSearchOrganizationalPosts').store.load();
+                if (data.Err != 1)
+                    ClearNewSearchO();
+            }
+
+        });
+    }
+    function ClearNewSearchO() {
+        App.NewSearchO.queryById('fldId').setValue(0);
+        App.NewSearchO.queryById('txtTitle').setValue("");
+        App.NewSearchO.queryById('txtOrgPostCode').setValue("");
+        App.NewSearchO.queryById('txtDesc').setValue("");
+        App.NewSearchO.queryById('LbLname').setText("");
+        NodeId_O = 0;
+    }
+    function LoadDetailOrganizationalPosts() {
+        if ('@ViewBag.Id' != 0) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/OrganizationalPosts/Details',
+                params: {
+                    Id: '@ViewBag.Id'
+                },
+                success: function (data) {
+
+                    var txtTitle = App.NewSearchO.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var txtOrgPostCode = App.NewSearchO.queryById('txtOrgPostCode');
+                    txtOrgPostCode.setValue(data.fldOrgPostCode);
+                    var txtDesc = App.NewSearchO.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var LbLname = App.NewSearchO.queryById('LbLname');
+                    LbLname.setText("چارت سازمانی: " + data.fldNameChart);
+                    NodeId_Post = data.fldPID;
+                    NodeId_O = data.fldChartOrganId;
+                    var fldId = App.NewSearchO.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+</script>

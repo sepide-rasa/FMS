@@ -1,0 +1,219 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_TypeOfEmploymentCenter>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("TypeOfEmploymentCenter")
+            .Title("ویرایش نوع استخدام")
+                .Listeners(li => { li.AfterRender.Handler = "TypeOfEmploymentCenterSetSize();"; li.Render.Fn = "addKeyMapTypeOfEmploymentCenter"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                .Listeners(l => { l.Click.Handler = "SaveTypeOfEmploymentCenter();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadTypeOfEmploymentCenter();"; })
+                , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                .Listeners(l => { l.Click.Handler = "HelpTypeOfEmploymentCenter();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.TypeOfEmploymentCenter.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("نوع استخدام").Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                            X.Label("عنوان:"),
+                       X.TextField()
+                        .ItemID("txtTitle")
+                            .MaxLength(200)
+                            .EnforceMaxLength(true)
+                                .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                        .BlankText("لطفا عنوان را وارد کنید.")
+                    .AutoFocus(true)
+                    , X.Label("توضیحات:"),
+                        X.TextField()
+                    .ItemID("txtDesc")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(260)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("TypeOfEmploymentCenterGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.TypeOfEmploymentCenter.queryById('TypeOfEmploymentCenterGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.TypeOfEmploymentCenter.queryById('TypeOfEmploymentCenterGrid');grid.setHeight(App.PayWin.getHeight() - 260); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.Win.addListener('resize', function () {
+        App.TypeOfEmploymentCenter.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.TypeOfEmploymentCenter.queryById('TypeOfEmploymentCenterGrid');
+        grid.setHeight(App.Win.getHeight()-260);
+    });*/
+    function TypeOfEmploymentCenterSetSize() {
+        App.TypeOfEmploymentCenter.setWidth(App.PayWin.getWidth());
+        var grid = App.TypeOfEmploymentCenter.queryById('TypeOfEmploymentCenterGrid');
+        grid.setHeight(App.PayWin.getHeight() - 260);
+    }
+    function LoadTypeOfEmploymentCenter() {
+        var SelectedRow = App.TypeOfEmploymentCenter.queryById('TypeOfEmploymentCenterGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/TypeOfEmploymentCenter/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTitle = App.TypeOfEmploymentCenter.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var txtDesc = App.TypeOfEmploymentCenter.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.TypeOfEmploymentCenter.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function HelpTypeOfEmploymentCenter() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/TypeOfEmploymentCenter/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SaveTypeOfEmploymentCenter() {
+        var txtTitle = App.TypeOfEmploymentCenter.queryById('txtTitle');
+        var txtDesc = App.TypeOfEmploymentCenter.queryById('txtDesc');
+        var fldId = App.TypeOfEmploymentCenter.queryById('fldId');
+            var er = false;
+
+            if (txtTitle.validate() == false) {
+                er = true;
+            }
+            if (fldId.getValue() == 0 || fldId.getValue()=="") {
+                er = true;
+                Ext.MessageBox.show({
+                    Name: "خطا",
+                    msg: "ثبت نوع مرکز هزینه جدید امکان پذیر نمی باشد، لطفا یک مورد را برای ویرایش انتخاب کنید.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/TypeOfEmploymentCenter/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldTitle: txtTitle.getValue(),
+                    fldDesc: txtDesc.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.TypeOfEmploymentCenter.queryById('TypeOfEmploymentCenterGrid').store.load();
+                    if (data.Er != 1)
+                        ClearTypeOfEmploymentCenter();
+                }
+
+            });
+    }
+
+    function ClearTypeOfEmploymentCenter() {
+        App.TypeOfEmploymentCenter.queryById('fldId').setValue(0);
+        App.TypeOfEmploymentCenter.queryById('txtTitle').setValue("");
+        App.TypeOfEmploymentCenter.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapTypeOfEmploymentCenter = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+        var keyfield = App.TypeOfEmploymentCenter.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtDesc") {
+            nextfld = App.TypeOfEmploymentCenter.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

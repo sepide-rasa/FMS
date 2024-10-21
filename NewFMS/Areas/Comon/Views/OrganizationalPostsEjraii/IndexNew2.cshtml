@@ -1,0 +1,362 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_OrganizationalPostsEjraee>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .x-grid-cell {
+        background-color: transparent;
+    }
+</style>
+@(Html.X().Panel()
+        .ID("OrganizationalPostsEjraee")
+            .Title("تعریف پست سازمانی اجرائی")
+            .Listeners(li => li.AfterRender.Handler = "OrganizationalPostsEjraeeSetSize();")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                .Listeners(l => { l.Click.Handler = "SaveOrganizationalPostsEjraee();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadOrganizationalPostsEjraee();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteOrganizationalPostsEjraee();"; })
+            , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                .Listeners(l => { l.Click.Handler = "HelpOrganizationalPostsEjraee();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.OrganizationalPostsEjraee.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                    X.FieldSet().Border(true).Width(650).Title("اطلاعات پست سازمانی اجرائی")//.Height(220)
+                     .Defaults(new { Margin = 10 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 3 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.FieldSet().Border(false)//.Width(920)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                .Items(
+                    X.Label("عنوان پست:"),
+                    X.TextField()
+                    .ItemID("txtTitle")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان پست را وارد کنید.")
+                    .AutoFocus(true),
+                    X.Label("کد پست:"),
+                    X.TextField()
+                        .ItemID("txtOrgPostCode")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا کد پست را وارد کنید.")
+                        , X.Label("توضیحات:"),
+                            X.TextArea()
+                        .ItemID("txtDesc")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Width(150)
+                    )
+                    ,
+                       X.TreePanel()
+                                .ID("TreeOrganizationalPostsEjraee")
+                                    .AutoScroll(true)
+                                    .Width(300)
+                                    .ColSpan(2)
+                                    .Height(120)
+                                    .UseArrows(true)
+                                    .Border(false)
+                                        .Store(
+                    Html.X().TreeStore()
+                        .Proxy(
+                                    Html.X().AjaxProxy().Url(Url.Action("Node"))
+                        )
+                )
+
+                                    .Listeners(a =>
+                                    {
+                                        a.ItemClick.Handler = "GetIdChartOrganEjraee(record)";
+                                        a.AfterRender.Handler = "this.getRootNode().expand();";
+                                    })
+                       .Root(Html.X().Node().NodeID("0").Text("چارت سازمانی"))
+                      .Listeners(l =>
+                      {
+                          l.BeforeLoad.Fn = "nodeLoadEjraee";
+                      })
+                     ,
+                     X.FieldSet()
+                     .Border(false)
+        // .Width(400)
+                     .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                         .Items(
+                     X.Label().ItemID("LbLname"))
+                     .ColSpan(2)
+
+                )
+            )
+        )
+
+             , X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+             X.TreePanel()
+                                        .ID("TreePostEjraee")
+                                            .AutoScroll(true)
+                                            .Width(300)
+                                            .ColSpan(2)
+                                            .Height(120)
+                                            .UseArrows(true)
+                                            .Border(false)
+                                                .Store(
+                            Html.X().TreeStore()
+                                .Proxy(
+                                            Html.X().AjaxProxy().Url(Url.Action("Node"))
+                                )
+                        )
+
+                                            .Listeners(a =>
+                                            {
+                                                a.ItemClick.Handler = "GetIdPostEjraee(record)";
+                                                a.AfterRender.Handler = "this.getRootNode().expand();";
+                                            })
+                               .Root(Html.X().Node().NodeID("0").Text("پست سازمانی"))
+                              .Listeners(l =>
+                              {
+                                  l.BeforeLoad.Fn = "nodeLoadPostEjraee";
+                              })
+                              )
+    )
+)
+<script type="text/javascript">
+    var NodeId_O = 0;
+    var NodeId_Post = 0;
+
+    /*App.Win.addListener('resize', function () {
+        App.OrganizationalPostsEjraee.setWidth(App.Win.getWidth());
+    });*/
+
+    function OrganizationalPostsEjraeeSetSize() {
+        App.OrganizationalPostsEjraee.setWidth(App.Win.getWidth());
+
+    }
+    var nodeLoadEjraee = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/OrganizationalPostsEjraii/NodeLoad',
+            params: {
+                nod: node.getId()
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+    function HelpOrganizationalPostsEjraee() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/comon/OrganizationalPostsEjraii/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function GetIdChartOrganEjraee(record) {
+        NodeId_O = record.getId();
+        App.OrganizationalPostsEjraee.queryById('LbLname').setText("چارت سازمانی: "+record.data.text);
+        ReloadPostOrganEjraee();
+    };
+    var nodeLoadPostEjraee = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/OrganizationalPostsEjraii/NodeLoadPost',
+            params: {
+                nod: node.getId(),
+                OrganId:NodeId_O
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+    function GetIdPostEjraee(record) {
+        NodeId_Post = record.getId();
+    };
+    function LoadOrganizationalPostsEjraee() {
+        if (NodeId_Post != 0) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/OrganizationalPostsEjraii/Details',
+                params: {
+                    Id: NodeId_Post
+                },
+                success: function (data) {
+                    var txtTitle = App.OrganizationalPostsEjraee.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var txtOrgPostCode = App.OrganizationalPostsEjraee.queryById('txtOrgPostCode');
+                    txtOrgPostCode.setValue(data.fldOrgPostCode);
+                    var txtDesc = App.OrganizationalPostsEjraee.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var LbLname = App.OrganizationalPostsEjraee.queryById('LbLname');
+                    LbLname.setText("چارت سازمانی: " + data.fldNameChart);
+                    NodeId_Post = data.fldPID;
+                    NodeId_O = data.fldChartOrganId;
+                    var fldId = App.OrganizationalPostsEjraee.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک پست را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveOrganizationalPostsEjraee() {
+        var txtTitle = App.OrganizationalPostsEjraee.queryById('txtTitle');
+        var txtOrgPostCode = App.OrganizationalPostsEjraee.queryById('txtOrgPostCode');
+        var txtDesc = App.OrganizationalPostsEjraee.queryById('txtDesc');
+        var fldId = App.OrganizationalPostsEjraee.queryById('fldId');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (txtOrgPostCode.validate() == false) {
+            er = true;
+        }
+        if (NodeId_O == 0) {
+            er = true;
+            alert("چارت سازمانی را انتخاب کنید.");
+        }
+        if (er == true)
+            return;
+
+        if (NodeId_Post == 0)
+            NodeId_Post = null;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/OrganizationalPostsEjraii/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldTitle: txtTitle.getValue(),
+                fldOrgPostCode: txtOrgPostCode.getValue(),
+                fldDesc: txtDesc.getValue(),
+                fldChartOrganId: NodeId_O,
+                fldPID: NodeId_Post,
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                ReloadPostOrganEjraee();
+                if (data.Err != 1)
+                    ClearOrganizationalPostsEjraee();
+            }
+
+        });
+    }
+    function DeleteOrganizationalPostsEjraee() {
+        if (NodeId_Post != 0) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/OrganizationalPostsEjraii/Delete',
+                            params: {
+                                id: NodeId_Post
+                            },
+                            success: function (data) {
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.INFO,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                ReloadPostOrganEjraee();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ReloadPostOrganEjraee() {
+        App.TreePostEjraee.store.load();
+    };
+    function ClearOrganizationalPostsEjraee() {
+        App.OrganizationalPostsEjraee.queryById('fldId').setValue(0);
+        App.OrganizationalPostsEjraee.queryById('txtTitle').setValue("");
+        App.OrganizationalPostsEjraee.queryById('txtOrgPostCode').setValue("");
+        App.OrganizationalPostsEjraee.queryById('txtDesc').setValue("");
+        App.OrganizationalPostsEjraee.queryById('LbLname').setText("");
+        NodeId_O = 0;
+        NodeId_Post = 0;
+    }
+    function EnterNext() {
+        var keyfield = App.OrganizationalPostsEjraee.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtDesc") {
+            nextfld = App.OrganizationalPostsEjraee.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+    }
+</script>

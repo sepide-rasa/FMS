@@ -1,0 +1,550 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_ParvandeInfo>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+@(Html.X()
+    .Window()
+    .Modal(true)
+    .Width(1000)
+    .Title("پرونده")
+    .ID("ListFiles")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Resizable(false)
+    .Listeners(l => l.Destroy.Handler = "SetFocusFileComponent()")
+        //.ButtonAlign(Ext.Net.Alignment.Center)
+        //.Buttons(
+        //    X.Button()
+        //        .Text("ادامه")
+        //        .Icon(Ext.Net.Icon.NextGreen)
+        //        .Listeners(l => l.Click.Handler = "SettxtFile()"),
+        //    X.Button()
+        //        .Text("خروج")
+        //        .Icon(Ext.Net.Icon.DoorOut)
+        //        .OnClientClick("App.ListFiles.destroy()"))
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Padding(5)
+            .Items(
+                X.FieldSet()
+                    .Border(false)
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                    .Items(
+                        X.Label("نوع:"),
+                            X.ComboBox()
+                                    .ItemID("CboTypeParvande")
+                               // .AutoFocus(true)
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا نوع را انتخاب کنید.")
+                                    .Listeners(l => l.Select.Handler = "ChangeTypeParvande();")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .AllowBlank(false)
+                                .EmptyText("نوع ...")
+                               // .SelectedItems(new { value = "1" })
+                                        .Listeners(l => {l.AfterRender.Handler = "setDefaultTypeParvande()";
+                                l.SpecialKey.Fn = "SetFocusonGrid2";
+                                        })
+                                .Items(
+                                    new ListItem("تمامی پرونده ها", "1"),
+                                    new ListItem("پرونده خاص", "2")
+                                ),
+                        X.Label("نوع پرونده:"),
+                        X.ComboBox()
+                            .ItemID("CboFileType")
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع پرونده را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .EnableKeyEvents(true)
+                            .TriggerAction(TriggerAction.All)
+                            .Listeners(l =>
+                            {
+                                l.Change.Handler = "LoadGridFiles();";
+                                l.SpecialKey.Fn = "SetFocusonGrid";
+                            })
+                            .Store(X.Store()
+                                //.Listeners(l => l.Load.Handler = "setDefaultFileType()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetFileType"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            )
+                    ),
+        X.GridPanel()
+            .AutoScroll(true)
+            .ItemID("GridFiles")
+            .Width(976)
+            .Height(330)
+        //.Listeners(l => l.AfterRender.Handler = "App.ListFiles.queryById('GridFiles').setHeight(App.AccountingWin.getHeight() - 310)")
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(
+                        Html.X().Button()
+                            .Text("انتخاب")
+                            .Icon(Icon.NextGreen)
+                            .Listeners(l => l.Click.Handler = "SettxtFile()")//,
+        //Html.X().Button()
+        //    .Text("جدید")
+        //    .Icon(Icon.NewBlue)
+        //    .Listeners(l => l.Click.Handler = "GotoNewFile()")
+                    )
+            )
+            .BottomBar(X.PagingToolbar())
+                .Listeners(l => l.AfterRender.Handler = "HandleFocus2();")
+            .Store(
+                X.StoreForModel()
+                    .AutoLoad(false)
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("ReadFiles"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+                                    .ExtraParams(l => l.Add(new { Year = ViewBag.Year }))
+                        )
+                    .PageSize(10000)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                    .Parameters(ps => { ps.Add(new StoreParameter("Type", "App.ListFiles.queryById('CboFileType').getValue()", ParameterMode.Raw));
+                    
+                                        })
+            )
+        //.View(
+        //    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+        //)
+            .ViewConfig(X.GridView().LoadingText("در حال بارگذاری...").RTL(true).Listeners(l => l.ItemKeyDown.Fn = "SettxtFilewithKey"))
+            .Listeners(a => a.ItemDblClick.Handler = "SettxtFile();")
+            .Plugins(X.FilterHeader().Remote(true))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).ID("ColfldId").Text("کد").Hidden(true).Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldType).ID("ColType_File").Text("نوع").Flex(1).Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldName).ID("ColName_File").Text("نام و نام خانوادگی").Flex(6).Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کد ملی").ID("ColCodemeli_File").Flex(3).Wrap(true),
+                Html.X().Column().DataIndex(Model, m => m.fldStartContract).Text("تاریخ شروع قرارداد").ID("ColStartContract_File").Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldEndContract).Text("تاریخ پایان قرارداد").ID("ColEndContract").Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldMablagh).Text("مبلغ").ID("ColMablagh").Renderer("return value.toLocaleString()").Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldShenasePardakht).Text("شناسه پرداخت").ID("ColfldShenasePardakht").Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldShenaseGhabz).Text("شناسه قبض").ID("ColfldShenaseGhabz").Flex(4),
+                Html.X().Column().DataIndex(Model, m => m.fldShomareHesab).Text("شماره حساب").ID("ColfldShomareHesab").Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldSharh).Text("کدهای درآمد").ID("ColfldSharh").Flex(5).Wrap(true),
+                         Html.X().Column().DataIndex(Model, m => m.fldTypeId).ID("ColfldTypeId").Text("کد").Hidden(true).Flex(3)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+        )
+    )
+)
+<script type="text/javascript">
+    function setDefaultTypeParvande() {
+        var CboTypeParvande = App.ListFiles.queryById('CboTypeParvande');
+        CboTypeParvande.setValue("1");
+        /*App.ListFiles.queryById('GridFiles').store.load();*/
+        ChangeTypeParvande();
+    }
+    function ChangeTypeParvande() {
+        var CboTypeParvande = App.ListFiles.queryById('CboTypeParvande');
+        var CboFileType = App.ListFiles.queryById('CboFileType');
+        if (CboTypeParvande.getValue() == "1") {
+            CboFileType.setValue("");
+            CboFileType.setDisabled(true);
+        }
+        else {
+            CboFileType.setDisabled(false);
+            CboFileType.setValue(App.ListFiles.queryById('CboFileType').store.getAt(0));
+        }
+    }
+    function setDefaultFileType() {
+        App.ListFiles.queryById('CboFileType').setValue(App.ListFiles.queryById('CboFileType').store.getAt(App.ListFiles.queryById('CboFileType').store.count()-1));
+    }
+
+    @*function GotoNewFile() {
+        App.SearchDescDoc.body.mask("در حال بارگذاری");
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DescriptionDocument/IndexWin',
+            params: {
+                State: '@ViewBag.State'
+            },
+            success: function () {
+                App.SearchDescDoc.body.mask().hide();
+            }
+        });
+    }*@
+
+    function SetFocusFileComponent() {
+        if ('@ViewBag.State' == "1") {
+            App.ColFile.getComponent(parseInt('@ViewBag.rowIdx')).focus();
+        }
+        else if ('@ViewBag.State' == "2") {
+            App.ColFile_Khazane.getComponent(parseInt('@ViewBag.rowIdx')).focus();
+        }
+    }
+
+    var SetFocusonGrid = function (Fieldd, Eventt) {
+        if (Eventt.keyCode == 13) {
+            setTimeout(function () { App.ListFiles.queryById('GridFiles').plugins[0].fields[2].focus(); }, 200);
+        }
+    };
+
+    var SetFocusonGrid2 = function (Fieldd, Eventt) {
+        var CboTypeParvande = App.ListFiles.queryById('CboTypeParvande');
+        if (Eventt.keyCode == 13) {
+            if (CboTypeParvande.getPicker().highlightedItem==undefined){
+                if(CboTypeParvande.getValue()==1)
+                    setTimeout(function () { App.ListFiles.queryById('GridFiles').plugins[0].fields[2].focus(); }, 200);
+                else
+                    setTimeout(function () { App.ListFiles.queryById('CboFileType').focus(); }, 200);
+            }
+            else {
+                if (CboTypeParvande.getPicker().highlightedItem.viewIndex == 0)
+                    setTimeout(function () { App.ListFiles.queryById('GridFiles').plugins[0].fields[2].focus(); }, 200);
+                else
+                    setTimeout(function () { App.ListFiles.queryById('CboFileType').focus(); }, 200);
+            }
+        }
+        /*if ( Eventt.keyCode == 13) {
+            if (CboTypeParvande.getValue() == "1")
+                setTimeout(function () { App.ListFiles.queryById('GridFiles').plugins[0].fields[2].focus(); }, 200);
+            else
+                setTimeout(function () { App.ListFiles.queryById('CboFileType').focus(); }, 200);
+        }*/
+    };
+
+    function HandleFocus2() {
+        LoadGridFiles();
+        setTimeout(function () { App.ListFiles.queryById('GridFiles').plugins[0].fields[2].focus(); }, 200);
+        App.ListFiles.queryById('GridFiles').columnManager.headerCt.el.on("keyup", function (e) {
+            if (e.getKey() == 13) {
+                var keyfield = Ext.getCmp(Ext.Element.getActiveElement().name);
+                if (Ext.getCmp(Ext.Element.getActiveElement().name).filterRow != undefined) {
+                    var nextfld = Ext.getCmp((Ext.Element.getActiveElement()).name).nextNode();
+                    while (nextfld.items != undefined) {
+                        if (nextfld.isHidden()) {
+                            nextfld = nextfld.nextNode();
+                        }
+                        else {
+                            nextfld.items.items[0].child().focus();
+                            return;
+                        }
+                    }
+                    App.ListFiles.queryById('GridFiles').getSelectionModel().select(0);
+                }
+            }
+        });
+    }
+
+    function LoadGridFiles() {
+        App.ListFiles.queryById('GridFiles').filterHeader.clearFilter();
+        var FileType = App.ListFiles.queryById('CboFileType').getValue();
+        var TypeParvande = App.ListFiles.queryById('CboTypeParvande').getValue();
+        if (TypeParvande == "1") {
+            App.ColName_File.setText("نام");
+            App.ColType_File.show();
+            App.ColCodemeli_File.hide();
+            App.ColStartContract_File.hide();
+            App.ColfldId.hide();
+            App.ColEndContract.hide();
+            App.ColMablagh.hide();
+            App.ColfldShenasePardakht.hide();
+            App.ColfldShenaseGhabz.hide();
+            App.ColfldShomareHesab.hide();
+            App.ColfldSharh.setText("توضیحات");
+            App.ColfldSharh.show();
+            App.ListFiles.queryById('GridFiles').store.load();
+        }
+        else {
+            if (FileType == 1 || FileType == 2) {
+                if (FileType == 1) {
+                    App.ColName_File.setText("نام و نام خانوادگی");
+                    App.ColCodemeli_File.setText("کد ملی");
+                }
+                else {
+                    App.ColName_File.setText("نام");
+                    App.ColCodemeli_File.setText("شناسه ملی");
+                }
+                App.ColCodemeli_File.show();
+                App.ColStartContract_File.hide();
+                App.ColfldId.hide();
+                App.ColEndContract.hide();
+                App.ColMablagh.hide();
+                App.ColfldShenasePardakht.hide();
+                App.ColfldShenaseGhabz.hide();
+                App.ColfldShomareHesab.hide();
+                App.ColfldSharh.hide();
+                App.ColType_File.hide();
+                App.ListFiles.queryById('GridFiles').store.load();
+            }
+            else if (FileType == 13 || FileType == 14) {
+                App.ColName_File.setText("عنوان قرارداد");
+                App.ColCodemeli_File.hide();
+                App.ColStartContract_File.show();
+                App.ColEndContract.show();
+                App.ColMablagh.hide();
+                App.ColfldId.hide();
+                App.ColfldShenasePardakht.hide();
+                App.ColfldShenaseGhabz.hide();
+                App.ColfldShomareHesab.hide();
+                App.ColfldSharh.hide();
+                App.ColType_File.hide();
+                App.ListFiles.queryById('GridFiles').store.load();
+            }
+            else if (FileType == 3) {
+                App.ColName_File.setText("بابت");
+                App.ColCodemeli_File.show();
+                App.ColCodemeli_File.setText("شماره چک");
+                App.ColStartContract_File.show();
+                App.ColStartContract_File.setText("تاریخ دریافت");
+                App.ColEndContract.show();
+                App.ColEndContract.setText("تاریخ سررسید");
+                App.ColMablagh.show();
+                App.ColfldShenasePardakht.hide();
+                App.ColfldShenaseGhabz.hide();
+                App.ColfldShomareHesab.hide();
+                App.ColfldSharh.hide();
+                App.ColfldId.hide();
+                App.ColType_File.hide();
+                App.ListFiles.queryById('GridFiles').store.load();
+            }
+            else if (FileType == 4) {
+                App.ColName_File.setText("بابت");
+                App.ColCodemeli_File.show();
+                App.ColCodemeli_File.setText("شماره چک");
+                App.ColStartContract_File.show();
+                App.ColStartContract_File.setText("تاریخ صدور");
+                App.ColEndContract.show();
+                App.ColEndContract.setText("تاریخ سررسید");
+                App.ColMablagh.show();
+                App.ColfldShenasePardakht.hide();
+                App.ColfldShenaseGhabz.hide();
+                App.ColfldShomareHesab.hide();
+                App.ColfldSharh.hide();
+                App.ColfldId.hide();
+                App.ColType_File.hide();
+                App.ListFiles.queryById('GridFiles').store.load();
+            }
+            else if (FileType == 6) {
+                App.ColName_File.setText("نام و نام خانوادگی");
+                App.ColCodemeli_File.hide();
+                /*App.ColCodemeli_File.setText("کد ملی");*/
+                App.ColStartContract_File.show();
+                App.ColStartContract_File.setText("تاریخ فیش");
+                App.ColEndContract.hide();
+                /*App.ColEndContract.setText("تاریخ اعلام عوارض");*/
+                App.ColMablagh.show();
+                App.ColMablagh.setText("مبلغ عوارض");
+                App.ColfldShenasePardakht.show();
+                App.ColfldShenaseGhabz.show();
+                App.ColfldShomareHesab.show();
+                App.ColfldSharh.show();
+                App.ColfldSharh.setText("کدهای درآمد");
+                App.ColfldId.show();
+                App.ColfldId.setText("شماره فیش");
+                App.ColType_File.hide();
+                App.ListFiles.queryById('GridFiles').store.load();
+            }
+            else if (FileType == 15) {
+                App.ColName_File.setText("عنوان پروژه");
+                App.ColCodemeli_File.show();
+                App.ColCodemeli_File.setText("کد پروژه");
+                App.ColStartContract_File.show();
+                App.ColStartContract_File.setText("سال پروژه");
+                App.ColEndContract.hide();
+                App.ColMablagh.hide();
+                App.ColfldShenasePardakht.hide();
+                App.ColfldShenaseGhabz.hide();
+                App.ColfldShomareHesab.hide();
+                App.ColfldSharh.hide();
+                App.ColfldId.hide();
+                App.ColType_File.hide();
+                App.ListFiles.queryById('GridFiles').store.load();
+            }
+            else if (FileType == 5) {
+                App.ColName_File.setText("نام شخص حقوقی");
+                App.ColCodemeli_File.show();
+                App.ColCodemeli_File.setText("شناسه ملی");
+                App.ColStartContract_File.hide();
+                App.ColEndContract.hide();
+                App.ColMablagh.hide();
+                App.ColfldShenasePardakht.hide();
+                App.ColfldShenaseGhabz.hide();
+                App.ColfldShomareHesab.show();
+                App.ColfldSharh.show();
+                App.ColfldSharh.setText("نام بانک");
+                App.ColfldId.hide();
+                App.ColType_File.hide();
+                App.ListFiles.queryById('GridFiles').store.load();
+            }
+            /*else {
+                App.ColName_File.setText("عنوان قبض");
+                App.ColCodemeli_File.hide();
+                App.ColStartContract_File.hide();
+                App.ColEndContract.hide();
+                App.ListFiles.queryById('GridFiles').store.load();
+            }*/
+        }
+    }
+
+    function SettxtFile() {
+        var SelectedRow = App.ListFiles.queryById('GridFiles').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            var FileType = SelectedRow.data.fldTypeId;/*App.ListFiles.queryById('CboFileType').getValue();*/
+            if ('@ViewBag.State' == "1") {
+                var recordd = App.DocRegister_Details.queryById("DocRegister_DetailsGrid").store.getAt('@ViewBag.rowIdx');
+                if (FileType == 5) {
+                    App.ColFile.getComponent(parseInt('@ViewBag.rowIdx')).setValue(SelectedRow.data.fldShomareHesab + "_" + SelectedRow.data.fldSharh);
+                }
+                else if (FileType == 3 || FileType == 4) {
+                    App.ColFile.getComponent(parseInt('@ViewBag.rowIdx')).setValue(SelectedRow.data.fldCodemeli + "(" + SelectedRow.data.fldName + ")");
+                }
+                else if (FileType == 6) {
+                    App.ColFile.getComponent(parseInt('@ViewBag.rowIdx')).setValue(SelectedRow.data.fldId + "_" + SelectedRow.data.fldName + "(" + SelectedRow.data.fldCodemeli + ")");
+                }
+                else {
+                    if (FileType == 15) {
+                        recordd.set("fldName_CodeDetail", "");
+                        recordd.set("fldCodingId", 0);
+                        @*SetFocusFileComponent();
+                        Ext.net.DirectMethod.request({
+                            url: '/Accounting/DocRegistration/GetCoding_Project',
+                            params: {
+                                ProjectId: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                /*recordd.set("fldName_CodeDetail", data.fldCodingTitle);
+                                recordd.set("fldCodingId", data.fldCodingDetailId);*/
+                                SetFocusFileComponent();
+                                EnableCboCostCenter2(data.fldCodingDetailId, parseInt('@ViewBag.rowIdx'), recordd);
+                            }
+                        });*@
+                    }
+                    App.ColFile.getComponent(parseInt('@ViewBag.rowIdx')).setValue(SelectedRow.data.fldName);
+                }
+                recordd.data.fldSourceId = SelectedRow.data.fldId;
+                recordd.data.fldCaseTypeId = SelectedRow.data.fldTypeId;/*App.ListFiles.queryById('CboFileType').getValue();*/
+            }
+            else if ('@ViewBag.State' == "2") {
+                var recordd = App.DocRegister_DetailsKhazane.queryById("DocRegister_DetailsKhazaneGrid").store.getAt('@ViewBag.rowIdx');
+                if (FileType == 5) {
+                    App.ColFile_Khazane.getComponent(parseInt('@ViewBag.rowIdx')).setValue(SelectedRow.data.fldShomareHesab + "_" + SelectedRow.data.fldSharh);
+                }
+                else if (FileType == 3 || FileType == 4) {
+                    App.ColFile_Khazane.getComponent(parseInt('@ViewBag.rowIdx')).setValue(SelectedRow.data.fldCodemeli + "(" + SelectedRow.data.fldName + ")");
+                }
+                else if (FileType == 6) {
+                    App.ColFile_Khazane.getComponent(parseInt('@ViewBag.rowIdx')).setValue(SelectedRow.data.fldId + "_" + SelectedRow.data.fldName + "(" + SelectedRow.data.fldCodemeli + ")");
+                }
+                else {
+                    if (FileType == 15) {
+                        recordd.set("fldName_CodeDetail", "");
+                        recordd.set("fldCodingId", 0);
+                        @*SetFocusFileComponent();
+                        Ext.net.DirectMethod.request({
+                            url: '/Accounting/DocRegistration/GetCoding_Project',
+                            params: {
+                                ProjectId: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                recordd.set("fldName_CodeDetail", data.fldCodingTitle);
+                                recordd.set("fldCodingId", data.fldCodingDetailId);
+                                SetFocusFileComponent();
+                                EnableCboCostCenter_Khazane2(data.fldCodingDetailId, parseInt('@ViewBag.rowIdx'));
+                            }
+                        });*@
+                    }
+                    App.ColFile_Khazane.getComponent(parseInt('@ViewBag.rowIdx')).setValue(SelectedRow.data.fldName);
+                }
+                recordd.data.fldSourceId = SelectedRow.data.fldId;
+                recordd.data.fldCaseTypeId = SelectedRow.data.fldTypeId;/* App.ListFiles.queryById('CboFileType').getValue();*/
+            }
+            App.ListFiles.destroy();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    var SettxtFilewithKey = function (view, record, item, index, e) {
+        var SelectedRow = App.ListFiles.queryById('GridFiles').selModel.getLastSelected();
+        if (e.getKey() == 13) {
+            if ('@ViewBag.State' == "1") {
+                App.ColFile.getComponent(parseInt('@ViewBag.rowIdx')).setValue(record.data.fldName);
+                var recordd = App.DocRegister_Details.queryById("DocRegister_DetailsGrid").store.getAt('@ViewBag.rowIdx');
+                recordd.data.fldSourceId = record.data.fldId;
+                recordd.data.fldCaseTypeId = SelectedRow.data.fldTypeId; /*App.ListFiles.queryById('CboFileType').getValue();*/
+                if (SelectedRow.data.fldTypeId == 15) {
+                    recordd.set("fldName_CodeDetail", "");
+                    recordd.set("fldCodingId", 0);
+                    @*SetFocusFileComponent();
+                        Ext.net.DirectMethod.request({
+                        url: '/Accounting/DocRegistration/GetCoding_Project',
+                        params: {
+                            ProjectId: record.data.fldId
+                        },
+                        success: function (data) {
+                            var g = App.DocRegister_Details.queryById("DocRegister_DetailsGrid");
+                            g.editingPlugin.getEditor(g.store.getAt(0), g.columnManager.columns[4]).field.store.loadData(data.data);
+                            recordd.set("fldName_CodeDetail", data.fldCodingTitle);
+                            recordd.set("fldCodingId", data.fldCodingDetailId);
+                            SetFocusFileComponent();
+                            EnableCboCostCenter2(data.fldCodingDetailId, parseInt('@ViewBag.rowIdx'), recordd);
+                        }
+                    });*@
+                }
+                /*recordd.set('fldSourceId', record.data.fldId);
+                recordd.set('fldCaseTypeId', App.ListFiles.queryById('CboFileType').getValue());*/
+            }
+            else if ('@ViewBag.State' == "2") {
+                App.ColFile_Khazane.getComponent(parseInt('@ViewBag.rowIdx')).setValue(record.data.fldName);
+                var recordd = App.DocRegister_DetailsKhazane.queryById("DocRegister_DetailsKhazaneGrid").store.getAt('@ViewBag.rowIdx');
+                recordd.data.fldSourceId = record.data.fldId;
+                recordd.data.fldCaseTypeId = SelectedRow.data.fldTypeId;/*App.ListFiles.queryById('CboFileType').getValue();*/
+                if (SelectedRow.data.fldTypeId == 15) {
+                    recordd.set("fldName_CodeDetail", "");
+                    recordd.set("fldCodingId", 0);
+                    @*SetFocusFileComponent();
+                    Ext.net.DirectMethod.request({
+                        url: '/Accounting/DocRegistration/GetCoding_Project',
+                        params: {
+                            ProjectId: record.data.fldId
+                        },
+                        success: function (data) {
+                            recordd.set("fldName_CodeDetail", data.fldCodingTitle);
+                            recordd.set("fldCodingId", data.fldCodingDetailId);
+                            SetFocusFileComponent();
+                            EnableCboCostCenter_Khazane2(data.fldCodingDetailId, parseInt('@ViewBag.rowIdx'));
+                        }
+                    });*@
+                }
+                    /*recordd.set('fldSourceId', record.data.fldId);
+                    recordd.set('fldCaseTypeId', App.ListFiles.queryById('CboFileType').getValue());*/
+                }
+                App.ListFiles.destroy();
+            }
+        };
+</script>

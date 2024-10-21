@@ -1,0 +1,270 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_EmalTakhfif>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<script src="~/Scripts/accounting.min.js"></script>
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X()
+    .Window()
+    .Modal(true)
+        //.Listeners(li =>
+        //{
+        //    li.AfterRender.Handler = "App.TakhfifHa.setWidth(App.DaramadWin.getWidth()-1236);";
+        //})
+        .Width(500)
+        .Title("کدهای درآمدی این اعلام عوارض")
+    .ID("TakhfifHa")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .ButtonAlign(Ext.Net.Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveTakhfifHa();"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.TakhfifHa.destroy()"))
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.Fit)
+        //.LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+         //   .Padding(5)
+            .Items(
+        X.GridPanel()
+        .Height(150)
+            .AutoScroll(true)
+        //   .Title("لیست شماره حساب ها")
+            .ItemID("GridTakhfifHa")
+            .Border(false)
+            .Listeners(l =>
+            {
+                l.AfterRender.Handler = "LoadTakhfif()";
+            })
+            .Store(
+                X.StoreForModel().AutoLoad(false)
+                     .Proxy(Html.X().AjaxProxy()
+                    .Url(Url.Action("ReadTakhfifHa"))
+                    .Reader(Html.X().JsonReader().Root("data"))
+                    .ExtraParams(p => p.Add(new { ElamAvarez = @ViewBag.ElamAvarez }))
+                                )
+                    .PageSize(20000)
+                    .RemoteFilter(false)
+                    .RemotePaging(false)
+            )
+                    .Features(Html.X().Summary().ID("summaryTakhfifHa").Dock(SummaryDock.Bottom))
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .Plugins(Html.X().CellEditing().ClicksToEdit(1))
+            .ColumnModel(
+        // Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldID).Text("کد").Flex(1).Hidden(true),
+                Html.X().Column().DataIndex(Model, m => m.fldDaramadCode).Text("کد درآمد").Flex(1).Hidden(true),
+                Html.X().Column().DataIndex(Model, m => m.fldTedad).Text("تعداد").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldSharheCodeDaramad).Text("شرح کد درآمد").Flex(8),
+                Html.X().Column().DataIndex(Model, m => m.AsliValue).Text("مبلغ").Flex(4).Renderer("LocalString"),
+                Html.X().Column().DataIndex(Model, m => m.fldTakhfifAsliValue).Text("مبلغ تخفیف").Flex(5).Renderer("LocalString")
+                    .Editor(X.TextField()
+                    .ID("txtMTakhfif")
+                    .Listeners(l => { l.SpecialKey.Handler = "ChekMablagh(App.txtMTakhfif)";l.Focus.Handler = "ChekAllTakhfif()"; })
+                    )
+                    .SummaryRenderer(new Renderer { Handler = "totalDocMablagh" })
+                )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+                )
+        )
+    )
+)
+<script type="text/javascript">
+    var MablaghT = 0;
+    function LoadTakhfif() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/ReplyTaghsit_Takhfif/LoadDataTakhfif',
+            params: {
+                ElamAvarez: '@ViewBag.ElamAvarez',
+                DarsadTakhfif: '@ViewBag.DarsadTakhfif',
+                SumMablaghTakhfif: '@ViewBag.SumMablaghTakhfif',
+                MablaghAsli: '@ViewBag.MablaghAsli'
+            },
+            success: function (result) {
+                App.TakhfifHa.queryById('GridTakhfifHa').getStore().loadData(result.data);
+                App.ReplyTaghsit_Takhfif.queryById('LblTakhfif').setText("مبلغ تخفیف محاسبه شده توسط سیستم: " + accounting.formatNumber(result.SumTakhfif));
+                MablaghT = result.SumTakhfif;
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var sum = 0;
+    function totalDocMablagh() {
+        var store = App.TakhfifHa.queryById('GridTakhfifHa').store;
+        sum = 0;
+        store.each(function (rec) {
+            sum += rec.get('fldTakhfifAsliValue');
+        });
+        
+        if (parseInt(sum) > parseInt('@ViewBag.SumMablaghTakhfif')) 
+            return "<div style='display:inline;'>جمع تخفیف:</div>" + "<div style='display:inline;color:red;'>" + sum.toLocaleString() + "</div>";
+        else
+            return "<div style='display:inline;'>جمع تخفیف:</div>" + "<div style='display:inline;color:black;'>" + sum.toLocaleString() + "</div>";
+    }
+
+    function ChekMablagh(TXT) {
+        /*var sm = App.TakhfifHa.queryById('GridTakhfifHa').getSelectionModel();*/
+        var sm = App.TakhfifHa.queryById('GridTakhfifHa').selModel.getLastSelected();
+        var t = sm.data.fldTedad;
+        var m = parseInt(App.txtMTakhfif.getValue());
+
+        /* var t = parseInt(App.txtMTedad.getValue());*/
+        if (m % t != 0) {
+            for (var i = 1; i < m; i++) {
+                m = m - 1;
+                if (m % t == 0) {
+                    break;
+                }
+            }
+        }
+        TXT.setValue(m);
+    }
+    function ChekAllTakhfif() {
+        var Grid = App.TakhfifHa.queryById('GridTakhfifHa');
+        for (var i = 0; i < Grid.selModel.store.count() ; i++) {
+            var row = Grid.selModel.store.data.items[i];
+            var t = parseInt(row.data.fldTedad);
+            var m = parseInt(row.data.fldTakhfifAsliValue);
+            if (m % t != 0) {
+                for (var i = 1; i < m; i++) {
+                    m = m - 1;
+                    if (m % t == 0) {
+                        break;
+                    }
+                }
+            }
+            row.set('fldTakhfifAsliValue', m);
+        }
+    }
+    function SaveTakhfifHa() {
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        var txtMojavez = App.ReplyTaghsit_Takhfif.queryById('txtMojavez');
+        var txtTarikhMojavez = App.ReplyTaghsit_Takhfif.queryById('txtTarikhMojavez');
+        var txtTakhfif = App.ReplyTaghsit_Takhfif.queryById('txtTakhfif');
+        var txtMablaghTakhfif = App.ReplyTaghsit_Takhfif.queryById('txtMablaghTakhfif');
+        var fldTakhfifId = App.ReplyTaghsit_Takhfif.queryById('fldTakhfifId');
+        var txtDesc = App.ReplyTaghsit_Takhfif.queryById('txtDescK');
+
+        if (parseInt(sum) > parseInt('@ViewBag.SumMablaghTakhfif')) {
+            Ext.MessageBox.show({
+                title:"خطا",
+                msg: "جمع تخفیف ها بیشتر از مبلغ تخفیف موردنظر است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+        else {
+            var SumTakhfif = 0;
+            var Grid = App.TakhfifHa.queryById('GridTakhfifHa');
+
+            var TakhfifArray = new Array();
+            for (var i = 0; i < Grid.selModel.store.count() ; i++) {
+                var row = Grid.selModel.store.data.items[i];
+                var m = parseInt(row.data.fldTakhfifAsliValue);
+                SumTakhfif = SumTakhfif + m;
+                /* var t = parseInt(row.data.fldTedad);
+                
+                 if (m % t != 0) {
+                     for (var i = 1; i < m; i++) {
+                         m = m - 1;
+                         if (m % t == 0) {
+                             break;
+                         }
+                     }
+                 }
+                 row.set('fldTakhfifAsliValue', m);*/
+
+                TakhfifArray.push({
+                    'fldID': row.data.fldID,
+                    'fldDaramadCode': row.data.fldDaramadCode,
+                    'fldTedad': row.data.fldTedad,
+                    'fldSharheCodeDaramad': row.data.fldSharheCodeDaramad,
+                    'AsliValue': row.data.AsliValue,
+                    'fldTakhfifAsliValue': m
+                });
+            }
+            App.ReplyTaghsit_Takhfif.queryById('LblTakhfif').setText("مبلغ تخفیف محاسبه شده توسط سیستم: " + accounting.formatNumber(SumTakhfif));
+
+            var data1 = {
+                TakhfifArray: TakhfifArray,
+                ElamAvarez: '@ViewBag.ElamAvarez',
+                MablaghAsli: '@ViewBag.MablaghAsli',
+                ReplyId: fldTakhfifId.getValue(),
+                fldRequestId: RequestId,
+                fldTypeMojavez: 1,
+                fldTypeRequest: 2,
+                fldDarsad: txtTakhfif.getValue(),
+                fldMablagh: SumTakhfif,
+                fldShomareMajavez: txtMojavez.getValue(),
+                fldTarikh: txtTarikhMojavez.rawValue,
+                fldDesc: txtDesc.getValue()
+            };
+
+            $.ajax({
+                type: "POST",
+                url: '/Daramad/ReplyTaghsit_Takhfif/SaveTakhfifHa',
+                datatype: "json",
+                data: JSON.stringify(data1),
+                contentType: "application/json; charset=utf-8",
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var result = data;/* JSON.parse(data);*/
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1)
+                        ic = Ext.MessageBox.ERROR;
+
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK,
+                        fn: function (btn) {
+                            if (btn == 'ok' && data.Err != 0) {
+                                App.ReplyTaghsit_Takhfif.queryById('LblTakhfif').setText("");
+                                App.TakhfifHa.destroy();
+                                LoadReplyTaghsit_Takhfif();
+                                App.MainAnnouncementComplication.queryById('AvarezGrid').store.load();
+                            }
+                        }
+                    });
+                },
+                failure: function (data) {
+                    alert(data.data);
+                }
+            });
+        }
+    }
+</script>

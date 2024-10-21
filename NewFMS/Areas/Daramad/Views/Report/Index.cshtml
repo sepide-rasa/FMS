@@ -1,0 +1,1112 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_ShomareHesabCodeDaramad>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Panel()
+    .Closable(true)
+    .AutoScroll(true)
+    .Border(false)
+    .CloseAction(CloseAction.Destroy)
+    .Listeners(li => { li.AfterRender.Handler = "setTitlePnlRpt()"; li.Render.Fn = "addKeyMapRptDaramad"; })
+        //  .Listeners(l => l.AfterRender.Handler = "setTitlePnlRpt()")
+    .Layout(LayoutType.Fit)
+    .ID("RptDaramad" + @ViewBag.State)
+    .Items(
+        X.Panel()
+            .AutoScroll(true)
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.PaddingSpec("4px 12px 4px 12px")
+            .Items(
+                X.Panel()
+                    .AutoScroll(true)
+                    .Border(false)
+                    .ButtonAlign(Alignment.Center)
+                        .Layout(LayoutType.VBox)
+                .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Buttons(
+                        Html.X().Button()
+                            .Text("چاپ")
+                            .ItemID("btnPrint")
+                            .Icon(Ext.Net.Icon.Printer)
+                                .Listeners(l => l.Click.Handler = "Print()"),
+                            Html.X().Button()
+                                .Text("اکسل")
+                                .ItemID("btnExcel")
+                                .Icon(Ext.Net.Icon.PageExcel)
+                                .Listeners(l => l.Click.Handler = "Excle()")
+                                //.Hidden(@ViewBag.State != "3")
+                                ,
+                        Html.X().Button()
+                            .Text("خروج")
+                            .ItemID("btnOut")
+                            .Icon(Ext.Net.Icon.DoorOut)
+                            .Listeners(l => l.Click.Handler = "destroyWin2()")
+                    )
+                    .Items(
+                        X.FieldSet()
+                            .Border(false).ItemID("fieldsetKoli")
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 10 })
+                            .Items(
+        X.Hidden().ItemID("ShHesabId"),
+                                        X.Label().Text("براساس:").ItemID("lblTypeDate")
+                                            , X.ComboBox()
+                                                .ItemID("CboTypeDate")
+                                            .TypeAhead(true)
+                                                .PaddingSpec("0 0 0 10px")
+                                                    .MarginSpec("0.5px 0 0 0")
+                                            .ForceSelection(true)
+                                                .BlankText("لطفا نوع تاریخ را انتخاب کنید.")
+                                            .QueryMode(DataLoadMode.Local)
+                                            .TriggerAction(TriggerAction.All)
+                                            .Items(
+                                                new ListItem("تاریخ پرداخت", "1"),
+                                                new ListItem("تاریخ واریز", "0")
+                                                )
+                                            .SelectedItems(new { Value = "1" }),
+                                X.Label().Text("از تاریخ:").ItemID("lblAzTarikh"),
+                                X.PDateField()
+                                    .ItemID("txtAzTarikh")
+                                    .AllowBlank(false)
+                                    .MaskRe("[0-9,/]")
+                                        .MarginSpec("0.5px 0 0 0")
+                                    .BlankText("لطفا از تاریخ را وارد کنید.")
+                                        .PaddingSpec("0 0 0 10px").Listeners(l => l.Focus.Handler = "ChangeAzTarikh()")
+                                    .Editable(false),
+                                X.Label().Text("تا تاریخ:").ItemID("lblTaTarikh"),
+                                X.PDateField()
+                                    .MarginSpec("0.5px 0 0 0")
+                                    .ItemID("txtTaTarikh")
+                                        .MaskRe("[0-9,/]")
+                                    .PaddingSpec("0 0 0 10px")
+                                    .AllowBlank(false)
+                                        .BlankText("لطفا تا تاریخ را وارد کنید.").Listeners(l => l.Focus.Handler = "ChangeTaTarikh()")
+                                    .Editable(false),
+        //X.Label().Text("نوع گزارش:").ItemID("lblStatus"),
+        //X.ComboBox()
+        //    .ItemID("CboStatus")
+        //    .Editable(false)
+        //    .TypeAhead(true)
+        //    .QueryMode(DataLoadMode.Local)
+        //    .AllowBlank(false)
+        //    .BlankText("لطفا نوع گزارش را انتخاب نمایید.")
+        //    .TriggerAction(TriggerAction.All)
+        //    .SelectedItems(new { value = "1" })
+        //    .EmptyText("...")
+        //    .Items(
+        //        new ListItem("سرفصل", "1"),
+        //        new ListItem("زیرکد", "2")
+        //    ),
+                           X.Label("سال:").ItemID("lblYear")
+                            , X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboYear")
+                                .DisplayField("fldYear")
+                                .ValueField("fldYear")
+                                .TypeAhead(true)
+                                .Editable(false)
+                                .AllowBlank(false)
+                                .BlankText("لطفا سال را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                    .Store(X.Store().Listeners(l => l.Load.Handler = "SetDefultYear();")
+                                .Model(X.Model()
+                                .IDProperty("fldYear")
+                                    .Fields(
+                                        new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" }
+                                    )
+                                )
+                                    .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetSal"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                            )
+                                ),
+                                X.Label("شماره حساب:").ItemID("lblShHesab"),
+                                    X.FieldSet().Layout(LayoutType.HBox).Border(false).ItemID("FieldtShHesab").PaddingSpec("0 10px 0 0").MarginSpec("0.5px 0 0 0")
+.Items(
+                                X.TextField()
+                                        .Width(145)
+                                    .ItemID("txtShHesab")
+                                    .AllowBlank(true)
+                                        .FieldStyle("direction:ltr;")
+                                .ReadOnly(true)
+                                    .Icon(Icon.BulletPlus)//.Icon(Icon.Delete)
+                                .DirectEvents(li =>
+                                {
+                                    li.SpecialKey.Url = "/Comon/SearchShomareHesab/IndexHaveCodeDaramad?State=" + @ViewBag.State;
+                                    li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                    li.IconClick.Url = "/Comon/SearchShomareHesab/IndexHaveCodeDaramad?State=" + @ViewBag.State;
+                                })
+                                , X.Button().Icon(Icon.Delete).ToolTip("حذف").Listeners(l => l.Click.Handler = "ClearShHesab()")
+                                )
+                                ,
+                                 X.Label().Text("نوع فیش:").ItemID("lblTypeFish")
+                                    , X.ComboBox()
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                        .ItemID("CboTypeFish")
+                                    .Editable(true)
+                                    .TypeAhead(true)
+                                        .MarginSpec("0.5px 0 0 0")
+                                        
+                                    .ForceSelection(true)
+                                        .BlankText("لطفا نوع فیش را انتخاب کنید.")
+                                        .Listeners(l=>l.Select.Handler="ShowHideCboTypeDate()")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Items(
+                                            new ListItem("پرداخت شده", "1"),
+                                            new ListItem("پرداخت نشده", "0"),
+                                            new ListItem("ابطال شده", "2"),
+                                            new ListItem("پرداخت شده(نقدی)", "11"),
+                                            new ListItem("پرداخت نشده(نقدی)", "01"),
+                                            new ListItem("ابطال شده(نقدی)", "21")
+                                        )
+                                    .SelectedItems(new { Value = "1" }),
+                                     X.Label("نوع سند:").ItemID("lblTypeSand"),
+                                 X.ComboBox()
+                                .ItemID("CboTypeSand")
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .AllowBlank(false)
+                                .ForceSelection(true)
+                                .BlankText("لطفا نوع سند را انتخاب کنید.")
+                                    .MarginSpec("0.5px 0 0 0")
+                                        .PaddingSpec("0 0 0 10px")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .EmptyText("نوع سند...")
+                                .Items(
+                                    new ListItem("چک", "2"),
+                                    new ListItem("سفته", "3"),
+                                    new ListItem("برات", "4")
+                                        ).Listeners(l => l.Select.Handler = "ChangeTypeSand()"),
+                                     X.Label("وضعیت:").ItemID("lblStatusCheck"),
+                                     X.ComboBox()
+                                        .ItemID("CboStatusCheck")
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .AllowBlank(false)
+                                    .ForceSelection(true)
+                                        .MarginSpec("0.5px 0 0 0")
+                                    .BlankText("لطفا وضعیت را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .EmptyText("وضعیت...")
+                                    .Items(
+                                            new ListItem("در انتظار وصول", "1"),
+                                            new ListItem("وصول شده", "2"),
+                                            new ListItem("برگشت خورده", "3"),
+                                            new ListItem("حقوقی شده", "4"),
+                                            new ListItem("عودت داده شده", "5"),
+                                                new ListItem("اسناد دریافت شده", "6"),
+                                                new ListItem("همه اسناد", "7")
+                                        ),
+                                            X.Label("وضعیت:").ItemID("lblStatusS"),
+                                        X.ComboBox()
+                                            .ItemID("CboStatusS")
+                                            .Editable(false)
+                                            .TypeAhead(true)
+                                            .AllowBlank(false)
+                                            .ForceSelection(true)
+                                            .BlankText("لطفا وضعیت را انتخاب کنید.")
+                                            .QueryMode(DataLoadMode.Local)
+                                            .TriggerAction(TriggerAction.All)
+                                            .EmptyText("وضعیت...")
+                                            .Items(
+                                                new ListItem("در انتظار وصول", "1"),
+                                                new ListItem("وصول شده", "2"),
+                                                new ListItem("نکول شده", "3"),
+                                                new ListItem("حقوقی شده", "4"),
+                                                new ListItem("عودت داده شده", "5"),
+                                                new ListItem("اسناد دریافت شده", "6")
+                                                )
+                                 , X.FieldSet()
+                                      .ItemID("FieldsetDetail")
+                                      .PaddingSpec("5px 0 0 0")
+                                  .Border(false)
+                                  .Layout(LayoutType.HBox)
+                                  .ColSpan(2)
+                                  .Items(
+                                      X.Checkbox()
+                                          .ItemID("chkDetail")
+                                          .PaddingSpec("0 10px 0 7px"),
+                                      X.Label("نمایش جزئیات"))
+
+
+                        )
+                            ,
+                                    X.FieldSet().ColSpan(10).Height(300).Width(750).ItemID("FieldSetTree")
+                                    .Border(true)
+                                    .Layout(LayoutType.Fit)
+                                    .Title("ساختار درختی کدهای درآمد")
+                                            .Items(
+        /* X.TreePanel()
+             .ItemID("RptTreeDaramad")
+             .AutoScroll(true)
+             .Border(true)
+             .UseArrows(true)
+            .Store(
+                 X.TreeStore()
+                     .Model(
+                         Html.X().Model()
+                             .Fields(
+                                 X.ModelField().Name(Model, m => m.fldDaramadCode),
+                                 X.ModelField().Name(Model, m => m.fldDaramadTitle).Type(ModelFieldType.String),
+                                 X.ModelField().Name(Model, m => m.fldNameVahed).Type(ModelFieldType.String),
+                                 X.ModelField().Name(Model, m => m.fldMashmooleArzesheAfzoode).Type(ModelFieldType.Boolean),
+                                 X.ModelField().Name(Model, m => m.fldMashmooleKarmozd).Type(ModelFieldType.Boolean),
+                                 X.ModelField().Name(Model, m => m.fldUnitId).Type(ModelFieldType.Int),
+                                 X.ModelField().Name(Model, m => m.fldDesc).Type(ModelFieldType.String)
+                                 )
+                             )
+                     .Proxy(
+                         Html.X().AjaxProxy()
+                             .Url(Url.Action("NodeLoadGroup"))
+                         )
+                         .Listeners(l => l.BeforeLoad.Fn = "GetParamRptTreeDaramad")
+                 )
+             .ColumnModel(
+                 X.TreeColumn().Text("عنوان").DataIndex("fldDaramadTitle").Wrap(true).Flex(9),
+                 X.Column().Text("کد درآمد").DataIndex("fldDaramadCode").Wrap(true).Flex(2),
+                 X.Column().Text("واحد اندازه گیری").DataIndex("fldNameVahed").Wrap(true).Flex(2),
+                 X.CheckColumn().Text("مشمول ارزش افزوده").DataIndex("fldMashmooleArzesheAfzoode").Renderer("hidecheck").Editable(false).StopSelection(false).Flex(2),
+                 X.CheckColumn().Text("مشمول کارمزد").DataIndex("fldMashmooleKarmozd").Renderer("hidecheck").Editable(false).StopSelection(false).Flex(2)
+
+
+             )
+             .Root(Html.X().Node().NodeID("1").AttributesObject(new { fldDaramadCode = "", fldMashmooleArzesheAfzoode = false, fldMashmooleKarmozd = false, fldNameVahed = "", fldDaramadTitle = "کدهای درآمد" }).Expanded(true))*/
+
+                                            X.GridPanel().AutoScroll(true)
+                                                    .ItemID("RptTreeDaramad").Flex(2)
+                                           .Store(
+                                                X.StoreForModel()//.AutoLoad(false)
+                                                .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadDaramadParamFormul"))
+                                                    .Reader(Html.X().JsonReader().Root("data"))
+                                                            .ExtraParams(l => l.Add(new { FiscalYearId = ViewBag.FiscalYearId }))
+                                                                        .ExtraParams(l => l.Add(new { State = ViewBag.State }))
+                                                            
+                                              )
+                                            .PageSize(200000000)
+                                            .RemoteFilter(true)
+                                            .RemotePaging(true)
+
+                                        )
+                                        .View(
+                                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                                        )
+                                        .Plugins(X.FilterHeader().Remote(true))
+                                        .ColumnModel(
+                                            X.RowNumbererColumn(),
+                                            X.Column().Text("کد").DataIndex(Model, m => m.fldCodeDaramadId).Hidden(true).Wrap(true).Flex(7),
+                                            X.Column().Text("عنوان").DataIndex(Model, m => m.fldDaramadTitle).Wrap(true).Flex(7),
+                                            X.Column().Text("کد درآمد").DataIndex(Model, m => m.fldDaramadCode).Wrap(true).Flex(2),
+                                            X.Column().Text("واحد اندازه گیری").DataIndex(Model, m => m.fldNameVahed).Wrap(true).Flex(2),
+                                            X.CheckColumn().Text("مشمول ارزش افزوده").DataIndex(Model, m => m.fldMashmooleArzesheAfzoode)/*.Renderer("hidecheck")*/.Editable(false).StopSelection(false).Flex(2).Filterable(false),
+                                            X.CheckColumn().Text("مشمول کارمزد").DataIndex(Model, m => m.fldMashmooleKarmozd)/*.Renderer("hidecheck")*/.Editable(false).StopSelection(false).Flex(2).Filterable(false)
+
+                                        )
+
+                                            )
+                        ),
+                    Html.X().Panel()
+                    .Border(true)
+                    .Listeners(L => L.AfterRender.Handler = "setSizeRptPanel2()")
+                    .AutoScroll(true)
+                    .ItemID("RptPanel2")
+            )
+
+    )
+)
+
+<script type="text/javascript">
+    var nodeId;
+    /* var ShHesabId = 0;*/
+    var GetParamRptTreeDaramad = function (store, operation, eOpts) {
+        nodeId = operation.node.getId();
+        operation.params.nod = nodeId;
+    };
+    function SetDefultYear() {
+        if ('@ViewBag.State' == "5") {
+            var CboYear = App.RptDaramad5.queryById('CboYear');
+            CboYear.setValue('@ViewBag.Year');
+        }
+    }
+    var hidecheck = function (value, metaData, record, rowIndex, colIndex, store) {
+        if (record.data.id != 1)
+            return Ext.ux.CheckColumn.prototype.renderer.apply(this, arguments);
+    };
+    function ChangeTaTarikh() {
+        if ('@ViewBag.State' == "1") {
+            var txtAzTarikh = App.RptDaramad1.queryById('txtAzTarikh');
+            var txtTaTarikh = App.RptDaramad1.queryById('txtTaTarikh');
+            txtTaTarikh.setMinValue(txtAzTarikh.getValue());
+            txtTaTarikh.minText = "تا تاریخ باید بعد از تاریخ " + txtAzTarikh.rawValue + "باشد";
+        }
+        if ('@ViewBag.State' == "2") {
+            var txtAzTarikh = App.RptDaramad2.queryById('txtAzTarikh');
+            var txtTaTarikh = App.RptDaramad2.queryById('txtTaTarikh');
+            txtTaTarikh.setMinValue(txtAzTarikh.getValue());
+            txtTaTarikh.minText = "تا تاریخ باید بعد از تاریخ " + txtAzTarikh.rawValue + "باشد";
+        }
+        if ('@ViewBag.State' == "3") {
+            var txtAzTarikh = App.RptDaramad3.queryById('txtAzTarikh');
+            var txtTaTarikh = App.RptDaramad3.queryById('txtTaTarikh');
+            txtTaTarikh.setMinValue(txtAzTarikh.getValue());
+            txtTaTarikh.minText = "تا تاریخ باید بعد از تاریخ " + txtAzTarikh.rawValue + "باشد";
+        }
+    }
+
+    function ShowHideCboTypeDate() {
+        var tabId = App.FirstTabDaramad.activeTab.id;
+        if (Ext.getCmp(tabId).queryById("CboTypeFish").getValue() == 1) {
+            Ext.getCmp(tabId).queryById("CboTypeDate").show();
+            Ext.getCmp(tabId).queryById("lblTypeDate").show();
+        }
+        else {
+            Ext.getCmp(tabId).queryById("CboTypeDate").hide();
+            Ext.getCmp(tabId).queryById("lblTypeDate").hide();
+        }
+    }
+    function ChangeAzTarikh() {
+        if ('@ViewBag.State' == "1") {
+            var txtAzTarikh = App.RptDaramad1.queryById('txtAzTarikh');
+            var txtTaTarikh = App.RptDaramad1.queryById('txtTaTarikh');
+            txtAzTarikh.setMaxValue(txtTaTarikh.getValue());
+            txtAzTarikh.maxText = "از تاریخ باید قبل از تا تاریخ " + txtTaTarikh.rawValue + "باشد";
+        }
+        if ('@ViewBag.State' == "2") {
+            var txtAzTarikh = App.RptDaramad2.queryById('txtAzTarikh');
+            var txtTaTarikh = App.RptDaramad2.queryById('txtTaTarikh');
+            txtAzTarikh.setMaxValue(txtTaTarikh.getValue());
+            txtAzTarikh.maxText = "از تاریخ باید قبل از تا تاریخ " + txtTaTarikh.rawValue + "باشد";
+        }
+        if ('@ViewBag.State' == "3") {
+            var txtAzTarikh = App.RptDaramad3.queryById('txtAzTarikh');
+            var txtTaTarikh = App.RptDaramad3.queryById('txtTaTarikh');
+            txtAzTarikh.setMaxValue(txtTaTarikh.getValue());
+            txtAzTarikh.maxText = "از تاریخ باید قبل از تا تاریخ " + txtTaTarikh.rawValue + "باشد";
+        }
+    }
+    function setSizeRptPanel2() {
+        if ('@ViewBag.State' == "2" || '@ViewBag.State' == "3" || '@ViewBag.State' == "5") {
+            Ext.getCmp('RptDaramad' + '@ViewBag.State').queryById('RptPanel2').setSize(App.DaramadWin.getWidth() - 20, App.DaramadWin.getHeight() - 190);
+        }
+        @* else {
+            Ext.getCmp('RptDaramad' + '@ViewBag.State').queryById('RptPanel2').setSize(App.DaramadWin.getWidth() - 20, App.DaramadWin.getHeight() - 240);
+        }*@
+    }
+    function ChangeTypeSand() {
+        var CboTypeSand = App.RptDaramad3.queryById('CboTypeSand');
+        if (CboTypeSand.getValue() == "2") {
+            App.RptDaramad3.queryById('CboStatusCheck').show();
+            App.RptDaramad3.queryById('lblStatusCheck').show();
+            App.RptDaramad3.queryById('lblStatusS').hide();
+            App.RptDaramad3.queryById('CboStatusS').hide();
+            App.RptDaramad3.queryById('CboStatusS').setValue("");
+        }
+        else if (CboTypeSand.getValue() == "3" || CboTypeSand.getValue() == "4") {
+            App.RptDaramad3.queryById('CboStatusCheck').hide();
+            App.RptDaramad3.queryById('lblStatusCheck').hide();
+            App.RptDaramad3.queryById('lblStatusS').show();
+            App.RptDaramad3.queryById('CboStatusS').show();
+            App.RptDaramad3.queryById('CboStatusCheck').setValue("");
+        }
+    }
+    function destroyWin2() {
+        var tabId = App.FirstTabDaramad.activeTab.id;
+        Ext.getCmp(tabId).destroy();
+    }
+
+
+    function setTitlePnlRpt() {
+        if ('@ViewBag.State' == "1") {
+            Ext.getCmp('RptDaramad1').setSize(App.DaramadWin.getWidth() - 20, App.DaramadWin.getHeight() - 170);
+            App.RptDaramad1.setTitle("گزارش لیست وصولی");
+            App.RptDaramad1.queryById('CboTypeFish').hide();
+            App.RptDaramad1.queryById('lblTypeFish').hide();
+            App.RptDaramad1.queryById('lblAzTarikh').show();
+            App.RptDaramad1.queryById('txtAzTarikh').show();
+            App.RptDaramad1.queryById('txtTaTarikh').show();
+            App.RptDaramad1.queryById('lblTaTarikh').show();
+            App.RptDaramad1.queryById('lblShHesab').show();
+            App.RptDaramad1.queryById('FieldtShHesab').show();
+            /*App.RptDaramad1.queryById('FieldsetDetail').show();*/
+            App.RptDaramad1.queryById('FieldSetTree').show();
+            App.RptDaramad1.queryById('CboStatusCheck').hide();
+            App.RptDaramad1.queryById('lblStatusCheck').hide();
+            App.RptDaramad1.queryById('lblTypeSand').hide();
+            App.RptDaramad1.queryById('CboTypeSand').hide();
+            App.RptDaramad1.queryById('lblStatusS').hide();
+            App.RptDaramad1.queryById('CboStatusS').hide();
+            App.RptDaramad1.queryById('RptPanel2').hide();
+            App.RptDaramad1.queryById('RptTreeDaramad').show();
+            App.RptDaramad1.queryById('FieldsetDetail').show();
+            App.RptDaramad1.queryById('lblTypeDate').show();
+            App.RptDaramad1.queryById('CboTypeDate').show();
+            App.RptDaramad1.queryById('lblYear').hide();
+            App.RptDaramad1.queryById('CboYear').hide();
+        }
+        else if ('@ViewBag.State' == "2") {
+            App.RptDaramad2.setTitle("گزارش فیش های صادر شده");
+            App.RptDaramad2.queryById('CboTypeFish').show();
+            App.RptDaramad2.queryById('lblTypeFish').show();
+            App.RptDaramad2.queryById('lblAzTarikh').show();
+            App.RptDaramad2.queryById('txtAzTarikh').show();
+            App.RptDaramad2.queryById('txtTaTarikh').show();
+            App.RptDaramad2.queryById('lblTaTarikh').show();
+            App.RptDaramad2.queryById('lblShHesab').show();
+            App.RptDaramad2.queryById('FieldtShHesab').show();
+            /*App.RptDaramad2.queryById('FieldsetDetail').hide();*/
+            App.RptDaramad2.queryById('FieldSetTree').hide();
+            App.RptDaramad2.queryById('CboStatusCheck').hide();
+            App.RptDaramad2.queryById('lblStatusCheck').hide();
+            App.RptDaramad2.queryById('lblTypeSand').hide();
+            App.RptDaramad2.queryById('CboTypeSand').hide();
+            App.RptDaramad2.queryById('lblStatusS').hide();
+            App.RptDaramad2.queryById('CboStatusS').hide();
+            App.RptDaramad2.queryById('RptPanel2').show();
+            App.RptDaramad2.queryById('RptTreeDaramad').hide();
+            App.RptDaramad2.queryById('FieldsetDetail').hide();
+            App.RptDaramad2.queryById('lblTypeDate').show();
+            App.RptDaramad2.queryById('CboTypeDate').show();
+            App.RptDaramad2.queryById('lblYear').hide();
+            App.RptDaramad2.queryById('CboYear').hide();
+        }
+        else if ('@ViewBag.State' == "3") {
+            App.RptDaramad3.queryById('fieldsetKoli').setWidth(850);
+            App.RptDaramad3.setTitle("گزارش اسناد دریافتی");
+            App.RptDaramad3.queryById('CboTypeFish').hide();
+            App.RptDaramad3.queryById('lblTypeFish').hide();
+            App.RptDaramad3.queryById('lblAzTarikh').show();
+            App.RptDaramad3.queryById('txtAzTarikh').show();
+            App.RptDaramad3.queryById('txtTaTarikh').show();
+            App.RptDaramad3.queryById('lblTaTarikh').show();
+            App.RptDaramad3.queryById('lblShHesab').hide();
+            App.RptDaramad3.queryById('FieldtShHesab').hide();
+            /*App.RptDaramad3.queryById('FieldsetDetail').hide();*/
+            App.RptDaramad3.queryById('FieldSetTree').hide();
+            App.RptDaramad3.queryById('CboStatusCheck').show();
+            App.RptDaramad3.queryById('lblStatusCheck').show();
+            App.RptDaramad3.queryById('lblTypeSand').show();
+            App.RptDaramad3.queryById('CboTypeSand').show();
+            App.RptDaramad3.queryById('lblStatusS').show();
+            App.RptDaramad3.queryById('CboStatusS').show();
+            App.RptDaramad3.queryById('RptPanel2').show();
+            App.RptDaramad3.queryById('RptTreeDaramad').hide();
+            App.RptDaramad3.queryById('FieldsetDetail').hide();
+            App.RptDaramad3.queryById('CboTypeSand').setValue("2");
+            App.RptDaramad3.queryById('lblTypeDate').hide();
+            App.RptDaramad3.queryById('CboTypeDate').hide();
+            ChangeTypeSand();
+            App.RptDaramad3.queryById('lblYear').hide();
+            App.RptDaramad3.queryById('CboYear').hide();
+        }
+        else if ('@ViewBag.State' == "4") {
+            Ext.getCmp('RptDaramad4').setSize(App.DaramadWin.getWidth() - 20, App.DaramadWin.getHeight() - 170);
+            App.RptDaramad4.setTitle("گزارش فیش های پرداخت شده_کد درآمد");
+            App.RptDaramad4.queryById('CboTypeFish').hide();
+            App.RptDaramad4.queryById('lblTypeFish').hide();
+            App.RptDaramad4.queryById('lblAzTarikh').show();
+            App.RptDaramad4.queryById('txtAzTarikh').show();
+            App.RptDaramad4.queryById('txtTaTarikh').show();
+            App.RptDaramad4.queryById('lblTaTarikh').show();
+            App.RptDaramad4.queryById('lblShHesab').show();
+            App.RptDaramad4.queryById('FieldtShHesab').show();
+            /*App.RptDaramad1.queryById('FieldsetDetail').show();*/
+            App.RptDaramad4.queryById('FieldSetTree').show();
+            App.RptDaramad4.queryById('CboStatusCheck').hide();
+            App.RptDaramad4.queryById('lblStatusCheck').hide();
+            App.RptDaramad4.queryById('lblTypeSand').hide();
+            App.RptDaramad4.queryById('CboTypeSand').hide();
+            App.RptDaramad4.queryById('lblStatusS').hide();
+            App.RptDaramad4.queryById('CboStatusS').hide();
+            App.RptDaramad4.queryById('RptPanel2').hide();
+            App.RptDaramad4.queryById('RptTreeDaramad').show();
+            App.RptDaramad4.queryById('FieldsetDetail').hide();
+            App.RptDaramad4.queryById('lblYear').hide();
+            App.RptDaramad4.queryById('CboYear').hide();
+            App.RptDaramad4.queryById('lblTypeDate').show();
+            App.RptDaramad4.queryById('CboTypeDate').show();
+        }
+        else if ('@ViewBag.State' == "5") {
+            App.RptDaramad5.setTitle("گزارش نرخ سالانه");
+            App.RptDaramad5.queryById('CboTypeFish').hide();
+            App.RptDaramad5.queryById('lblTypeFish').hide();
+            App.RptDaramad5.queryById('lblAzTarikh').hide();
+            App.RptDaramad5.queryById('txtAzTarikh').hide();
+            App.RptDaramad5.queryById('txtTaTarikh').hide();
+            App.RptDaramad5.queryById('lblTaTarikh').hide();
+            App.RptDaramad5.queryById('lblShHesab').hide();
+            App.RptDaramad5.queryById('FieldtShHesab').hide();
+            App.RptDaramad5.queryById('FieldSetTree').hide();
+            App.RptDaramad5.queryById('CboStatusCheck').hide();
+            App.RptDaramad5.queryById('lblStatusCheck').hide();
+            App.RptDaramad5.queryById('lblTypeSand').hide();
+            App.RptDaramad5.queryById('CboTypeSand').hide();
+            App.RptDaramad5.queryById('lblStatusS').hide();
+            App.RptDaramad5.queryById('CboStatusS').hide();
+            App.RptDaramad5.queryById('RptPanel2').show();
+            App.RptDaramad5.queryById('RptTreeDaramad').hide();
+            App.RptDaramad5.queryById('FieldsetDetail').hide();
+            App.RptDaramad5.queryById('lblYear').show();
+            App.RptDaramad5.queryById('CboYear').show();
+            App.RptDaramad5.queryById('lblTypeDate').hide();
+            App.RptDaramad5.queryById('CboTypeDate').hide();
+        }
+    }
+
+    function Print() {
+
+        var tabId = App.FirstTabDaramad.activeTab.id;
+        var txtAzTarikh = Ext.getCmp(tabId).queryById('txtAzTarikh');
+        var txtTaTarikh = Ext.getCmp(tabId).queryById('txtTaTarikh');
+        var ShHesabId = Ext.getCmp(tabId).queryById('ShHesabId');
+        var CboStatus = Ext.getCmp(tabId).queryById('CboStatus');
+        var CboTypeFish = Ext.getCmp(tabId).queryById('CboTypeFish');
+        var CboTypeSand = Ext.getCmp(tabId).queryById('CboTypeSand');
+        var CboStatusCheck = Ext.getCmp(tabId).queryById('CboStatusCheck');
+        var CboStatusS = Ext.getCmp(tabId).queryById('CboStatusS');
+        var CboTypeDate = Ext.getCmp(tabId).queryById('CboTypeDate');
+        var chkDetail = Ext.getCmp(tabId).queryById('chkDetail');
+        /*var SelectedNode =Ext.getCmp(tabId).queryById('RptTreeDaramad').getSelectionModel().getLastSelected();*/
+        var SelectedNode = Ext.getCmp(tabId).queryById('RptTreeDaramad').selModel.getLastSelected();
+        var CboYear = Ext.getCmp(tabId).queryById('CboYear');
+        var height = App.DaramadWin.getHeight() - 245;
+        if (tabId.substring(10) == "1") {
+            var DaramadId;
+            if (txtAzTarikh.validate() == true && txtTaTarikh.validate() == true) {
+                /*Ext.getCmp(tabId).queryById('RptPanel2').update("<center><object class='se-pre-con' style='width:100%;height:" + height + "px;border: 1px solid #ccc;' type='application/pdf' data='/Daramad/Report/PrintListVosuli?StartDate=" + txtAzTarikh.rawValue + "&EndDate=" + txtTaTarikh.rawValue + "&ShomareHesabId=" + ShHesabId.getValue() + "&nodeId=" + SelectedNode.data.id + "'></object></center>");*/
+                if (SelectedNode == null)
+                    DaramadId = 0;
+                else
+                    DaramadId = SelectedNode.data.fldCodeDaramadId;
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/Report/CheckListVosuli',
+                    params: {
+                        StartDate: txtAzTarikh.rawValue,
+                        EndDate: txtTaTarikh.rawValue,
+                        ShomareHesabId: ShHesabId.getValue(),
+                        nodeId: DaramadId,
+                        TypeDate:CboTypeDate.getValue(),
+                        chkDetail: chkDetail.getValue()
+                    },
+                    success: function (data) {
+                        if (data.AllowPrint) {
+                            Ext.net.DirectMethod.request({
+                                url: '/Daramad/Report/PrintListVosuli',
+                                params: {
+                                    StartDate: txtAzTarikh.rawValue,
+                                    EndDate: txtTaTarikh.rawValue,
+                                    ShomareHesabId: ShHesabId.getValue(),
+                                    nodeId: DaramadId,
+                                    TypeDate: CboTypeDate.getValue(),
+                                    chkDetail: chkDetail.getValue()
+                                },
+                                success: function (data) {
+                                }
+                            });
+                        }
+                        else {
+                            Ext.MessageBox.show({
+                                msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else {
+                return;
+            }
+        }
+        else if (tabId.substring(10) == "2") {
+            if (txtAzTarikh.validate() == true && txtTaTarikh.validate() == true && CboTypeFish.validate() == true) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/Report/CheckFishSaderShode',
+                    params: {
+                        StartDate: txtAzTarikh.rawValue,
+                        EndDate: txtTaTarikh.rawValue,
+                        TypeFish: CboTypeFish.getValue(),
+                        TypeDate: CboTypeDate.getValue(),
+                        ShHesabId: ShHesabId.getValue()
+                    },
+                    success: function (data) {
+                        if (data.AllowPrint) {
+                            Ext.getCmp(tabId).queryById('RptPanel2').update("<center><object class='se-pre-con' style='width:100%;height:" + height + "px;border: 1px solid #ccc;' type='application/pdf' data='/Daramad/Report/GeneratePDFFishSaderShode?StartDate=" + txtAzTarikh.rawValue + "&EndDate=" + txtTaTarikh.rawValue + "&TypeFish=" + CboTypeFish.getValue() + "&ShHesabId=" + ShHesabId.getValue() + "&TypeDate=" + CboTypeDate.getValue() + "'></object></center>");
+                        }
+                        else {
+                            Ext.MessageBox.show({
+                                msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+
+            }
+            else {
+                return;
+            }
+        }
+        else if (tabId.substring(10) == "3") {
+            if (CboTypeSand.getValue() == "2") {
+                if (CboStatusCheck.validate() == false) {
+                    return;
+                }
+                if (txtAzTarikh.validate() == true && txtTaTarikh.validate() == true && CboTypeSand.validate() == true) {
+                    Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Daramad/Report/CheckAsnadDaryafti',
+                        params: {
+                            StartDate: txtAzTarikh.rawValue,
+                            EndDate: txtTaTarikh.rawValue,
+                            TypeSand: CboTypeSand.getValue(),
+                            Status: CboStatusCheck.getValue(),
+                            StatusName: CboStatusCheck.getDisplayValue()
+                        },
+                        success: function (data) {
+                            if (data.AllowPrint) {
+                                Ext.getCmp(tabId).queryById('RptPanel2').update("<center><object class='se-pre-con' style='width:100%;height:" + height + "px;border: 1px solid #ccc;' type='application/pdf' data='/Daramad/Report/GeneratePDFAsnadDaryafti?StartDate=" + txtAzTarikh.rawValue + "&EndDate=" + txtTaTarikh.rawValue + "&TypeSand=" + CboTypeSand.getValue() + "&Status=" + CboStatusCheck.getValue() + "&StatusName=" + CboStatusCheck.getDisplayValue() + "'></object></center>");
+                            }
+                            else {
+                                Ext.MessageBox.show({
+                                    msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                    icon: Ext.MessageBox.WARNING,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                            }
+                            Ext.net.Mask.hide();
+                        }
+                    });
+
+                }
+                else {
+                    return;
+                }
+            }
+            else if (CboTypeSand.getValue() == "3" || CboTypeSand.getValue() == "4") {
+                if (CboStatusS.validate() == false) {
+                    return;
+                }
+                if (txtAzTarikh.validate() == true && txtTaTarikh.validate() == true && CboTypeSand.validate() == true) {
+                    Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Daramad/Report/CheckAsnadDaryafti',
+                        params: {
+                            StartDate: txtAzTarikh.rawValue,
+                            EndDate: txtTaTarikh.rawValue,
+                            TypeSand: CboTypeSand.getValue(),
+                            Status: CboStatusS.getValue(),
+                            StatusName: CboStatusS.getDisplayValue()
+                        },
+                        success: function (data) {
+                            if (data.AllowPrint) {
+                                Ext.getCmp(tabId).queryById('RptPanel2').update("<center><object class='se-pre-con' style='width:100%;height:" + height + "px;border: 1px solid #ccc;' type='application/pdf' data='/Daramad/Report/GeneratePDFAsnadDaryafti?StartDate=" + txtAzTarikh.rawValue + "&EndDate=" + txtTaTarikh.rawValue + "&TypeSand=" + CboTypeSand.getValue() + "&Status=" + CboStatusS.getValue() + "&StatusName=" + CboStatusS.getDisplayValue() + "'></object></center>");
+                            }
+                            else {
+                                Ext.MessageBox.show({
+                                    msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                    icon: Ext.MessageBox.WARNING,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                            }
+                            Ext.net.Mask.hide();
+                        }
+                    });
+
+                }
+                else {
+                    return;
+                }
+            }
+
+        }
+        if (tabId.substring(10) == "4") {
+            var CodeDaramadId;
+            if (txtAzTarikh.validate() == true && txtTaTarikh.validate() == true) {
+                /*Ext.getCmp(tabId).queryById('RptPanel2').update("<center><object class='se-pre-con' style='width:100%;height:" + height + "px;border: 1px solid #ccc;' type='application/pdf' data='/Daramad/Report/PrintListVosuli?StartDate=" + txtAzTarikh.rawValue + "&EndDate=" + txtTaTarikh.rawValue + "&ShomareHesabId=" + ShHesabId.getValue() + "&nodeId=" + SelectedNode.data.id + "'></object></center>");*/
+                if (SelectedNode == null)
+                    CodeDaramadId = 0;
+                else
+                    CodeDaramadId = SelectedNode.data.fldDaramadCode;
+
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/Report/CheckFishPardakhti_codeD',
+                    params: {
+                        StartDate: txtAzTarikh.rawValue,
+                        EndDate: txtTaTarikh.rawValue,
+                        nodeId: CodeDaramadId,
+                        TypeDate: CboTypeDate.getValue(),
+                        ShomareHesabId: ShHesabId.getValue(),
+                    },
+                    success: function (data) {
+                        if (data.AllowPrint) {
+                            Ext.net.DirectMethod.request({
+                                url: '/Daramad/Report/PrintFishPardakhti_codeD',
+                                params: {
+                                    StartDate: txtAzTarikh.rawValue,
+                                    EndDate: txtTaTarikh.rawValue,
+                                    nodeId: CodeDaramadId,
+                                    TypeDate: CboTypeDate.getValue(),
+                                    ShomareHesabId: ShHesabId.getValue(),
+                                },
+                                success: function (data) {
+                                    Ext.net.Mask.hide();
+                                }
+                            });
+                        }
+                        else {
+                            Ext.MessageBox.show({
+                                msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else {
+                return;
+            }
+        }
+        else if (tabId.substring(10) == "5") {
+            if (CboYear.validate() == true ) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/Report/CheckNerkhSalane',
+                    params: {
+                        Year: CboYear.getValue()
+                    },
+                    success: function (data) {
+                        if (data.AllowPrint) {
+                            Ext.getCmp(tabId).queryById('RptPanel2').update("<center><object class='se-pre-con' style='width:100%;height:" + height + "px;border: 1px solid #ccc;' type='application/pdf' data='/Daramad/Report/GeneratePDFNerkhSalane?Year=" + CboYear.getValue() + "'></object></center>");
+                        }
+                        else {
+                            Ext.MessageBox.show({
+                                msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+
+            }
+            else {
+                return;
+            }
+        }
+    }
+    function Excle() {
+        var tabId = App.FirstTabDaramad.activeTab.id;
+        var txtAzTarikh = Ext.getCmp(tabId).queryById('txtAzTarikh');
+        var txtTaTarikh = Ext.getCmp(tabId).queryById('txtTaTarikh');
+        var ShHesabId = Ext.getCmp(tabId).queryById('ShHesabId');
+        var CboStatus = Ext.getCmp(tabId).queryById('CboStatus');
+        var CboTypeFish = Ext.getCmp(tabId).queryById('CboTypeFish');
+        var CboTypeSand = Ext.getCmp(tabId).queryById('CboTypeSand');
+        var CboStatusCheck = Ext.getCmp(tabId).queryById('CboStatusCheck');
+        var CboStatusS = Ext.getCmp(tabId).queryById('CboStatusS');
+        var CboTypeDate = Ext.getCmp(tabId).queryById('CboTypeDate');
+        var chkDetail = Ext.getCmp(tabId).queryById('chkDetail');
+        /*var SelectedNode =Ext.getCmp(tabId).queryById('RptTreeDaramad').getSelectionModel().getLastSelected();*/
+        var SelectedNode = Ext.getCmp(tabId).queryById('RptTreeDaramad').selModel.getLastSelected();
+        var CboYear = Ext.getCmp(tabId).queryById('CboYear');
+
+        if (tabId.substring(10) == "1") {
+            var DaramadId;
+            if (txtAzTarikh.validate() == true && txtTaTarikh.validate() == true) {
+                /*Ext.getCmp(tabId).queryById('RptPanel2').update("<center><object class='se-pre-con' style='width:100%;height:" + height + "px;border: 1px solid #ccc;' type='application/pdf' data='/Daramad/Report/PrintListVosuli?StartDate=" + txtAzTarikh.rawValue + "&EndDate=" + txtTaTarikh.rawValue + "&ShomareHesabId=" + ShHesabId.getValue() + "&nodeId=" + SelectedNode.data.id + "'></object></center>");*/
+                if (SelectedNode == null)
+                    DaramadId = 0;
+                else
+                    DaramadId = SelectedNode.data.fldCodeDaramadId;
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/Report/CheckListVosuli',
+                    params: {
+                        StartDate: txtAzTarikh.rawValue,
+                        EndDate: txtTaTarikh.rawValue,
+                        ShomareHesabId: ShHesabId.getValue(),
+                        nodeId: DaramadId,
+                        TypeDate: CboTypeDate.getValue(),
+                        chkDetail: chkDetail.getValue()
+                    },
+                    success: function (data) {
+                        if (data.AllowPrint) {
+                            window.location.href = '@Url.Content("~/Daramad/Report/GenerateXlsListVosuli/")' + '?StartDate=' + txtAzTarikh.rawValue + "&EndDate=" + txtTaTarikh.rawValue + "&ShomareHesabId="+ ShHesabId.getValue()+"&nodeId="+ DaramadId+"&TypeDate="+ CboTypeDate.getValue()+"&chkDetail="+ chkDetail.getValue();
+                        }
+                        else {
+                            Ext.MessageBox.show({
+                                msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else {
+                return;
+            }
+        }
+        else if (tabId.substring(10) == "2") {
+            if (txtAzTarikh.validate() == true && txtTaTarikh.validate() == true && CboTypeFish.validate() == true) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/Report/CheckFishSaderShode',
+                    params: {
+                        StartDate: txtAzTarikh.rawValue,
+                        EndDate: txtTaTarikh.rawValue,
+                        TypeFish: CboTypeFish.getValue(),
+                        TypeDate: CboTypeDate.getValue(),
+                        ShHesabId: ShHesabId.getValue()
+                    },
+                    success: function (data) {
+                        if (data.AllowPrint) {
+                            window.location.href = '@Url.Content("~/Daramad/Report/GenerateXlsFishSaderShode/")' + '?StartDate=' + txtAzTarikh.rawValue + "&EndDate=" + txtTaTarikh.rawValue + "&TypeFish=" + CboTypeFish.getValue() + "&ShHesabId=" + ShHesabId.getValue() + "&TypeDate=" + CboTypeDate.getValue() ;
+                        }
+                        else {
+                            Ext.MessageBox.show({
+                                msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+
+            }
+            else {
+                return;
+            }
+        }
+        else if (tabId.substring(10) == "3") {
+            if (CboTypeSand.getValue() == "2") {
+                if (CboStatusCheck.validate() == false) {
+                    return;
+                }
+                if (txtAzTarikh.validate() == true && txtTaTarikh.validate() == true && CboTypeSand.validate() == true) {
+                    Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Daramad/Report/CheckAsnadDaryafti',
+                        params: {
+                            StartDate: txtAzTarikh.rawValue,
+                            EndDate: txtTaTarikh.rawValue,
+                            TypeSand: CboTypeSand.getValue(),
+                            Status: CboStatusCheck.getValue(),
+                            StatusName: CboStatusCheck.getDisplayValue()
+                        },
+                        success: function (data) {
+                            if (data.AllowPrint) {
+                                window.location.href = '@Url.Content("~/Daramad/Report/GenerateXlsAsnadDaryafti/")' + '?StartDate=' + txtAzTarikh.rawValue + "&EndDate=" + txtTaTarikh.rawValue + "&TypeSand=" + CboTypeSand.getValue() + "&Status=" + CboStatusCheck.getValue() + "&StatusName=" + CboStatusCheck.getDisplayValue();
+                            }
+                            else {
+                                Ext.MessageBox.show({
+                                    msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                    icon: Ext.MessageBox.WARNING,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                            }
+                            Ext.net.Mask.hide();
+                        }
+                    });
+
+                }
+                else {
+                    return;
+                }
+            }
+            else if (CboTypeSand.getValue() == "3" || CboTypeSand.getValue() == "4") {
+                if (CboStatusS.validate() == false) {
+                    return;
+                }
+                if (txtAzTarikh.validate() == true && txtTaTarikh.validate() == true && CboTypeSand.validate() == true) {
+                    Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Daramad/Report/CheckAsnadDaryafti',
+                        params: {
+                            StartDate: txtAzTarikh.rawValue,
+                            EndDate: txtTaTarikh.rawValue,
+                            TypeSand: CboTypeSand.getValue(),
+                            Status: CboStatusS.getValue(),
+                            StatusName: CboStatusS.getDisplayValue()
+                        },
+                        success: function (data) {
+                            if (data.AllowPrint) {
+                                window.location.href = '@Url.Content("~/Daramad/Report/GenerateXlsAsnadDaryafti/")' + '?StartDate=' + txtAzTarikh.rawValue + "&EndDate=" + txtTaTarikh.rawValue + "&TypeSand=" + CboTypeSand.getValue() + "&Status=" + CboStatusS.getValue() + "&StatusName=" + CboStatusS.getDisplayValue();
+                            }
+                            else {
+                                Ext.MessageBox.show({
+                                    msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                    icon: Ext.MessageBox.WARNING,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                            }
+                            Ext.net.Mask.hide();
+                        }
+                    });
+
+                }
+                else {
+                    return;
+                }
+            }
+
+        }
+        else if (tabId.substring(10) == "4") {
+            var CodeDaramadId;
+            if (txtAzTarikh.validate() == true && txtTaTarikh.validate() == true) {
+                /*Ext.getCmp(tabId).queryById('RptPanel2').update("<center><object class='se-pre-con' style='width:100%;height:" + height + "px;border: 1px solid #ccc;' type='application/pdf' data='/Daramad/Report/PrintListVosuli?StartDate=" + txtAzTarikh.rawValue + "&EndDate=" + txtTaTarikh.rawValue + "&ShomareHesabId=" + ShHesabId.getValue() + "&nodeId=" + SelectedNode.data.id + "'></object></center>");*/
+                if (SelectedNode == null)
+                    CodeDaramadId = 0;
+                else
+                    CodeDaramadId = SelectedNode.data.fldDaramadCode;
+
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/Report/CheckFishPardakhti_codeD',
+                    params: {
+                        StartDate: txtAzTarikh.rawValue,
+                        EndDate: txtTaTarikh.rawValue,
+                        nodeId: CodeDaramadId,
+                        TypeDate: CboTypeDate.getValue(),
+                        ShomareHesabId: ShHesabId.getValue(),
+                    },
+                    success: function (data) {
+                        if (data.AllowPrint) {
+                            window.location.href = '@Url.Content("~/Daramad/Report/GenerateXlsFishPardakhti_codeD/")' + '?StartDate=' + txtAzTarikh.rawValue + "&EndDate=" + txtTaTarikh.rawValue + "&nodeId=" + CodeDaramadId + "&TypeDate=" + CboTypeDate.getValue() + "&ShomareHesabId=" + ShHesabId.getValue();
+                        }
+                        else {
+                            Ext.MessageBox.show({
+                                msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else {
+                return;
+            }
+        }
+        else if (tabId.substring(10) == "5") {
+            if (CboYear.validate() == true) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/Report/CheckNerkhSalane',
+                    params: {
+                        Year: CboYear.getValue()
+                    },
+                    success: function (data) {
+                        if (data.AllowPrint) {
+                            window.location.href = '@Url.Content("~/Daramad/Report/GenerateXlsNerkhSalane/")' + '?Year=' + CboYear.getValue();
+                        }
+                        else {
+                            Ext.MessageBox.show({
+                                msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+
+            }
+            else {
+                return;
+            }
+        }
+    }
+    function ClearShHesab() {
+        /* ShHesabId = 0;*/
+        Ext.getCmp('RptDaramad' + '@ViewBag.State').queryById('ShHesabId').setValue(0);
+        Ext.getCmp('RptDaramad' + '@ViewBag.State').queryById('txtShHesab').setValue("");
+    }
+    var addKeyMapRptDaramad = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    if ('@ViewBag.State' == "1") {
+                        var keyfield = App.RptDaramad1.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        var nextfld;
+
+                        if (keyfield.itemId == "txtAzTarikh") {
+                            nextfld = App.RptDaramad1.queryById('txtTaTarikh');
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                    if ('@ViewBag.State' == "2") {
+                        var keyfield = App.RptDaramad2.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        var nextfld;
+
+                        if (keyfield.itemId == "txtAzTarikh") {
+                            nextfld = App.RptDaramad2.queryById('txtTaTarikh');
+                        }
+                        else if (keyfield.itemId == "txtTaTarikh") {
+                            nextfld = App.RptDaramad2.queryById('CboTypeFish');
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                    if ('@ViewBag.State' == "3") {
+                        var keyfield = App.RptDaramad3.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        var nextfld;
+
+                        if (keyfield.itemId == "txtAzTarikh") {
+                            nextfld = App.RptDaramad3.queryById('txtTaTarikh');
+                        }
+                        else if (keyfield.itemId == "txtTaTarikh") {
+                            nextfld = App.RptDaramad3.queryById('CboTypeSand');
+                        }
+                        else if (keyfield.itemId == "CboTypeSand") {
+                            nextfld = App.RptDaramad3.queryById('CboStatusCheck');
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }
+            }]
+        });
+    };
+</script>

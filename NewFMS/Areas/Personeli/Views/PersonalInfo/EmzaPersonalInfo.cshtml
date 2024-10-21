@@ -1,0 +1,279 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<style>
+    .redwarning {
+        color: red;
+    } 
+</style>
+@(Html.X().Window()
+    .Modal(true)
+            .Listeners(li => { li.AfterRender.Handler = "EnableBtnDl();"; })
+    .Width(520)
+        //   .Height(300)
+    .Resizable(false)
+    .Title("ثبت امضا")
+    .ID("EmzaPersonalInfo")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel()
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Border(false)
+            .KeyMap(Html.X().KeyMap()
+                .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+                .Binding(b =>
+                {
+                    b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                    .Handler("checkSaveEmzaPersonalInfo(); ")
+                    );
+
+                }))
+            .DefaultButton("btn")
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                        .Listeners(l => l.Click.Handler = "SaveEmzaPersonalInfo();")
+                        .ItemID("btnSave")
+                        ,
+                        
+                X.Button()
+                    .Text("دانلود")
+                    .Icon(Ext.Net.Icon.Disk)
+                            .Listeners(l => l.Click.Handler = "DownloadFileBackGround();")
+                        .ItemID("btnDl")
+                        ,
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .ToolTip("کلید میانبر Esc")
+                    .OnClientClick("App.EmzaPersonalInfo.destroy();")
+                    )
+            .Items(
+                X.FieldSet()
+                                .Border(true).Cls("fieldsetfile")
+                            .AutoScroll(true)
+                            .Height(90)
+                                        .Title("تصویر امضا")
+                            .ColSpan(4)
+        //.Title("انتخاب فایل(حداکثر حجم مجاز: 10MB)")
+                            .ID("fieldsetfile")
+                            .Layout(LayoutType.HBox)
+                            .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Middle })
+                            .Items(
+                                X.FormPanel()
+                                    .Border(false)
+                                    .Layout(LayoutType.VBox)
+                                    .ItemID("fieldsetShowFile")
+                                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Right })
+                                    .Width(346)
+        //.Listeners(l => l.AfterRender.Handler = "App.LetterTemplate.queryById('fieldsetShowFile').setWidth(App.BasicInfWin.getWidth() - 1050)")
+                                    .Items(
+                                        X.FileUploadField().ItemID("btnUpload")
+                                            .MarginSpec("0 10px 10px 0")
+                                            .Icon(Ext.Net.Icon.DiskUpload)
+                                            .ButtonOnly(true)
+                                            .ButtonText("انتخاب فایل")
+                                            .DirectEvents(l =>
+                                            {
+                                                l.Change.Action = "UploadEmza";
+                                                l.Change.Delay = 1000;
+                                                l.Change.Before = "if(GotoServerBackGround==false){return false;}";
+                                                l.Change.Success = "hideprogressBackGround";
+                                            })
+                                                .Listeners(l => l.Change.Fn = "showFileBackGround"),
+                                        X.Container()
+                                            .Content(@<div id="fi-button-msg" class="Wrap-label" style="width:336px;height:auto; text-align:right;"><b>فایل انتخاب شده:</b></div>)
+                                        )
+                        )
+        )
+    )
+)
+
+<script type="text/javascript">
+    var GotoServerBackGround = false;
+    var EndUploadBackGround = false;
+
+    var CheckBackGround = setInterval(CheckBackGround, 500);
+
+    var CheckEnable = function (columnn, component, record, rowIndex) {
+        if (record.data.fldFileId == 0) {
+            component.disable();
+        }
+    };
+    function DownloadFileBackGround() {
+        var fldFileId = '@ViewBag.SignFileId';
+        $.ajax({
+            type: "POST",
+            dataType: 'native',
+            url: "/Automation/LetterTemplate/Download",
+            xhrFields: {
+                responseType: 'blob'
+            },
+            data: {
+                fldFileId: fldFileId,
+            },
+            success: function (blob) {
+                var link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = "DownloadFile";
+                link.click();
+            }
+        });
+    }
+    function EnableBtnDl() {
+        if ('@ViewBag.SignFileId'==0) {
+            App.EmzaPersonalInfo.queryById("btnDl").disable();
+        }
+        else {
+            App.EmzaPersonalInfo.queryById("btnDl").enable();
+        }
+    }
+
+    function CheckBackGround() {
+        if (EndUploadBackGround == true) {
+            /* Ext.net.DirectMethod.request({
+                 url: '/Automation/LetterTemplate/ShowPic',
+                 success: function (data) {
+                     value = "data:image/gif;base64," + data.image;
+                     App.LetterTemplate.queryById('ImageBackGround').setImageUrl(value);
+                 }
+             });*/
+            GotoServerBackGround = false;
+            Ext.MessageBox.hide();
+            Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+            clearInterval(CheckBackGround);
+            EndUploadBackGround = false;
+        }
+    }
+    var showFileBackGround = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msg');
+        if (v) {
+            showProgressBarBackGround();
+            if (v.split('.').pop().toLowerCase() == "jpg" || v.split('.').pop().toLowerCase() == "png" || v.split('.').pop().toLowerCase() == "jpeg"
+                || v.split('.').pop().toLowerCase() == "tif" || v.split('.').pop().toLowerCase() == "tiff" || v.split('.').pop().toLowerCase() == "gif"
+                || v.split('.').pop().toLowerCase() == "bmp") {
+                if (document.getElementById(id).files[0].size <= 10485760) {
+                    GotoServerBackGround = true;
+                    el.update('<b>فایل انتخاب شده: ' + v + '</b>' + "&nbsp;&nbsp;" + '<img id="DeleteActionFileimg6" title="حذف فایل" src="/Content/cancel.png" style="width:15px;height:15px;margin-bottom: -4px;" onclick="javascript:DeleteFileHuman()" />');
+                }
+                else {
+                    clearInterval(CheckBackGround);
+                    el.update('<b>فایل انتخاب شده:</b> ');
+                    /* App.LetterTemplate.queryById('ImageBackGround').setImageUrl("/Content/Blank.jpg");*/
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "حجم فایل انتخاب شده غیرمجاز است.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                } else {
+                    el.highlight();
+                }
+            }
+            else {
+                clearInterval(CheckBackGround);
+                el.update('<b>فایل انتخاب شده:</b> ');
+                /*App.LetterTemplate.queryById('ImageBackGround').setImageUrl("/Content/Blank.jpg");*/
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "فایل انتخاب شده غیرمجاز است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+    };
+   
+
+    var DeleteFileHu = false;
+    function DeleteFileHuman() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/PersonalInfo/DeleteSessionFile',
+            success: function (data) {
+                DeleteFileHu = true;
+                /*App.LetterTemplate.queryById('ImageBackGround').setImageUrl("/Content/Blank.jpg");*/
+                Ext.get('fi-button-msg').update('<b>فایل انتخاب شده:</b>');
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    var hideprogressBackGround = function (Responsdtxt, ResponseObj) {
+        if (ResponseObj.IsValid == true) {
+            EndUploadBackGround = true;
+        }
+        else {
+            var el = Ext.get('fi-button-msg');
+            GotoServerBackGround = false;
+            clearInterval(CheckBackGround);
+            EndUploadBackGround = false;
+            el.update('<b>فایل انتخاب شده:</b> ');
+            /*App.LetterTemplate.queryById('ImageBackGround').setImageUrl("/Content/Blank.jpg");*/
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: ResponseObj.Message,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    };
+
+    function showProgressBarBackGround() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+    function SaveEmzaPersonalInfo() { 
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/PersonalInfo/SaveEmza',
+            params: {
+                fldCommitionId: '@ViewBag.fldCommitionId'
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO; 
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+
+        });
+    }
+</script>

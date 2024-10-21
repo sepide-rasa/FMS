@@ -1,0 +1,619 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+
+@{
+    var X = Html.X();
+}
+@(Html.X().Panel()
+    .ID("AdvancedSearch")
+    .Title("جستجوی پیشرفته")
+    .Closable(true)
+    .Listeners(li => li.AfterRender.Handler = "AdvancedSearchSetSize();")
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Items(
+        X.GridPanel()
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(X.Button().Text("افزودن شرط").Icon(Icon.Add).Listeners(l=>l.Click.Handler=""))
+            )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            .ItemID("AdvancedSearchGrid")
+            .ColumnModel(
+                Html.X().ComponentColumn()
+                    .Flex(7).Sortable(false).Text("عنوان مورد جستجو")
+                    .Listeners(l=>l.Edit.Fn="loadCboOperation")
+                    .Component(
+                        X.ComboBox()
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا عنوان مورد جستجو را انتخاب کنید.")
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .ForceSelection(true)
+                            .EmptyText("عنوان مورد جستجو...")
+                            .Listeners(l=>l.Change.Fn="")
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.Int) { Mapping = "EnName" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "Name" },
+                                        new ModelField("Type", ModelFieldType.String) { Mapping = "Type" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Timeout(200000000)
+                                    .Url(Url.Action("GetFieldName"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                        )
+                    ),
+                Html.X().ComponentColumn().ID("ColOperation")
+                    .Flex(7).Sortable(false).Text("شرط")
+                    .Component(
+                        X.ComboBox()
+                            .TypeAhead(true)
+                            .Editable(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(false)
+                            .BlankText("لطفا شرط مورد نظر را انتخاب کنید.")
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .ForceSelection(true)
+                            .EmptyText("شرط...")
+                            .Store(X.Store()
+                                .AutoLoad(false)
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.Int) { Mapping = "Name" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "Name" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Timeout(200000000)
+                                    .Url(Url.Action("GetOperator"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                        )
+                    )
+//                        Html.X().ComponentColumn().ID("ColFieldName").DataIndex(Model, m => m.fldCodingId)
+//                        .Listeners(l =>
+//                        {
+//                            l.Bind.Fn = "setValueHeadLine";
+//                            //l.Edit.Fn = "loadCboCostCenter";
+//                        })
+//                        .Flex(7).Editor(true).Sortable(false).Text("عنوان سرفصل")
+//                        .Component(
+//                            X.ComboBox()
+//                                .ItemID("CboHeadLine")
+//                                .TypeAhead(true)
+//                                .Editable(true)
+//                                .QueryMode(DataLoadMode.Local)
+//                                .AllowBlank(false)
+//                                .BlankText("لطفا عنوان سرفصل را انتخاب کنید.")
+//                                .TriggerAction(TriggerAction.All)
+//                                .DisplayField("fldName")
+//                                .ValueField("fldId")
+//                                .EnableKeyEvents(true)
+//                                .ForceSelection(true)
+//                                .Icon(Icon.Add)
+//                                .FieldStyle("padding-right:20px;")
+//                                .Listeners(l =>
+//                                {
+//                                    l.BeforeQuery.Fn = "SearchMatch";
+//                                    l.KeyDown.Fn = "GotoNextField";
+//                                    l.SpecialKey.Fn = "SelectCodingDetails";
+//                                    l.IconClick.Fn = "GotoCodingDetails";
+//                                    l.Change.Fn = "loadCboCostCenter";
+//                                })
+//                                .EmptyText("عنوان سرفصل...")
+//                                .Store(X.Store()
+//                                    .AutoLoad(false)
+//                                    .Model(X.Model()
+//                                        .IDProperty("fldId")
+//                                        .Fields(
+//                                            new ModelField("fldId", ModelFieldType.Int) { Mapping = "fldId" },
+//                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" },
+//                                            new ModelField("fldMahiyatId", ModelFieldType.String) { Mapping = "fldMahiyatId" }
+//                                        )
+//                                    )
+//                                    .Proxy(X.AjaxProxy()
+//                                        .Timeout(200000000)
+//                                            .Url(Url.Action("GetOperator"))
+//                                        .Reader(X.JsonReader().Root("data"))
+//                                    )
+//                            )
+//                        ),
+//                Html.X().ComponentColumn().ID("ColDescription").DataIndex(Model, m => m.fldDescription)
+///*.Listeners(l => l.Bind.Fn = "AddIcoDescription")*/.Flex(7).Editor(true).Sortable(false).Text("شرح")
+//                    .Component(
+//                        Html.X().TextField().Icon(Icon.Add)
+//                        .ItemID("txtDescription").FieldStyle("padding-right:20px;").EnableKeyEvents(true).Listeners(l =>
+//                        {
+//                            l.SpecialKey.Fn = "SelectDescDoc2";
+//                            l.IconClick.Fn = "GotoSearchDescDoc2";
+//                            l.KeyDown.Fn = "GotoNextField2";
+//                            l.Focus.Fn = "resetValuee";
+//                        })
+//                    ),
+//                Html.X().ComponentColumn().ID("ColBed").DataIndex(Model, m => m.fldBedehkar).SummaryType(SummaryType.Sum).SummaryRenderer(new Renderer { Handler = "sumColBed" })
+//                    .Flex(4).Renderer("SepearateDocRegister_Details").Editor(true).Sortable(false).Text("بدهکار")
+//                    .Component(
+//                        Html.X().TextField().ItemID("txtBed").MaskRe("[0-9,*,/]").EnableKeyEvents(true)
+//                        .Listeners(l =>
+//                        {
+//                            l.Change.Fn = "setSeperate";
+//                            l.KeyDown.Fn = "GotoNextField3";
+//                            l.Blur.Fn = "refreshFeature";
+//                        })
+//                    ),
+//                Html.X().ComponentColumn().ID("ColBes").DataIndex(Model, m => m.fldBestankar).SummaryType(SummaryType.Sum).SummaryRenderer(new Renderer { Handler = "sumColBes" })
+//                    .Flex(4).Renderer("SepearateDocRegister_Details").Editor(true).Sortable(false).Text("بستانکار")
+//                    .Component(
+//                        Html.X().TextField().ItemID("txtBes").EnableKeyEvents(true).MaskRe("[0-9,*,/]")
+//                        .Listeners(l =>
+//                        {
+//                            l.Change.Fn = "setSeperate";
+//                            l.KeyDown.Fn = "GotoNextField4";
+//                            l.Blur.Fn = "refreshFeature";
+//                        })
+//                    ),
+//                Html.X().ComponentColumn().ID("ColCostCenter").DataIndex(Model, m => m.fldCenterCoId)
+///*.Listeners(l => l.Bind.Fn = "AddIcoCostCenter")*/.Flex(4).Editor(true).Sortable(false).Text("مرکز هزینه")
+//                    .Component(
+//                        X.ComboBox()
+//                            .ItemID("CboCostCenter")
+//                            .TypeAhead(true)
+//                            .Editable(true)
+//                            .QueryMode(DataLoadMode.Local)
+//                            .AllowBlank(false)
+//                            .BlankText("لطفا مرکز هزینه را انتخاب کنید.")
+//                            .TriggerAction(TriggerAction.All)
+//                            .DisplayField("fldName")
+//                            .ValueField("fldId")
+//                            .EnableKeyEvents(true)
+//                            .Disabled(true)
+//                            .ForceSelection(true)
+//                            .Icon(Icon.Add)
+//                            .FieldStyle("padding-right:20px;")
+//                            .Listeners(l =>
+//                            {
+//                                l.BeforeQuery.Fn = "SearchMatch";
+//                                l.KeyDown.Fn = "GotoNextField6";
+//                                l.SpecialKey.Fn = "SelectCostCenter";
+//                                l.IconClick.Fn = "GotoSearchCostCenter";
+//                                l.AfterRender.Handler = "this.icon.hide()";
+//                            })
+//                            .EmptyText("مرکز هزینه...")
+//                            .Store(X.Store()
+//                                .AutoLoad(false)
+//                                .Model(X.Model()
+//                                    .IDProperty("fldId")
+//                                    .Fields(
+//                                        new ModelField("fldId", ModelFieldType.Int) { Mapping = "fldId" },
+//                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+//                                        )
+//                                )
+//                                .Proxy(X.AjaxProxy()
+//                                    .Timeout(200000000)
+//                                    .Url(Url.Action("GetCostCenter"))
+//                                    .Reader(X.JsonReader().Root("data"))
+//                                )
+//                        )
+//                    ),
+//                Html.X().ComponentColumn().ID("ColFile").DataIndex(Model, m => m.fldName).SummaryRenderer(new Renderer { Handler = "SetRemain" })
+///*.Listeners(l => l.Bind.Fn = "AddIcoFile")*/.Flex(4).Editor(true).Sortable(false).Text("پرونده")
+//                    .Component(
+//                        Html.X().TextField().Icon(Icon.Add)
+//                        .ItemID("txtFile").FieldStyle("padding-right:20px;").EnableKeyEvents(true).ReadOnly(true)
+//                        .Listeners(l =>
+//                        {
+//                            l.SpecialKey.Fn = "SelectFile";
+//                            l.IconClick.Fn = "GotoFile";
+//                            l.KeyDown.Fn = "GotoNextField5";
+//                        })
+//                    ),
+//                Html.X().ImageCommandColumn()/*.PrepareCommand("HideCmpDel")*/.Listeners(l => l.Command.Fn = "DeleteDelDocRegister_Details").Flex(1)
+//                .Commands(
+//                    Html.X().ImageCommand().CommandName("CmpDel").Icon(Ext.Net.Icon.Delete).ToolTip(tt => tt.Text = "حذف(F4)")
+//                )
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+        )
+)
+
+<script type="text/javascript">
+    var aa, bb;
+    var loadCboOperation = function (column, opt) {
+        aa = column; bb = opt;
+        /*var index=App.AdvancedSearch.queryById("AdvancedSearchGrid").store.indexOf(opt.record);
+        App.ColOperation.getComponent(index).store.load({
+            state: opt.record
+        });*/
+    };
+
+    function AddNewRow() {
+        var index = App.AdvancedSearch.queryById('AdvancedSearchGrid').getStore().count();
+        App.AdvancedSearch.queryById('AdvancedSearchGrid').store.insert(index, {
+            
+        });
+    }
+
+    function AdvancedSearchSetSize() {
+        App.AdvancedSearch.setWidth(App.AccountingWin.getWidth());
+        App.AdvancedSearch.queryById('AdvancedSearchGrid').setHeight(App.AccountingWin.getHeight() - 170);        
+    }
+
+    function CheckDocStatus() {
+        var SelectedRow = App.AdvancedSearch.queryById('AdvancedSearchGrid').selModel.getLastSelected();
+        if (SelectedRow.data.fldModuleErsalId != 4) {
+            App.AdvancedSearch.queryById('btnEdit').disable();
+            App.AdvancedSearch.queryById('btnDelete').disable();
+            App.AdvancedSearch.queryById('btnGhati').disable();
+            App.AdvancedSearch.queryById('btnArchive').disable();
+        }
+        else {
+            App.AdvancedSearch.queryById('btnEdit').enable();
+            App.AdvancedSearch.queryById('btnDelete').enable();
+            if (SelectedRow.data.fldType == 2) {
+                App.AdvancedSearch.queryById('btnPrint').disable();
+                App.AdvancedSearch.queryById('btnGhati').disable();
+                App.AdvancedSearch.queryById('btnArchive').disable();
+            }
+            else {
+                App.AdvancedSearch.queryById('btnPrint').enable();
+                App.AdvancedSearch.queryById('btnGhati').enable();
+                App.AdvancedSearch.queryById('btnArchive').enable();
+            }
+        }
+    }
+
+    function SortDocs() {
+        Ext.MessageBox.show({
+            title: "هشدار",
+            msg: "آیا جهت مرتب سازی اسناد مطمئن هستید؟",
+            icon: Ext.MessageBox.WARNING,
+            buttons: Ext.MessageBox.YESNO,
+            fn: function (btn) {
+                if (btn == 'yes') {
+                    Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Accounting/DocRegistration/SortDocs',
+                        params: {
+                            Year: '@ViewBag.Year'
+                        },
+                        success: function (data) {
+                            App.AdvancedSearch.queryById('AdvancedSearchGrid').store.load();
+                            var ic = Ext.MessageBox.INFO;
+                            if (data.Er == 1)
+                                ic = Ext.MessageBox.ERROR;
+                            Ext.MessageBox.show({
+                                title: data.MsgTitle,
+                                msg: data.Msg,
+                                icon: ic,
+                                buttons: Ext.MessageBox.OK
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    function PrintDocRegister() {
+        var SelectedRow = App.AdvancedSearch.queryById('AdvancedSearchGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldType != 2) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Accounting/DocRegistration/PrintDocument',
+                    params: {
+                        DocHeaderId: SelectedRow.data.fldId
+                    },
+                    success: function (data) {
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function PrintDocRegister_Group() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DocRegistration/PrintDocument_Group',
+            params: {
+                containerId: "FirstTabAccounting",
+                Year: '@ViewBag.Year'
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function GotoGeneralView() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DocRegistration/GeneralView',
+            params: {
+                Year: '@ViewBag.Year'
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+
+    }
+
+    function DeleteDocRegister() {
+        var SelectedRow = App.AdvancedSearch.queryById('AdvancedSearchGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldAccept == false) {
+                if (SelectedRow.data.fldModuleErsalId == 4) {
+                    Ext.MessageBox.show({
+                        title: "هشدار",
+                        msg: "آیا برای حذف مطمئن هستید؟",
+                        icon: Ext.MessageBox.WARNING,
+                        buttons: Ext.MessageBox.YESNO,
+                        fn: function (btn) {
+                            if (btn == 'yes') {
+                                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                Ext.net.DirectMethod.request({
+                                    url: '/Accounting/DocRegistration/DeleteHeader',
+                                    params: {
+                                        Id: SelectedRow.data.fldId,
+                                        Year: SelectedRow.data.fldYear
+                                    },
+                                    success: function (data) {
+                                        var ic = Ext.MessageBox.INFO;
+                                        if (data.Er == 1)
+                                            ic = Ext.MessageBox.ERROR;
+                                        Ext.MessageBox.show({
+                                            title: data.MsgTitle,
+                                            msg: data.Msg,
+                                            icon: ic,
+                                            buttons: Ext.MessageBox.OK
+                                        });
+                                        if (data.Er != 1) {
+                                            App.AdvancedSearch.queryById('AdvancedSearchGrid').store.load();
+                                        }
+                                        Ext.net.Mask.hide();
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "امکان حذف برای اسناد دریافتی از دیگر ماژولها وجود ندارد.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "سند انتخاب شده ثبت قطعی شده است و امکان حذف آن وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveGhati() {
+        var SelectedRow = App.AdvancedSearch.queryById('AdvancedSearchGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldAccept == false) {
+                if (SelectedRow.data.fldType == 1) {
+                    if (SelectedRow.data.fldModuleErsalId == 4) {
+                        Ext.MessageBox.show({
+                            title: "هشدار",
+                            msg: "آیا جهت قطعی کردن سند مطمئن هستید؟",
+                            icon: Ext.MessageBox.WARNING,
+                            buttons: Ext.MessageBox.YESNO,
+                            fn: function (btn) {
+                                if (btn == 'yes') {
+                                    Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                                    Ext.net.DirectMethod.request({
+                                        url: '/Accounting/DocRegistration/SaveGhati',
+                                        params: {
+                                            HeaderId: SelectedRow.data.fldId,
+                                            FiscalYearId: '@ViewBag.FiscalYearId',
+                                            Year: '@ViewBag.Year'
+                                        },
+                                        success: function (data) {
+                                            var ic = Ext.MessageBox.INFO;
+                                            if (data.Er == 1)
+                                                ic = Ext.MessageBox.ERROR;
+                                            Ext.MessageBox.show({
+                                                title: data.MsgTitle,
+                                                msg: data.Msg,
+                                                icon: ic,
+                                                buttons: Ext.MessageBox.OK
+                                            });
+                                            if (data.Er != 1) {
+                                                App.AdvancedSearch.queryById('AdvancedSearchGrid').store.load();
+                                            }
+                                            Ext.net.Mask.hide();
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
+                    else {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "امکان قطعی کردن برای اسناد دریافتی از دیگر ماژولها وجود ندارد.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "امکان قطعی کردن برای یادداشت وجود ندارد",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "سند انتخاب شده قبلا قطعی شده است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function EditDocRegister() {
+        var SelectedRow = App.AdvancedSearch.queryById('AdvancedSearchGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldAccept == false) {
+                if (SelectedRow.data.fldModuleErsalId == 4) {
+                    Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Accounting/DocRegistration/New',
+                        params: {
+                            HeaderId: SelectedRow.data.fldId,
+                            FiscalYearId: '@ViewBag.FiscalYearId',
+                            Year: '@ViewBag.Year'
+                        },
+                        success: function () {
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "امکان ویرایش برای اسناد دریافتی از دیگر ماژولها وجود ندارد.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "سند انتخاب شده ثبت قطعی شده است و امکان ویرایش آن وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function NewDocRegister() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DocRegistration/New',
+            params: {
+                HeaderId: 0,
+                FiscalYearId: '@ViewBag.FiscalYearId',
+                Year: '@ViewBag.Year'
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function AccountingArchive() {
+        var SelectedRow = App.AdvancedSearch.queryById('AdvancedSearchGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldType == 1) {
+                if (SelectedRow.data.fldModuleErsalId == 4) {
+                    Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Accounting/DocRegistration/Archive',
+                        params: {
+                            HeaderId: SelectedRow.data.fldId
+                        },
+                        success: function () {
+                            Ext.net.Mask.hide();
+                        }
+                    });
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "امکان ثبت فایل برای اسناد دریافتی از دیگر ماژولها وجود ندارد.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "امکان ثبت فایل برای یادداشت وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

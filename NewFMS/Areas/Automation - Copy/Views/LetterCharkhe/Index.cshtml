@@ -1,0 +1,101 @@
+﻿@model IEnumerable<NewFMS.Models.spr_Charkhe>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+
+@(Html.X().Window().Modal(true)//.Listeners(li => { li.Render.Fn = "addKeyMapBox"; })
+.Width(800)//.Height(300)
+    .Title("چرخه نامه")
+    .ID("NewBox")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+         .ButtonAlign(Alignment.Center)
+        .Buttons(
+            Html.X().Button()
+                .Text("چاپ")
+                .Icon(Ext.Net.Icon.Printer)
+                .Listeners(l => l.Click.Handler = "PrintCharkhe()")
+        )
+    .Items(
+            X.Panel().Border(false)
+            .Items(
+
+                           
+                                    X.TreePanel().Width(785)
+                                    .Height(250)
+                                        .ID("TreeCharkhe")
+                                        .AutoScroll(true)
+                                        .Border(true)
+                                        .UseArrows(true)
+                                        
+                                        .Store(
+                                            X.TreeStore()
+                                                .Model(
+                                                    Html.X().Model()
+                                                        .Fields(
+                                                            X.ModelField().Name(Model, m => m.id),
+                                                            X.ModelField().Name(Model, m => m.SenderName).Type(ModelFieldType.String),
+                                                            X.ModelField().Name(Model, m => m.fldTypeAss).Type(ModelFieldType.String),
+                                                            X.ModelField().Name(Model, m => m.fldNameStatus).Type(ModelFieldType.String),
+                                                            X.ModelField().Name(Model, m => m.fldLetterReadDate).Type(ModelFieldType.String),
+                                                            X.ModelField().Name(Model, m => m.fldTarikhErja).Type(ModelFieldType.String),
+                                                                X.ModelField().Name(Model, m => m.fldDesc).Type(ModelFieldType.String)
+                                                            )
+                                                        )
+                                                .Proxy(
+                                                    Html.X().AjaxProxy()
+                                                            .Url(Url.Action("NodeLoad"))
+                                                    )
+                                                        .Listeners(l => l.BeforeLoad.Fn = "GetParamTreeCharkhe")
+                                            )
+                                                .Listeners(a =>
+                                        {
+                                            a.ItemClick.Handler = "GetIdTreeCharkhe(record)";
+                                            a.AfterRender.Handler = "App.TreeCharkhe.expandAll();";
+                                        })
+                                        .ColumnModel(
+                                              X.TreeColumn().Text("نام").DataIndex("text").Wrap(true).Flex(6),
+                                              X.Column().Text("نوع ارجاع").DataIndex("fldTypeAss").Wrap(true).Flex(2),
+                                              X.Column().Text("وضعیت نامه").DataIndex("fldNameStatus").Wrap(true).Flex(2),
+                                              X.Column().Text("تاریخ خواندن").DataIndex("fldLetterReadDate").Wrap(true).Flex(3),
+                                              X.Column().Text("تاریخ ارجاع").DataIndex("fldTarikhErja").Wrap(true).Flex(3),
+                                              X.Column().Text("نوع گیرنده").DataIndex("fldDesc").Wrap(true).Flex(2)
+                                        )
+                                        .Root(Html.X().Node().NodeID("0").AttributesObject(new { id = "0", text = "چرخه نامه", fldTypeAss = "", fldNameStatus = "", fldLetterReadDate = "", fldTarikhErja = "", fldDesc="" }).Expanded(true))
+                               
+
+                )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+        )
+)
+<script type="text/javascript">
+    var TreeId;
+    var fldPId;
+    var GetParamTreeCharkhe = function (store, operation, eOpts) {
+        var nodeId = operation.node.getId();
+        operation.params.nod = nodeId;
+        operation.params.LetterId = '@ViewBag.LetterId';
+        operation.params.MessageId = '@ViewBag.MessageId';
+    };
+
+    function GetIdTreeCharkhe(record) {
+        TreeId = record.getId();
+
+    };
+    function PrintCharkhe() {
+        Ext.net.DirectMethod.request({
+            url: '/Automation/LetterCharkhe/PrintCharkhe',
+            params: {
+                LetterId: '@ViewBag.LetterId',
+                MessageId : '@ViewBag.MessageId'
+            },
+            success: function (data) {
+            }
+        });
+    }
+</script>

@@ -1,0 +1,126 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+
+<style>
+    .custom-icon {
+        margin-right: 124px !important;
+    }
+
+    .newClass {
+        position: absolute;
+        top: 10px;
+        left: 33px;
+        color: white;
+        font-size: 12px;
+        padding: 12px 24px;
+        border: none;
+        cursor: pointer;
+    }
+
+    #fieldsetfile legend {
+        text-align: right;
+        font-family: Tahoma !important;
+    }
+
+    #DeleteActionFileimg6:hover {
+        cursor: pointer;
+    }
+
+   
+</style>
+@(Html.X().Window().Modal(true).Listeners(li => { li.AfterRender.Handler = "LoadMostanadatTozin();"; })
+.Width(800).Height(400)
+    .Title("مستندات توزین")
+            .ID("MostanadatTozin")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+        .ButtonAlign(Ext.Net.Alignment.Center)
+        .Layout(LayoutType.Fit)
+        .Buttons(
+                    X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+                            .OnClientClick("App.MostanadatTozin.hide();"))
+    .Items(
+        X.Panel().Border(false)
+                .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                .Items(
+                X.FormPanel().Border(false).MarginSpec("20px 0 0 0")
+            .Layout(Ext.Net.LayoutType.HBox)
+            .LayoutConfig(new Ext.Net.HBoxLayoutConfig { Align = Ext.Net.HBoxAlign.Stretch })
+            .Items(
+                //X.FieldSet().Border(true).Title("مستندات توزین")
+                //.Center()
+                //.LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                //.Defaults(new { Margin = 2 })
+                //.Items(
+                X.Panel().ItemID("pnlPic")
+                                    .Defaults(new { Margin = 2 })
+                                .Layout(LayoutType.Table)
+                                .LayoutConfig(new TableLayoutConfig { Columns = 1 })
+                                .AutoScroll(true).Border(true).Width(350).Height(300).Frame(true)
+                                .Html(@<div id="slider" style="height:auto;width:340px;"></div>
+                                )
+    , X.Panel().ItemID("pnlZoomPic")
+                                        .Defaults(new { Margin = 2 })
+                                       .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                                    .AutoScroll(true).Border(true).Width(380).Height(300).Frame(true)
+                               .Items(X.Image().MarginSpec("20px 0 0 0").ItemID("ZoomImage").ImageUrl("~/Content/Blank.jpg").Width(320).Height(250).Border(false))
+                     //)
+
+                )
+                )
+        )
+)
+<script type="text/javascript">
+    function LoadMostanadatTozin() {
+        Ext.net.DirectMethod.request({
+            url: '/Weigh/Tozin/Image',
+            params:
+                {
+                    TozinId: '@ViewBag.TozinId',
+                },
+            success: function (data) {
+                for (var i = 0; i < data.PicId.length; i++) {
+                    var x = document.createElement("INPUT");
+                    x.setAttribute("type", "image");
+                    x.setAttribute('width', '60px');
+                    x.setAttribute('height', '60px');
+
+                    x.setAttribute('id', data.PicId[i]);
+
+                    if (data.PicTozin[i] != "") {
+                        x.src = "data:image/png;base64," + data.PicTozin[i];
+                    }
+                    else {
+                        x.src = "/content/icon/Blank.jpg";
+                    }
+                    document.getElementById("slider").appendChild(x);
+                    CreateEvent(x.id);
+                }
+            }
+
+        });
+    }
+    function CreateEvent(id) {
+        $('#' + id).click(function () {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Tozin/ShowPicMostanadat',
+                params: {
+                    FileId: id
+                },
+                success: function (data) {
+                    value = "data:image/gif;base64," + data.image;
+                    App.MostanadatTozin.queryById('ZoomImage').setImageUrl(value);
+                    Ext.net.Mask.hide();
+                }
+            });
+        });
+    }
+</script>

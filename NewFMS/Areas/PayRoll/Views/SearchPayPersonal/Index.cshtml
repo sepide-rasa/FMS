@@ -1,0 +1,101 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_PayPersonalInfo>
+@using Ext.Net.MVC;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window()
+    .Modal(true)
+    .Width(700)
+    .Height(350)
+    .Title("لیست پرسنل")
+    .ID("SearchPayPersonalInfo")
+    .Layout(Ext.Net.LayoutType.Fit)
+    .Listeners(l=>l.Destroy.Handler="setFocusComp()")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .AutoScroll(true)
+            .Layout(Ext.Net.LayoutType.Fit)            
+            .Items(
+                X.GridPanel()
+                    .AutoScroll(true)
+                    .TopBar(
+                        Html.X().Toolbar()
+                            .Items(
+                                X.Button()
+                                    .Text("انتخاب")
+                                    .Icon(Ext.Net.Icon.ArrowRedo)
+                                    .Listeners(li => li.Click.Handler = "NextSearchPayPersonalInfo();")
+                        )
+                    )
+                    .ItemID("GridSearchPayPersonalInfo")
+                    .BottomBar(X.PagingToolbar())
+                    .Store(
+                        X.StoreForModel()
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                .ExtraParams(x => x.Add(new { organId = @ViewBag.organId }))
+                        )
+                        .PageSize(10)
+                        .RemoteFilter(true)
+                        .RemotePaging(true)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Hidden(true).Text("کد").Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldSh_Personali).Text("شماره پرسنلی").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام و نام خانوادگی").Wrap(true).Flex(4),
+                        Html.X().Column().DataIndex(Model, m => m.fldFatherName).Text("نام پدر").Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کد ملی").Flex(2)//,                            
+                      //  Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(4)
+                    )
+                    .Listeners(a => a.CellDblClick.Handler = "NextSearchPayPersonalInfo();")
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+            )
+        )
+)
+
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+
+    function setFocusComp() {
+        if (State == 3) {
+            App.FishHoghoughi_Details.queryById('txtName').focus();
+        }
+    }
+
+    function NextSearchPayPersonalInfo() {
+        var SelectedRow = App.SearchPayPersonalInfo.queryById('GridSearchPayPersonalInfo').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (State == 1 || State == 2) {
+                var tabId = App.FirstTabPay.activeTab.id;
+                Ext.getCmp(tabId).queryById('txtName').setValue(SelectedRow.data.fldName);
+                Ext.getCmp(tabId).queryById('fldIdPayPersonalInfo').setValue(SelectedRow.data.fldId);
+            }
+            else if (State == 3) {
+                App.FishHoghoughi_Details.queryById('txtName').setValue(SelectedRow.data.fldName);
+                App.FishHoghoughi_Details.queryById('fldPersonalId').setValue(SelectedRow.data.fldId);
+            }
+            App.SearchPayPersonalInfo.destroy();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

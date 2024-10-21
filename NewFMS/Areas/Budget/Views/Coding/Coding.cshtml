@@ -1,0 +1,1081 @@
+﻿@model IEnumerable<NewFMS.WCF_Budget.OBJ_CodingBudje_Detail>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .rowheightCodingB_Details {
+       height: 40px !important;
+    }
+    .rowheightCodingB_Details2 {
+       height: 80px !important;
+    }
+    .rowheightCodingB_Details3 {
+       height: 35px !important;
+    }
+    .rowheightCodingB_Details4 {
+       height: 75px !important;
+    }
+    /*.custom-levelType{
+        margin-right: 105px!important;
+    }*/
+    /*#FieldSetCodinggB legend {
+        text-align: right;
+        font-family: Tahoma !important;
+    }*/
+</style>
+@(Html.X().Window()
+    .Width(800)
+    .Height(500)
+    .Modal(true)
+    .ID("CodingB_Details")
+    .Title("ساختار درختی کدینگ بودجه")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l =>
+    {
+        l.Render.Fn = "addKeyMapCodingB_Details";
+        l.BeforeClose.Handler = "validPcodeCodingB=false;";
+        l.Resize.Handler = "ResizeTreeCodingB()";
+        l.AfterRender.Handler = "hideCboTypeEtebar()";            
+    })
+    //.Resizable(false)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.HBox)
+            .Padding(10)
+            .Items(
+                X.FieldSet()
+                    .Title("مشخصات ساختار درختی")
+                    .Border(true)
+                    .AutoScroll(true)
+                    .ItemID("TreeFieldsetCodingB_Details")
+                    //.Listeners(l => l.Render.Handler = "App.CodingB_Details.queryById('TreeFieldsetCodingB_Details').setHeight(Ext.getBody().getViewSize().height-218);")
+                        .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 2 })                    
+                    .Items(
+                        X.Hidden()
+                            .ItemID("fldId").Value(0),
+                        X.Hidden()
+                            .ItemID("fldCodingLevelId"),
+                        X.Hidden()
+                            .ItemID("ParentId").Value(0),
+                        X.Hidden()
+                            .ItemID("NodeLevelId"),
+                        X.Label("کد گــره پــدر:"),
+                        X.TextField()
+                            .ItemID("txtPCode")
+                            .BlankText("لطفا کد را وارد کنید.")
+                            //.MinLength(3)
+                            //.EnforceMaxLength(true)
+                            .AllowBlank(false)
+                            .FieldStyle("direction:ltr;")
+                            .Listeners(l =>
+                            {
+                                l.Change.Handler = "validPcodeCodingB=false;";
+                            })
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                            .MaskRe("[0-9]"),
+                        X.Label("کد گره فـرزنـد:"),
+                        X.TextField()
+                            .ItemID("txtCode")
+                            .FieldStyle("direction:ltr;")
+                            .Listeners(l =>
+                            {
+                                l.Focus.Handler = "CheckValidatePCode_CodingB()";
+                                l.Blur.Handler = "CheckValidateCode_CodingB()";
+                            })
+                            .AllowBlank(false)
+                            .BlankText("لطفا کد را وارد کنید.")
+                            .MaskRe("[0-9]")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true),
+                   
+                        X.Label("عنــوان آیتم:"),
+                        X.TextArea()
+                            .ItemID("txtItemName")
+                            .AllowBlank(false)
+                            .BlankText("لطفا عنوان آیتم را وارد کنید.")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true),
+                        X.Label("سطــح:"),
+                        X.TextField()
+                            .ItemID("txtLevel")
+                            .ReadOnly(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا سطح را وارد کنید."),
+                        X.Label("نوع:").ItemID("lblType"),
+                        X.ComboBox()
+                            .ItemID("CboType")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .BlankText("لطفا نوع را انتخاب کنید.")
+                          //  .Icon(Icon.Pencil)
+                                .FieldStyle("padding-right:5px;")
+                             /*   .Listeners(l =>
+                            {
+                                //l.SpecialKey.Handler = "SelectOperator(e.getKey());";
+                                l.IconClick.Handler = "ChangeType()";
+                                l.AfterRender.Handler = "App.CodingB_Details.queryById('CboType').icon.dom.classList.add('custom-levelType');";
+                                l.Select.Handler = "ChangeType()";
+                            })*/
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .AllowBlank(false)
+                            .EmptyText("نوع...")
+                            .Items(
+                                new ListItem("طرح", "1"),
+                                new ListItem("خدمت", "2")
+                            ),
+                                 X.Label("نوع:").ItemID("lblType2"),
+                            X.ComboBox()
+                                .ItemID("CboType2")
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا نوع را انتخاب کنید.")
+                               // .Icon(Icon.Pencil)
+                                    .FieldStyle("padding-right:5px;")
+                             
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .AllowBlank(false)
+                                //.EmptyText("نوع...")
+                                .Items(
+                                    new ListItem("پروژه", "1"),
+                                    new ListItem("فعالیت", "2")
+                                ),
+                                         X.Label("نوع اعتبار:").ItemID("lblTypeEtebar"),
+                            X.ComboBox()
+                                .ItemID("CboTypeEtebar")
+                                .DisplayField("fldName")
+                                .ValueField("fldId")
+                                .TypeAhead(true)
+                                .Editable(false)
+                                .AllowBlank(false)
+                                .BlankText("لطفا نوع اعتبار را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                    //.Listeners(l => l.AfterRender.Handler = "App.CodingB_Details.queryById('CboTypeEtebar').select(App.CodingB_Details.queryById('CboTypeEtebar').store.getAt(0));")
+                                .Store(X.Store()
+                                    .Model(X.Model()
+                                        .IDProperty("fldId")
+                                        .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldTitle" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetTypeEtebar"))
+                                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                                ),
+                                X.Label("نوع هزینه:").ItemID("lblTypeMasraf"),
+                            X.ComboBox()
+                                .ItemID("CboTypeMasraf")
+                                .DisplayField("fldName")
+                                .ValueField("fldId")
+                                .TypeAhead(true)
+                                .Editable(false)
+                                .AllowBlank(false)
+                                .BlankText("لطفا نوع هزینه را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                   // .Listeners(l => l.AfterRender.Handler = "App.CodingB_Details.queryById('CboTypeMasraf').store.getAt(0);")
+                                .Store(X.Store()
+                                    .Model(X.Model()
+                                        .IDProperty("fldId")
+                                        .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldTitle" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetTypeMasraf"))
+                                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                                ),
+                        X.Label("توضیحات:"),
+                        X.TextArea()
+                            .ItemID("txtDesc"),
+                        X.FieldSet()
+                            .ColSpan(2)
+                            .Width(235)
+                            .Border(false)
+                            .Layout(LayoutType.VBox)
+                            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                            .Items(
+                                X.Button()
+                                    .Text("ذخیره")
+                                    .Icon(Icon.Disk)
+                                    .Listeners(l => l.Click.Handler = "SaveCodingB_Details()"))
+                    ),
+                X.TreePanel()
+                    .ID("TreeCodingB")
+                    .AutoScroll(true)
+                    .Frame(true)
+                    .Title("ساختار درختی کدینگ")
+                    .Width(500)
+                    .Margin(5)
+                    .UseArrows(true)
+                    .Border(true)
+                        .TopBarItem(
+                            X.Label("مقدار جستجو:"),
+                            X.TextField()
+                                .ItemID("TxtFilter"),
+                            X.Button()
+                                .Text("جستجو")
+                                .Icon(Icon.Magnifier)
+                                .Listeners(l =>
+                                {
+                                    l.Click.Handler = "App.TreeCodingB.store.load();setTimeout(function(){if(App.CodingB_Details.queryById('TxtFilter').getValue()!=''){App.TreeCodingB.expandAll();}},500);";
+                                    l.AfterRender.Handler = "App.TreeCodingB.store.load();";
+                                })
+                        )
+                    .Listeners(l =>
+                    {
+                        l.Render.Handler = "App.TreeCodingB.setHeight(Ext.getBody().getViewSize().height-220);";
+                        l.AfterRender.Handler = "AddMenuTreeCodingB()";
+                        l.ItemClick.Handler = "setPCodeFromTreeB()";
+                        l.BeforeSelect.Fn = "preventSelectNodes";
+                    })
+                    .Store(
+                        Html.X().TreeStore()
+                            .Model(
+                                Html.X().Model()
+                                    .Fields(
+                                        X.ModelField().Name(Model, m => m.fldCode).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldBudCode).Type(ModelFieldType.String),
+                                        //X.ModelField().Name(Model, m => m.fldTemplateNameId).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldTitle).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldTarh_KhedmatTypeId).Type(ModelFieldType.Int),
+                                        
+                                        X.ModelField().Name(Model, m => m.fldLevelId).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldNameLevel).Type(ModelFieldType.String),
+                                            X.ModelField().Name(Model, m => m.fldStrhid).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldLevelId).Type(ModelFieldType.String)
+                                    )
+                            )
+                            .Proxy(
+                                Html.X().AjaxProxy().Url(Url.Action("LoadTreeCoding"))
+                            )
+                            .Listeners(l => l.BeforeLoad.Fn = "GetParamTreeCodingB")
+                    )
+                        .Root(Html.X().Node().NodeID("0").Text("ساختار درختی کدینگ").EmptyChildren(true).Children()/*.AttributesObject(new { fldName = "", fldNodeType = "2", fldDesc = "" })*/.Expanded(true))
+                )
+        )
+)
+<script type="text/javascript">
+    var validPcodeCodingB = false;
+    /*var FirstEditModeKhedmat = false;*/
+    function hideCboTypeEtebar() {
+        App.CodingB_Details.queryById('CboType2').hide(); App.CodingB_Details.queryById('lblType2').hide();
+        App.CodingB_Details.queryById('CboType').setValue("1");
+        App.CodingB_Details.queryById('CboTypeEtebar').hide(); App.CodingB_Details.queryById('lblTypeEtebar').hide();
+        App.CodingB_Details.queryById('CboTypeMasraf').hide(); App.CodingB_Details.queryById('lblTypeMasraf').hide();
+        setTRAttrsB();
+    }
+
+    function ResizeTreeCodingB() {
+        App.TreeCodingB.setSize(App.CodingB_Details.getWidth() - 300, App.CodingB_Details.getHeight() - 73);
+        var len = document.getElementsByClassName("rowheightCodingB_Details").length;
+        for (var i = 0; i < len - 1; i++) {
+            document.getElementsByClassName("rowheightCodingB_Details")[i].style.height = App.CodingB_Details.getHeight() / 16 + "px !important";
+        }
+        App.CodingB_Details.queryById('TreeFieldsetCodingB_Details').setHeight(App.CodingB_Details.getHeight() - 71);
+    }
+
+    var GetParamTreeCodingB = function (store, operation, eOpts) {
+        operation.params.nod = operation.node.getId();
+        operation.params.HeaderId = '@ViewBag.HeaderId';
+        operation.params.FilterValue = App.CodingB_Details.queryById('TxtFilter').getValue();
+    }; 
+
+    function setTRAttrsB() {
+        var trr = App.CodingB_Details.queryById("TreeFieldsetCodingB_Details").getTargetEl().el.child("table", true);
+        for (var i = 0; i < trr.rows.length; i++) {           
+            if (i == 2 || i == 5) {
+                trr.rows[i].classList.add("rowheightCodingB_Details2");
+            }
+            else {
+                trr.rows[i].classList.add("rowheightCodingB_Details");
+            }
+        }
+    }
+
+    @*function ChangeType() {
+        if (App.CodingB_Details.queryById('CboType').getValue() == 2) {
+            App.CodingB_Details.queryById('CboType').icon.show();
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Budget/Coding/khedmat',
+                params: {
+                    BudgetCodingId: App.CodingB_Details.queryById("fldId").getValue(),
+                    CodingTarh_KhedmatId: App.CodingB_Details.queryById("fldCodingTarh_KhedmatId").getValue(),
+                    Year:'@ViewBag.Year'
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            App.CodingB_Details.queryById('CboType').icon.hide();
+        }
+    }*@
+
+    function AddMenuTreeCodingB() {        
+        App.TreeCodingB.on("itemcontextmenu", function (view, record, item, index, e, eOpts) {
+            if (record.getId() != 0 && (parseInt(record.data.fldLevelId)==4 || (parseInt(record.data.fldLevelId) == 3 && record.data.fldTarh_KhedmatTypeId==2)))
+            {
+                var position = e.getXY();
+                e.stopEvent();
+                var menu_grid = new Ext.menu.Menu({
+                    bodyStyle: 'background-color:#dfe8f6 !important;',
+                    items: [
+                        { text: "ویرایش", iconCls: "Editico", handler: function () { EditNodeTreeCodingB(record); } },
+                        { text: "حذف", iconCls: "Deleteico", handler: function () { DeleteNodeTreeCodingB(record); } }
+                    ]
+                });
+                menu_grid.showAt(position);
+            }
+        });
+    }
+
+    var preventSelectNodes = function (tree, rec, htmlrec, Idx) {
+        if (rec.data.fldLevelId != 2 && rec.data.fldLevelId != 3) {
+            return false;
+        }
+    };
+
+    function setPCodeFromTreeB() {
+        var selectedd = App.TreeCodingB.getSelectionModel().getLastSelected();
+        if (selectedd != undefined) {
+            var CboType2 = App.CodingB_Details.queryById('CboType2');
+            var lblType2 = App.CodingB_Details.queryById('lblType2');
+            var CboType = App.CodingB_Details.queryById('CboType');
+            var lblType = App.CodingB_Details.queryById('lblType');
+            var CboTypeMasraf = App.CodingB_Details.queryById('CboTypeMasraf');
+            var lblTypeMasraf = App.CodingB_Details.queryById('lblTypeMasraf');
+            var CboTypeEtebar = App.CodingB_Details.queryById('CboTypeEtebar');
+            var lblTypeEtebar = App.CodingB_Details.queryById('lblTypeEtebar');
+            var txtLevel = App.CodingB_Details.queryById('txtLevel');
+            var trr = App.CodingB_Details.queryById("TreeFieldsetCodingB_Details").getTargetEl().el.child("table", true);
+
+            App.CodingB_Details.queryById('txtPCode').setValue(selectedd.data.fldBudCode);
+            App.CodingB_Details.queryById('txtPCode').enable();
+            App.CodingB_Details.queryById('txtPCode').focus();
+            App.CodingB_Details.queryById("txtCode").setValue("");
+            if (App.CodingB_Details.queryById("fldId").getValue() != 0) {
+                App.CodingB_Details.queryById('fldId').setValue(0);
+                App.CodingB_Details.queryById('fldCodingLevelId').setValue(0);
+                App.CodingB_Details.queryById('ParentId').setValue(0);
+                App.CodingB_Details.queryById('txtItemName').setValue("");
+                App.CodingB_Details.queryById('txtLevel').setValue("");
+                App.CodingB_Details.queryById('txtDesc').setValue("");
+            }
+
+            if (selectedd.data.fldLevelId == 2) { 
+                CboType2.hide();
+                lblType2.hide();
+                CboTypeEtebar.hide();
+                lblTypeEtebar.hide();
+                CboTypeMasraf.hide();
+                lblTypeMasraf.hide();
+                CboType.show();
+                lblType.show();
+                CboType.setValue("2");
+                CboType.setReadOnly(true);
+                txtLevel.setValue("طرح/خدمت");
+                for (var i = 0; i < trr.rows.length; i++) {
+                    trr.rows[i].classList.remove("rowheightCodingB_Details3");
+                    trr.rows[i].classList.remove("rowheightCodingB_Details4");
+                    if (i == 2 || i == 5) {
+                        trr.rows[i].classList.add("rowheightCodingB_Details2");
+                    }
+                    else {
+                        trr.rows[i].classList.add("rowheightCodingB_Details");
+                    }
+                }
+            }
+            else if (selectedd.data.fldLevelId == 3) {
+                /*پروژه*/
+                CboType.hide();
+                lblType.hide();
+                CboType2.show();
+                lblType2.show();
+                CboType2.setValue(String(selectedd.data.fldTarh_KhedmatTypeId));
+                /*if (selectedd.data.fldTarh_KhedmatTypeId == 1) {
+                    CboType2.setValue("3");
+                }
+                else {
+                    CboType2.setValue("4");
+                }*/
+                CboType2.setReadOnly(true);
+                CboTypeMasraf.show();
+                lblTypeMasraf.show();
+                CboTypeMasraf.setValue("1");
+                CboTypeEtebar.show();
+                lblTypeEtebar.show();
+                CboTypeEtebar.setValue("2");
+                txtLevel.setValue("پروژه/فعالیت");
+                for (var i = 0; i < trr.rows.length; i++) {
+                    trr.rows[i].classList.remove("rowheightCodingB_Details");
+                    trr.rows[i].classList.remove("rowheightCodingB_Details1");
+                    if (i == 2 || i == 7) {
+                        trr.rows[i].classList.add("rowheightCodingB_Details4");
+                    }
+                    else {
+                        trr.rows[i].classList.add("rowheightCodingB_Details3");
+                    }
+                }
+            }
+            /*else {
+                CboType.hide();
+                lblType.hide();
+                CboType2.hide();
+                lblType2.hide();
+                CboTypeEtebar.hide();
+                lblTypeEtebar.hide();
+                CboTypeMasraf.hide();
+                lblTypeMasraf.hide();
+            }*/
+        }
+    }
+
+    function CheckValidateCode_CodingB() {
+        var txtCode = App.CodingB_Details.queryById("txtCode");
+        var txtPCode = App.CodingB_Details.queryById('txtPCode');
+        var fldId = App.CodingB_Details.queryById('fldId');
+
+        if (validPcodeCodingB == true) {
+            Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+            Ext.net.DirectMethod.request({
+                url: '/Budget/Coding/CheckValidateCode',
+                params: {
+                    Code: txtCode.getValue(),
+                    Pcode: txtPCode.getValue(),
+                    HeaderId: '@ViewBag.HeaderId',
+                    Id: fldId.getValue()
+                },
+                success: function (data) {
+                    if (data.Valid == 1) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "کد گره فرزند تکراری است.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK,
+                            closable: false,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    txtCode.setValue("");
+                                    /*txtCode.focus();*/
+                                }
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                    else if (data.Valid == 2) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "کد گره فرزند نامعتبر است.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK,
+                            closable: false,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    txtCode.setValue("");
+                                    /*txtCode.focus();*/
+                                }
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                    else if (data.Valid == 3) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "کد گره فرزند وارد شده بیشتر از تعداد سطوح تعریف شده است.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK,
+                            closable: false,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    txtCode.setValue("");
+                                    /*txtCode.focus();*/
+                                }
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                    else {
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+    }
+
+    function CheckValidatePCode_CodingB() {
+        var txtPCode = App.CodingB_Details.queryById('txtPCode');
+        var txtCode = App.CodingB_Details.queryById("txtCode");
+        var fldCodingLevelId = App.CodingB_Details.queryById("fldCodingLevelId");
+        var txtLevel = App.CodingB_Details.queryById("txtLevel");
+        var CboType = App.CodingB_Details.queryById("CboType");
+        var CboType2 = App.CodingB_Details.queryById("CboType2");
+        var lblType = App.CodingB_Details.queryById("lblType");
+        var lblType2 = App.CodingB_Details.queryById("lblType2");
+        var CboTypeEtebar = App.CodingB_Details.queryById("CboTypeEtebar");
+        var lblTypeEtebar = App.CodingB_Details.queryById("lblTypeEtebar");
+        var CboTypeMasraf = App.CodingB_Details.queryById("CboTypeMasraf");
+        var lblTypeMasraf = App.CodingB_Details.queryById("lblTypeMasraf");
+      
+        if (App.CodingB_Details.queryById('fldId').getValue() == 0) {
+            if (txtPCode.getValue()!="") {
+                Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Budget/Coding/CheckExistPCode',
+                    params: {
+                        Pcode: txtPCode.getValue(),
+                        HeaderId: '@ViewBag.HeaderId'
+                    },
+                    success: function (data) {
+                        if (data.Valid == 0) {
+                            Ext.MessageBox.show({
+                                title: "خطا",
+                                msg: "کد گره پدر نامعتبر است.",
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK,
+                                closable: false,
+                                fn: function (btn) {
+                                    if (btn == "ok") {
+                                        validPcodeCodingB = false;
+                                        txtPCode.setValue("");
+                                        txtPCode.focus();
+                                        App.TreeCodingB.getSelectionModel().deselectAll();
+                                        App.TreeCodingB.getSelectionModel().clearSelections();
+                                    }
+                                }
+                            });
+                            Ext.net.Mask.hide(); 
+                        }
+                        else {
+                            var record = App.TreeCodingB.getRootNode().findChild("fldBudCode", txtPCode.getValue(), true);
+                            var trr = App.CodingB_Details.queryById("TreeFieldsetCodingB_Details").getTargetEl().el.child("table", true);
+                            if (record != null) {
+                                App.TreeCodingB.getSelectionModel().select(record);
+                            }
+                            Ext.net.DirectMethod.request({
+                                url: '/Budget/Coding/GetDefaultCode',
+                                params: {
+                                    Pcode: txtPCode.getValue(),
+                                    HeaderId: '@ViewBag.HeaderId'
+                                },
+                                success: function (data) {
+                                    txtCode.setValue(data.DefaultCode);
+                                    fldCodingLevelId.setValue(data.LevelId);
+                                    App.CodingB_Details.queryById('NodeLevelId').setValue(data.NodLevel);
+                                    App.CodingB_Details.queryById('ParentId').setValue(data.ParentId);
+                                    txtLevel.setValue(data.LevelName);
+                                    txtCode.focus();
+                                    validPcodeCodingB = true;
+                                    
+                                    if (data.NodLevel == 3) {
+                                        CboType2.hide();
+                                        lblType2.hide();
+                                        CboTypeMasraf.hide();
+                                        lblTypeMasraf.hide();
+                                        CboTypeEtebar.hide();
+                                        lblTypeEtebar.hide();
+                                        CboType.show();
+                                        lblType.show();
+                                        CboType.setReadOnly(true);
+                                        CboType.setValue("2");
+                                        for (var i = 0; i < trr.rows.length; i++) {
+                                            trr.rows[i].classList.remove("rowheightCodingB_Details3");
+                                            trr.rows[i].classList.remove("rowheightCodingB_Details4");
+                                            if (i == 2 || i == 5) {
+                                                trr.rows[i].classList.add("rowheightCodingB_Details2");
+                                            }
+                                            else {
+                                                trr.rows[i].classList.add("rowheightCodingB_Details");
+                                            }
+                                        }                                        
+                                        /*CboType.icon.hide();*/
+                                    }
+                                    else if (data.NodLevel == 4) {
+                                        CboType2.show();
+                                        lblType2.show();
+                                        CboType2.setReadOnly(true);
+                                        CboType2.setValue(String(data.fldTarh_KhedmatTypeId));
+                                        /*if (data.fldTarh_KhedmatTypeId == 1) {
+                                            CboType2.setValue("1");
+                                        }
+                                        else {
+                                            CboType2.setValue("4");
+                                        }*/
+                                        CboType.hide();
+                                        lblType.hide();
+                                        CboTypeMasraf.show();
+                                        lblTypeMasraf.show();
+                                        CboTypeMasraf.setValue("1");
+                                        CboTypeEtebar.show();
+                                        lblTypeEtebar.show();
+                                        CboTypeEtebar.setValue("2");
+                                        for (var i = 0; i < trr.rows.length; i++) {
+                                            trr.rows[i].classList.remove("rowheightCodingB_Details");
+                                            trr.rows[i].classList.remove("rowheightCodingB_Details1");
+                                            if (i == 2 || i == 7) {
+                                                trr.rows[i].classList.add("rowheightCodingB_Details4");
+                                            }
+                                            else {
+                                                trr.rows[i].classList.add("rowheightCodingB_Details3");
+                                            }
+                                        }                                       
+                                    }
+                                    /*else {
+                                        CboType.hide();
+                                        lblType.hide();
+                                        CboType2.hide();
+                                        lblType2.hide();
+                                        CboTypeEtebar.hide();
+                                        lblTypeEtebar.hide();
+                                        CboTypeMasraf.hide();
+                                        lblTypeMasraf.hide();
+                                    }*/
+                                    Ext.net.Mask.hide();
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "کد گره پدر را وارد کنید.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK,
+                    closable: false,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            validPcodeCodingB = false;
+                            txtPCode.setValue("");
+                            txtPCode.focus();
+                            App.TreeCodingB.getSelectionModel().deselectAll();
+                            App.TreeCodingB.getSelectionModel().clearSelections();
+                        }
+                    }
+                });
+                @*Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+                var record = App.TreeCodingB.getRootNode();
+                App.TreeCodingB.getSelectionModel().select(record);
+                Ext.net.DirectMethod.request({
+                    url: '/Budget/Coding/GetDefaultCode',
+                    params: {
+                        Pcode: txtPCode.getValue(),
+                        HeaderId: '@ViewBag.HeaderId'
+                    },
+                    success: function (data) {
+                        txtCode.setValue(data.DefaultCode);
+                        fldCodingLevelId.setValue(data.LevelId);
+                        txtLevel.setValue(data.LevelName);
+                        validPcodeCodingB = true;
+                        CboType.hide();
+                        lblType.hide();
+                        CboType2.hide();
+                        lblType2.hide();
+                        CboTypeEtebar.hide();
+                        lblTypeEtebar.hide();
+                        CboTypeMasraf.hide();
+                        lblTypeMasraf.hide();
+                        Ext.net.Mask.hide();
+                    }
+                });*@
+            }
+        }
+        else {
+            validPcodeCodingB = true;
+        }
+    }
+
+    function SaveCodingB_Details() {
+        var SelectedNode;
+        var ParentNode;
+        if (App.TreeCodingB.getSelectionModel().getLastSelected() != undefined) {
+            SelectedNode = App.TreeCodingB.getSelectionModel().getLastSelected();
+            ParentNode = App.TreeCodingB.getSelectionModel().getLastSelected().parentNode;
+        }
+
+        var Id = App.CodingB_Details.queryById('fldId');
+        var ParentId = App.CodingB_Details.queryById('ParentId');
+        var fldCodingLevelId = App.CodingB_Details.queryById('fldCodingLevelId');
+        var txtPCode = App.CodingB_Details.queryById("txtPCode");
+        var txtCode = App.CodingB_Details.queryById("txtCode");
+        var txtItemName = App.CodingB_Details.queryById('txtItemName');
+        var txtLevel = App.CodingB_Details.queryById('txtLevel');
+        var txtDesc = App.CodingB_Details.queryById('txtDesc');
+        var CboType = App.CodingB_Details.queryById('CboType');
+        var CboType2 = App.CodingB_Details.queryById('CboType2');
+        var NodeLevelId = App.CodingB_Details.queryById('NodeLevelId');
+        var CboTypeEtebar = App.CodingB_Details.queryById("CboTypeEtebar");
+        var CboTypeMasraf = App.CodingB_Details.queryById("CboTypeMasraf");
+        var Khedmat_Tarh=null;
+        var EtebarType = null;
+        var MasrafType = null;
+        var er = false;
+
+        if (txtCode.validate() == false) {
+            er = true;
+        }
+        if (txtItemName.validate() == false) {
+            er = true;
+        }
+        if (txtLevel.validate() == false) {
+            er = true;
+        }       
+        if (NodeLevelId.getValue() == 3) {/*طرح یا خدمت*/
+            if (CboType.validate() == false) {
+                er = true;
+            }
+            else{
+                Khedmat_Tarh=CboType.getValue();
+            }
+        }
+        if (NodeLevelId.getValue() == 4) {/*پروژه یا فعالیت*/
+            if (CboType2.validate() == false) {
+                er = true;
+            }
+            else {
+                Khedmat_Tarh = CboType2.getValue();
+            }
+            if (CboTypeEtebar.validate() == false) {
+                er = true;
+            }
+            else {
+                EtebarType = CboTypeEtebar.getValue();
+            }
+            if (CboTypeMasraf.validate() == false) {
+                er = true;
+            }
+            else {
+                MasrafType = CboTypeMasraf.getValue();
+            }
+        }
+        /*if (NodeLevelId.getValue() == 3 || NodeLevelId.getValue() ==4) {
+            if (CboTypeMasraf.validate() == false) {
+                er = true;
+            }
+            else {
+                MasrafType = CboTypeMasraf.getValue();
+            }
+        }*/
+
+        if (er == true)
+            return;
+        /*var PID = null;
+        if (txtPCode.getValue() != "") {*/
+        var PID = ParentId.getValue();/* App.TreeCodingB.getSelectionModel().getLastSelected().data.id;چون ممکنه درخت رو باز نکنه و کد پدر رو دستی واردد کنه بدون انتخاب کردن گرهی از درخت*/
+        /*}*/
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Budget/Coding/SaveCoding_Details',
+            datatype: "json",
+            data: JSON.stringify({
+                fldId: Id.getValue(),
+                fldHeaderId: '@ViewBag.HeaderId',
+                PID: PID,
+                fldTitle: txtItemName.getValue(),
+                fldPcode: txtPCode.getValue(),
+                fldCode: txtCode.getValue(),
+                fldCodeingLevelId: fldCodingLevelId.getValue(),
+                fldTarh_KhedmatTypeId: Khedmat_Tarh,
+                fldEtebarTypeId:EtebarType,
+                fldMasrafTypeId:MasrafType,
+                fldDesc: txtDesc.getValue()
+            }),
+            contentType: 'application/json',
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    closable: false,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            if (data.Er != 1) {
+                                if (Id.getValue() == 0) {
+                                    SelectedNode.reload();
+                                    ClearCodingB_Details();
+                                }
+                                else {
+                                    ParentNode.reload();
+                                    ClearCodingB_Details();
+                                }
+                            }
+                        }
+                    }
+                });
+                Ext.net.Mask.hide();
+                if (data.Er != 1) {
+                    if (Id.getValue() == 0) {/*insert*/
+                        SelectedNode.collapse();
+                    }
+                    else {/*edit*/
+                        ParentNode.collapse();
+                    }
+                    if (App.budgeProject != undefined) {
+                        App.budgeProject.queryById('budgeProjectGrid').store.load();
+                    }
+                }
+            },
+            failure: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function ClearCodingB_Details() {
+        App.CodingB_Details.queryById('fldId').setValue(0); 
+        App.CodingB_Details.queryById('fldCodingLevelId').setValue(0);
+        App.CodingB_Details.queryById('NodeLevelId').setValue(0);
+        App.CodingB_Details.queryById('ParentId').setValue(0);
+        App.CodingB_Details.queryById("txtPCode").enable();
+        /*App.CodingB_Details.queryById("txtPCode").setValue("");*/
+        App.CodingB_Details.queryById("txtCode").setValue("");
+        App.CodingB_Details.queryById('txtItemName').setValue("");
+        App.CodingB_Details.queryById('txtLevel').setValue("");
+        App.CodingB_Details.queryById('txtDesc').setValue("");
+        /*FirstEditModeKhedmat = false;*/     
+        /*App.TreeCodingB.getSelectionModel().deselectAll();
+        App.TreeCodingB.getSelectionModel().clearSelections();*/
+    }
+
+    function EditNodeTreeCodingB(SelectedNode) {
+
+        /*var SelectedNode = App.TreeCodingB.getSelectionModel().getLastSelected();*/
+        Ext.net.DirectMethod.request({
+            url: '/Budget/Coding/DetailsNode',
+            params: {
+                Id: SelectedNode.data.id
+            },
+            success: function (data) {
+                /*FirstEditModeKhedmat = false;*/
+                App.CodingB_Details.queryById('fldId').setValue(SelectedNode.data.id);
+                App.CodingB_Details.queryById('fldCodingLevelId').setValue(data.fldCodeingLevelId);
+                App.CodingB_Details.queryById('NodeLevelId').setValue(data.fldLevelId);
+                App.CodingB_Details.queryById('txtDesc').setValue(data.fldDesc);
+                App.CodingB_Details.queryById("txtPCode").setValue(data.fldPcode);
+                App.CodingB_Details.queryById("txtPCode").disable();
+                App.CodingB_Details.queryById("txtCode").setValue(data.fldBudCode);             
+                App.CodingB_Details.queryById('txtItemName').setValue(data.fldTitle);
+                App.CodingB_Details.queryById('txtLevel').setValue(data.fldNameLevel); 
+          
+                var CboType = App.CodingB_Details.queryById("CboType");
+                var CboType2 = App.CodingB_Details.queryById("CboType2");
+                var lblType = App.CodingB_Details.queryById("lblType");
+                var lblType2 = App.CodingB_Details.queryById("lblType2");
+                var CboTypeEtebar = App.CodingB_Details.queryById("CboTypeEtebar");
+                var lblTypeEtebar = App.CodingB_Details.queryById("lblTypeEtebar");
+                var CboTypeMasraf = App.CodingB_Details.queryById("CboTypeMasraf");
+                var lblTypeMasraf = App.CodingB_Details.queryById("lblTypeMasraf");
+                var trr = App.CodingB_Details.queryById("TreeFieldsetCodingB_Details").getTargetEl().el.child("table", true);
+
+                if (data.fldLevelId == 3) {/*طرح یا خدمت*/
+                    CboType2.hide();
+                    lblType2.hide();
+                    CboTypeEtebar.hide();
+                    lblTypeEtebar.hide();
+                    CboTypeMasraf.hide();
+                    lblTypeMasraf.hide();
+                    CboType.show();
+                    lblType.show();
+                    CboType.setValue(data.fldTarh_KhedmatTypeId).setReadOnly(true);
+                    for (var i = 0; i < trr.rows.length; i++) {
+                        trr.rows[i].classList.remove("rowheightCodingB_Details3");
+                        trr.rows[i].classList.remove("rowheightCodingB_Details4");
+                        if (i == 2 || i == 5) {
+                            trr.rows[i].classList.add("rowheightCodingB_Details2");
+                        }
+                        else {
+                            trr.rows[i].classList.add("rowheightCodingB_Details");
+                        }
+                    }
+                    /*CboType.icon.hide();
+                    CboTypeMasraf.show();
+                    lblTypeMasraf.show();
+                    CboTypeMasraf.setValue(data.fldMasrafTypeId);*/
+                }
+                else if (data.fldLevelId == 4) {
+                    CboType.hide();
+                    lblType.hide();
+                    CboType2.show();
+                    lblType2.show();
+                    CboType2.setValue(data.fldTarh_KhedmatTypeId).setReadOnly(true);
+                    /*CboType.icon.hide();*/
+                    CboTypeMasraf.show();
+                    lblTypeMasraf.show();
+                    CboTypeMasraf.setValue(data.fldMasrafTypeId);
+                    CboTypeEtebar.show();
+                    lblTypeEtebar.show();
+                    CboTypeEtebar.setValue(data.fldEtebarTypeId);
+                    for (var i = 0; i < trr.rows.length; i++) {
+                        trr.rows[i].classList.remove("rowheightCodingB_Details");
+                        trr.rows[i].classList.remove("rowheightCodingB_Details1");
+                        if (i == 2 || i == 7) {
+                            trr.rows[i].classList.add("rowheightCodingB_Details4");
+                        }
+                        else {
+                            trr.rows[i].classList.add("rowheightCodingB_Details3");
+                        }
+                    }
+                }
+                /*else {
+                    CboType.hide();
+                    lblType.hide();
+                    CboType.setValue("1");
+                    CboType2.hide();
+                    lblType2.hide();
+                    CboType2.setValue("3");
+                    CboTypeEtebar.hide();
+                    lblTypeEtebar.hide();
+                    CboTypeEtebar.setValue("1");
+                    CboTypeMasraf.hide();
+                    lblTypeMasraf.hide();
+                    CboTypeMasraf.setValue("1");
+                }*/          
+            }
+        });
+    }
+
+    function DeleteNodeTreeCodingB(SelectedNode) {
+        /*var SelectedNode = App.TreeCodingB.getSelectionModel().getLastSelected();*/
+        var ParentNode = SelectedNode.parentNode;
+        if (SelectedNode != null) {
+            /*if (SelectedNode.data.id != 0 ) {*/
+            if ((SelectedNode.data.cls == 0 && SelectedNode.data.fldLevelId == 4)
+                || (SelectedNode.data.cls == 0 && SelectedNode.data.fldLevelId == 3 && SelectedNode.data.fldTarh_KhedmatTypeId == 2)) {
+                    Ext.MessageBox.show({
+                        title: "هشدار",
+                        msg: "آیا برای حذف مطمئن هستید؟",
+                        icon: Ext.MessageBox.WARNING,
+                        buttons: Ext.MessageBox.YESNO,
+                        fn: function (btn) {
+                            if (btn == 'yes') {
+                                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                Ext.net.DirectMethod.request({
+                                    url: '/Budget/Coding/DeleteNode',
+                                    params: {
+                                        Id: SelectedNode.data.id
+                                    },
+                                    success: function (data) {
+                                        App.CodingB_Details.queryById("txtPCode").setValue("");
+                                        var ic = Ext.MessageBox.INFO;
+                                        if (data.Er == 1) {
+                                            ic = Ext.MessageBox.ERROR;
+                                        }
+                                        Ext.MessageBox.show({
+                                            title: data.MsgTitle,
+                                            msg: data.Msg,
+                                            icon: ic,
+                                            buttons: Ext.MessageBox.OK,
+                                            closable: false,
+                                            fn: function (btn) {
+                                                if (btn == "ok") {
+                                                    if (data.Er != 1) {
+                                                        ParentNode.reload();
+                                                    }
+                                                }
+                                            }
+                                        });
+                                        if (data.Er != 1) {
+                                            ParentNode.collapse();
+                                            if (App.budgeProject != undefined) {
+                                                App.budgeProject.queryById('budgeProjectGrid').store.load();
+                                            }
+                                        }
+                                        Ext.net.Mask.hide();
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا ابتدا زیرشاخه های مربوطه را پاک نموده و سپس اقدام به حذف شاخه مورد نظر نمایید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+           /* }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "امکان حذف گره مورد نظر وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }*/
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر (گره) را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    var addKeyMapCodingB_Details = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var nextfld;
+                    var keyfield = App.CodingB_Details.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    if (keyfield.itemId == "txtItemName") {
+                        if (App.CodingB_Details.queryById("CboType").isHidden()) {
+                            nextfld = App.CodingB_Details.queryById("CboTypeEtebar");
+                        }
+                        else {
+                            if (App.CodingB_Details.queryById("CboType").readOnly == true) {
+                                nextfld = App.CodingB_Details.queryById("txtDesc");
+                            }
+                            else {
+                                nextfld = App.CodingB_Details.queryById("CboType");
+                            }
+                        }
+                    }
+                    else if (keyfield.itemId == "CboType") {
+                        nextfld = App.CodingB_Details.queryById("txtDesc");
+                    }
+                    else if (keyfield.itemId == "txtDesc") {
+                        SaveCodingB_Details();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+
+</script>

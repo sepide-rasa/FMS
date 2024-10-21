@@ -1,0 +1,127 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+
+@(Html.X().Window()
+    .Width(240)
+    .Modal(true)
+    .ID("SelectTemplate_Bud")
+    .Title("انتخاب الگو")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l => l.Render.Fn = "addKeyMapSelectTemplate_Bud")
+    .Resizable(false)
+    .Border(false)
+    .ButtonAlign(Alignment.Center)
+    .Layout(LayoutType.VBox)
+    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+    .Buttons(
+        X.Button()
+            .Text("کپی")
+            .Icon(Icon.PageCopy)
+            .Listeners(l => l.Click.Handler = "SaveDefaultCoding_B()"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Icon.DoorOut)
+            .OnClientClick("App.SelectTemplate_Bud.destroy()")
+    )
+    .Items(
+        X.FieldSet()
+            .Border(true)
+            .Title("انتخاب الگو")
+            .Layout(LayoutType.Table)
+            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+            .Defaults(new { Margin = 2 })
+            .Items( 
+                X.Label("الگو:"),
+                X.ComboBox()
+                    .ItemID("CboTemplateName")
+                    .DisplayField("fldName")
+                    .ValueField("fldId")
+                    .TypeAhead(true)
+                    .Editable(false)
+                    .AllowBlank(false)
+                    .BlankText("لطفا الگو را انتخاب کنید.")
+                    .QueryMode(DataLoadMode.Local)
+                    .ForceSelection(true)
+                    .TriggerAction(TriggerAction.All)
+                    .Listeners(l => l.AfterRender.Handler = "App.SelectTemplate_Bud.queryById('CboTemplateName').validate();")
+                    .Store(X.Store()
+                        .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                            )
+                        )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetTemplate"))
+                            .Reader(X.JsonReader().Root("data"))
+                        )
+                    )
+            )
+        )
+)
+<script type="text/javascript">
+    function SaveDefaultCoding_B() {
+        var CboTemplateName = App.SelectTemplate_Bud.queryById('CboTemplateName');
+        var er = false;
+
+        if (CboTemplateName.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال کپی الگو...' });
+        Ext.net.DirectMethod.request({
+            url: '/Budget/Coding/CopyTemplate',
+            params: {
+                HeaderId:'@ViewBag.HeaderId',
+                TemplateNameId: CboTemplateName.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    var addKeyMapSelectTemplate_Bud = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SelectTemplate_Bud.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "CboTemplateName") {
+                        SaveDefaultCoding_B();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>
+

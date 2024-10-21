@@ -1,0 +1,319 @@
+﻿@model IEnumerable<NewFMS.WCF_Deceased.OBJ_Actions>
+@using Ext.Net.MVC;
+@{
+
+    var X = Html.X();
+}
+@(Html.X().Window().Modal(true)
+    .Listeners(l => l.AfterRender.Handler = "LoadRequest()")
+            .Width(700).Height(300)
+            .Title("درخواست رزرو")
+                .ID("NewStep")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+
+        .ButtonAlign(Ext.Net.Alignment.Center)
+        .Buttons(
+            X.Button()
+                .Text("مرحله بعد").ItemID("btnSend")
+                .Icon(Ext.Net.Icon.ArrowLeft)
+                        .Listeners(l => l.Click.Handler = "SaveNewStep();"),
+                X.Button()
+                    .Text("اتمام کار").ItemID("btnEtmam")
+                    .Icon(Ext.Net.Icon.Accept)
+                            .Listeners(l => l.Click.Handler = "EndStep();"),
+                    X.Button()
+                        .Text("ابطال درخواست").ItemID("btnEbtal")
+                        .Icon(Ext.Net.Icon.Delete)
+                                .Listeners(l => l.Click.Handler = "EbtalReq();"),
+            X.Button()
+                .Text("خروج")
+                .Icon(Ext.Net.Icon.DoorOut)
+                .ToolTip("کلید میانبر Esc")
+                    .OnClientClick("App.NewStep.destroy();")
+        )
+            .Items(
+                X.Panel().Border(false)
+                    .Border(false).Defaults(new { Margin =10 })
+                .AutoScroll(true)
+                .Items(
+                     X.FieldSet().Border(true).Title("اطلاعات شخص").Height(80)
+                         .Defaults(new { Margin = 2 })
+                            .Layout(Ext.Net.LayoutType.Table)
+                        .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 8 })
+                        .Items(
+                            X.Label("تاریخ درخواست:"),
+                                  X.Label().ItemID("tarikh"),X.Label().ColSpan(7),
+                                X.Label("نام شخص:").PaddingSpec("0 0 0 40px"),
+                                  X.Label().ItemID("nameper"),
+                                X.Label("نام پدر:").PaddingSpec("0 0 0 40px"),
+                                      X.Label().ItemID("Father"),
+                                X.Label("کدملی:").PaddingSpec("0 0 0 40px"),
+                                  X.Label().ItemID("melicode"),
+                                X.Label("شناسنامه:").PaddingSpec("0 0 0 40px"),
+                                    X.Label().ItemID("shenasname"),
+                                X.Label("آرامستان:").PaddingSpec("0 0 0 40px"),
+                                  X.Label().ItemID("vadisalam"),
+                                 X.Label("قطعه:").PaddingSpec("0 0 0 40px"),
+                                      X.Label().ItemID("ghete"),
+                                X.Label("ردیف:").PaddingSpec("0 0 0 40px"),
+                                      X.Label().ItemID("radif"),
+                                X.Label("شماره:").PaddingSpec("0 0 0 40px"),
+                                  X.Label().ItemID("shomare")
+                    )
+                        ,
+                                 X.FieldSet().Border(true).Title("").ItemID("flset2").Height(120).Listeners(l => l.AfterRender.Handler = "LoadForm()")
+                             .Defaults(new { Margin = 2 })
+                                .Layout(Ext.Net.LayoutType.Table)
+                            .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                            .Items(
+                         X.Label("اقدام:"),
+                            X.ComboBox()
+                                .ItemID("CboAction")
+                                .TypeAhead(true)
+                                .Editable(true)
+                                    .QueryMode(Ext.Net.DataLoadMode.Local)
+                                .BlankText("لطفا اقدام مورد نظر را انتخاب کنید.")
+                                .AllowBlank(false)
+                                .ForceSelection(true)
+                                    .TriggerAction(Ext.Net.TriggerAction.All)
+                                    .DisplayField("fldTitle")
+                                .ValueField("fldId")
+                                .EmptyText(" ...")
+                                .Listeners(l=>l.Change.Handler="CheckNext()")
+                                    .Store(
+                                        X.Store()
+        //   .AutoLoad(false)
+                                            .Listeners(l => l.Load.Handler = "SetDefaultCboAction()")
+                                            .Model(
+                                                X.Model()
+                                                    .IDProperty("fldId")
+                                                    .Fields(
+                                                            new Ext.Net.ModelField("fldId", Ext.Net.ModelFieldType.String) { Mapping = "fldId" },
+                                                            new Ext.Net.ModelField("fldTitle", Ext.Net.ModelFieldType.String) { Mapping = "fldTitle" }
+                                                    )
+                                            )
+                                            .Proxy(
+                                                X.AjaxProxy()
+                                                        .Url(Url.Action("GetAction"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                            )
+                                                                .Parameters(ps => ps.Add(new Ext.Net.StoreParameter("kartablId", @ViewBag.kartablId, Ext.Net.ParameterMode.Raw)))
+                                    )
+                                    ,
+                                              X.Label("توضیحات:"),
+                                              X.TextArea().Width(570).ItemID("txtDesc")
+                                )
+
+            )
+        )
+)
+<script type="text/javascript">
+    function LoadForm() {
+        var k = "کارتابل " + '@ViewBag.KartablTitle';
+        App.NewStep.queryById("flset2").setTitle(k);
+        var btnEtmam = App.NewStep.queryById('btnEtmam');
+        var btnEbtal = App.NewStep.queryById('btnEbtal');
+        
+        if('@ViewBag.HaveEtmam'=='False')
+            btnEtmam.hide();
+        if ('@ViewBag.HaveEbtal' == 'False')
+            btnEbtal.hide();
+
+    }
+    function SetDefaultCboAction() {
+        App.NewStep.queryById("CboAction").select(App.NewStep.queryById("CboAction").store.getAt(0));
+    }
+    function SaveNewStep() {
+        var CboAction = App.NewStep.queryById('CboAction');
+        var txtDesc = App.NewStep.queryById('txtDesc');
+        var er = false;
+
+        if (CboAction.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        App.NewStep.body.mask("در حال ذخیره سازی");
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/ReceivedRequests/SaveStep',
+            params: {
+                fldActionId: CboAction.getValue(),
+                fldKartablId: '@ViewBag.kartablId',
+                fldRequestId: '@ViewBag.RequestId',
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                App.NewStep.body.mask().hide();
+
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == 'ok') {
+                            App.ReceivedRequests.queryById('GridReceivedRequests').store.load();
+                            App.NewStep.destroy();
+                        }
+                    }
+                });
+            }
+        });
+    }
+    function LoadRequest() {
+            App.NewStep.body.mask("در حال بارگذاری...");
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/ReceivedRequests/Details',
+                params: {
+                    RequestId: '@ViewBag.RequestId'
+            },
+            success: function (data) {
+
+                var tarikh = App.NewStep.queryById('tarikh');
+                tarikh.setText(data.fldTarikhRequest);
+
+                var nameper = App.NewStep.queryById('nameper');
+                nameper.setText(data.fldName);
+
+                var Father = App.NewStep.queryById('Father');
+                Father.setText(data.fldFatherName);
+
+                var melicode = App.NewStep.queryById('melicode');
+                melicode.setText(data.fldMeli_Moshakhase);
+
+                var shenasname = App.NewStep.queryById('shenasname');
+                shenasname.setText(data.fldSh_Shenasname);
+
+                var vadisalam = App.NewStep.queryById('vadisalam');
+                vadisalam.setText(data.fldNameVadiSalam);
+
+                var ghete = App.NewStep.queryById('ghete');
+                ghete.setText(data.fldNameGhete);
+
+                var radif = App.NewStep.queryById('radif');
+                radif.setText(data.fldNameRadif);
+
+                var shomare = App.NewStep.queryById('shomare');
+                shomare.setText(data.fldShomare);
+
+                App.NewStep.body.mask().hide();
+            }
+        });
+    }
+    function CheckNext() {
+        var CboAction = App.NewStep.queryById('CboAction');
+        var btnSend = App.NewStep.queryById('btnSend');
+
+        if (CboAction.getValue() != null && CboAction.getValue() != "") {
+            App.NewStep.body.mask("در حال بارگذاری...");
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/ReceivedRequests/NextKartabl',
+                params: {
+                    ActionId: CboAction.getValue()
+                },
+                success: function (data) {
+                    if(data.NameKartabl!=""){
+                        btnSend.setDisabled(false);
+                        btnSend.setText("کارتابل "+data.NameKartabl);
+                    }
+                    else
+                        btnSend.setDisabled(true);
+                    App.NewStep.body.mask().hide();
+                }
+            });
+        }
+    }
+    function EndStep() {
+        var txtDesc = App.NewStep.queryById('txtDesc');
+       
+        
+        Ext.MessageBox.show({
+            title: "هشدار",
+            msg: "آیا برای اتمام کار و امانت قبر، مطمئن هستید؟",
+            icon: Ext.MessageBox.WARNING,
+            buttons: Ext.MessageBox.YESNO,
+            fn: function (btn) {
+                if (btn == 'yes') {
+
+        App.NewStep.body.mask("در حال ذخیره سازی");
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/ReceivedRequests/EndStep',
+            params: {
+                RequestId: '@ViewBag.RequestId',
+               Desc: txtDesc.getValue()
+            },
+            success: function (data) {
+                App.NewStep.body.mask().hide();
+
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == 'ok') {
+                            App.ReceivedRequests.queryById('GridReceivedRequests').store.load();
+                            App.NewStep.destroy();
+                        }
+                    }
+                });
+            }
+        });
+                }
+            }
+        });
+    }
+
+    function EbtalReq() {
+        Ext.MessageBox.show({
+            title: "هشدار",
+            msg: "آیا برای ایطال درخواست مطمئن هستید؟",
+            icon: Ext.MessageBox.WARNING,
+            buttons: Ext.MessageBox.YESNO,
+            fn: function (btn) {
+                if (btn == 'yes') {
+
+                    App.NewStep.body.mask("در حال ذخیره سازی");
+                    Ext.net.DirectMethod.request({
+                        url: '/Deceased/ReceivedRequests/EbtalReq',
+                        params: {
+                            RequestId: '@ViewBag.RequestId'
+                        },
+                        success: function (data) {
+                            App.NewStep.body.mask().hide();
+
+                            var ic = Ext.MessageBox.INFO;
+                            if (data.Er == 1) {
+                                ic = Ext.MessageBox.ERROR;
+                            }
+                            Ext.MessageBox.show({
+                                title: data.MsgTitle,
+                                msg: data.Msg,
+                                icon: ic,
+                                buttons: Ext.MessageBox.OK,
+                                fn: function (btn) {
+                                    if (btn == 'ok') {
+                                        App.ReceivedRequests.queryById('GridReceivedRequests').store.load();
+                                        App.NewStep.destroy();
+                                    }
+                                }
+                            });
+                        }
+                    });
+
+                }
+            }
+        });
+    }
+
+</script>

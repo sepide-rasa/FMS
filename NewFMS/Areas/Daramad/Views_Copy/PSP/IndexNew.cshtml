@@ -1,0 +1,429 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_Psp>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+@*<style>
+        #test legend{
+            text-align:right!important;
+        }
+    </style>*@
+<br />
+@(Html.X().Panel()
+        .ID("SabtPSP")
+        .Title("ثبت شركت هاي ارائه دهنده خدمات پرداخت(PSP)")
+                            .Listeners(li => { li.AfterRender.Handler = "SabtPSPSetSize();"; li.Render.Fn = "addKeyMapSabtPSP"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+            X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l => { l.Click.Handler = "SavePSP();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadPSP();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeletePSP();"; })
+            , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+            .Listeners(l => { l.Click.Handler = "HelpPSP();"; })
+
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.SabtPSP.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.FormPanel().Border(false)
+                 .Layout(LayoutType.VBox)
+                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                        X.FieldSet().Border(false)
+
+                    .Items(
+                        X.FieldSet().Border(true).Title("نام شرکت")
+                         .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .Items(
+                                    X.FieldSet().Border(false)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                        X.Label("نام شرکت:"),
+                       X.TextField()
+                        .ItemID("txtPSPName")
+                            .MaxLength(100)
+                        .EnforceMaxLength(true)
+              .Width(200)
+                    .AllowBlank(false)
+                    .BlankText("لطفا نام شرکت را وارد کنید.")
+                    .AutoFocus(true)
+                    
+                    , X.Label("توضیحات:"),
+                        X.TextField()
+                    .ItemID("txtDesc")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(378)
+                    .ColSpan(4)
+                    )
+                    )
+                            , X.FieldSet().Border(true).Title("لوگو شرکت").Height(115)
+                        .Defaults(new { Margin = 2 })
+                        .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                    .Items(
+                                 X.FieldSet().Border(false).ColSpan(2).Height(80).Width(300)
+        // .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                                            .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Right })
+                                .Defaults(new { Margin = 3 })
+                            .Items(
+                             X.FileUploadField()
+                            .ItemID("FileUploadField1")
+                                .ButtonOnly(true).ButtonText("انتخاب عکس(حداکثر 100 کیلوبایت)")
+                            .DirectEvents(l =>
+                                    {
+                                        l.Change.Action = "Upload";
+                                        l.Change.Success = "hideprogressB();";
+                                    }
+                                )
+                            .Listeners(l => l.Change.Fn = "showFileB")
+                                    .Icon(Ext.Net.Icon.DiskUpload)
+                                          , X.Button().Text("حذف عکس").Listeners(l => l.Click.Handler = "DeleteFileB()").Icon(Ext.Net.Icon.Delete)
+                                  , X.Container().Content(@<div id="fi-button-msg" style="display:none;width:195px;"></div>)//.ColSpan(3)
+
+                            //, X.Button()
+                            //.ID("ShowButton")
+                            //.Text("دانلود عکس")
+                            //.Listeners
+                            //(l =>
+                            //    {
+        //        l.Click.Handler = "Download();";
+                            //    }
+                            //)
+
+                            //, X.Label()
+                            //    .Text("حداکثر حجم مجاز برای بارگذاری 100 کیلوبایت می باشد.")
+                            )
+                                 ,
+                                      X.FieldSet().Border(false).ColSpan(2)
+                               // .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                                            .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                                .Defaults(new { Margin = 3 })
+                            .Items(X.Image().ItemID("Image").ImageUrl("~/Content/BlankB.jpg").Width(80).Height(90).Border(true))
+                            )
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("PSPGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                            .Listeners(l => l.DataChanged.Handler = "App.SabtPSP.queryById('PSPGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtPSP.queryById('PSPGrid');grid.setHeight(App.DaramadWin.getHeight() - 400); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("نام شرکت").Flex(4),
+                            Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    var IsDel = 0;
+    var ImageId = 0;
+
+   /* App.DaramadWin.addListener('resize', function () {
+        App.PSP.setWidth(App.DaramadWin.getWidth());
+    });
+    App.DaramadWin.addListener('resize', function () {
+        var grid = App.PSP.queryById('PSPGrid');
+        grid.setHeight(App.DaramadWin.getHeight()-405);
+    });*/
+
+    function SabtPSPSetSize() {
+        App.SabtPSP.setWidth(App.DaramadWin.getWidth());
+        var grid = App.SabtPSP.queryById('PSPGrid');
+        grid.setHeight(App.DaramadWin.getHeight() - 400);
+
+        
+    }
+
+
+    var MojazB = 0;
+    var sizeeB = 0;
+    var EndUploadB = false;
+
+    var CheckB = setInterval(CheckEndB, 500);
+
+    function CheckEndB() {
+        if (EndUploadB == true) {
+            Ext.net.DirectMethod.request({
+                url: ' /Daramad/PSP/ShowPicUpload',
+                success: function (data) {
+                    value = "data:image/gif;base64," + data.image;
+                    App.SabtPSP.queryById('Image').setImageUrl(value);
+                    Ext.MessageBox.hide();
+                    Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+                    clearInterval(CheckEndB);
+                    EndUploadB = false;
+                }
+            });
+
+
+        }
+    }
+    var showFileB = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msg');
+        if (v) {
+            showProgressBarB();
+            if (v.split('.').pop().toLowerCase() == "jpg" || v.split('.').pop().toLowerCase() == "png") {
+                MojazB = 1;
+                if (document.getElementById(id).files[0].size <= 102400) {
+                    sizeeB = 1;
+                }
+                if (sizeeB == 1) {
+                    el.update('<b>فایل انتخاب شده:</b> ' + v);
+                    IsDel = 0;
+                }
+                else {
+                    el.update('<b>فایل انتخاب شده:</b> ');
+                }
+
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                } else {
+                    el.highlight();
+                }
+            }
+            else {
+                el.update('<b>فایل انتخاب شده:</b> ');
+            }
+        }
+    };
+    function HelpPSP() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/PSP/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function hideprogressB() {
+        if (MojazB == 1 && sizeeB == 1) {
+            EndUploadB = true;
+        }
+        MojazB = 0;
+        sizeeB = 0;
+    }
+
+    function showProgressBarB() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+    function DeleteFileB() {
+        App.SabtPSP.queryById('Image').setImageUrl("/Content/Blank.jpg");
+        Ext.get('fi-button-msg').update('');
+        IsDel = 1;
+       /* Ext.net.DirectMethod.request({
+            url: ' /Daramad/PSP/DeleteFile',
+            success: function (data) {
+            }
+        });*/
+
+    }
+    function LoadPSP() {
+        var SelectedRow = App.SabtPSP.queryById('PSPGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: ' /Daramad/PSP/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtPSPName = App.SabtPSP.queryById('txtPSPName');
+                    txtPSPName.setValue(data.fldTitle);
+                  
+                    var txtDesc = App.SabtPSP.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+
+                    var fldId = App.SabtPSP.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    ImageId = data.fldFileId;
+
+                    var fldfile = "data:image/gif;base64," + data.fldImage;
+                    App.SabtPSP.queryById('Image').setImageUrl(fldfile);
+
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SavePSP() {
+        var txtPSPName = App.SabtPSP.queryById('txtPSPName');
+        var txtDesc = App.SabtPSP.queryById('txtDesc');
+        var fldId = App.SabtPSP.queryById('fldId');
+        var er = false;
+
+            if (txtPSPName.validate() == false) {
+                er = true;
+            }
+
+            if (er == true)
+                return;
+
+           
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            Ext.net.DirectMethod.request({
+                url: ' /Daramad/PSP/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldTitle: txtPSPName.getValue(),
+                    fldFileId: ImageId,
+                    fldDesc: txtDesc.getValue(),
+                    IsDel: IsDel
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtPSP.queryById('PSPGrid').store.load();
+                    if (data.Err != 1)
+                        ClearPSP();
+                }
+
+            });
+    }
+    function DeletePSP() {
+        var SelectedRow = App.SabtPSP.queryById('PSPGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: ' /Daramad/PSP/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtPSP.queryById('PSPGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearPSP() {
+        App.SabtPSP.queryById('fldId').setValue(0);
+        App.SabtPSP.queryById('txtPSPName').setValue("");
+        App.SabtPSP.queryById('txtDesc').setValue("");
+        App.SabtPSP.queryById('Image').setImageUrl("/Content/BlankB.jpg");
+        Ext.get('fi-button-msg').update('<b>فایل انتخاب شده:</b> ');
+    }
+    var addKeyMapSabtPSP = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtPSP.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtPSP.queryById('FileUploadField1');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

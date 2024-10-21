@@ -1,0 +1,182 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_ChartOrgan>
+@using Ext.Net.MVC;
+@{
+
+    var X = Html.X();
+}
+<script>
+    var filterTree = function (tf, e) {
+        var tree = this.up("treepanel"),
+            text = tf.getRawValue();
+
+        tree.clearFilter();
+
+        if (Ext.isEmpty(text, false)) {
+            return;
+        }
+
+        if (e.getKey() === Ext.EventObject.ESC) {
+            clearFilter();
+        } else {
+            var re = new RegExp(".*" + text + ".*", "i");
+
+            tree.filterBy(function (node) {
+                return re.test(node.data.text);
+            });
+        }
+    };
+
+    var clearFilter = function () {
+        var field = this,
+            tree = this.up("treepanel");
+
+        field.setValue("");
+        tree.clearFilter(true);
+        tree.getView().focus();
+    };
+    var NewChart = function () {
+       
+        Ext.net.DirectMethod.request({
+            url: '/Comon/ChartOrgan/Index',
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    };
+</script>
+
+@(Html.X().Window().Modal(true)
+            .Width(310).Height(460)
+            .Title("چارت سازمانی")
+                .ID("SearchOrganization")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Items(
+                 X.Panel().Border(false)
+                        .Items(
+                                X.TreePanel()
+                                .ID("Tree_ChartOrgan")
+                                        .AutoScroll(true)
+                                        .Width(300)
+                                        .ColSpan(2)
+                                        .Height(450)
+                                        .UseArrows(true)
+                                        .Border(false)
+                     .TopBarItem(
+                    Html.X().ToolbarTextItem().Text("جستجو:"),
+                    Html.X().ToolbarSpacer(),
+                    Html.X().TriggerField()
+                        .EnableKeyEvents(true)
+                        .Triggers(
+                            Html.X().FieldTrigger().Icon(Ext.Net.TriggerIcon.Clear)
+                        )
+                        .Listeners(l =>
+                        {
+                            l.KeyUp.Fn = "filterTree";
+                            l.KeyUp.Buffer = 250;
+
+                            l.TriggerClick.Fn = "clearFilter";
+                        }), Html.X().ToolbarSpacer(),
+                        Html.X().Button().Text("جدید")
+                        .Icon(Ext.Net.Icon.Add)
+                        .Listeners(k => {
+                            k.Click.Fn = "NewChart";
+                        })
+                )
+                                            .Store(
+                        Html.X().TreeStore()
+                            .Proxy(
+                                        Html.X().AjaxProxy().Url(Url.Action("Node"))
+                            )
+                    )
+
+                                        .Listeners(a =>
+                                        {
+                                            //a.ItemDblClick.Handler = "NextSearchOrganization()";
+                                            a.ItemDblClick.Handler = "GetId(record)";
+                                            a.AfterRender.Handler = "this.getRootNode().expand(true);";
+                                        })
+                           .Root(Html.X().Node().NodeID("0").Text(" سازمانها"))
+                          .Listeners(l =>
+                          {
+                              l.BeforeLoad.Fn = "nodeLoadChartOrgan";
+                          })
+                          .Expand(true)
+                                        .View(
+                                        X.TreeView()
+                                        .Plugins(
+                                        X.TreeViewDragDrop().AppendOnly(true).ContainerScroll(true)
+
+                                    )
+                            )
+
+                    )
+
+        )
+)
+
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+    var Name = "";
+    var orgId = 0;
+    var NodeId_O1 = 0;
+    var nodeLoadChartOrgan = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/SearchChartOrgan/NodeLoad',
+            params: {
+                nod: node.getId()
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+
+    function GetId(record) {
+        NodeId_O1 = record.getId();
+        Ext.net.DirectMethod.request({
+            url: '/Comon/SearchChartOrgan/GetName',
+            params: {
+                id: NodeId_O1
+            },
+            success: function (data) {
+                Name = data.fldName;
+                orgId = data.fldOrganId;
+                NextSearchOrganization();
+            }
+        });
+    };
+
+    function NextSearchOrganization() {
+        if (NodeId_O1 != 0) {
+            if (State == 1) {
+                var ChartOrganId = App.NewPersonalInfo.queryById('ChartOrganId');
+                ChartOrganId.setValue(NodeId_O1);
+                var fldOrganId = App.NewPersonalInfo.queryById('fldOrganId');
+                fldOrganId.setValue(orgId);
+                App.NewPersonalInfo.queryById('txtChartOrgan').setValue(Name);
+            }
+            App.SearchOrganization.destroy();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک گره را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+
+</script>

@@ -1,0 +1,692 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_LetterMinut>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true)
+.Width(600)//.Height(220)
+        .Title("تعریف الگوی نامه")
+        .ID("LetterMinut")
+      //      .Listeners(li => { li.AfterRender.Fn = "addKeyMapLetterMinut"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .AutoScroll(true)
+    .Items(
+                X.Panel()
+        .AutoScroll(true)
+                 .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                .Border(false)
+                .Buttons(
+                            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveLetterMinut")
+                    .Listeners(l => { l.Click.Handler = "SaveLetterMinut();"; })
+                , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadLetterMinut();"; })
+                , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                            .Listeners(l => { l.Click.Handler = "DeleteLetterMinut();"; })
+                    , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                     .Listeners(l => { l.Click.Handler = "HelpLetterMinut();"; })            
+                , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.LetterMinut.destroy()")
+                    )
+                .ButtonAlign(Ext.Net.Alignment.Center)
+                .Items(
+        X.Panel()
+                    .Border(false)
+                                    .Defaults(new { Margin = 2 })
+                .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            .Items(
+                            X.FieldSet()
+                              //  .Border(false)
+                              .Title("الگو نامه")
+                                .Width(560)
+                                .Height(255)
+                                .Defaults(new { Margin = 2 })
+                                .Layout(LayoutType.Table)
+                                .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                                .Items(
+                        X.Hidden().ItemID("fldId"),
+                        X.Label("کد درآمد:"),
+                            X.TextField()
+                                  // .Margin(5)
+                          //  .Width(120)
+                            .ReadOnly(true)
+                            .Text(@ViewBag.DaramadTitle)
+                                .ColSpan(5)
+                                    .Width(450)
+                            ,
+                        X.Label("عنوان الگو:"),
+                                X.TextField()
+                                  // .MarginSpec("5px 0px 5px 10px")
+                             //   .Width(120)
+                        .ItemID("txtTitle")
+                        .AllowBlank(false)
+                        .AutoFocus(true)
+                        .BlankText("لطفا عنوان الگو را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .MaxLength(400)
+                        .EnforceMaxLength(true)
+                        .ColSpan(2)
+                       // .MaskRe("[آ-ی, ,_,-]")
+                           , X.Label("پارامتر نامه نگاری:"),
+                                        X.ComboBox()
+        // .Margin(10)
+                                         //      .MarginSpec("0px 0px 10px 10px")
+        //  .Width(120)
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboLetterParam")
+                                .TypeAhead(true)
+                                .Editable(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                      .DisplayField("fldTitle")
+                                .ValueField("fldId")
+                                .EmptyText("...")
+                                .Store(X.Store()
+                                .Model(X.Model()
+                                .IDProperty("fldId")
+                                .Fields(
+                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                  new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                        )
+                                            )
+                                .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetParameter"))
+                                .Reader(X.JsonReader().Root("data"))
+                                        )
+                                    .Parameters(ps =>
+                                    {
+                                        ps.Add(new StoreParameter("Type", "1", ParameterMode.Raw));
+                                        ps.Add(new StoreParameter("ShomareHesabCodeDaramadId", @ViewBag.ShomareHesabCodeDaramadId, ParameterMode.Raw));
+                                    })
+                                                .Listeners(l => l.Load.Handler = "DefaultCboLetterParam()")
+                                        )
+                                    ,
+                                X.Button()//.MarginSpec("10px 40px 10px 0px")
+                      //  .Text("اضافه")
+                        .Icon(Ext.Net.Icon.Add)
+                            .ItemID("btnAddLetterParam")
+                                .Listeners(l => l.Click.Handler = "AddLetterParam()")
+                         //   .ColSpan(2)
+                               , X.Label("پارامتر درآمدی:"),
+                                        X.ComboBox()
+                                         //  .Margin(10)
+                                            //   .MarginSpec("0px 0px 10px 10px")
+                           //     .Width(120)
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboParam")
+                                .TypeAhead(true)
+                                .Editable(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                            .DisplayField("fldTitle")
+                                .ValueField("fldId")
+                                .EmptyText("...")
+                                .Store(X.Store()
+                                .Model(X.Model()
+                                .IDProperty("fldId")
+                                .Fields(
+                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                            new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                        )
+                                            )
+                                .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetParameter"))
+                                .Reader(X.JsonReader().Root("data"))
+                                        )
+                                            .Parameters(ps =>
+                                            {
+                                                ps.Add(new StoreParameter("Type", "0", ParameterMode.Raw));
+                                                ps.Add(new StoreParameter("ShomareHesabCodeDaramadId", @ViewBag.ShomareHesabCodeDaramadId, ParameterMode.Raw));
+                                            })
+                                        
+                                        .Listeners(l => l.Load.Handler = "DefaultCboParam()")
+                                        )
+                                     ,
+                                X.Button()//.MarginSpec("0px 70px 10px 0px")
+                           // .Text("اضافه")
+                            .Icon(Ext.Net.Icon.Add)
+                                    .ItemID("btnAddParam")
+                                        .Listeners(l => l.Click.Handler = "AddParam()")
+                             //   .ColSpan(2)
+                        , X.Label("اطلاعات:")
+                                , X.ComboBox()
+                                           //.Margin(10)
+                                          //     .MarginSpec("0px 0px 10px 10px")
+                            //    .Width(120)
+                        .ItemID("CboEtelaat")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Editable(true)
+                        .ForceSelection(true)
+                        .TypeAhead(true)
+                        .BlankText("لطفا اطلاعات را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .EmptyText("...")
+        //  .FieldLabel("جنسیت")
+                        .Items(
+                            new ListItem("نام", "EName"),
+                            new ListItem("نام خانوادگی", "EFamily"),
+                            new ListItem("کد/شناسه ملی", "EMeliCode"),
+                            new ListItem("شماره شناسنامه", "EIdNum"),
+                            new ListItem("کدپستی", "EPost"),
+                            new ListItem("تلفن", "ETel"),
+                            new ListItem("آدرس", "EAddress"),
+                            new ListItem("شماره فیش", "EFishNumber"),
+                            new ListItem("تاریخ وصول", "ECollectionDate"),
+                            new ListItem("تعداد", "ENumber"),
+                                new ListItem("مبلغ ", "EFishPrice"),
+                                    new ListItem("مالیات ", "EMaliatPrice"),
+                                new ListItem("عوارض ", "EAvarezPrice") 
+                                                          
+                                )
+                                .SelectedItems(new { Value = "EName" })
+                            ,
+                                    X.Button()//.MarginSpec("0px 263px 0px 0px")
+                          //  .Text("اضافه")
+                            .Icon(Ext.Net.Icon.Add)
+                                        .ItemID("btnAddEtelaat")
+                                                .Listeners(l => l.Click.Handler = "AddEtelaat()")
+                              //  .ColSpan(4)
+                         ,X.Label("متن آزاد:"),
+                                X.TextField()
+                                       //    .Margin(10)
+                                           //    .MarginSpec("0px 0px 5px 10px")
+                                .Width(423)
+                        .ItemID("txtMatn")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .MaxLength(100)
+                        .EnforceMaxLength(true)
+                            .ColSpan(4)
+                            ,
+                                    X.Button()//.MarginSpec("0px 70px 10px 0px")
+                               // .Text("اضافه")
+                                .Icon(Ext.Net.Icon.Add)
+                                .ItemID("btnAddMatn")
+                                .Listeners(l => l.Click.Handler = "AddMatn()")
+                                        ,
+                                        X.Button()
+                                    .Icon(Ext.Net.Icon.Add)
+                                    .ItemID("btnAddEnter")
+                                    .Listeners(l => l.Click.Handler = "AddEnter()")
+                        , X.Label("الگو نامه:"),
+                    //        X.FieldSet().Width(442)
+                    //        .Border(false)
+                    //            .MarginSpec("5px 0px 0px 0px")
+                    //            .PaddingSpec("0px 0px 0px 0px")
+                    //           .Layout(Ext.Net.LayoutType.HBox)
+                    //        .LayoutConfig(new Ext.Net.HBoxLayoutConfig { Align = Ext.Net.HBoxAlign.Middle })
+                    //.Items(
+                                 //   X.HtmlEditor()
+                                       //  .RTL(true)
+                                  X.TextArea()
+                               //     .MarginSpec("0px 2px 0px 0px")
+                                    .ItemID("txtDescMinut")
+                                .AllowBlank(false)
+                             //   .ReadOnly(true)
+                                
+                              //  .BlankText("لطفا متن الگو را وارد کنید.")
+                            .Width(450)
+                            .Height(100)
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+         //                   ,
+         //                           X.FieldSet().MarginSpec("0px 0px 0px 0px")
+         //                           .Border(false)
+         //                               .Layout(Ext.Net.LayoutType.VBox)
+         //                       .Items(
+         //                              X.Button()
+         //                               .ToolTip("Enter")
+         //                                   //.Icon(Ext.Net.Icon.Add)
+         //                                           .IconCls("EnterIco")
+         //                                       .ItemID("btnEnter")
+         //                                       .Listeners(l => l.Click.Handler = "EnterTxt()")
+         //                                       ,
+         //                               X.Button()
+         //.ToolTip("Clear")
+         //                                   .IconCls("DelIco")
+         //                              // .Icon(Ext.Net.Icon.Add)
+         //                                       .ItemID("btnClear")
+         //                                       .Listeners(l => l.Click.Handler = "ClearTxt()")
+         //                   )
+         //                   )
+                                .ColSpan(5)
+                            ,
+                        X.FieldSet().Border(false).PaddingSpec("0 0 0 70px")
+                                .Layout(LayoutType.HBox)
+                        .Items(
+                            X.Checkbox().ItemID("CheckBadeNaghdi")
+                            , X.Label().Text("امکان صدور قبل از تسویه نقدی").Width(148)
+                            )
+
+                            .ColSpan(3)
+                               ,
+                            X.FieldSet().Border(false).PaddingSpec("0 0 0 65px")
+                                    .Layout(LayoutType.HBox)
+                            .Items(
+                                X.Checkbox().ItemID("CheckBadeTaghsit")
+                                , X.Label().Text("امکان صدور بعد از تقسیط").Width(130)
+                                )
+
+                                .ColSpan(3)
+                                )
+                            ,
+                            X.FieldSet()//.Border(false)
+                                        .Width(560)
+                                    .Height(120)
+                                    
+                        .Title("امضا کنندگان")
+                        //.PaddingSpec("0 0 0 65px")
+                                .Layout(LayoutType.HBox)
+                        .Items(
+                                X.Checkbox().ItemID("CheckEmzakonande").PaddingSpec("0 60px 0 5px")
+                            , X.Label().Text("تنظیم کننده")//.Width(75)
+                            
+                            ,
+                                 X.TreePanel()
+                                     .PaddingSpec("0 0 0 70px")
+                                    .ID("TreePost")
+                                .AutoScroll(true)
+                                .Width(370)
+                                .Expand(true)
+                                .Height(100)
+                                .Expand(true)
+                                .UseArrows(true)
+                                
+                                .Border(false)
+                                .Store(
+                                Html.X().TreeStore()
+                                    .Proxy(
+                                                Html.X().AjaxProxy().Url(Url.Action("Node"))
+                                            )
+                                        )
+
+                                    .Listeners(a =>
+                                    {
+                                        a.ItemClick.Handler = "GetIdPost(record);";
+                                        a.AfterRender.Handler = "this.getRootNode().expand(true);";
+                                    })
+                                    .Root(Html.X().Node().NodeID("0").Text("پست سازمانی"))
+                                        .Listeners(l =>
+                                        {
+                                            l.BeforeLoad.Fn = "nodeLoadPost";
+                                        })
+                            )
+                            
+                        )
+        //)
+        ),
+                  X.GridPanel().AutoScroll(true)
+                                .ItemID("LetterMinutGrid").Flex(2)
+                        //.BottomBar(X.PagingToolbar())
+                        .Height(120)
+        //.ColumnWidth(0.6)
+        //.Layout(Ext.Net.LayoutType.Column)
+                        .Store(
+                            X.StoreForModel()
+                                 .Listeners(l => l.DataChanged.Handler = "App.LetterMinut.queryById('LetterMinutGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                            .Url(Url.Action("Read"))
+                                        .Reader(Html.X().JsonReader().Root("data"))
+                                                .ExtraParams(p => p.Add(new { ShomareHesabCodeDaramadId = @ViewBag.ShomareHesabCodeDaramadId }))
+
+                            )
+                            .PageSize(2000000)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+
+                        )
+                        .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+
+                        .Plugins(X.FilterHeader().Remote(true))
+                        .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldShomareHesabCodeDaramadId).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldDescMinut).Text("الگو").Flex(6)
+                            )
+        //.Layout(Ext.Net.LayoutType.VBox)
+        //.LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+)
+
+<script type="text/javascript">
+    var NodeId_Post = 0;
+    function HelpLetterMinut() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/LetterMinut/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    var nodeLoadPost = function (store, operation, options) {
+        var CboOrgan = App.IncomeCodesParamFormul.queryById('CboOrgan');
+        var id = 0;
+        var fldId = App.LetterMinut.queryById('fldId');
+        if (fldId.getValue() != "")
+            id = fldId.getValue();
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/LetterMinut/NodeLoadPost',
+            params: {
+                LetterMinutId:id,
+                nod: node.getId(),
+                OrganId: CboOrgan.getValue()
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+    function GetIdPost(record) {
+        NodeId_Post = record.getId();
+    };
+    function DefaultCboLetterParam() {
+        var CboLetterParam = App.LetterMinut.queryById('CboLetterParam');
+        CboLetterParam.select(CboLetterParam.store.getAt(0));
+    }
+    function DefaultCboParam() {
+        var CboParam = App.LetterMinut.queryById('CboParam');
+        CboParam.select(CboParam.store.getAt(0));
+    }
+    function AddLetterParam() {
+        var txtDescMinut = App.LetterMinut.queryById('txtDescMinut');
+        var CboLetterParam = App.LetterMinut.queryById('CboLetterParam');
+        var d = txtDescMinut.getValue();
+        if (CboLetterParam.getValue() != null)
+            txtDescMinut.setValue(d + ' [' + CboLetterParam.getValue() + "]");
+    }
+    function AddParam() {
+        var txtDescMinut = App.LetterMinut.queryById('txtDescMinut');
+        var CboParam = App.LetterMinut.queryById('CboParam');
+        var d = txtDescMinut.getValue();
+        if (CboParam.getValue() != null)
+            txtDescMinut.setValue(d + ' [' + CboParam.getValue() + "]");
+
+    }
+    function AddEtelaat() {
+        var txtDescMinut = App.LetterMinut.queryById('txtDescMinut');
+        var CboEtelaat = App.LetterMinut.queryById('CboEtelaat');
+        var d = txtDescMinut.getValue();
+        if (CboEtelaat.getValue() != null)
+            txtDescMinut.setValue(d + ' [' + CboEtelaat.getValue() + "]");
+
+    }
+    function AddMatn() {
+        var txtDescMinut = App.LetterMinut.queryById('txtDescMinut');
+        var txtMatn = App.LetterMinut.queryById('txtMatn');
+        var d = txtDescMinut.getValue();
+        if (txtMatn.getValue() != null && txtMatn.getValue() != "")
+            txtDescMinut.setValue(d +" "+ txtMatn.getValue());
+    }
+    function AddEnter() {
+        var txtDescMinut = App.LetterMinut.queryById('txtDescMinut');
+        var d = txtDescMinut.getValue();
+        if (txtMatn.getValue() != null && txtMatn.getValue() != "")
+            txtDescMinut.setValue(d + "\n");
+    }
+    function EnterTxt() {
+        var txtDescMinut = App.LetterMinut.queryById('txtDescMinut');
+        var d = txtDescMinut.getValue();
+        txtDescMinut.setValue(d + "\n");
+    }
+   /* function EnterTxt() {
+        var txtDescMinut = App.LetterMinut.queryById('txtDescMinut');
+        var d = txtDescMinut.getValue();
+        txtDescMinut.setValue(d + "<br />");
+    }*/
+    function ClearTxt() {
+        var txtDescMinut = App.LetterMinut.queryById('txtDescMinut');
+        var d = txtDescMinut.getValue();
+        txtDescMinut.setValue("");
+    }
+    
+    function LoadLetterMinut() {
+        var SelectedRow = App.LetterMinut.queryById('LetterMinutGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/LetterMinut/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTitle = App.LetterMinut.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var txtDescMinut = App.LetterMinut.queryById('txtDescMinut');
+                    txtDescMinut.setValue(data.fldDescMinut);
+                    var fldId = App.LetterMinut.queryById('fldId');
+                    fldId.setValue(data.fldId);
+
+                    var CheckBadeNaghdi = App.LetterMinut.queryById('CheckBadeNaghdi');
+                    CheckBadeNaghdi.setValue(data.fldSodoorBadAzVarizNaghdi);
+                    var CheckBadeTaghsit = App.LetterMinut.queryById('CheckBadeTaghsit');
+                    CheckBadeTaghsit.setValue(data.fldSodoorBadAzTaghsit);
+                    var CheckEmzakonande = App.LetterMinut.queryById('CheckEmzakonande');
+                    CheckEmzakonande.setValue(data.fldTanzimkonande);
+
+                    App.TreePost.store.load();
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveLetterMinut() {    
+        var txtTitle = App.LetterMinut.queryById('txtTitle');
+        var txtDescMinut = App.LetterMinut.queryById('txtDescMinut');
+        var CheckBadeNaghdi = App.LetterMinut.queryById('CheckBadeNaghdi');
+        var CheckBadeTaghsit = App.LetterMinut.queryById('CheckBadeTaghsit');
+        var CheckEmzakonande = App.LetterMinut.queryById('CheckEmzakonande');
+        var fldId = App.LetterMinut.queryById('fldId');
+        var er = false;
+
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (txtDescMinut.validate() == false) {
+            er = true;
+        }
+       /* if (Ext.util.Format.trim(txtDescMinut.getEditorBody().textContent) == "") {
+            Ext.MessageBox.show({
+                Name: "خطا",
+                msg: "لطفا اطلاعات را وارد کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }*/
+
+        if (er == true)
+            return;
+
+        var Posts = new Array();
+        var TreePost = App.TreePost;
+        var Checked = TreePost.getChecked();
+        var PostId;
+        for (var i = 0; i < Checked.length ; i++) {
+            PostId = Checked[i];
+            Posts.push({
+                'fldOrganizationalPostsId': PostId.getId()
+            });
+        }
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        var data = {
+            Posts:Posts,
+            fldId: fldId.getValue(),
+            fldShomareHesabCodeDaramadId: '@ViewBag.ShomareHesabCodeDaramadId',
+            fldTitle: txtTitle.getValue(),
+            fldDescMinut: txtDescMinut.getValue(),
+            fldSodoorBadAzVarizNaghdi: CheckBadeNaghdi.getValue(),
+            fldSodoorBadAzTaghsit: CheckBadeTaghsit.getValue(),
+            fldTanzimkonande: CheckEmzakonande.getValue()
+        };
+
+        $.ajax({
+            type: "POST",
+            url: '/Daramad/LetterMinut/Save',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: "application/json; charset=utf-8",
+            success: function (data) {
+                var result = data;/*JSON.parse(data);*/
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (result.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.LetterMinut.queryById('LetterMinutGrid').store.load();
+                if (result.Er != 1)
+                    ClearLetterMinut();
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+        });
+    }
+    function DeleteLetterMinut() {
+        var SelectedRow = App.LetterMinut.queryById('LetterMinutGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/LetterMinut/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.LetterMinut.queryById('LetterMinutGrid').store.load();
+                                ClearLetterMinut();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearLetterMinut() {
+        App.LetterMinut.queryById('fldId').setValue(0);
+        App.LetterMinut.queryById('txtTitle').setValue("");
+        App.LetterMinut.queryById('txtDescMinut').setValue("");
+        App.LetterMinut.queryById('CheckBadeNaghdi').setValue(false);
+        App.LetterMinut.queryById('CheckBadeTaghsit').setValue(false);
+        App.LetterMinut.queryById('CheckEmzakonande').setValue(false);
+        App.TreePost.store.load();
+    }
+    function EnterNext() {
+        if (Ext.getCmp((Ext.Element.getActiveElement()).name).itemId != undefined) 
+            var keyfield = App.LetterMinut.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+            if (keyfield.itemId != "txtDescMinut") {
+                if (keyfield.itemId == "CboLetterParam") {
+                    nextfld = App.LetterMinut.queryById('btnAddLetterParam');
+                }
+                else if (keyfield.itemId == "CboParam") {
+                    nextfld = App.LetterMinut.queryById('btnAddParam');
+                }
+                else if (keyfield.itemId == "CboEtelaat") {
+                    nextfld = App.LetterMinut.queryById('btnAddEtelaat');
+                }
+                else if (keyfield.itemId == "txtMatn") {
+                    nextfld = App.LetterMinut.queryById('btnAddMatn');
+                }
+                else {
+                    nextfld = keyfield.nextSibling().nextSibling();
+                }
+            }
+            nextfld.focus();
+                nextfld.selectText();
+        
+    }
+    var addKeyMapLetterMinut = function (cmp) {
+
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.LetterMinut.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "CboLetterParam") {
+                        nextfld = App.LetterMinut.queryById('btnAddLetterParam');
+                    }
+                    else if (keyfield.itemId == "CboParam") {
+                        nextfld = App.LetterMinut.queryById('btnAddParam');
+                    }
+                    else if (keyfield.itemId == "CboEtelaat") {
+                        nextfld = App.LetterMinut.queryById('btnAddEtelaat');
+                    }
+                    else if (keyfield.itemId == "txtMatn") {
+                        nextfld = App.LetterMinut.queryById('btnAddMatn');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

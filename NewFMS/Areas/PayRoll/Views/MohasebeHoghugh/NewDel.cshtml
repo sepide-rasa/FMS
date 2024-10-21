@@ -1,0 +1,640 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+<style>
+    td {
+        text-align: left;
+    }
+
+    .x-rtl .x-textfield-icon {
+        margin-right: 125px;
+    }
+
+    .x-rtl .x-textfield-icon-input {
+        padding-right: 3px;
+    }
+</style>
+<script src="~/signalr/hubs"></script>
+
+@(Html.X().Window().Listeners(k =>
+{
+    k.AddScript("$.connection.hub.url = '../signalr/hubs'");
+})
+    .Closable(true)
+    .CloseAction(CloseAction.Destroy)
+    .Layout(LayoutType.VBox)
+         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+    .Modal(true)
+    .Width(500)
+     .ID("DelHoghughForm")
+            .Title("حذف محاسبات حقوق/سایر پرداخت ها")
+        .ButtonAlign(Alignment.Center)
+            .Buttons(
+                Html.X().Button()
+                    .Text("حذف")
+                    .Icon(Ext.Net.Icon.CalculatorDelete)
+                    .ItemID("btnMohasebeDel")
+                        .Listeners(l =>
+                        {
+                            l.Click.Handler = "CalcDel();";
+                            //l.Click.Fn = "showFilePI";
+                        })
+        //  .DirectEvents(l => { l.Click.Success = "alert();"; })
+,
+                        X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpMohasebeHoghugh();"; }),
+
+                Html.X().Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .Listeners(l => l.Click.Handler = "App.DelHoghughForm.destroy()")
+            )
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .PaddingSpec("4px 12px 4px 12px")
+            .Items(
+                   X.FieldSet().ItemID("Panel").Title("حذف محاسبات")
+                .Layout(Ext.Net.LayoutType.Table)
+                .Border(true)
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                .Defaults(new { Margin = 2 })
+                .Items(
+                           X.Hidden().ItemID("fldPersonalId")
+                            , X.Hidden().ItemID("fldOrganId")
+                                , X.Label("سازمان:"),
+                         X.ComboBox()
+                                .ItemID("CboOrgan")
+                                .TypeAhead(true)
+                                    .ColSpan(3)
+                                .AutoFocus(true)
+                                .Editable(true)
+                                     .QueryMode(DataLoadMode.Local)
+                                            .TriggerAction(TriggerAction.All)
+                                    .BlankText("لطفا سازمان را انتخاب کنید.")
+        //.Listeners(l => l.AfterRender.Handler = "setSizeCboOrgan()")
+                                        .Listeners(l => l.Change.Handler = "ChangeCboOrgan()")
+                                    .AllowBlank(false)
+                                .ForceSelection(true)
+                                    .DisplayField("fldTitle")
+                                    .ValueField("fldId")
+                                    .Width(360)
+                                    .EmptyText("سازمان ...")
+                                .Store(X.Store()
+                                .Model(X.Model()
+                                .IDProperty("fldId")
+                                .Fields(
+                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                    new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                        )
+                                            )
+
+                                .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetOrgan"))
+                                .Reader(X.JsonReader().Root("data"))
+                                                )
+            .Listeners(l => l.Load.Handler = "setdefaultValueOrganFish()")
+                                        )
+                            , X.Label().Text("سال:")
+                            , X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboYear")
+                                    .DisplayField("fldYear")
+                                .AutoFocus(true)
+                                .ValueField("fldYear")
+                                .TypeAhead(true)
+                                .Editable(false)
+                                .AllowBlank(false)
+                                .BlankText("لطفا سال را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                .Store(X.Store().Listeners(l => l.Load.Handler = "LoadMohasebeHoghugh()")
+                                .Model(X.Model()
+                                .IDProperty("fldYear")
+                                            .Fields(
+                                                new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" }
+                                            )
+                                        )
+                                            .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetSalVorod"))
+                                                            .Reader(X.JsonReader().Root("data"))
+
+                                                    )
+
+                            )
+                            .Listeners(l => l.Select.Handler = "setYearCalss()")
+                            , X.Label().Text("ماه:").ItemID("lblMah")
+                            , X.ComboBox()
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .ItemID("CboMonth")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .BlankText("لطفا ماه را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Items(
+                                new ListItem("فروردین", "1"),
+                                new ListItem("اردیبهشت", "2"),
+                                new ListItem("خرداد", "3"),
+                                new ListItem("تیر", "4"),
+                                new ListItem("مرداد", "5"),
+                                new ListItem("شهریور", "6"),
+                                new ListItem("مهر", "7"),
+                                new ListItem("آبان", "8"),
+                                new ListItem("آذر", "9"),
+                                new ListItem("دی", "10"),
+                                new ListItem("بهمن", "11"),
+                                new ListItem("اسفند", "12")
+                                )
+                                .SelectedItems(new { Value = "1" })
+                            .Listeners(l => l.Select.Handler = "setMonthCalss()")
+                                , X.Label().Text("نوع:")
+                                , X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboType")
+                                .Editable(false)
+                                .TypeAhead(true)
+                                    .BlankText("لطفا نوع را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .Items(
+                                    new ListItem("گروهی", "0"),
+                                    new ListItem("انفرادی", "1")
+                                    )
+                                    .SelectedItems(new { Value = "0" })
+                                    .Listeners(l => l.Select.Handler = "ChangeType();")
+                                , X.Label().Text("مرکز هزینه:")
+                                 , X.MultiCombo()
+                                                    .ItemID("CboCostCenter")
+                                            .TypeAhead(true)
+                                            .QueryMode(DataLoadMode.Local)
+                                            .AllowBlank(true)
+                                                .BlankText("لطفا مراکز هزینه را انتخاب کنید.")
+                                            .TriggerAction(TriggerAction.All)
+                                            .DisplayField("fldName")
+                                            .ValueField("fldId")
+                                                .EmptyText("مراکز هزینه...")
+                                                .Store(X.Store()
+                                                .AutoLoad(false)
+        //.Listeners(l => l.Load.Handler = "LoadReasonsKM()")
+                                                .Model(X.Model()
+                                                    .IDProperty("fldId")
+                                                    .Fields(
+                                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                    )
+                                                )
+                                                .Proxy(X.AjaxProxy()
+                                                            .Url(Url.Action("GetCostCenter"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                                )
+                                                    .Parameters(ps => ps.Add(new StoreParameter("OrganId", "App.DelHoghughForm.queryById('CboOrgan').getValue()", ParameterMode.Raw)))
+                                            )
+                                    , X.Label().Text("نوع استخدام:")
+                                 , X.MultiCombo()
+                                                    .ItemID("CboAnvaeEstekhdam")
+                                            .TypeAhead(true)
+                                            .QueryMode(DataLoadMode.Local)
+                                            .AllowBlank(true)
+                                                .BlankText("لطفا نوع استخدام را انتخاب کنید.")
+                                            .TriggerAction(TriggerAction.All)
+                                            .DisplayField("fldName")
+                                            .ValueField("fldId")
+                                                .EmptyText("نوع استخدام...")
+                                                .Store(X.Store()
+        //.Listeners(l => l.Load.Handler = "LoadReasonsKM()")
+                                                .Model(X.Model()
+                                                    .IDProperty("fldId")
+                                                    .Fields(
+                                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                    )
+                                                )
+                                                .Proxy(X.AjaxProxy()
+                                                            .Url(Url.Action("GetTypeEstkhdam"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                                )
+                                            )
+
+                                , X.Label().Text("نوع پرداخت:")
+                                , X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboNoePardakht")
+                                .Editable(false)
+                                .TypeAhead(true)
+                                .BlankText("لطفا نوع پرداخت را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .Items(
+                                    new ListItem("حقوق", "1"),
+                                    new ListItem("اضافه کاری", "2"),
+                                    new ListItem("تعطیل کاری", "3"),
+                                    new ListItem("عیدی", "4"),
+                                    new ListItem("ماموریت", "5"),
+                                    new ListItem("مرخصی", "6")
+                                    )
+        //.SelectedItems(new { Value = "1" })
+                                .Listeners(l => l.Select.Handler = "ChangeNoePardakht();")
+                             , X.Label().Text("شخص(INS):").ItemID("lblName")
+                             , X.TextField()
+                            .ItemID("txtName")
+                            .Icon(Icon.UserAdd)
+                            .LabelAlign(Ext.Net.LabelAlign.Right)
+                            .AllowBlank(false)
+                            .ReadOnly(true)
+                            .Width(145)
+                            .BlankText("لطفا شخص را وارد کنید.")
+                            .DirectEvents(li =>
+                            {
+                                li.SpecialKey.Url = "SearchPersonMohasebe();";
+                                li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                            })
+                                .Listeners(l => l.IconClick.Handler = "SearchPersonMohasebe();")
+
+                            , X.Label().Text("نوبت پرداخت:")
+                            , X.ComboBox()
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .ItemID("CboNobatePardakht")
+                            .Editable(false)
+                            .TypeAhead(true)
+                                .BlankText("لطفا نوبت پرداخت را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Items(
+                                new ListItem("یک", "1"),
+                                new ListItem("دو", "2"),
+                                new ListItem("سه", "3"),
+                                new ListItem("چهار", "4"),
+                                new ListItem("پنج", "5")
+                                )
+                                .SelectedItems(new { Value = "1" }).ColSpan(2)
+                                )
+                           
+           // )
+    )
+)
+)
+
+
+<script type="text/javascript">
+    var IsKargar = 0;
+    var fb2;
+    var v2;
+    function setYearCalss() {
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Pardakhtha/SetYearClass',
+            params: {
+                Year: App.DelHoghughForm.queryById("CboYear").getValue()
+            }
+        });
+    }
+
+
+
+    function HelpMohasebeHoghugh() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/MohasebeHoghugh/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    
+    function ChangeCboOrgan() {
+        App.DelHoghughForm.queryById('fldPersonalId').setValue(null);
+        App.DelHoghughForm.queryById('txtName').setValue("");
+        if (App.DelHoghughForm.queryById('CboOrgan').getValue() != null) {
+            App.DelHoghughForm.queryById('CboCostCenter').store.load();
+        }
+
+    }
+    function setdefaultValueOrganFish() {
+        App.DelHoghughForm.queryById('CboOrgan').select(App.DelHoghughForm.queryById('CboOrgan').store.getAt(0));
+    }
+    function setMonthCalss() {
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Pardakhtha/SetMonthClass',
+            params: {
+                Month: App.DelHoghughForm.queryById("CboMonth").getValue()
+            }
+        });
+    }
+    function SearchPersonMohasebe() {
+        var CboOrgan = App.DelHoghughForm.queryById('CboOrgan');
+        var CboYear = App.DelHoghughForm.queryById('CboYear');
+        var CboMonth = App.DelHoghughForm.queryById('CboMonth');
+        var CboNobatePardakht = App.DelHoghughForm.queryById('CboNobatePardakht');
+        var CboNoePardakht = App.DelHoghughForm.queryById('CboNoePardakht');
+        var CboCostCenter = App.DelHoghughForm.queryById('CboCostCenter');
+        var CboAnvaeEstekhdam = App.DelHoghughForm.queryById('CboAnvaeEstekhdam');
+
+        var CostCenter = "";
+        for (var i = 0; i < CboCostCenter.getValue().length; i++) {
+            CostCenter = CostCenter + CboCostCenter.getValue()[i] + ",";
+        }
+
+        var AnvaeEstekhdam = "";
+        for (var i = 0; i < CboAnvaeEstekhdam.getValue().length; i++) {
+            AnvaeEstekhdam = AnvaeEstekhdam + CboAnvaeEstekhdam.getValue()[i] + ",";
+        }
+        var Ezafe_TarilKari = 1;
+        if (CboNoePardakht.getValue() == "3") {
+            Ezafe_TarilKari = 2;
+        }
+        /* if (CboNoePardakht.getValue() == "1") {*/
+        var tarikh = CboYear.getValue() + '/' + CboMonth.getValue().padStart(2, '0') + '/31';
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/SearchPersonMohasebe/Index',
+            params: {
+                State:2,
+                Year: CboYear.getValue(),
+                Month: CboMonth.getValue(),
+                NobatePardakht: CboNobatePardakht.getValue(),
+                NoePardakht: CboNoePardakht.getValue(),
+                Ezafe_TarilKari: Ezafe_TarilKari,
+                CostCenter: CostCenter,
+                AnvaeEstekhdam: AnvaeEstekhdam,
+                Tarikh: tarikh,
+                OrganId: CboOrgan.getValue()
+
+            }
+        });
+     
+    }
+    function  ChangeType() {
+        var CboType = App.DelHoghughForm.queryById('CboType');
+        var txtName = App.DelHoghughForm.queryById('txtName');
+        var lblName = App.DelHoghughForm.queryById('lblName');
+        var CboNobatePardakht = App.DelHoghughForm.queryById('CboNobatePardakht');
+        if (CboType.getValue() == "0") {
+            txtName.hide();
+            lblName.hide();
+            CboNobatePardakht.colspan = 4;
+        }
+        else {
+            txtName.show();
+            lblName.show();
+            CboNobatePardakht.colspan = 2;
+        }
+    }
+    function ChangeNoePardakht() {
+        var CboNoePardakht = App.DelHoghughForm.queryById('CboNoePardakht');
+        var CboMonth = App.DelHoghughForm.queryById('CboMonth');
+        var lblMah = App.DelHoghughForm.queryById('lblMah');
+       
+        if (CboNoePardakht.getValue() == "4") {
+            CboMonth.hide();
+            lblMah.hide();
+        }
+        else {
+            CboMonth.show();
+            lblMah.show();
+        }
+    }
+
+    function LoadMohasebeHoghugh() {
+        var txtName = App.DelHoghughForm.queryById('txtName');
+        var CboYear = App.DelHoghughForm.queryById('CboYear');
+        var CboMonth = App.DelHoghughForm.queryById('CboMonth');
+        var CboType = App.DelHoghughForm.queryById('CboType');
+        var CboNobatePardakht = App.DelHoghughForm.queryById('CboNobatePardakht');
+        var CboNoePardakht = App.DelHoghughForm.queryById('CboNoePardakht');
+       
+        CboYear.setValue('@ViewBag.Year');
+        CboMonth.setValue('@ViewBag.Month');
+        CboNoePardakht.setValue('@ViewBag.nobatpardakht');
+        ChangeType();
+        ChangeNoePardakht();
+    }
+
+    function CalcDel() {
+   
+        /*console.log('start process');*/
+        var payId;
+        if (App.DelHoghughForm.queryById('CboType').getValue() == "1")
+            payId = App.DelHoghughForm.queryById('fldPersonalId').getValue();
+        var fldPersonalId = App.DelHoghughForm.queryById('fldPersonalId');
+        var fldOrganId = App.DelHoghughForm.queryById('CboOrgan');
+        var CboOrgan = App.DelHoghughForm.queryById('CboOrgan');
+        var txtName = App.DelHoghughForm.queryById('txtName');
+        var CboYear = App.DelHoghughForm.queryById('CboYear');
+        var CboMonth = App.DelHoghughForm.queryById('CboMonth');
+        var CboType = App.DelHoghughForm.queryById('CboType');
+        var CboNobatePardakht = App.DelHoghughForm.queryById('CboNobatePardakht');
+        var CboNoePardakht = App.DelHoghughForm.queryById('CboNoePardakht');
+        var CboCostCenter = App.DelHoghughForm.queryById('CboCostCenter');
+        var CboAnvaeEstekhdam = App.DelHoghughForm.queryById('CboAnvaeEstekhdam');
+        var er = false;
+
+
+        if (CboYear.validate() == false) {
+            er = true;
+        }
+
+        if (CboMonth.validate() == false) {
+            er = true;
+        }
+
+        if (CboType.validate() == false) {
+            er = true;
+        }
+
+        if (CboNobatePardakht.validate() == false) {
+            er = true;
+        }
+
+        if (CboNoePardakht.validate() == false) {
+            er = true;
+        }
+        
+
+        if (CboType.getValue() == "1" && payId == "") {
+            txtName.validate();
+            er = true;
+        }
+        if (er == true)
+            return;
+        var CostCenter = "";
+        for (var i = 0; i < CboCostCenter.getValue().length; i++) {
+            CostCenter = CostCenter + CboCostCenter.getValue()[i] + ",";
+        }
+
+        var AnvaeEstekhdam = "";
+        for (var i = 0; i < CboAnvaeEstekhdam.getValue().length; i++) {
+            AnvaeEstekhdam = AnvaeEstekhdam + CboAnvaeEstekhdam.getValue()[i] + ",";
+        }
+    
+
+
+                    Ext.net.DirectMethod.request({
+                        url: '/PayRoll/MohasebeHoghugh/CheckStatusFlagDel',
+                        params: {
+                            Year: App.DelHoghughForm.queryById('CboYear').getValue(),
+                            Month: App.DelHoghughForm.queryById('CboMonth').getValue(),
+                            NobatPardakht: App.DelHoghughForm.queryById('CboNobatePardakht').getValue(),
+                            fldNoePardakht: App.DelHoghughForm.queryById('CboNoePardakht').getValue(),
+                            fldPayPersonalId: payId,
+                            MonthName: App.DelHoghughForm.queryById('CboMonth').getDisplayValue(),
+                            OrganId: CboOrgan.getValue()
+                        },
+                        success: function (data) {
+                            if (data.Er == 1) {
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.ERROR,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                            }
+                            else {
+                                if (data.Flag == 5) {
+                                    Ext.MessageBox.show({
+                                        title: "خطا",
+                                        msg:  " محاسباتی برای "+CboNoePardakht.getDisplayValue() +" " + data.MonthName + " ماه وجود ندارد.",
+                                        icon: Ext.MessageBox.ERROR,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                }
+                                else if (data.Flag == 3 || data.Flag == 0) {
+                                  
+                                        Ext.MessageBox.show({
+                                            title: "خطا",
+                                            msg: "کلیه عملیات و محاسبات ماه " + data.MonthName + " سال " + App.DelHoghughForm.queryById('CboYear').getValue() + "بسته شده است.",
+                                            icon: Ext.MessageBox.ERROR,
+                                            buttons: Ext.MessageBox.OK
+                                        });
+                                    
+                                }
+                                else if (data.Flag == 4) {
+                                    Ext.MessageBox.show({
+                                        title: "هشدار",
+                                        msg: data.Msg,
+                                        icon: Ext.MessageBox.WARNING,
+                                        buttons: Ext.MessageBox.YESNO,
+                                        fn: function (btn) {
+                                            if (btn == 'yes') {
+
+                                                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                                $.getJSON(
+                                                    '/PayRoll/MohasebeHoghugh/DeleteCalc',
+
+                                                   {
+                                                       fldPayPersonalId: payId,
+                                                       Year: CboYear.getValue(),
+                                                       Month: CboMonth.getValue(),
+                                                       fldNoePardakht: CboNoePardakht.getValue(),
+                                                       NobatPardakht: CboNobatePardakht.getValue(),
+                                                       OrganId: fldOrganId.getValue(),
+                                                       CostCenter: CostCenter,
+                                                       AnvaeEstekhdam: AnvaeEstekhdam
+                                                   }).done(function (data) {
+                                                       var result = data;/*JSON.parse(data);*/
+                                                       var ico = Ext.MessageBox.INFO;
+                                                       if (data.Er == 1)
+                                                           ico = Ext.MessageBox.ERROR;
+                                                       Ext.MessageBox.show({
+                                                           title: result.MsgTitle,
+                                                           msg: result.Msg,
+                                                           icon: ico,
+                                                           buttons: Ext.MessageBox.OK
+                                                       });
+                                                       Ext.net.Mask.hide();
+
+                                                   }).fail(function (xhr, response, opts) {
+                                                       var err = xhr.responseText;
+
+                                                       Ext.net.Mask.hide();
+                                                   });
+                                                Ext.net.Mask.hide();
+                                            }
+                                        }
+                                    });
+                                }
+                                else {
+
+                                    Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                    $.getJSON(
+                                       '/PayRoll/MohasebeHoghugh/DeleteCalc',
+
+                                           {
+                                               fldPayPersonalId: fldPersonalId.getValue(),
+                                               Year: CboYear.getValue(),
+                                               Month: CboMonth.getValue(),
+                                               fldNoePardakht: CboNoePardakht.getValue(),
+                                               NobatPardakht: CboNobatePardakht.getValue(),
+                                               OrganId: fldOrganId.getValue(),
+                                               CostCenter: CostCenter,
+                                               AnvaeEstekhdam: AnvaeEstekhdam
+                                           }).done(function (data) {
+                                               var result = data;/* JSON.parse(data);*/
+                                               var ico = Ext.MessageBox.INFO;
+                                               if (data.Er == 1)
+                                                   ico = Ext.MessageBox.ERROR;
+                                               Ext.MessageBox.show({
+                                                   title: result.MsgTitle,
+                                                   msg: result.Msg,
+                                                   icon: ico,
+                                                   buttons: Ext.MessageBox.OK
+                                               });
+                                               Ext.net.Mask.hide();
+                                           })
+                                        .fail(function (response, opts) {
+
+                                            Ext.net.Mask.hide();
+                                        });
+                                    Ext.net.Mask.hide();
+                                }
+                            }
+                        }
+                    });
+                
+    }
+     
+   
+    function EnterNext() {
+        var keyfield = App.DelHoghughForm.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        var CboNoePardakht = App.DelHoghughForm.queryById('CboNoePardakht');
+        var CboType = App.DelHoghughForm.queryById('CboType');
+        var CboMaliyat = App.DelHoghughForm.queryById('CboMaliyat');
+        var CboMoavaghe = App.DelHoghughForm.queryById('CboMoavaghe');
+         if (keyfield.itemId == "CboNoePardakht") {
+            if (CboType.getValue() == "0")
+                nextfld = App.DelHoghughForm.queryById('CboNobatePardakht');
+            else {
+                nextfld = keyfield.nextSibling().nextSibling();
+                nextfld.selectText();
+            }
+        }
+        else if (keyfield.itemId == "CboNobatePardakht") {
+                if (CboNoePardakht.getValue() == "1")
+                    nextfld = App.DelHoghughForm.queryById('CboMoavaghe');
+                else
+                    nextfld = App.DelHoghughForm.queryById('btnMohasebe');
+        }
+        else if (keyfield.itemId == "CboMoavaghe") {
+            if (CboMoavaghe.getValue() == "1")
+                nextfld = App.DelHoghughForm.queryById('CboMagharari');
+            else
+                nextfld = App.DelHoghughForm.queryById('CboMaliyat');
+        }
+        else if (keyfield.itemId == "CboMaliyat") {
+            if (CboMaliyat.getValue() == "1")
+                nextfld = App.DelHoghughForm.queryById('txtTarikh');
+            else
+                nextfld = App.DelHoghughForm.queryById('CboMagharari');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+    }
+</script>

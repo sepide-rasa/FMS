@@ -1,0 +1,366 @@
+﻿@using Ext.Net.MVC
+@using Ext.Net;
+@using Ext.Net.Utilities;
+@{
+    var X = Html.X();
+}
+
+<style>
+    .lbl {
+        color: red;
+    }
+
+    .custom-EyeIC2 {
+        margin-right: 3px !important;
+    }
+</style>
+
+@(Html.X().Window()
+    .Modal(true)
+    .Width(505)
+    .Listeners(li =>
+    {
+        li.AfterRender.Handler = "LoadUserPassword();";
+        li.Render.Fn = "addKeyMapChangePasswordd";
+    })
+    .Title("تغییر رمز باسکول")
+    .ID("ChangePasswordd")
+    .Closable(false)
+    .CloseAction(CloseAction.Destroy)
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .ItemID("btnSave")
+            .Listeners(l => l.Click.Handler = "SaveChangePasswordd();"),
+        X.Button()
+            .Text("خروج")
+            .ItemID("btnExit")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.ChangePasswordd.destroy()"))
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            .Items(
+                    X.Label("از 8 کاراکتر یا بیشتر استفاده کنید. ترکیبی از حروف(کوچک و بزرگ) و عدد یا علائم نگارشی").Cls("lbl"),
+                X.FieldSet()
+                    .Border(true)
+                    .Title("مشخصات کاربری")
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                    .Defaults(new { Margin = 2 })
+                    .Height(90)
+                    .Items(
+                       
+                        X.Label()
+                            .Text("رمز عبور فعلی:"),
+                        X.TextField().ColSpan(4)
+                            .ItemID("txtPass")
+                                .FieldStyle("direction:ltr;padding-left:5px;padding-right:3px;")
+                            .AutoFocus(true)
+                            .InputType(Ext.Net.InputType.Password)
+                            .AllowBlank(false)
+                            .BlankText("لطفا رمز عبور فعلی را وارد کنید.")
+                            .Focus(true),
+                        X.Label().Text("رمز عبور جدید:"),
+                        X.TextField()
+                            .ItemID("txtNewPass")
+                            .InputType(Ext.Net.InputType.Password)
+                            .AllowBlank(false)
+                            .BlankText("لطفا رمز عبور جدید را وارد کنید.")
+                            .IconCls("eyeSee")
+                            .FieldStyle("direction:ltr;padding-left:5px;padding-right:3px;")
+                            .EnableKeyEvents(true)
+                            .Listeners(l =>
+                            {
+                                l.Change.Handler = "CheckvalidPass();";
+                                l.KeyPress.Fn = "CheckCapsLock2";
+                                l.IconClick.Handler = "ShowHidePass2('txtNewPass')";
+                                l.Render.Fn = "CreateComplexityTip";
+                                l.AfterRender.Handler = "App.ChangePasswordd.queryById('txtNewPass').icon.dom.classList.add('custom-EyeIC2');";
+                            }),
+                        X.Label().Text("تکرار رمز عبور:"),
+                        X.TextField()
+                                    .FieldStyle("direction:ltr;padding-left:5px;padding-right:3px;")
+                            .ItemID("txtConfirmPass")
+                            .AllowBlank(false)
+                            .BlankText("لطفا تکرار رمز عبور جدید را وارد کنید.")
+                            .EnableKeyEvents(true)
+                            .IconCls("eyeSee")
+                            .Listeners(l =>
+                            {
+                                l.Render.Fn = "CreateCapsLockTipConfirm";
+                                l.KeyPress.Fn = "CheckCapsLockConfirm";
+                                l.AfterRender.Handler = "App.ChangePasswordd.queryById('txtConfirmPass').icon.dom.classList.add('custom-EyeIC2');";
+                                l.IconClick.Handler = "ShowHidePass2('txtConfirmPass')";
+                            })
+                            .InputType(Ext.Net.InputType.Password),
+                        X.Label()
+                            .ItemID("lblstrength"),
+                        X.Container().Content(@<div id="strength" style="width:145px;height:6px;margin-top:7px;"></div>),
+                        X.Label()
+                            .ItemID("lblstrength1")
+                            .Cls("lbl")
+                            .ColSpan(2)
+                    )
+                )
+        )
+)
+
+<script type="text/javascript">
+    var colour = "";
+
+    function LoadUserPassword() {
+        App.ChangePasswordd.queryById('txtPass').validate();
+        App.ChangePasswordd.queryById('txtNewPass').validate();
+        App.ChangePasswordd.queryById('txtConfirmPass').validate();
+    }
+
+    function ShowHidePass2(itemidd) {
+        var t = App.ChangePasswordd.queryById(itemidd).inputEl.dom.type;
+        if (t == "text") {
+            App.ChangePasswordd.queryById(itemidd).setIconCls("eyeSee");
+            App.ChangePasswordd.queryById(itemidd).inputEl.dom.type = 'password';
+            App.ChangePasswordd.queryById(itemidd).icon.dom.classList.add('custom-EyeIC2');
+        }
+        else {
+            App.ChangePasswordd.queryById(itemidd).setIconCls("eyeNotSee");
+            App.ChangePasswordd.queryById(itemidd).inputEl.dom.type = 'text';
+            App.ChangePasswordd.queryById(itemidd).icon.dom.classList.add('custom-EyeIC2');
+        }
+    }
+
+    var CreateCapsLockTipConfirm = function () {
+        this.ConfirmPassWarningTooltip = new Ext.ToolTip({
+            target: App.ChangePasswordd.queryById("txtConfirmPass").inputEl.dom,
+            anchor: 'top',
+            width: 'auto',
+            height: 30,
+            width:150,
+            autoHide: false,
+            mustShow: false,
+            html: 'CapsLock روشن است.',
+            listeners: {
+                beforeshow: function () {
+                    return this.mustShow;
+                }
+            }
+        });
+    };
+
+    var CheckCapsLockConfirm = function (field, e) {
+        var charCode = e.getCharCode();
+        if ((e.shiftKey && charCode >= 97 && charCode <= 122) ||
+            (!e.shiftKey && charCode >= 65 && charCode <= 90)) {
+            field.ConfirmPassWarningTooltip.mustShow = true;
+            field.ConfirmPassWarningTooltip.show();
+        }
+        else {
+            if (field.ConfirmPassWarningTooltip.hidden == false) {
+                field.ConfirmPassWarningTooltip.mustShow = false;
+                field.ConfirmPassWarningTooltip.hide();
+            }
+        }
+    };
+
+    var CreateComplexityTip = function () {
+        this.PassWarningTooltip = new Ext.ToolTip({
+            target: App.ChangePasswordd.queryById("txtNewPass").inputEl.dom,
+            anchor: 'top',
+            width: 'auto',
+            height: 30,
+            autoHide: false,
+            mustShow: false,
+            html: '',
+            listeners: {
+                beforeshow: function () {
+                    return this.mustShow;
+                }
+            }
+        });
+    };
+    var OnCapsLock = false;
+    var CheckCapsLock2 = function (field, e) {
+        var charCode = e.getCharCode();
+        if ((e.shiftKey && charCode >= 97 && charCode <= 122) ||
+            (!e.shiftKey && charCode >= 65 && charCode <= 90)) {
+            OnCapsLock = true;
+            /*field.PassWarningTooltip.mustShow = true;
+            field.PassWarningTooltip.show();*/
+        }
+        else {
+            if (field.PassWarningTooltip.hidden == false) {
+                /*field.PassWarningTooltip.mustShow = false;
+                field.PassWarningTooltip.hide();*/
+                OnCapsLock = false;
+            }
+        }
+    };
+
+    function CheckvalidPass() {
+        var txtPass = App.ChangePasswordd.queryById('txtNewPass').getValue();
+        var lblstrength = App.ChangePasswordd.queryById('lblstrength');
+        var lblstrength1 = App.ChangePasswordd.queryById('lblstrength1');
+        lblstrength1.setText("");
+        var IsFa = false;
+        var str = txtPass;
+        for (var i = 0; i < str.length ; i++) {
+            var c = str.codePointAt(i);
+            if (c >= 0x0600 && c <= 0x06FF || c == 0xFB8A || c == 0x067E || c == 0x0686 || c == 0x06AF) {
+                IsFa = true;
+            }
+        }
+        if (IsFa) {
+            if (App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.hidden == false) {
+                App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.mustShow = false;
+                App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.hide();
+            }
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "زبان سیستم را به En تغییر دهید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK,
+                fn: function (btn) {
+                    if (btn == "ok") {
+                        App.ChangePasswordd.queryById('txtNewPass').setValue("");
+                    }
+                }
+            });
+        }
+        else {
+            /*var check = false;*/
+            if (txtPass.length == 0) {
+                lblstrength.setText("");
+                colour = "white";
+            }
+            else if (OnCapsLock) {
+                App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.setSize(150, 30);
+                App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.update("CapsLock روشن است.");
+                App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.mustShow = true;
+                App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.show();
+            }
+
+            if (txtPass.length <= 4) {
+                colour = "red";
+                /*lblstrength1.setText("رمز عبور حداقل باید شامل 8 کاراکتر باشد.");*/
+                App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.setSize(250, 30);
+                App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.update("رمز عبور حداقل باید شامل 8 کاراکتر باشد.");
+                App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.mustShow = true;
+                App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.show();
+                lblstrength.setText("ضعیف");
+            }
+            if ((txtPass.length > 4 && txtPass.length < 8) && (!(txtPass.match(/[0-9]/)) || !(txtPass.match(/[a-z]/)) || !(txtPass.match(/[A-Z]/)) || !(txtPass.match(/[.,!,#, $, %, ^, &, *, ?, _, ~, -, (, )]/)))) {
+                colour = "yellow";
+                App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.setSize(500, 40);
+                App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.update("رمز عبور باید فقط با حروف لاتین، حداقل یک حرف بزرگ، حداقل یک حرف کوچک و شامل علائم نگارشی و یا ارقام باشد.");
+                App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.mustShow = true;
+                App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.show();
+                lblstrength.setText("متوسط");
+                /*lblstrength1.setText("رمز عبور باید فقط با حروف لاتین، شامل حداقل 8 کاراکتر، حداقل یک حرف بزرگ، حداقل یک حرف کوچک و شامل علائم نگارشی و یا ارقام باشد");*/
+            }
+            if (txtPass.length >= 8)
+                if ((txtPass.match(/[0-9]/) && txtPass.match(/[a-z]/) && txtPass.match(/[.,!,#, $, %, ^, &, *, ?, _, ~, -, (, )]/)) || (txtPass.match(/[0-9]/) && txtPass.match(/[A-Z]/) && txtPass.match(/[.,!,#, $, %, ^, &, *, ?, _, ~, -, (, )]/)) || (txtPass.match(/[0-9]/) && txtPass.match(/[a-z]/) && txtPass.match(/[A-Z]/)) || (txtPass.match(/[.,!,#, $, %, ^, &, *, ?, _, ~, -, (, )]/) && txtPass.match(/[a-z]/) && txtPass.match(/[A-Z]/))) {
+                    colour = "green";
+                    if (App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.hidden == false) {
+                        App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.mustShow = false;
+                        App.ChangePasswordd.queryById('txtNewPass').PassWarningTooltip.hide();
+                    }
+                    lblstrength.setText("خوب");
+                    /*lblstrength1.setText("");*/
+                }
+
+            $("#strength").css("background-color", colour);
+        }
+    }
+
+    function SaveChangePasswordd() {
+        var lblstrength1 = App.ChangePasswordd.queryById('lblstrength1');
+        var txtPass = App.ChangePasswordd.queryById('txtPass');
+        var txtNewPass = App.ChangePasswordd.queryById('txtNewPass');
+        var txtConfirmPass = App.ChangePasswordd.queryById('txtConfirmPass');
+        var er = false;
+
+        if (txtPass.validate() == false) {
+            er = true;
+        }
+        if (txtNewPass.validate() == false) {
+            er = true;
+        }
+        if (txtConfirmPass.validate() == false) {
+            er = true;
+        }
+        if (colour != "green") {
+            lblstrength1.setText("رمز جدید پیچیدگی لازم را ندارد. ");
+            er = true;
+        }
+
+        if (txtNewPass.getValue() != txtConfirmPass.getValue()) {
+            lblstrength1.setText("رمز عبور و تکرار رمز یکسان نیست. ");
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Weigh/Weighbridge/SaveChangePass',
+            params: {
+                BaskoolId: '@ViewBag.BaskoolId',
+                fldNewPass: txtNewPass.getValue(),
+                fldPass: txtPass.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == "ok" && data.Er!=1) {
+                            App.ChangePasswordd.destroy();
+                        }
+                    }
+                });
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    var addKeyMapChangePasswordd = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var nextfld;
+                    if (Ext.Element.getActiveElement().name == "") {
+                        SaveChangePasswordd();
+                        return;
+                    }
+                    else {
+                        var keyfield = App.ChangePasswordd.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        if (keyfield.itemId == "txtConfirmPass") {
+                            nextfld = App.ChangePasswordd.queryById("btnSave");
+                            nextfld.focus();
+                            return;
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }
+            }]
+        });
+    };
+</script>

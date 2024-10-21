@@ -1,0 +1,128 @@
+﻿@model IEnumerable<NewFMS.WCF_Common_Pay.OBJ_Items_Estekhdam>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net.Utilities
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+
+
+
+@(X.Window().Title("تغییر وضعیت").Modal(true).Border(false).Listeners(l=>l.AfterRender.Handler="LoadStatus()")
+    .ID("ChangeStatus")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+          .Width(300)
+          .Layout(LayoutType.VBox)
+              .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.Height(130)
+             .ButtonAlign(Alignment.Center)
+
+        .DefaultButton("btn")
+
+             .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                .Listeners(l =>
+                {
+                    l.Click.Handler = "SaveChangeStatus();";
+
+                })
+                    , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                     .OnClientClick("App.ChangeStatus.destroy();")
+                )
+    .Items(
+            X.Panel().ItemID("Panel")
+            .Border(false)
+                .Layout(LayoutType.Table)
+                .Padding(10)
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                .Defaults(new { Margin = 2 })
+            .Items(
+                X.Label("وضعیت:"),
+                X.ComboBox().Width(100)
+                    .ItemID("CboStatus")
+                    .Editable(false)
+                    .TypeAhead(true)
+                    .AllowBlank(false)
+                    .ForceSelection(true)
+                    .BlankText("لطفا وضعیت را انتخاب کنید.")
+                    .QueryMode(DataLoadMode.Local)
+                    .TriggerAction(TriggerAction.All)
+                    .EmptyText("وضعیت...")
+                    .Items(
+                        new ListItem("فعال", "1"),
+                        new ListItem("غیرفعال", "0")
+                        )
+
+        )
+    )
+)
+<script type="text/javascript">
+    function LoadStatus() {
+        var CboStatus = App.ChangeStatus.queryById('CboStatus');
+        if ('@ViewBag.Status' == "True") {
+            CboStatus.setValue("0");
+            CboStatus.setReadOnly(true);
+        }
+        else if ('@ViewBag.Status' == "False") {
+            CboStatus.setValue("1");
+            CboStatus.setReadOnly(true);
+        }
+    }
+    function SaveChangeStatus() {
+        var CboStatus = App.ChangeStatus.queryById('CboStatus');
+        var er = false;
+
+        if (CboStatus.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+        var status = false;
+        if (CboStatus.getValue() == "1")
+            status = true;
+        Ext.MessageBox.show({
+            title: "هشدار",
+            msg: "آیا برای تغییر وضعیت مطمئن هستید؟",
+            icon: Ext.MessageBox.WARNING,
+            buttons: Ext.MessageBox.YESNO,
+            fn: function (btn) {
+                if (btn == 'yes') {
+                    Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Daramad/ShomareHesabCodeDaramad/UpdateStatus',
+                        params: {
+                            Status: status,
+                            id: '@ViewBag.id',
+                        },
+                        success: function (data) {
+                            Ext.net.Mask.hide();
+                            var ic = Ext.MessageBox.INFO;
+                            if (data.Err == 1)
+                                ic = Ext.MessageBox.ERROR;
+                            else
+                                App.ChangeStatus.destroy();
+                            Ext.MessageBox.show({
+                                Name: data.MsgName,
+                                msg: data.Msg,
+                                icon: ic,
+                                buttons: Ext.MessageBox.OK
+                            });
+                            ChangeType();
+                        }
+
+                    });
+                    Ext.net.Mask.hide();
+                }
+            }
+        });
+    }
+</script>

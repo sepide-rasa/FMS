@@ -1,0 +1,281 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<style>
+    .custom-IncomeIc {
+        margin-right: 405px !important;
+    }
+
+    .custom-IncomeIcsh {
+        margin-right: 125px !important;
+    }
+</style>
+
+@(Html.X().Window()
+    .Closable(true)
+    .CloseAction(CloseAction.Destroy)
+    .Listeners(l =>
+    {
+        //l.AfterRender.Handler = "loadIncomSettingg()";
+        //l.Render.Fn = "addKeyMapIncomeSettingg";
+    })
+    .Title("ثبت گروهی احکام")
+    .Layout(LayoutType.Fit)
+    .ID("HokmGroup")
+    .Modal(true)
+    .Width(500)
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        Html.X().Button()
+            .Text("ذخیره")
+                .ItemID("BtnSave")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveHokmGroup()"),
+                     Html.X().Button()
+                 .Text("راهنما")
+                 .Icon(Ext.Net.Icon.Help)
+                     .Listeners(l => { l.Click.Handler = "HelpHokmGroup();"; }),
+        Html.X().Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => l.Click.Handler = "App.HokmGroup.destroy()")
+    )
+    .Items(
+            X.FormPanel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.PaddingSpec("4px 12px 4px 12px")
+            .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .Title("اطلاعات حکم")
+        //.Height(200)
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                    X.Hidden().ItemID("txtTypehokm"),
+                        X.Label().Text("تاریخ اجرا:")
+                , X.PDateField()
+                .ItemID("txtTarikhEjra")
+                .Editable(false)
+                .AutoFocus(true)
+                .AllowBlank(false)
+                .Listeners(l => l.Focus.Handler = "ChangeTarikhEjra();")
+                .BlankText("لطفا تاریخ اجرا را وارد کنید.")
+                .LabelAlign(Ext.Net.LabelAlign.Right)
+                   // .Listeners(l => l.Change.Handler = "if(App.HokmGroup.queryById('txtTarikhEjra').getValue()!=''){ App.HokmGroup.queryById('LblErr').setText('');ChangeTarikhEjra_();}")
+        , X.Label().Text("تاریخ صدور:")
+                , X.PDateField()
+                .ItemID("txtTarikhSodoor")
+                .AllowBlank(false)
+                .Editable(false)
+                .Listeners(l => l.Focus.Handler = "ChangeTarikhSodoor ();")
+                .BlankText("لطفا تاریخ صدور را وارد کنید.")
+                .LabelAlign(Ext.Net.LabelAlign.Right)
+                , X.Label().Text("تاریخ شروع:")
+                , X.PDateField()
+                .Editable(false)
+                .ItemID("txtTarikhShoroo")
+                .LabelAlign(Ext.Net.LabelAlign.Right)
+                , X.Label().Text("تاریخ اتمام:")
+                , X.PDateField()
+                .Editable(false)
+                .ItemID("txtTarikhEtmam")
+                .LabelAlign(Ext.Net.LabelAlign.Right)
+                .Listeners(l => l.Focus.Handler = "ChangeTarikhEtmam ();")
+                , X.Label().Text("نوع استخدام:")
+                ,X.ComboBox()
+                .ItemID("CboNoeEstekhdam")
+                .TypeAhead(true)
+                .AllowBlank(false)
+                .BlankText("لطفا نوع استخدام را انتخاب کنید.")
+                .QueryMode(DataLoadMode.Local)
+                .ForceSelection(true)
+                .TriggerAction(TriggerAction.All)
+                .DisplayField("fldName")
+                .ValueField("fldId")
+                .Editable(false)
+                .EmptyText("نوع استخدام ...")
+                .Store(X.Store()
+                    .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                        )
+                        )
+                    .Proxy(X.AjaxProxy()
+                        .Url(Url.Action("GetNoeEstekhdam"))
+                        .Reader(X.JsonReader().Root("data"))
+                            )
+                    .Listeners(l => l.Load.Handler = "setdefaultValueNoeEstekhdam()")
+                        )
+                , X.Label().Text("وضعیت حکم:")
+                , X.ComboBox()
+                .ItemID("CboStatusHokm")
+                .LabelAlign(Ext.Net.LabelAlign.Right)
+                .Editable(false)
+                .TypeAhead(true)
+                .BlankText("لطفا وضعیت حکم را انتخاب کنید.")
+                .QueryMode(DataLoadMode.Local)
+                .TriggerAction(TriggerAction.All)
+                .EmptyText("وضعیت")
+                .Items(
+                    new ListItem("تایید نشده", "0"),
+                    new ListItem("تایید شده", "1")
+                    )
+                .SelectedItems(new { Value = "0" })
+                , X.Label().Text("ضریب:")
+                , X.TextField()
+                .ItemID("txtZarib")
+                .MaskRe("/[0-9 .]/")
+                .MaxLength(5)
+                .LabelAlign(Ext.Net.LabelAlign.Right)
+                .AllowBlank(false)
+                .BlankText("لطفا ضریب را وارد کنید.")
+                .ColSpan(3)
+                , X.Label().Text("شرح حکم(INS):")
+                , X.TextArea()
+                .ItemID("txtDescriptionHokm")
+                .IconCls("Hokm")
+                .LabelAlign(Ext.Net.LabelAlign.Right)
+                .AllowBlank(false)
+                .BlankText("لطفا شرح حکم را وارد کنید.")
+                    .DirectEvents(li =>
+                    {
+                        li.SpecialKey.Url = "/Personeli/SearchPatternSharhHokm/Index?State=2";
+                        li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                        li.IconClick.Url = "/Personeli/SearchPatternSharhHokm/Index?State=2";
+                    })
+            .Width(365)
+            .ColSpan(4)
+                        )
+            )
+    )
+)
+
+<script type="text/javascript">
+    function HelpHokmGroup() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/PersonalHokm/HelpHokmGroup',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function setdefaultValueNoeEstekhdam() {
+        var CboNoeEstekhdam = App.HokmGroup.queryById('CboNoeEstekhdam');
+        CboNoeEstekhdam.select(CboNoeEstekhdam.store.getAt(0));
+    }
+    function ChangeTarikhEtmam() {
+        var txtTarikhEjra = App.HokmGroup.queryById('txtTarikhEjra');
+        var txtTarikhSodoor = App.HokmGroup.queryById('txtTarikhSodoor');
+        var txtTarikhEtmam = App.HokmGroup.queryById('txtTarikhEtmam');
+
+        txtTarikhEtmam.setMinValue(txtTarikhEjra.getValue());
+        txtTarikhEtmam.minText = "تاریخ اتمام نباید از تاریخ اجرا کوچکتر باشد.";
+    }
+    function ChangeTarikhSodoor() {
+        var txtTarikhEjra = App.HokmGroup.queryById('txtTarikhEjra');
+        var txtTarikhSodoor = App.HokmGroup.queryById('txtTarikhSodoor');
+        var txtTarikhEtmam = App.HokmGroup.queryById('txtTarikhEtmam');
+        txtTarikhSodoor.setMinValue(txtTarikhEjra.rawValue);
+        txtTarikhSodoor.minText = "تاریخ صدور باید بعد از تاریخ اجرا " + txtTarikhEjra.rawValue + "باشد";
+
+    }
+    function ChangeTarikhEjra() {
+        var txtTarikhEjra = App.HokmGroup.queryById('txtTarikhEjra');
+        var txtTarikhSodoor = App.HokmGroup.queryById('txtTarikhSodoor');
+        var txtTarikhEtmam = App.HokmGroup.queryById('txtTarikhEtmam');
+        var fldTarikh = new Date('@ViewBag.fldTarikh');
+        txtTarikhEjra.setMaxValue(txtTarikhEtmam.getValue());
+        txtTarikhEjra.maxText = "تاریخ اجرا باید قبل از تاریخ اتمام " + txtTarikhEtmam.rawValue + "باشد";
+        txtTarikhEjra.setMaxValue(txtTarikhSodoor.getValue());
+        txtTarikhEjra.maxText = "تاریخ اجرا باید قبل از تاریخ صدور " + txtTarikhSodoor.rawValue + "باشد";
+    }
+    function SaveHokmGroup() {
+        var txtTarikhEjra = App.HokmGroup.queryById('txtTarikhEjra');
+        var txtTarikhSodoor = App.HokmGroup.queryById('txtTarikhSodoor');
+        var txtTarikhEtmam = App.HokmGroup.queryById('txtTarikhEtmam');
+        var txtTarikhShoroo = App.HokmGroup.queryById('txtTarikhShoroo');
+        var CboStatusHokm = App.HokmGroup.queryById('CboStatusHokm');
+        var CboNoeEstekhdam = App.HokmGroup.queryById('CboNoeEstekhdam');
+        var txtZarib = App.HokmGroup.queryById('txtZarib');
+        var txtDescriptionHokm = App.HokmGroup.queryById('txtDescriptionHokm');
+        var txtTypehokm = App.HokmGroup.queryById('txtTypehokm');
+        
+        var er = false;
+
+        if (txtTarikhEjra.validate() == false) {
+            er = true;
+        }
+        if (txtTarikhSodoor.validate() == false) {
+            er = true;
+        }
+        if (CboStatusHokm.validate() == false) {
+            er = true;
+        }
+        if (txtZarib.validate() == false) {
+            er = true;
+        }
+        if (txtDescriptionHokm.validate() == false) {
+            er = true;
+        }
+        if (CboNoeEstekhdam.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        var StatusHokm = false;
+        if (CboStatusHokm.getValue() == "1")
+            StatusHokm = true;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/PersonalHokm/SaveHokmGroup',
+            params: {
+                Typehokm: txtTypehokm.getValue(),
+                TarikhEjra: txtTarikhEjra.rawValue,
+                TarikhSodoor: txtTarikhSodoor.rawValue,
+                TarikhEtmam: txtTarikhEtmam.rawValue,
+                TarikhShoroo: txtTarikhShoroo.rawValue,
+                StatusHokm: StatusHokm,
+                Zarib: txtZarib.getValue(),
+                DescriptionHokm: txtDescriptionHokm.getValue(),
+                AnvaeEstekhdamId: CboNoeEstekhdam.getValue(),
+                fldHokmType:1
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                /*if (data.Err != 1)
+                    ClearHokmGroup();*/
+            }
+
+        });
+    } 
+    function ClearHokmGroup() {
+        App.HokmGroup.queryById('txtTarikhEjra').setValue("");
+        App.HokmGroup.queryById('txtTarikhSodoor').setValue("");
+        App.HokmGroup.queryById('txtTarikhEtmam').setValue("");
+        App.HokmGroup.queryById('txtTarikhShoroo').setValue("");
+        App.HokmGroup.queryById('CboStatusHokm').setValue("0");
+        App.HokmGroup.queryById('CboNoeEstekhdam').setValue("");
+        App.HokmGroup.queryById('txtZarib').setValue("");
+        App.HokmGroup.queryById('txtDescriptionHokm').setValue("");
+    }
+</script>

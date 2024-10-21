@@ -1,0 +1,614 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_Dafater>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+
+@(Html.X().Panel()
+    .Closable(true)
+    .AutoScroll(true)
+    .Border(false)
+    .Title("گزارش دفاتر")
+    .CloseAction(CloseAction.Destroy)
+    .Layout(LayoutType.VBox)
+    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+    .Listeners(li => { li.AfterRender.Handler = "setSizePnlRptDafater()"; li.Render.Fn = "addKeyMapRptDafater"; })
+    .ID("RptDafater")
+    .Items(
+        X.Panel()
+            .Border(false)
+            .ButtonAlign(Alignment.Center)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Buttons(
+                Html.X().Button()
+                    .Text("جستجو")
+                    .Icon(Ext.Net.Icon.Monitor)
+                    .Listeners(l => l.Click.Handler = "LoadGridDafater()"),
+                Html.X().Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .Listeners(l => l.Click.Handler = "App.RptDafater.destroy()")
+            )
+            .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .Title("آیتم های جستجو")
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 8 })
+                    .Items(
+                        X.Hidden().ItemID("FileId"),
+                        X.Label("از سطح:"),
+                        X.ComboBox()
+                            .ItemID("CboAzLevel")
+                            .AutoFocus(true)
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .AllowBlank(true)
+                            .BlankText("لطفا سطح را انتخاب کنید.")
+                            .ForceSelection(true)
+                            .Width(100)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                            .ValueField("fldId")
+                            .EmptyText("سطح ...")
+                            .Listeners(li => li.Change.Handler = "App.RptDafater.queryById('CboAzCode').getStore().load(); App.RptDafater.queryById('CboTaLevel').getStore().load();")
+                            .Store(X.Store()
+                                .Listeners(l => l.Load.Handler = "setDefaultLevelDafater()")
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" },
+                                        new ModelField("fldLevelId", ModelFieldType.String) { Mapping = "fldLevelId" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetAccountingLevel"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                    .ExtraParams(l => l.Add(new { Year = ViewBag.Year }))
+                                )
+                            ),
+                            X.Label("تا سطح:"),
+                            X.ComboBox()
+                                .ItemID("CboTaLevel")
+                                .TypeAhead(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .AllowBlank(false)
+                                .Width(100)
+                                .BlankText("لطفا سطح را انتخاب کنید.")
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldName")
+                                .ValueField("fldId")
+                                .EmptyText("سطح ...")
+                                .Listeners(li => li.Change.Handler = "if(App.RptDafater.queryById('CboTaLevel').validate() && App.RptDafater.queryById('CboAzCode')){App.RptDafater.queryById('CboTaCode').getStore().load();}")
+                                .Store(X.Store()
+                                    .AutoLoad(false)
+                                    .Listeners(l => l.Load.Handler = "setDefaultNextLevelDafater()")
+                                    .Model(X.Model()
+                                        .IDProperty("fldId")
+                                        .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" },
+                                            new ModelField("fldLevelId", ModelFieldType.String) { Mapping = "fldLevelId" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetNextAccountingLevel"))
+                                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                                    .Parameters(ps =>
+                                    {
+                                        ps.Add(new StoreParameter("Year", ViewBag.Year, ParameterMode.Raw));
+                                        ps.Add(new StoreParameter("fldLevelId", "App.RptDafater.queryById('CboAzLevel').findRecordByValue(App.RptDafater.queryById('CboAzLevel').getValue()).data.fldLevelId", ParameterMode.Raw));
+                                    })
+                                ),
+                            X.Label("از کد حساب:"),
+                            X.ComboBox()
+                                .ItemID("CboAzCode")
+                                .TypeAhead(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .AllowBlank(true)
+                                .BlankText("لطفا کد حساب را انتخاب کنید.")
+                                .ForceSelection(true)
+                                .Width(100)
+                                .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldName")
+                                .ValueField("fldId")
+                                .EmptyText("کد حساب ...")
+                                .Listeners(li => li.Change.Handler = "if(App.RptDafater.queryById('CboTaLevel').validate() && App.RptDafater.queryById('CboAzCode')){App.RptDafater.queryById('CboTaCode').getStore().load();}")
+                                .Store(X.Store()
+                                    .AutoLoad(false)
+                                    .Listeners(l => l.Load.Handler = "setDefaultCboAzCode()")
+                                    .Model(X.Model()
+                                        .IDProperty("fldId")
+                                        .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetCodingDetails"))
+                                        .Reader(X.JsonReader().Root("data"))
+                                        .ExtraParams(l => l.Add(new { Year = ViewBag.Year }))
+                                    )
+                                    .Parameters(ps =>
+                                    {
+                                        ps.Add(new StoreParameter("state", "1", ParameterMode.Raw));
+                                        ps.Add(new StoreParameter("AccountLevelId", "App.RptDafater.queryById('CboAzLevel').getValue()", ParameterMode.Raw));
+                                        ps.Add(new StoreParameter("CodingId", "0", ParameterMode.Raw));
+                                    })
+                                ),
+                            X.Label("تا کد حساب:"),
+                            X.ComboBox()
+                                .ItemID("CboTaCode")
+                                .TypeAhead(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .AllowBlank(true)
+                                .Width(100)
+                                .BlankText("لطفا کد حساب را انتخاب کنید.")
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldName")
+                                .ValueField("fldId")
+                                .EmptyText("کد حساب ...")
+                                .Store(X.Store()
+                                    .AutoLoad(false)
+                                    .Listeners(l => l.Load.Handler = "setDefaultCboTaCode()")
+                                    .Model(X.Model()
+                                        .IDProperty("fldId")
+                                        .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetCodingDetails"))
+                                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                                    .Parameters(ps =>
+                                    {
+                                        ps.Add(new StoreParameter("state", "2", ParameterMode.Raw));
+                                        ps.Add(new StoreParameter("AccountLevelId", "App.RptDafater.queryById('CboTaLevel').getValue()", ParameterMode.Raw));
+                                        ps.Add(new StoreParameter("CodingId", "App.RptDafater.queryById('CboAzCode').getValue()", ParameterMode.Raw));
+                                        ps.Add(new StoreParameter("Code", "App.RptDafater.queryById('CboAzCode').getDisplayValue()", ParameterMode.Raw));
+                                    })
+                                ),
+                            X.FieldSet()
+                                .Layout(LayoutType.HBox)
+                                .Padding(0)
+                                .Border(false)
+                                .Defaults(new { Margin = 2 })
+                                .Items(
+                                    X.Checkbox().ItemID("ChkFile").Listeners(l=>l.Change.Handler="EnableFileDafater()"),
+                                    X.Label("نوع:")
+                                ),
+                            X.ComboBox()
+                                .ItemID("CboCaseType")
+                                .ColSpan(3)
+                                .Width(251)
+                                .TypeAhead(true)
+                                .Editable(true)
+                                .ForceSelection(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .AllowBlank(false)
+                                .BlankText("لطفا نوع پرونده را انتخاب کنید.")
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldTitle")
+                                .ValueField("fldId")
+                                .EmptyText("نوع پرونده ...")
+                                .Store(X.Store()
+                                    .Model(X.Model()
+                                        .IDProperty("fldId")
+                                        .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetCaseType"))
+                                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                                )
+                                .Listeners(l => l.Change.Handler = "ChangeCaseTypeDafater()"),
+                            X.Label("پرونده:"),
+                            X.TextField()
+                                .ItemID("txtFileName")
+                                .ColSpan(3)
+                                .ReadOnly(true)
+                                .AllowBlank(false)
+                                .FieldStyle("padding-right:20px;")
+                                .Width(272)
+                                .Icon(Icon.Add)
+                                .Listeners(l =>
+                                {
+                                    l.SpecialKey.Handler = "GetFilesDafaterWithKey(e.getKey());";
+                                    l.IconClick.Handler = "GetFilesDafater()";
+                                    l.AfterRender.Handler = "App.RptDafater.queryById('txtFileName').icon.dom.classList.add('custom-icon');";
+                                }),
+                            X.Label("از سند:"),
+                            X.ComboBox()
+                                .ItemID("CboAzSanad")
+                                .TypeAhead(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .AllowBlank(false)
+                                .BlankText("لطفا شماره سند را انتخاب کنید.")
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldName")
+                                .Width(100)
+                                .ValueField("fldId")
+                                .EmptyText("شماره سند ...")
+                                .Listeners(li => li.Change.Handler = "App.RptDafater.queryById('CboTaSanad').clearValue(); App.RptDafater.queryById('CboTaSanad').getStore().load()")
+                                .Store(X.Store()
+                                    .Listeners(l => l.Load.Handler = "setDefaultCboAzSanad()")
+                                    .Model(X.Model()
+                                        .IDProperty("fldId")
+                                        .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetDocNum"))
+                                        .Reader(X.JsonReader().Root("data"))
+                                        .ExtraParams(l => l.Add(new { Year = ViewBag.Year }))
+                                        .ExtraParams(l => l.Add(new { DocNum = 0 }))
+                                    )
+                                ),
+                            X.Label("تا سند:"),
+                            X.ComboBox()
+                                .ItemID("CboTaSanad")
+                                .TypeAhead(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .AllowBlank(true)
+                                .BlankText("لطفا شماره سند را انتخاب کنید.")
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                .DisplayField("fldName")
+                                .Width(100)
+                                .ValueField("fldId")
+                                .EmptyText("شماره سند ...")
+                                .Store(X.Store()
+                                    .AutoLoad(false)
+                                    .Listeners(l => l.Load.Handler = "setDefaultCboTaSanad()")
+                                    .Model(X.Model()
+                                        .IDProperty("fldId")
+                                        .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetDocNum"))
+                                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                                    .Parameters(ps =>
+                                    {
+                                        ps.Add(new StoreParameter("Year", ViewBag.Year, ParameterMode.Raw));
+                                        ps.Add(new StoreParameter("DocNum", "App.RptDafater.queryById('CboAzSanad').getDisplayValue()", ParameterMode.Raw));
+                                    })
+                                ),
+                            X.Label("نوع گروه بندی:"),
+                            X.ComboBox()
+                                .ItemID("CboGroup")
+                                .TypeAhead(true)
+                                .AllowBlank(false)
+                                .ColSpan(3)
+                                .Width(272)
+                                .BlankText("لطفا نوع گروه بندی انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .EmptyText("گروه بندی ...")
+                                .SelectedItems(new  { Value="1"})
+                                .Items(
+                                    new ListItem("براساس شماره سند", "1"),
+                                    new ListItem("براساس کد حساب", "2")
+                                )
+                    )
+                ),
+        X.GridPanel()
+            .ItemID("GridDafater")
+            .BottomBar(X.PagingToolbar())
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(
+                        X.Button()
+                            .Text("خروجی pdf")
+                            .Icon(Ext.Net.Icon.PageWhiteAcrobat)
+                            .Listeners(l => l.Click.Handler = "PrintDafater();")
+                    )
+            )
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.Load.Handler = "App.RptDafater.body.mask().hide();")
+                    .AutoLoad(false)
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("ReadDafater"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(100)
+                    .RemoteFilter(false)
+                    .RemotePaging(false)
+            )
+            .Plugins(X.FilterHeader().Remote(false))
+            .ViewConfig(
+                X.GridView()
+                    .LoadingText("در حال بارگذاری...").RTL(true)                            
+            )
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldDocumentNum).Text("شماره سند").Sortable(false).Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldTarikhDocument).Text("تاریخ سند").Sortable(false).Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldCode).Sortable(false).Text("کد حساب").Flex(3),
+                Html.X().Column().DataIndex(Model, m => m.fldTitle).Sortable(false).Text("شرح حساب").Wrap(true).Flex(4),                    
+                Html.X().Column().DataIndex(Model, m => m.fldDescriptionDocu).Text("شرح سند").Sortable(false).Wrap(true).Flex(4),
+                Html.X().Column().DataIndex(Model, m => m.fldBedehkar).Text("بدهکار").Sortable(false).Flex(3).Renderer("return value.toLocaleString()"),
+                Html.X().Column().DataIndex(Model, m => m.fldBestankar).Text("بستانکار").Sortable(false).Flex(3).Renderer("return value.toLocaleString()"),
+                Html.X().Column().DataIndex(Model, m => m.fldMande).Text("مانده").Sortable(false).Flex(3).Renderer("return value.toLocaleString()")
+        )
+        .SelectionModel(
+            Html.X().RowSelectionModel()
+                .Mode(Ext.Net.SelectionMode.Single)
+        )
+    )
+)
+
+<script type="text/javascript">
+    function GetFilesDafater() {
+        if (App.RptDafater.queryById('CboCaseType').getValue() != null) {
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/SearchParvandeInfo/Index',
+                params: {
+                    State: 2,
+                    FileType: App.RptDafater.queryById("CboCaseType").getValue(),
+                    Year: '@ViewBag.Year'
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا نوع پرونده را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK,
+                fn: function (btn) {
+                    if (btn == "ok") {
+                        App.RptDafater.queryById("CboCaseType").focus();
+                    }
+                }
+            });
+        }
+    }
+
+    function GetFilesDafaterWithKey(Code) {
+        if (Code == 45) {
+            if (App.RptDafater.queryById('CboCaseType').getValue() != null) {
+                Ext.net.DirectMethod.request({
+                    url: '/Accounting/SearchParvandeInfo/Index',
+                    params: {
+                        State: 2,
+                        FileType: App.RptDafater.queryById('CboCaseType').getValue(),
+                        Year: '@ViewBag.Year'
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا نوع پرونده را انتخاب کنید.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            App.RptDafater.queryById("CboCaseType").focus();
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    function ChangeCaseTypeDafater() {
+        App.RptDafater.queryById('FileId').setValue(0);
+        App.RptDafater.queryById('txtFileName').setValue("");
+    }
+
+    function EnableFileDafater() {
+        if (App.RptDafater.queryById("ChkFile").getValue()) {
+            App.RptDafater.queryById("CboCaseType").enable();
+            App.RptDafater.queryById("txtFileName").enable();
+            App.RptDafater.queryById("txtFileName").icon.show();
+
+        }
+        else {
+            App.RptDafater.queryById("CboCaseType").disable();
+            App.RptDafater.queryById("txtFileName").disable();
+            App.RptDafater.queryById("txtFileName").icon.hide();
+            App.RptDafater.queryById("CboCaseType").clearValue();
+        }
+    }
+
+    function setDefaultCboAzSanad() {
+        if (App.RptDafater.queryById("CboAzSanad").store.count() > 0) {
+            App.RptDafater.queryById("CboAzSanad").select(App.RptDafater.queryById("CboAzSanad").store.getAt(0));
+            App.RptDafater.queryById('CboTaSanad').getStore().load();
+        }
+    }
+
+    function setDefaultCboTaSanad() {
+        if (App.RptDafater.queryById("CboTaSanad").store.count() > 0) {
+            App.RptDafater.queryById("CboTaSanad").select(App.RptDafater.queryById("CboTaSanad").store.getAt(App.RptDafater.queryById("CboTaSanad").store.count() - 1));
+        }
+    }
+
+    function setDefaultLevelDafater() {
+        App.RptDafater.queryById("CboAzLevel").select(App.RptDafater.queryById("CboAzLevel").store.getAt(0));
+    }
+
+    function setDefaultNextLevelDafater() {
+        App.RptDafater.queryById("CboTaLevel").select(App.RptDafater.queryById("CboTaLevel").store.getAt(0));
+    }
+
+    function setDefaultCboAzCode() {
+        if (App.RptDafater.queryById("CboAzCode").store.count() > 0) {
+            App.RptDafater.queryById("CboAzCode").select(App.RptDafater.queryById("CboAzCode").store.getAt(0));
+        }
+    }
+
+    function setDefaultCboTaCode() {
+        if (App.RptDafater.queryById("CboTaCode").store.count() > 0) {
+            App.RptDafater.queryById("CboTaCode").select(App.RptDafater.queryById("CboTaCode").store.getAt(App.RptDafater.queryById("CboTaCode").store.count() - 1));
+        }
+    }
+
+    function setSizePnlRptDafater() {
+        App.RptDafater.setSize(App.AccountingWin.getWidth(), App.AccountingWin.getHeight() - 170);
+        App.RptDafater.queryById("GridDafater").setSize(App.AccountingWin.getWidth() - 20, App.AccountingWin.getHeight() - 310);
+        App.RptDafater.queryById("CboCaseType").disable();
+        App.RptDafater.queryById("txtFileName").disable();
+        App.RptDafater.queryById("txtFileName").icon.hide();
+    }
+
+    function LoadGridDafater() {
+        var CboAzCode = App.RptDafater.queryById('CboAzCode');
+        var CboTaCode = App.RptDafater.queryById('CboTaCode');
+        var CboAzSanad = App.RptDafater.queryById('CboAzSanad');
+        var CboTaSanad = App.RptDafater.queryById('CboTaSanad');
+        var CboGroup = App.RptDafater.queryById('CboGroup');
+        var CboCaseType = App.RptDafater.queryById('CboCaseType');
+        var FileId = App.RptDafater.queryById('FileId');
+        var txtFileName = App.RptDafater.queryById('txtFileName');
+        var ChkFile = App.RptDafater.queryById('ChkFile');
+        var CaseTypeId = 0;
+        var FileIdd = 0;
+        if (ChkFile.getValue()) {
+            CaseTypeId = CboCaseType.getValue();
+            FileIdd = FileId.getValue();
+        }
+
+        if ((ChkFile.getValue() && CboAzCode.validate() && CboTaCode.validate() && CboAzSanad.validate() && CboTaSanad.validate() && CboGroup.validate() &&
+            CboCaseType.validate() && txtFileName.validate()) || (ChkFile.getValue() == false && CboAzCode.validate() && CboTaCode.validate() && CboAzSanad.validate()
+            && CboTaSanad.validate() && CboGroup.validate())) {
+            App.RptDafater.body.mask("در حال بارگذاری");
+            App.RptDafater.queryById('GridDafater').getStore().getProxy().setExtraParam("AzCode", CboAzCode.getDisplayValue());
+            App.RptDafater.queryById('GridDafater').getStore().getProxy().setExtraParam("TaCode", CboTaCode.getDisplayValue());
+            App.RptDafater.queryById('GridDafater').getStore().getProxy().setExtraParam("AzSanad", CboAzSanad.getDisplayValue());
+            App.RptDafater.queryById('GridDafater').getStore().getProxy().setExtraParam("TaSanad", CboTaSanad.getDisplayValue());
+            App.RptDafater.queryById('GridDafater').getStore().getProxy().setExtraParam("Group", CboGroup.getValue());
+            App.RptDafater.queryById('GridDafater').getStore().getProxy().setExtraParam("FiscalYearId", '@ViewBag.FiscalYearId');
+            App.RptDafater.queryById('GridDafater').getStore().getProxy().setExtraParam("SourceId", FileIdd);
+            App.RptDafater.queryById('GridDafater').getStore().getProxy().setExtraParam("CaseTypeId", CaseTypeId);
+            App.RptDafater.queryById('GridDafater').getStore().load();
+        }
+    }
+
+    function PrintDafater() {
+        var CboTaLevel = App.RptDafater.queryById('CboTaLevel');
+        var CboAzLevel = App.RptDafater.queryById('CboAzLevel');
+        var CboAzCode = App.RptDafater.queryById('CboAzCode');
+        var CboTaCode = App.RptDafater.queryById('CboTaCode');
+        var CboAzSanad = App.RptDafater.queryById('CboAzSanad');
+        var CboTaSanad = App.RptDafater.queryById('CboTaSanad');
+        var CboGroup = App.RptDafater.queryById('CboGroup');
+        var CboCaseType = App.RptDafater.queryById('CboCaseType');
+        var FileId = App.RptDafater.queryById('FileId');
+        var txtFileName = App.RptDafater.queryById('txtFileName');
+        var ChkFile = App.RptDafater.queryById('ChkFile');
+        var CaseTypeId = 0;
+        var FileIdd = 0;
+        if (ChkFile.getValue()) {
+            CaseTypeId = CboCaseType.getValue();
+            FileIdd = FileId.getValue();
+        }
+        var LevelName="";
+        if ((ChkFile.getValue() && CboAzCode.validate() && CboTaCode.validate() && CboAzSanad.validate() && CboTaSanad.validate() && CboGroup.validate() &&
+            CboCaseType.validate() && txtFileName.validate()) || (ChkFile.getValue() == false && CboAzCode.validate() && CboTaCode.validate() && CboAzSanad.validate()
+            && CboTaSanad.validate() && CboGroup.validate())) {
+            if(CboTaLevel.getValue()==CboAzLevel.getValue()){
+                LevelName=CboAzLevel.getDisplayValue();
+            }
+            App.RptDafater.body.mask("در حال بارگذاری");
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/RptDafater/PrintRptDafater',
+                params: {
+                    Year: '@ViewBag.Year',
+                    AzCode: CboAzCode.getDisplayValue(),
+                    TaCode: CboTaCode.getDisplayValue(),
+                    AzSanad: CboAzSanad.getDisplayValue(),
+                    TaSanad: CboTaSanad.getDisplayValue(),
+                    Group: CboGroup.getValue(),
+                    LevelName: LevelName,
+                    CaseTypeId: CaseTypeId,
+                    SourceId:FileIdd
+                },
+                success: function () {
+                    App.RptDafater.body.mask().hide();
+                }
+            });
+        }
+    }
+
+    var addKeyMapRptDafater = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield;
+                    var nextfld;
+                    if ((Ext.Element.getActiveElement()).name == "") {
+                        if (App.RptDafater.queryById('ChkFile').getValue()) {
+                            nextfld = App.RptDafater.queryById('CboCaseType');
+                        }
+                        else {
+                            nextfld = App.RptDafater.queryById('CboAzSanad');
+                        }
+                    }
+                    else {
+                        keyfield = App.RptDafater.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        if (keyfield.itemId == "CboGroup") {
+                            LoadGridDafater();
+                            return;
+                        }
+                        else if (keyfield.itemId == "CboTaCode") {
+                            nextfld = App.RptDafater.queryById('ChkFile');
+                            nextfld.focus();
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();                            
+                        }                        
+                    }
+                    nextfld.selectText();
+                    nextfld.focus();
+                }
+            }]
+        });
+    };
+</script>
+

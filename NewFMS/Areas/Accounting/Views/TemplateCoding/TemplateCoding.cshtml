@@ -1,0 +1,866 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_TemplateCoding>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+     .rowheightTemplate{
+        height:35px;
+    }
+</style>
+@(Html.X().Window()
+    .Width(800)
+    .Modal(true)
+    .ID("TemplateCoding")
+    .Title("ساختار درختی الگوی کدینگ")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l => {
+        l.Render.Fn = "addKeyMapTemplateCoding";
+        l.BeforeClose.Handler = "validPcode=false;";
+        l.Resize.Handler = "ResizeTree()";
+    })
+    //.Resizable(false)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.HBox)
+            .Padding(10)
+            .Items(
+                X.FieldSet()
+                    .Title("مشخصات ساختار درختی")
+                    .Border(true)
+                    .ItemID("TreeFieldset")
+                    //.Listeners(l=>l.Render.Handler = "App.TemplateCoding.queryById('TreeFieldset').setHeight(Ext.getBody().getViewSize().height-250);")
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .AutoScroll(true)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 2/*, TRAttrs = { Cls = "rowheightTemplate" }*/ })
+                    .Items(
+                        X.Hidden()
+                            .ItemID("fldId").Value(0),
+                        X.Hidden()
+                            .ItemID("fldAccountTypLevelId"),
+                        X.Label("کد گــره پــدر:"),
+                        X.TextField()
+                            .ItemID("txtPCode")
+                            .FieldStyle("direction:ltr;")
+                            .Listeners(l => {
+                                //l.Blur.Handler = "CheckValidatePCode()";
+                                l.Change.Handler = "validPcode=false;";
+                            })
+                            .MaxLength(100)
+                            .EnforceMaxLength(true)
+                            //.AutoFocus(true)
+                            .MaskRe("[0-9]"),
+                        X.Label("کد گره فـرزنـد:"),
+                        X.TextField()
+                            .ItemID("txtCode")
+                            .FieldStyle("direction:ltr;")
+                            .Listeners(l=>{
+                                l.Focus.Handler = "CheckValidatePCode()";
+                                l.Blur.Handler = "CheckValidateCode()";                                
+                            })
+                            .AllowBlank(false)
+                            .BlankText("لطفا کد را وارد کنید.")
+                            .MaskRe("[0-9]")
+                            .MaxLength(100)
+                            .EnforceMaxLength(true),
+                        X.FieldSet()
+                            .Border(false)
+                            .Padding(0)
+                            .ColSpan(2)
+                            .Defaults(new { Margin = 2 })
+                            .MarginSpec("0 0 0 -1px")
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 3 })
+                            .Items(
+                                X.Checkbox().ItemID("CheckMap").Listeners(l => l.Change.Handler = "EnableCboNecessaryItems()"),
+                                X.Label("مطابق الگو:"),
+                                X.ComboBox()
+                                    .ItemID("CboNecessaryItems")
+                                    .Disabled(true)
+                                    .DisplayField("fldNameItem")
+                                    .ValueField("fldId")
+                                    .TypeAhead(true)
+                                    .Editable(false)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا نوع تطابق را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Listeners(l=>l.Change.Handler="SetCboMahiyat()")
+                                    .Store(X.Store()
+                                        .AutoLoad(false)
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldNameItem", ModelFieldType.String) { Mapping = "fldNameItem" },
+                                                    new ModelField("fldMahiyatId", ModelFieldType.String) { Mapping = "fldMahiyatId" },
+                                                            new ModelField("fldMahiyat_GardeshId", ModelFieldType.String) { Mapping = "fldMahiyat_GardeshId" },
+                                                new ModelField("fldTypeHesabId", ModelFieldType.String) { Mapping = "fldTypeHesabId" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetNecessaryItems"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                        .Parameters(ps => ps.Add(new StoreParameter("PCode", "App.TemplateCoding.queryById('txtPCode').getValue()", ParameterMode.Raw)))
+                                        .Parameters(ps => ps.Add(new StoreParameter("TempNameId", ViewBag.fldTemplateId, ParameterMode.Raw)))
+                                        
+                                    )
+                                ),
+                                    X.FieldSet()
+                                .Border(false)
+                                .Padding(0)
+                                .ColSpan(2)
+                                .Defaults(new { Margin = 2 })
+                                .MarginSpec("0 0 0 -1px")
+                                .Layout(LayoutType.Table)
+                                .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                                .Items(
+                                                  X.Checkbox().ItemID("CheckZirshakhe").RTL(false),
+                                        X.Label("امکان اضافه کردن زیرشاخه")
+                                        ),
+                        X.Label("عنــوان آیتم:"),
+                        X.TextArea()
+                            .ItemID("txtItemName")
+                            .AllowBlank(false)
+                            .BlankText("لطفا عنوان آیتم را وارد کنید.")
+                            .MaxLength(200)
+                            .EnforceMaxLength(true),                        
+                        X.Label("مـاهیت مانده:"),
+                        X.ComboBox()
+                            .ItemID("CboMahiyat")
+                            .DisplayField("fldTitle")
+                            .ValueField("fldId")
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .AllowBlank(false)
+                            .BlankText("لطفا ماهیت را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetMahiyat"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            ),
+                                  X.Label("ماهیت گردش:"),
+                                    X.ComboBox()
+                                        .ItemID("CboMahiyatGardesh")
+                                                .DisplayField("fldTitle")
+                                        .ValueField("fldId")
+                                        .TypeAhead(true)
+                                        .Editable(false)
+                                        .AllowBlank(false)
+                                        .BlankText("لطفا ماهیت گردش را انتخاب کنید.")
+                                        .QueryMode(DataLoadMode.Local)
+                                        .ForceSelection(true)
+                                        .TriggerAction(TriggerAction.All)
+                                        .Store(X.Store()
+                                            .Model(X.Model()
+                                                .IDProperty("fldId")
+                                                        .Fields(
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                                )
+                                            )
+                                            .Proxy(X.AjaxProxy()
+                                                .Url(Url.Action("GetMahiyat"))
+                                                .Reader(X.JsonReader().Root("data"))
+                                            )
+                                        ),
+                        X.Label("نوع حساب:"),
+                        X.ComboBox()
+                            .ItemID("CboTypeHesab")
+                            .DisplayField("fldTitle")
+                            .ValueField("fldId")
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع حساب را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .TriggerAction(TriggerAction.All)
+                            .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                        new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldName" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetTypeHesab"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                            ),
+                        X.Label("سطــح:"),
+                        X.TextField()
+                            .ItemID("txtLevel")
+                            .ReadOnly(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا سطح را وارد کنید."),
+                                 X.Label("کد بودجه:"),
+                            X.TextField()
+                                .ItemID("txtCodeBudje")
+                                .FieldStyle("direction:ltr;")
+                              
+                                .AllowBlank(true)
+                                .BlankText("لطفا کدبودجه را وارد کنید.")
+                                .MaskRe("[0-9]")
+                                .MaxLength(100)
+                                .EnforceMaxLength(true),
+                        X.Label("توضیحات:"),
+                        X.TextArea()
+                            .ItemID("txtDesc"),
+                        X.FieldSet()
+                            .ColSpan(2)
+                            .Width(235)
+                            .Border(false)
+                            .Layout(LayoutType.VBox)
+                            .LayoutConfig(new VBoxLayoutConfig{Align=VBoxAlign.Center})
+                            .Items(
+                                X.Button()
+                                    .Text("ذخیره")
+                                    .Icon(Icon.Disk)
+                                    .Listeners(l => l.Click.Handler = "SaveTemplateCoding()"))
+                    ),
+                X.TreePanel()
+                    .ID("TreeTemplateCoding")
+                    .AutoScroll(true)
+                    .Frame(true)
+                    .Title("ساختار درختی الگوی کدینگ")
+                    .Width(500)
+                    .Margin(5)
+                    .UseArrows(true)
+                    .Border(true)
+                    .TopBarItem(
+                        X.Label("مقدار جستجو:"),
+                        X.TextField()
+                            .ItemID("TxtFilter"),
+                        X.Button()
+                            .Text("جستجو")
+                            .Icon(Icon.Magnifier)
+                            .Listeners(l =>
+                            {
+                                l.Click.Handler = "App.TreeTemplateCoding.store.load();setTimeout(function(){if(App.TemplateCoding.queryById('TxtFilter').getValue()!=''){App.TreeTemplateCoding.expandAll();}},500);";
+                                l.AfterRender.Handler = "App.TreeTemplateCoding.store.load();";
+                            })
+                    )            
+                    .Listeners(l =>
+                    {
+                        l.Render.Handler = "App.TreeTemplateCoding.setHeight(Ext.getBody().getViewSize().height-250);";
+                        l.AfterRender.Handler = "AddMenuTreeTemplateCoding()";
+                        l.ItemClick.Handler = "setPCodeFromTree()";
+                    })
+                    //.View(X.TreeView().Listeners(l => l.BeforeDrop.Fn = "moveNodesTreeAnbar").Plugins(X.TreeViewDragDrop().AppendOnly(true)))
+                    .Store(
+                        Html.X().TreeStore()
+                            //.Listeners(l=>l.Load.Fn="CheckLeaf")
+                            .Model(
+                                Html.X().Model()
+                                    .Fields(
+                                        X.ModelField().Name(Model, m => m.fldCode).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldItemId).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldName).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldMahiyatId).Type(ModelFieldType.String),
+                                            X.ModelField().Name(Model, m => m.fldMahiyat_GardeshId).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldLevelsAccountTypId).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldName_LevelsAccountingType).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldPCod).Type(ModelFieldType.String),
+                                        X.ModelField().Name(Model, m => m.fldDesc).Type(ModelFieldType.String),
+                                            X.ModelField().Name(Model, m => m.fldTypeHesabId).Type(ModelFieldType.String),
+                                                    X.ModelField().Name(Model, m => m.fldCodeBudget).Type(ModelFieldType.String),
+                                                X.ModelField().Name(Model, m => m.fldAddChildNode).Type(ModelFieldType.Boolean)
+                                    )
+                            )
+                            .Proxy(
+                                Html.X().AjaxProxy().Url(Url.Action("LoadTreeTemplateCoding"))
+                            )
+                            .Listeners(l => l.BeforeLoad.Fn = "GetParamTreeTemplateCoding")
+                    )
+                        .Root(Html.X().Node().NodeID("0").Text(ViewBag.fldTemplateName).EmptyChildren(true).Children()/*.AttributesObject(new { fldName = "", fldNodeType = "2", fldDesc = "" })*/.Expanded(true))
+                )
+        )
+)
+<script type="text/javascript">
+    var validPcode = false;
+    var GetParamTreeTemplateCoding = function (store, operation, eOpts) {
+        operation.params.nod = operation.node.getId();
+        operation.params.TemplateId = '@ViewBag.fldTemplateId';
+        operation.params.FilterValue = App.TemplateCoding.queryById('TxtFilter').getValue();
+    };
+
+    function ResizeTree() {
+        App.TreeTemplateCoding.setSize(App.TemplateCoding.getWidth() - 300, App.TemplateCoding.getHeight() - 60);
+        var len = document.getElementsByClassName("rowheightTemplate").length;
+        for (var i = 0; i < len - 1; i++) {
+            document.getElementsByClassName("rowheightTemplate")[i].style.height = App.TemplateCoding.getHeight() / 13 + "px";
+        }
+        App.TemplateCoding.queryById('TreeFieldset').setHeight(App.TemplateCoding.getHeight() - 60);
+    }
+
+    function AddMenuTreeTemplateCoding() {
+        var menu_grid = new Ext.menu.Menu({
+            bodyStyle: 'background-color:#dfe8f6 !important;',
+            items: [
+                { text: "ویرایش", iconCls: "Editico", handler: function () { EditNodeTreeTemplateCoding(); } },
+                { text: "حذف", iconCls: "Deleteico", handler: function () { DeleteNodeTreeTemplateCoding(); } }
+            ]
+        });
+        App.TreeTemplateCoding.on("itemcontextmenu", function (view, record, item, index, e, eOpts) { if (record.getId() != 0) { var position = e.getXY(); e.stopEvent(); menu_grid.showAt(position); } });
+    }
+
+    /*var CheckLeaf = function (tree,record,c,d) {
+        if (record.data.cls == 0) {
+            record.set("leaf", true);
+        }
+        else {
+            record.set("leaf", false);
+        }
+    };*/
+
+    function setPCodeFromTree() {
+        App.TemplateCoding.queryById('txtPCode').setValue(App.TreeTemplateCoding.getSelectionModel().getLastSelected().data.fldCode);
+        App.TemplateCoding.queryById('txtPCode').enable();
+        App.TemplateCoding.queryById('txtPCode').focus();
+        App.TemplateCoding.queryById("txtCode").setValue("");
+        if (App.TemplateCoding.queryById("fldId").getValue() != 0) {
+            App.TemplateCoding.queryById('fldId').setValue(0);
+            App.TemplateCoding.queryById('fldAccountTypLevelId').setValue(0);
+            App.TemplateCoding.queryById('CheckMap').setValue(false);
+            App.TemplateCoding.queryById('txtItemName').setValue(""); 
+            App.TemplateCoding.queryById('CboMahiyat').setValue("");
+            App.TemplateCoding.queryById('CboMahiyatGardesh').setValue("");
+            App.TemplateCoding.queryById('CboTypeHesab').setValue("");
+            App.TemplateCoding.queryById('txtLevel').setValue("");
+            App.TemplateCoding.queryById('txtDesc').setValue(""); 
+            App.TemplateCoding.queryById('txtCodeBudje').setValue("");
+            App.TemplateCoding.queryById('CheckZirshakhe').setValue(false);
+        } 
+    }
+
+    function EnableCboNecessaryItems() {
+        if (App.TemplateCoding.queryById("CheckMap").getValue() == true) {
+            /*if (App.TemplateCoding.queryById("fldId").getValue() != 0) {*/
+                App.TemplateCoding.queryById("CboNecessaryItems").store.load();
+            /*}*/
+            App.TemplateCoding.queryById("CboNecessaryItems").enable();
+        }
+        else {
+            App.TemplateCoding.queryById("CboNecessaryItems").disable();
+            App.TemplateCoding.queryById("CboNecessaryItems").clearValue();
+        }
+    }
+
+    function SetCboMahiyat() {
+        var CboNecessaryItems = App.TemplateCoding.queryById("CboNecessaryItems");
+        if (App.TemplateCoding.queryById("CheckMap").getValue() == true && CboNecessaryItems.getValue()!=null) {
+            var MahiyatId = CboNecessaryItems.findRecordByValue(CboNecessaryItems.getValue()).data.fldMahiyatId;
+            var Mahiyat_GardeshId = CboNecessaryItems.findRecordByValue(CboNecessaryItems.getValue()).data.fldMahiyat_GardeshId;
+            var TypeHesabId = CboNecessaryItems.findRecordByValue(CboNecessaryItems.getValue()).data.fldTypeHesabId; 
+
+            App.TemplateCoding.queryById("CboMahiyat").setValue(MahiyatId);
+            App.TemplateCoding.queryById("CboMahiyat").disable();
+            App.TemplateCoding.queryById("CboMahiyatGardesh").setValue(Mahiyat_GardeshId);
+            App.TemplateCoding.queryById("CboMahiyatGardesh").disable();
+            App.TemplateCoding.queryById("CboTypeHesab").setValue(TypeHesabId);
+            App.TemplateCoding.queryById("CboTypeHesab").disable();            
+        }
+        else {
+            App.TemplateCoding.queryById("CboMahiyat").setValue("");
+            App.TemplateCoding.queryById("CboMahiyat").enable();
+            App.TemplateCoding.queryById("CboMahiyatGardesh").setValue("");
+            App.TemplateCoding.queryById("CboMahiyatGardesh").enable();
+            App.TemplateCoding.queryById("CboTypeHesab").setValue("");
+            App.TemplateCoding.queryById("CboTypeHesab").enable();
+        }
+    }
+
+    function CheckValidateCode() {
+        var txtCode = App.TemplateCoding.queryById("txtCode");
+        var txtPCode = App.TemplateCoding.queryById('txtPCode');
+        var fldId = App.TemplateCoding.queryById('fldId');
+
+        if (validPcode == true) {
+            Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/TemplateCoding/CheckValidateCode',
+                params: {
+                    Code: txtCode.getValue(),
+                    Pcode: txtPCode.getValue(),
+                    AccountingTypeId: '@ViewBag.fldAccountingTypeId',
+                    TempNameId:'@ViewBag.fldTemplateId',
+                    Id:fldId.getValue()
+                },
+                success: function (data) {
+                    if (data.Valid == 1) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "کد گره فرزند تکراری است.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK,
+                            closable:false,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    txtCode.setValue("");
+                                    /*txtCode.focus();*/
+                                }
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                    else if (data.Valid == 2) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "کد گره فرزند نامعتبر است.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK,
+                            closable: false,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    txtCode.setValue("");
+                                    /*txtCode.focus();*/
+                                }
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                    else if (data.Valid == 3) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "کد گره فرزند وارد شده بیشتر از تعداد سطوح تعریف شده است.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK,
+                            closable: false,
+                            fn: function (btn) {
+                                if (btn == "ok") {
+                                    txtCode.setValue("");
+                                    /*txtCode.focus();*/
+                                }
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                    else {
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+    }
+
+    function CheckValidatePCode() {
+        var txtPCode = App.TemplateCoding.queryById('txtPCode');
+        var txtCode = App.TemplateCoding.queryById("txtCode");
+        var fldAccountTypLevelId = App.TemplateCoding.queryById("fldAccountTypLevelId");
+        var txtLevel = App.TemplateCoding.queryById("txtLevel");
+
+        if (App.TemplateCoding.queryById('fldId').getValue() == 0) {
+            if (txtPCode.getValue() != "") {
+                Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Accounting/TemplateCoding/CheckExistPCode',
+                    params: {
+                        Pcode: txtPCode.getValue(),
+                        TemplateId:'@ViewBag.fldTemplateId'
+                    },
+                    success: function (data) {                        
+                        if (data.Valid == 0) {
+                            Ext.MessageBox.show({
+                                title: "خطا",
+                                msg: "کد گره پدر نامعتبر است.",
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK,
+                                closable: false,
+                                fn: function (btn) {
+                                    if (btn == "ok") {
+                                        validPcode = false;
+                                        txtPCode.setValue("");
+                                        txtPCode.focus();
+                                        App.TreeTemplateCoding.getSelectionModel().deselectAll();
+                                        App.TreeTemplateCoding.getSelectionModel().clearSelections();
+                                    }
+                                }
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                        else {
+                            var record = App.TreeTemplateCoding.getRootNode().findChild("fldCode", txtPCode.getValue(), true);
+                            App.TreeTemplateCoding.getSelectionModel().select(record);
+                           /* App.TemplateCoding.queryById("CboNecessaryItems").store.load();*/
+                            Ext.net.DirectMethod.request({
+                                url: '/Accounting/TemplateCoding/GetDefaultCode',
+                                params: {
+                                    Pcode: txtPCode.getValue(),
+                                    AccountingTypeId: '@ViewBag.fldAccountingTypeId',
+                                    TempNameId: '@ViewBag.fldTemplateId'
+                                },
+                                success: function (data) {
+                                    txtCode.setValue(data.DefaultCode);
+                                    fldAccountTypLevelId.setValue(data.fldAccountTypLevelId);
+                                    txtLevel.setValue(data.LevelName);
+                                    txtCode.focus();
+                                    validPcode = true;
+                                    Ext.net.Mask.hide();
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+            else {
+                Ext.net.Mask.show({ msg: 'در حال بررسی...' });
+                var record = App.TreeTemplateCoding.getRootNode();
+                App.TreeTemplateCoding.getSelectionModel().select(record);
+               /* App.TemplateCoding.queryById("CboNecessaryItems").store.load();*/
+                Ext.net.DirectMethod.request({
+                    url: '/Accounting/TemplateCoding/GetDefaultCode',
+                    params: {
+                        Pcode: txtPCode.getValue(),
+                        AccountingTypeId: '@ViewBag.fldAccountingTypeId',
+                        TempNameId: '@ViewBag.fldTemplateId'
+                    },
+                    success: function (data) {
+                        txtCode.setValue(data.DefaultCode);
+                        fldAccountTypLevelId.setValue(data.fldAccountTypLevelId);
+                        txtLevel.setValue(data.LevelName);
+                        validPcode = true;
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+        }
+        else {
+            validPcode = true;
+        }
+    }
+
+    function SaveTemplateCoding() {
+        var SelectedNode;
+        var ParentNode;
+        if (App.TreeTemplateCoding.getSelectionModel().getLastSelected() != undefined) {
+            SelectedNode = App.TreeTemplateCoding.getSelectionModel().getLastSelected();
+            ParentNode = App.TreeTemplateCoding.getSelectionModel().getLastSelected().parentNode;
+        }        
+        var Id = App.TemplateCoding.queryById('fldId');
+        var fldAccountTypLevelId = App.TemplateCoding.queryById('fldAccountTypLevelId');
+        var txtPCode = App.TemplateCoding.queryById("txtPCode");
+        var txtCode = App.TemplateCoding.queryById("txtCode");
+        var CboNecessaryItems = App.TemplateCoding.queryById('CboNecessaryItems');
+        var CheckMap = App.TemplateCoding.queryById('CheckMap');
+        var txtItemName = App.TemplateCoding.queryById('txtItemName');
+        var CboMahiyat = App.TemplateCoding.queryById('CboMahiyat');
+        var CboMahiyatGardesh = App.TemplateCoding.queryById('CboMahiyatGardesh');
+        var CboTypeHesab = App.TemplateCoding.queryById('CboTypeHesab');
+        var txtLevel = App.TemplateCoding.queryById('txtLevel');
+        var txtDesc = App.TemplateCoding.queryById('txtDesc'); 
+        var txtCodeBudje = App.TemplateCoding.queryById('txtCodeBudje');
+        var CheckZirshakhe = App.TemplateCoding.queryById('CheckZirshakhe');
+        
+        var er = false;
+
+        if (txtCode.validate() == false) {
+            er = true;
+        }
+        if (txtItemName.validate() == false) {
+            er = true;
+        }
+        if (CboMahiyat.validate() == false) {
+            er = true;
+        }
+        if (CboMahiyatGardesh.validate() == false) {
+            er = true;
+        }
+        if (CboTypeHesab.validate() == false) {
+            er = true;
+        }
+        if (txtLevel.validate() == false) {
+            er = true;
+        }
+        if (CheckMap.getValue() == true) {
+            if (CboNecessaryItems.validate() == false) {
+                er = true;
+            }
+        }
+
+        if (er == true)
+            return;
+
+        var ItemId = null;
+        if (CheckMap.getValue() == true) {
+            ItemId = CboNecessaryItems.getValue();
+        }
+
+       
+
+        /*var PID = null;
+        if (txtPCode.getValue() != "") {*/
+            var PID = App.TreeTemplateCoding.getSelectionModel().getLastSelected().data.id;
+        /*}*/
+        
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/TemplateCoding/SaveTemplateCoding',
+            params: {
+                fldId:Id.getValue(),
+                PID: PID,
+                fldItemId: ItemId,
+                fldName: txtItemName.getValue(),
+                fldPCod: txtPCode.getValue(),
+                fldMahiyatId: CboMahiyat.getValue(),
+                fldMahiyat_GardeshId: CboMahiyatGardesh.getValue(),
+                fldTypeHesabId: CboTypeHesab.getValue(),
+                fldCode: txtCode.getValue(),
+                fldTempNameId: '@ViewBag.fldTemplateId',
+                fldLevelsAccountTypId: fldAccountTypLevelId.getValue(),
+                fldDesc: txtDesc.getValue(),
+                fldCodeBudget: txtCodeBudje.getValue(),
+                fldAddChildNode: CheckZirshakhe.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    closable:false,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            if (data.Er != 1) {
+                                if (Id.getValue() == 0) {
+                                    SelectedNode.reload();
+                                    ClearTemplateCoding();
+                                    /*App.TreeTemplateCoding.getStore().load({ node: App.TreeTemplateCoding.getSelectionModel().getLastSelected()});*/
+                                }
+                                else {
+                                    ParentNode.reload();
+                                    ClearTemplateCoding();
+                                    /*App.TreeTemplateCoding.getStore().load({ node: App.TreeTemplateCoding.getSelectionModel().getLastSelected().parentNode });*/
+                                }
+                            }
+                        }
+                    }
+                });
+                Ext.net.Mask.hide();
+                if (data.Er != 1) {
+                    if (Id.getValue() == 0) {/*insert*/
+                        SelectedNode.collapse();
+                    }
+                    else {/*edit*/
+                        ParentNode.collapse();
+                    }
+                }
+            }
+        });
+    }
+
+    function ClearTemplateCoding() {
+        App.TemplateCoding.queryById('fldId').setValue(0);
+        App.TemplateCoding.queryById('fldAccountTypLevelId').setValue(0);
+        /*App.TemplateCoding.queryById("txtPCode").setValue("");*/
+        App.TemplateCoding.queryById("txtCode").setValue("");
+        App.TemplateCoding.queryById('CheckMap').setValue(false);
+        App.TemplateCoding.queryById('txtItemName').setValue("");
+        App.TemplateCoding.queryById('CboMahiyat').setValue("");
+        App.TemplateCoding.queryById('CboMahiyatGardesh').setValue("");
+        App.TemplateCoding.queryById('CboTypeHesab').setValue("");
+        App.TemplateCoding.queryById('txtLevel').setValue("");
+        App.TemplateCoding.queryById('txtDesc').setValue(""); 
+        App.TemplateCoding.queryById('txtCodeBudje').setValue("");
+        App.TemplateCoding.queryById('CheckZirshakhe').setValue(false);
+        /*App.TreeTemplateCoding.getSelectionModel().deselectAll();
+        App.TreeTemplateCoding.getSelectionModel().clearSelections();*/
+    }
+
+    function EditNodeTreeTemplateCoding() {
+        var SelectedNode = App.TreeTemplateCoding.getSelectionModel().getLastSelected();
+        App.TemplateCoding.queryById('fldId').setValue(SelectedNode.data.id);
+        App.TemplateCoding.queryById('fldAccountTypLevelId').setValue(SelectedNode.data.fldLevelsAccountTypId);
+        App.TemplateCoding.queryById('txtDesc').setValue(SelectedNode.data.fldDesc);
+        App.TemplateCoding.queryById('txtCodeBudje').setValue(SelectedNode.data.fldCodeBudget);
+        App.TemplateCoding.queryById('CheckZirshakhe').setValue(SelectedNode.data.fldAddChildNode);
+        App.TemplateCoding.queryById("txtPCode").setValue(SelectedNode.data.fldPCod);
+        App.TemplateCoding.queryById("txtPCode").disable();
+        App.TemplateCoding.queryById("txtCode").setValue(SelectedNode.data.fldCode);
+        if (SelectedNode.data.fldItemId == "") {
+            
+            App.TemplateCoding.queryById('CheckMap').setValue(false);
+            App.TemplateCoding.queryById('CboMahiyat').setValue(SelectedNode.data.fldMahiyatId);
+            App.TemplateCoding.queryById('CboMahiyatGardesh').setValue(SelectedNode.data.fldMahiyat_GardeshId);
+            App.TemplateCoding.queryById('CboTypeHesab').setValue(SelectedNode.data.fldTypeHesabId);
+        }
+        else {
+            App.TemplateCoding.queryById('CheckMap').setValue(true);
+            App.TemplateCoding.queryById("CboNecessaryItems").store.load();
+            App.TemplateCoding.queryById("CboNecessaryItems").store.on('load', function () {
+                if (App.TemplateCoding.queryById('fldId').getValue() != 0) {
+                    App.TemplateCoding.queryById('CboNecessaryItems').setValue(SelectedNode.data.fldItemId);
+                }
+            }, App.TemplateCoding.queryById("CboNecessaryItems").store, { single: true });
+        }
+        App.TemplateCoding.queryById('txtItemName').setValue(SelectedNode.data.fldName);
+        App.TemplateCoding.queryById('txtLevel').setValue(SelectedNode.data.fldName_LevelsAccountingType);
+    }
+
+    function DeleteNodeTreeTemplateCoding() {
+        var SelectedNode = App.TreeTemplateCoding.getSelectionModel().getLastSelected();
+        var ParentNode = SelectedNode.parentNode;
+        if (SelectedNode != null) {
+            if (SelectedNode.data.id != 0) {
+                if (SelectedNode.data.cls == 0) {
+                    Ext.MessageBox.show({
+                        title: "هشدار",
+                        msg: "آیا برای حذف مطمئن هستید؟",
+                        icon: Ext.MessageBox.WARNING,
+                        buttons: Ext.MessageBox.YESNO,
+                        fn: function (btn) {
+                            if (btn == 'yes') {
+                                Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                                Ext.net.DirectMethod.request({
+                                    url: '/Accounting/TemplateCoding/DeleteNode',
+                                    params: {
+                                        Id: SelectedNode.data.id
+                                    },
+                                    success: function (data) {
+                                        var ic = Ext.MessageBox.INFO;
+                                        if (data.Er == 1) {
+                                            ic = Ext.MessageBox.ERROR;
+                                        }
+                                        Ext.MessageBox.show({
+                                            title: data.MsgTitle,
+                                            msg: data.Msg,
+                                            icon: ic,
+                                            buttons: Ext.MessageBox.OK,
+                                            closable: false,
+                                            fn: function (btn) {
+                                                if (btn == "ok") {
+                                                    if (data.Er != 1) {
+                                                        ParentNode.reload();
+                                                    }
+                                                }
+                                            }
+                                        });
+                                        if (data.Er != 1) {
+                                            ParentNode.collapse();
+                                            /*App.TreeTemplateCoding.getStore().load({ node: ParentNode });
+                                            ClearTemplateCoding();*/
+                                        }
+                                        Ext.net.Mask.hide();
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "لطفا ابتدا زیرشاخه های مربوطه را پاک نموده و سپس اقدام به حذف شاخه مورد نظر نمایید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "امکان حذف گره مورد نظر وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر (گره) را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    var addKeyMapTemplateCoding = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield;
+                    var nextfld;
+                    if ((Ext.Element.getActiveElement()).name == "") {
+                        keyfield = App.TemplateCoding.queryById("CheckMap");
+                    }
+                    else {
+                        keyfield = App.TemplateCoding.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    }
+                    if (keyfield.itemId == "txtCode") {
+                        nextfld = App.TemplateCoding.queryById("CheckMap");
+                        nextfld.focus();
+                        return;
+                    }
+                    else if (keyfield.itemId == "CheckMap") {
+                        if (App.TemplateCoding.queryById("CheckMap").getValue() == true) {
+                            nextfld = App.TemplateCoding.queryById("CboNecessaryItems");
+                        }
+                        else {
+                            nextfld = App.TemplateCoding.queryById("txtItemName");
+                        }
+                    }
+                    else if (keyfield.itemId == "CboNecessaryItems") {
+                        nextfld = App.TemplateCoding.queryById("txtItemName");
+                    }
+                    else if (keyfield.itemId == "txtItemName") {
+                        if (App.TemplateCoding.queryById("CheckMap").getValue() == true) {
+                            nextfld = App.TemplateCoding.queryById("txtDesc");
+                        }
+                        else {
+                            nextfld = App.TemplateCoding.queryById("CboMahiyat");
+                        }
+                    }
+                    else if (keyfield.itemId == "CboMahiyat") {
+                        nextfld = App.TemplateCoding.queryById("CboMahiyatGardesh");
+                    }
+                    else if (keyfield.itemId == "CboMahiyatGardesh") {
+                        nextfld = App.TemplateCoding.queryById("CboTypeHesab");
+                    }
+                    else if (keyfield.itemId == "CboTypeHesab") {
+                        nextfld = App.TemplateCoding.queryById("txtCodeBudje");
+                    }
+                    else if (keyfield.itemId == "txtCodeBudje") {
+                        nextfld = App.TemplateCoding.queryById("txtDesc");
+                    }
+                    else if (keyfield.itemId == "txtDesc") {
+                        SaveTemplateCoding();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

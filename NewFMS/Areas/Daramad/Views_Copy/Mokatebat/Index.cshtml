@@ -1,0 +1,442 @@
+﻿@model NewFMS.Models.Mokatebat
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true)
+.Width(800)//.Height(220)
+        .Title("تعریف پارامتر ثابت")
+        .ID("Mokatebat")
+         //   .Listeners(li => { li.AfterRender.Fn = "addKeyMapMokatebat"; })
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+
+    .Items(
+                X.Panel()
+                                    .Defaults(new { Margin = 5 })
+                 .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                .Border(false)
+                .Buttons(
+                            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveMokatebatWin")
+                    .Listeners(l => { l.Click.Handler = "SaveMokatebatWin();"; })
+                //, X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                //    .Listeners(l => { l.Click.Handler = "LoadMokatebatWin();"; })
+                , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                            .Listeners(l => { l.Click.Handler = "DeleteMokatebatWin();"; })
+                , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.Mokatebat.destroy()")
+                    )
+                .ButtonAlign(Ext.Net.Alignment.Center)
+                .Items(
+        //X.Panel()
+        //    .Border(true)
+        //        .Layout(Ext.Net.LayoutType.VBox)
+        //    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+        //    .Items(
+                            X.FieldSet()
+                                .Border(false)
+                             //   .Width(770)
+                                .Defaults(new { Margin = 2 })
+                                .Layout(LayoutType.HBox)
+                                .Items(
+                            X.GridPanel().AutoScroll(true)
+                            .Listeners(l => l.ItemClick.Handler = "ReloadGridLetterMinut();")
+                                        .ItemID("CodhayeDaramadiElamAvarezGrid").Flex(2)
+                          //  .BottomBar(X.PagingToolbar())
+                            .Height(120)
+                            .Width(335)
+                            .Store(
+                                       X.StoreFor(Model.ElamAvarez)
+                                         .Listeners(l => l.DataChanged.Handler = "App.Mokatebat.queryById('CodhayeDaramadiElamAvarezGrid').selModel.refresh();")
+                                .Proxy(Html.X().AjaxProxy()
+                                                    .Url(Url.Action("ReadCodeDaramadAvarez"))
+                                        .Reader(Html.X().JsonReader().Root("data"))
+                                                            .ExtraParams(p => p.Add(new { elamAvarez = @ViewBag.ElamAvarezId }))
+                                )
+                                .PageSize(200)
+                                .RemoteFilter(true)
+                                .RemotePaging(true)
+
+                            )
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+
+                          //  .Plugins(X.FilterHeader().Remote(true))
+                            .ColumnModel(
+                                        Html.X().RowNumbererColumn(),
+                                                    Html.X().Column().DataIndex(Model.ElamAvarez, m => m.fldID).Text("کد").Hidden(true).Flex(3),
+                                                Html.X().Column().DataIndex(Model.ElamAvarez, m => m.fldShomareHesabCodeDaramadId).Text("کد").Hidden(true).Flex(3),
+                                            Html.X().Column().DataIndex(Model.ElamAvarez, m => m.fldSharheCodeDaramad).Text("کد های درآمد").Flex(3)
+                                )
+                                ,
+                                        X.GridPanel().AutoScroll(true)
+                                .Listeners(l => l.ItemClick.Handler = "ReloadGridParams();")
+                                            .ItemID("OlguNameGrid").Flex(2)
+        //  .BottomBar(X.PagingToolbar())
+                                .Height(120)
+                                .Width(200)
+                                    .Store(
+                                           X.StoreFor(Model.LetterMinut)
+                                    .AutoLoad(false)
+                                                 .Listeners(l => l.DataChanged.Handler = "App.Mokatebat.queryById('OlguNameGrid').selModel.refresh();")
+                                    .Proxy(Html.X().AjaxProxy()
+                                                            .Url(Url.Action("ReadOlguName"))
+                                            .Reader(Html.X().JsonReader().Root("data"))
+                                    )
+                                    .PageSize(200)
+                                    .RemoteFilter(true)
+                                    .RemotePaging(true)
+
+                                )
+                                .View(
+                                    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                                )
+
+                              //  .Plugins(X.FilterHeader().Remote(true))
+                                .ColumnModel(
+                                            Html.X().RowNumbererColumn(),
+                                            Html.X().Column().DataIndex(Model.LetterMinut, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                            Html.X().Column().DataIndex(Model.LetterMinut, m => m.fldTitle).Text("الگو نامه نگاری").Flex(3)
+                                    )
+                                    ,
+                            X.GridPanel().AutoScroll(true)
+                                    .ItemID("ParamsGrid").Flex(2)
+                                   .TopBar(
+                        Html.X().Toolbar()
+                            .Items(
+                                X.Button()
+                                    .Text("اعمال")
+                                        .ItemID("SaveParams")
+                                    .Icon(Ext.Net.Icon.Lightning)
+                                    .Listeners(li =>  li.Click.Handler = "SaveParams();")
+                                    )
+                                    )
+//  .BottomBar(X.PagingToolbar())
+                        .Height(120)
+                        .Width(200)
+                            .Store(
+                                           X.StoreFor(Model.ParamGrid)
+                            .AutoLoad(false)
+                                                .Listeners(l => l.DataChanged.Handler = "App.Mokatebat.queryById('ParamsGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                                    .Url(Url.Action("ReadParams"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(200)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+
+                        )
+                        .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+
+                                        .Plugins(Html.X().CellEditing().ClicksToEdit(1))
+                        //  .Plugins(X.FilterHeader().Remote(true))
+                        .ColumnModel(
+                                    Html.X().RowNumbererColumn(),
+                                    Html.X().Column().DataIndex(Model.ParamGrid, m => m.ParamId).Text("کد").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model.ParamGrid, m => m.ParamEn).Text("کد").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model.ParamGrid, m => m.ParamName).Text("پارامترها").Flex(3),
+                                    Html.X().Column().DataIndex(Model.ParamGrid, m => m.Value).Text("مقدار").Editor(Html.X().TextField()).Flex(3)
+                            )
+                        )
+                        ,
+                              X.FieldSet()//.Layout(LayoutType.Fit)
+                                .Border(true)
+                                    .Width(770)
+                                            .Height(200)
+                                .Title("متن نامه")
+                         //       .Defaults(new { Margin = 2 })
+                                .Items(
+                                X.TextArea()
+                                    .ReadOnly(true)
+                                        .Width(748)
+                                                .Height(175)
+                                 //   X.Label()
+                                    .ItemID("LblMatnName")
+                                  //  .Width(400)
+                                )
+        //)
+        ),
+                  X.GridPanel().AutoScroll(true)
+                                    .ItemID("MokatebatWinGrid").Flex(2)
+                        .BottomBar(X.PagingToolbar())
+                        .Height(150)
+        //.ColumnWidth(0.6)
+        //.Layout(Ext.Net.LayoutType.Column)
+                        .Store(
+                            X.StoreFor(Model.Mokatebe)
+                                     .Listeners(l => l.DataChanged.Handler = "App.Mokatebat.queryById('MokatebatWinGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("ReadMokatebat"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                                                    .ExtraParams(p => p.Add(new { elamAvarez = @ViewBag.ElamAvarezId }))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+
+                        )
+                        .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+
+                        .Plugins(X.FilterHeader().Remote(true))
+                        .ColumnModel(
+                                Html.X().RowNumbererColumn(),
+                                    Html.X().Column().DataIndex(Model.Mokatebe, m => m.fldFileId).Text("کد").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model.Mokatebe, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                    Html.X().Column().DataIndex(Model.Mokatebe, m => m.fldSharheCodeDaramad).Text("کد درآمد").Flex(7),
+                                Html.X().ComponentColumn().Flex(1).ItemID("buttonPrint")
+                                        .Component(Html.X().Button().ItemID("btnbindPrint").Text("چاپ").Listeners(l => l.Click.Handler = "GotoPrint()")).Filterable(false)
+
+                            )
+        //.Layout(Ext.Net.LayoutType.VBox)
+        //.LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+)
+
+<script type="text/javascript">
+    var MatnName = "";
+    var NewMatn = "";
+    function ReloadGridLetterMinut() {
+        var SelectedRow = App.Mokatebat.queryById("CodhayeDaramadiElamAvarezGrid").getSelectionModel().getLastSelected();
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/Mokatebat/ReloadLetterMinut',
+            params: {
+                ShomareHesabCodeDaramadId: SelectedRow.data.fldShomareHesabCodeDaramadId
+            },
+            success: function (result) {
+                Ext.net.Mask.hide();
+                App.Mokatebat.queryById('OlguNameGrid').getStore().loadData(result.data);
+                App.Mokatebat.queryById('LblMatnName').setValue("");
+            }
+        })
+    }
+    function ReloadGridParams() {
+        var SelectedRow = App.Mokatebat.queryById("OlguNameGrid").getSelectionModel().getLastSelected();
+        var SelectedRow2 = App.Mokatebat.queryById("CodhayeDaramadiElamAvarezGrid").getSelectionModel().getLastSelected();
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/Mokatebat/ReloadParams',
+            params: {
+                LetterMinutId: SelectedRow.data.fldId,
+                CodeDaramadAvarezId: SelectedRow2.data.fldID,
+                ElamAvarezId: '@ViewBag.ElamAvarezId',
+                HaveFish: '@ViewBag.HaveFish'
+            },
+            success: function (result) {
+                Ext.net.Mask.hide();
+                if (result.ShowLetter == 0) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "ثبت مکاتبات برای اعلام عوارض مورد نظر امکان پذیر نمی باشد.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.Mokatebat.queryById('btnSaveMokatebatWin').setDisabled(true);
+                }
+                else {
+                    App.Mokatebat.queryById('ParamsGrid').getStore().loadData(result.Griddata);
+                    App.Mokatebat.queryById('LblMatnName').setValue(result.DescMinut, false);
+                    MatnName = result.DescMinut;
+                    App.Mokatebat.queryById('btnSaveMokatebatWin').setDisabled(false);
+                }
+            }
+        })
+    }
+    function SaveParams() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        NewMatn = MatnName;
+        var SelectedRow = App.Mokatebat.queryById('ParamsGrid');
+        var khali = 0;
+        for (var i = 0; i < SelectedRow.selModel.store.count() ; i++) {
+            row = SelectedRow.selModel.store.data.items[i];
+            if (row.data.Value == "")
+                khali = khali + 1;
+        }
+        if (khali == 0) {
+            for (var i = 0; i < SelectedRow.selModel.store.count() ; i++) {
+                row = SelectedRow.selModel.store.data.items[i];
+
+                NewMatn = NewMatn.replace('[' + row.data.ParamEn + ']', row.data.Value);
+            }
+            App.Mokatebat.queryById('LblMatnName').setValue(NewMatn, false);
+            Ext.net.Mask.hide();
+        }
+        else {
+            Ext.net.Mask.hide();
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "مقادیر مربوط به پارامترها را وارد کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SaveMokatebatWin() {
+        var SelectedRow = App.Mokatebat.queryById("OlguNameGrid").getSelectionModel().getLastSelected();
+        var SelectedRow2 = App.Mokatebat.queryById("CodhayeDaramadiElamAvarezGrid").getSelectionModel().getLastSelected();
+        var LblMatnName = App.Mokatebat.queryById('LblMatnName');
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            /*   Ext.net.DirectMethod.request({
+                   url: '/Daramad/Mokatebat/Save',
+                   params: {
+                       MatnName: LblMatnName.getText(),
+                       ShomareHesabCodeDaramadId: SelectedRow2.data.fldShomareHesabCodeDaramadId,
+                       CodeDaramadElamAvarez:SelectedRow2.data.fldID,
+                       LetterMinutId: SelectedRow.data.fldId
+                   },
+                   success: function (data) {
+                       Ext.net.Mask.hide();
+                       var ic = Ext.MessageBox.INFO;
+                       if (data.Err == 1)
+                           ic = Ext.MessageBox.ERROR;
+                       Ext.MessageBox.show({
+                           title: data.MsgTitle,
+                           msg: data.Msg,
+                           icon: ic,
+                           buttons: Ext.MessageBox.OK
+                       });
+                       App.Mokatebat.queryById('MokatebatWinGrid').store.load();
+                       if (data.Err != 1) {
+                           App.Mokatebat.queryById('OlguNameGrid').getStore().loadData("");
+                           App.Mokatebat.queryById('ParamsGrid').getStore().loadData("");
+                           App.Mokatebat.queryById('LblMatnName').setText("", false);
+                       }
+                   }
+               })*/
+
+            var data1 = {
+                MatnName: LblMatnName.getValue(),
+                ShomareHesabCodeDaramadId: SelectedRow2.data.fldShomareHesabCodeDaramadId,
+                CodeDaramadElamAvarez: SelectedRow2.data.fldID,
+                LetterMinutId: SelectedRow.data.fldId
+            };
+
+            $.ajax({
+                type: "POST",
+                url: '/Daramad/Mokatebat/Save',
+                contentType: "application/json; charset=utf-8",
+                data: JSON.stringify(data1),
+                datatype: "json",
+                success: function (result) {
+                    data = result;/*JSON.parse(result);*/
+                    Ext.net.Mask.hide();
+
+                    if (data.Err == 1) {
+                        Ext.MessageBox.show({
+                            title: data.MsgTitle,
+                            msg: data.Msg,
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                    else {
+                        App.Mokatebat.queryById('MokatebatWinGrid').store.load();
+                        Ext.MessageBox.show({
+                            title: data.MsgTitle,
+                            msg: "ذخیره با موفقیت انجام شد. آیا مایل به چاپ نامه هستید؟",
+                            icon: Ext.MessageBox.INFO,
+                            buttons: Ext.MessageBox.YESNO,
+                            fn: function (btn) {
+                                if (btn == 'yes') {
+                                    Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                                    Ext.net.DirectMethod.request({
+                                        url: '/Daramad/Mokatebat/PrintLetter',
+                                        params: {
+                                            FileId: data.FileId
+                                        },
+                                        success: function () {
+                                            Ext.net.Mask.hide();
+                                        }
+                                    })
+                                }
+                            }
+                        });
+                        App.Mokatebat.queryById('OlguNameGrid').getStore().loadData("");
+                        App.Mokatebat.queryById('ParamsGrid').getStore().loadData("");
+                        App.Mokatebat.queryById('LblMatnName').setValue("", false);
+
+                    }
+                },
+                failure: function (data) {
+                    alert(data.data);
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا الگو نامه را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function DeleteMokatebatWin() {
+        var SelectedRow = App.Mokatebat.queryById('MokatebatWinGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Daramad/Mokatebat/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.Mokatebat.queryById('MokatebatWinGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function GotoPrint() {
+        var record = App.Mokatebat.queryById("buttonPrint").activeRecord.record;
+        var FileId = record.data.fldFileId;
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/Mokatebat/PrintLetter',
+            params: {
+                FileId: FileId
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        })
+    }
+</script>

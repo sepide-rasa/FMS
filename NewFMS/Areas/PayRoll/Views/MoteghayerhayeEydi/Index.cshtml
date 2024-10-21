@@ -1,0 +1,519 @@
+﻿@model IEnumerable<NewFMS.WCF_PayRoll.OBJ_MoteghayerhayeEydi>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("MoteghayerhayeEydi")
+        .Title("ثبت متغیرهای عیدی")
+            .Listeners(li => { li.AfterRender.Handler = "MoteghayerhayeEydiSetSize();"; li.Render.Fn = "addKeyMapMoteghayerhayeEydi"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                .Listeners(l => { l.Click.Handler = "SaveMoteghayerhayeEydi();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadMoteghayerhayeEydi();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteMoteghayerhayeEydi();"; })
+            , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                .Listeners(l => { l.Click.Handler = "HelpMoteghayerhayeEydi();"; })        
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.MoteghayerhayeEydi.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("اطلاعات متغیرهای عیدی").Height(100)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 8 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                            X.Label("سال:")
+                              , X.ComboBox()
+                            .AutoFocus(true)
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ItemID("CboYear")
+                        .DisplayField("fldYear")
+                        .ValueField("fldYear")
+                        .TypeAhead(true)
+                        .Editable(false)
+                        .AllowBlank(false)
+                        .BlankText("لطفا سال را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                            .Store(X.Store().Listeners(l => l.Load.Handler = "SetDefultYear();")
+                        .Model(X.Model()
+                        .IDProperty("fldYear")
+                            .Fields(
+                                new ModelField("fldYear", ModelFieldType.String) { Mapping = "fldYear" }
+                            )
+                        )
+                            .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetSal"))
+                            .Reader(X.JsonReader().Root("data"))
+                                    )
+                        )
+                    , X.Label("سقف عیدی کارمندی:")
+                    , X.TextField()
+                    .ItemID("txtMaxEydiKarmandi")
+                    .Text("0")
+                    .Listeners(l => { l.Change.Handler = "App.MoteghayerhayeEydi.queryById('txtMaxEydiKarmandi').setValue(accounting.formatNumber(App.MoteghayerhayeEydi.queryById('txtMaxEydiKarmandi').getValue()));CheckInt(App.MoteghayerhayeEydi.queryById('txtMaxEydiKarmandi'));"; })
+                    .MaskRe("/[0-9]/")
+                    .MaxLength(13)
+                    .EnforceMaxLength(true)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا سقف عیدی را وارد کنید.")
+
+                    , X.Label("سقف عیدی کارگری:")
+                    , X.TextField()
+                    .ItemID("txtMaxEydiKargari")
+                    .Text("0")
+                    .Listeners(l => { l.Change.Handler = "App.MoteghayerhayeEydi.queryById('txtMaxEydiKargari').setValue(accounting.formatNumber(App.MoteghayerhayeEydi.queryById('txtMaxEydiKargari').getValue()));CheckInt(App.MoteghayerhayeEydi.queryById('txtMaxEydiKargari'));"; })
+                    .MaskRe("/[0-9]/")
+                    .MaxLength(13)
+                    .EnforceMaxLength(true)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا عیدی را وارد کنید.")
+
+                    , X.Label("ضریب عیدی کارگر:")
+                    , X.TextField()
+                    .ItemID("txtZarib")
+                    .Text("0")
+                    .MaskRe("/[0-9-.]/")
+                    .MaxLength(6)
+                    .EnforceMaxLength(true)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                        .BlankText("لطفا ضریب عیدی را وارد کنید.")
+                        
+                        , X.Label("نحوه محاسبه:")
+                        , X.ComboBox()
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ItemID("CboTypeMohasebe")
+                        .Editable(false)
+                        .TypeAhead(true)
+                        .BlankText("لطفا نحوه محاسبه را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .Items(
+                            new ListItem("مزد ثابت", "0"),
+                            new ListItem("فقط مزد شغل ماهیانه", "1")
+                            )
+                        .SelectedItems(new { Value = "1" })
+
+                    , X.Label("نحوه محاسبه مالیات:")
+                    , X.ComboBox()
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .ItemID("CboTypeMohasebeMaliyat")
+                    .Editable(false)
+                    .TypeAhead(true)
+                    .BlankText("لطفا نحوه محاسبه مالیات را انتخاب کنید.")
+                    .QueryMode(DataLoadMode.Local)
+                    .TriggerAction(TriggerAction.All)
+                    .Items(
+                        new ListItem("به صورت ثابت", "0"),
+                        new ListItem("از طریق جدول مالیاتی", "1")
+                            )
+                       // .SelectedItems(new { Value = "1" })
+                        .Listeners(l => { l.Change.Handler = "ChangeMohasebeMaliyat()"; })
+
+                    , X.Label("مبلغ معافیت کارمند:")
+                    , X.TextField()
+                    .ItemID("txtMablaghKarmand")
+                    .Text("0")
+                    .MaskRe("/[0-9]/")
+                    .MaxLength(13)
+                    .EnforceMaxLength(true)
+                    .Listeners(l => { l.Change.Handler = "App.MoteghayerhayeEydi.queryById('txtMablaghKarmand').setValue(accounting.formatNumber(App.MoteghayerhayeEydi.queryById('txtMablaghKarmand').getValue()));CheckInt(App.MoteghayerhayeEydi.queryById('txtMablaghKarmand'));"; })
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا مبلغ معافیت را وارد کنید.")
+
+                    , X.Label("مبلغ معافیت کارگر:")
+                   , X.TextField()
+                    .ItemID("txtMablaghKargar")
+                    .Text("0")
+                    .Listeners(l => { l.Change.Handler = "App.MoteghayerhayeEydi.queryById('txtMablaghKargar').setValue(accounting.formatNumber(App.MoteghayerhayeEydi.queryById('txtMablaghKargar').getValue()));CheckInt(App.MoteghayerhayeEydi.queryById('txtMablaghKargar'));"; })
+                    .MaskRe("/[0-9]/")
+                    .MaxLength(13)
+                    .EnforceMaxLength(true)
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا مبلغ معافیت را وارد کنید.")
+
+                    , X.Label("درصد مالیات کارمند:")
+                   , X.TextField()
+                    .ItemID("txtDarsadMaliyatKarmandi")
+                    .Text("0")
+                    .MaskRe("/[0-9-.]/")
+                    .MaxLength(6)
+                    .EnforceMaxLength(true)
+                    .Listeners(l => l.Change.Handler = "CheckDarsad(App.MoteghayerhayeEydi.queryById('txtDarsadMaliyatKarmandi'))")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا درصد مالیات را وارد کنید.")
+
+                    , X.Label("درصد مالیات کارگر:")
+                   , X.TextField()
+                    .ItemID("txtDarsadMaliyatKargari")
+                    .Text("0")
+                    .MaskRe("/[0-9-.]/")
+                    .MaxLength(6)
+                    .EnforceMaxLength(true)
+                    .Listeners(l => l.Change.Handler = "CheckDarsad(App.MoteghayerhayeEydi.queryById('txtDarsadMaliyatKargari'))")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا درصد مالیات را وارد کنید.")
+                , X.Label("توضیحات:"),
+                    X.TextField()
+                .ItemID("txtDesc")
+                .ColSpan(3)
+                .LabelAlign(Ext.Net.LabelAlign.Top)
+                .Width(392)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("MoteghayerhayeEydiGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                        .Listeners(l => l.DataChanged.Handler = "App.MoteghayerhayeEydi.queryById('MoteghayerhayeEydiGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.MoteghayerhayeEydi.queryById('MoteghayerhayeEydiGrid');grid.setHeight(App.PayWin.getHeight() - 310); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldYear).Text("سال").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldMaxEydiKarmand).Text("سقف عیدی کارمندی").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldMaxEydiKargar).Text("سقف عیدی کارگری").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldZaribEydiKargari).Text("ضریب عیدی کارگر").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldTypeMohasebatMaliyatName).Text("نحوه محاسبه مالیات").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldMablaghMoafiatKarmand).Text("مبلغ معافیت کارمند").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldMablaghMoafiatKargar).Text("مبلغ معافیت کارگر").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldDarsadMaliyatKarmand).Text("درصد مالیات کارمند").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldDarsadMaliyatKargar).Text("درصد مالیات کارگر").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldTypeMohasebeName).Text("نحوه محاسبه").Flex(2)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    function HelpMoteghayerhayeEydi() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/MoteghayerhayeEydi/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SetDefultYear() {
+        var CboYear = App.MoteghayerhayeEydi.queryById('CboYear');
+        CboYear.setValue('@ViewBag.Year');
+    }
+    function MoteghayerhayeEydiSetSize() {
+        App.MoteghayerhayeEydi.setWidth(App.PayWin.getWidth());
+        var grid = App.MoteghayerhayeEydi.queryById('MoteghayerhayeEydiGrid');
+        grid.setHeight(App.PayWin.getHeight() - 310);
+
+        var CboTypeMohasebeMaliyat = App.MoteghayerhayeEydi.queryById('CboTypeMohasebeMaliyat');
+        CboTypeMohasebeMaliyat.setValue("0");
+    } 
+    function ChangeMohasebeMaliyat() {
+        var TypeMohasebeMaliyat = App.MoteghayerhayeEydi.queryById('CboTypeMohasebeMaliyat');
+        if (TypeMohasebeMaliyat.getValue() == "1") {
+            var txtMablaghKarmand = App.MoteghayerhayeEydi.queryById('txtMablaghKarmand');
+            txtMablaghKarmand.setReadOnly(true);
+            var txtMablaghKargar = App.MoteghayerhayeEydi.queryById('txtMablaghKargar');
+            txtMablaghKargar.setReadOnly(true);
+            var txtDarsadMaliyatKarmandi = App.MoteghayerhayeEydi.queryById('txtDarsadMaliyatKarmandi');
+            txtDarsadMaliyatKarmandi.setReadOnly(true);
+            var txtDarsadMaliyatKargari = App.MoteghayerhayeEydi.queryById('txtDarsadMaliyatKargari');
+            txtDarsadMaliyatKargari.setReadOnly(true);
+        }
+        else if (TypeMohasebeMaliyat.getValue() == "0") {
+            var txtMablaghKarmand = App.MoteghayerhayeEydi.queryById('txtMablaghKarmand');
+            txtMablaghKarmand.setReadOnly(false);
+            var txtMablaghKargar = App.MoteghayerhayeEydi.queryById('txtMablaghKargar');
+            txtMablaghKargar.setReadOnly(false);
+            var txtDarsadMaliyatKarmandi = App.MoteghayerhayeEydi.queryById('txtDarsadMaliyatKarmandi');
+            txtDarsadMaliyatKarmandi.setReadOnly(false);
+            var txtDarsadMaliyatKargari = App.MoteghayerhayeEydi.queryById('txtDarsadMaliyatKargari');
+            txtDarsadMaliyatKargari.setReadOnly(false);
+        }
+    }
+    function LoadMoteghayerhayeEydi() {
+        var SelectedRow = App.MoteghayerhayeEydi.queryById('MoteghayerhayeEydiGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/MoteghayerhayeEydi/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var CboYear = App.MoteghayerhayeEydi.queryById('CboYear');
+                    CboYear.setValue(data.fldYear);
+                    CboYear.setReadOnly(true);
+                    var txtMaxEydiKarmandi = App.MoteghayerhayeEydi.queryById('txtMaxEydiKarmandi');
+                    txtMaxEydiKarmandi.setValue(data.fldMaxEydiKarmand);
+                    var txtMaxEydiKargari = App.MoteghayerhayeEydi.queryById('txtMaxEydiKargari');
+                    txtMaxEydiKargari.setValue(data.fldMaxEydiKargar);
+                    var txtZarib = App.MoteghayerhayeEydi.queryById('txtZarib');
+                    txtZarib.setValue(data.fldZaribEydiKargari);
+                    var CboTypeMohasebeMaliyat = App.MoteghayerhayeEydi.queryById('CboTypeMohasebeMaliyat');
+                    CboTypeMohasebeMaliyat.setValue(data.fldTypeMohasebatMaliyat);
+                    var txtMablaghKarmand = App.MoteghayerhayeEydi.queryById('txtMablaghKarmand');
+                    txtMablaghKarmand.setValue(data.fldMablaghMoafiatKarmand);
+                    var txtMablaghKargar = App.MoteghayerhayeEydi.queryById('txtMablaghKargar');
+                    txtMablaghKargar.setValue(data.fldMablaghMoafiatKargar);
+                    var txtDarsadMaliyatKarmandi = App.MoteghayerhayeEydi.queryById('txtDarsadMaliyatKarmandi');
+                    txtDarsadMaliyatKarmandi.setValue(data.fldDarsadMaliyatKarmand);
+                    var txtDarsadMaliyatKargari = App.MoteghayerhayeEydi.queryById('txtDarsadMaliyatKargari');
+                    txtDarsadMaliyatKargari.setValue(data.fldDarsadMaliyatKargar);
+                    var CboTypeMohasebe = App.MoteghayerhayeEydi.queryById('CboTypeMohasebe');
+                    CboTypeMohasebe.setValue(data.fldTypeMohasebe);
+                    var txtDesc = App.MoteghayerhayeEydi.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+
+                    var fldId = App.MoteghayerhayeEydi.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveMoteghayerhayeEydi() {
+        var CboYear = App.MoteghayerhayeEydi.queryById('CboYear');
+        var txtMaxEydiKarmandi = App.MoteghayerhayeEydi.queryById('txtMaxEydiKarmandi');
+        var txtMaxEydiKargari = App.MoteghayerhayeEydi.queryById('txtMaxEydiKargari');
+        var txtZarib = App.MoteghayerhayeEydi.queryById('txtZarib');
+        var CboTypeMohasebeMaliyat = App.MoteghayerhayeEydi.queryById('CboTypeMohasebeMaliyat');
+        var txtMablaghKarmand = App.MoteghayerhayeEydi.queryById('txtMablaghKarmand');
+        var txtMablaghKargar = App.MoteghayerhayeEydi.queryById('txtMablaghKargar');
+        var txtDarsadMaliyatKarmandi = App.MoteghayerhayeEydi.queryById('txtDarsadMaliyatKarmandi');
+        var txtDarsadMaliyatKargari = App.MoteghayerhayeEydi.queryById('txtDarsadMaliyatKargari');
+        var CboTypeMohasebe = App.MoteghayerhayeEydi.queryById('CboTypeMohasebe');
+        var txtDesc = App.MoteghayerhayeEydi.queryById('txtDesc');
+
+        var fldId = App.MoteghayerhayeEydi.queryById('fldId');
+        var er = false;
+
+        if (CboYear.validate() == false) {
+            er = true;
+        }
+
+        if (txtMaxEydiKarmandi.validate() == false) {
+            er = true;
+        }
+
+        if (txtMaxEydiKargari.validate() == false) {
+            er = true;
+        }
+
+        if (txtZarib.validate() == false) {
+            er = true;
+        }
+
+        if (CboTypeMohasebeMaliyat.validate() == false) {
+            er = true;
+        }
+
+        if (txtMablaghKarmand.validate() == false) {
+            er = true;
+        }
+
+        if (txtMablaghKargar.validate() == false) {
+            er = true;
+        }
+
+        if (txtDarsadMaliyatKarmandi.validate() == false) {
+            er = true;
+        }
+
+        if (txtDarsadMaliyatKargari.validate() == false) {
+            er = true;
+        }
+
+        if (CboTypeMohasebe.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        var TypeMohasebeMaliyat = false;
+        if (CboTypeMohasebeMaliyat.getValue() == "1")
+            TypeMohasebeMaliyat = true;
+
+        var TypeMohasebe = false;
+        if (CboTypeMohasebe.getValue() == "1")
+            TypeMohasebe = true;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/MoteghayerhayeEydi/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldYear: CboYear.getValue(),
+                fldMaxEydiKarmand: txtMaxEydiKarmandi.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                fldMaxEydiKargar: txtMaxEydiKargari.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                fldZaribEydiKargari: txtZarib.getValue(),
+                fldTypeMohasebatMaliyat: TypeMohasebeMaliyat,
+                fldMablaghMoafiatKarmand: txtMablaghKarmand.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                fldMablaghMoafiatKargar: txtMablaghKargar.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                fldDarsadMaliyatKarmand: txtDarsadMaliyatKarmandi.getValue(),
+                fldDarsadMaliyatKargar: txtDarsadMaliyatKargari.getValue(),
+                fldTypeMohasebe: TypeMohasebe,
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.MoteghayerhayeEydi.queryById('MoteghayerhayeEydiGrid').store.load();
+                if (data.Er != 1)
+                    ClearMoteghayerhayeEydi();
+            }
+
+        });
+    }
+    function DeleteMoteghayerhayeEydi() {
+        var SelectedRow = App.MoteghayerhayeEydi.queryById('MoteghayerhayeEydiGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/MoteghayerhayeEydi/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.MoteghayerhayeEydi.queryById('MoteghayerhayeEydiGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearMoteghayerhayeEydi() {
+        App.MoteghayerhayeEydi.queryById('txtMaxEydiKarmandi').setValue(0);
+        App.MoteghayerhayeEydi.queryById('txtMaxEydiKargari').setValue(0);
+        App.MoteghayerhayeEydi.queryById('txtZarib').setValue(0);
+        App.MoteghayerhayeEydi.queryById('txtMablaghKarmand').setValue(0);
+        App.MoteghayerhayeEydi.queryById('txtMablaghKargar').setValue(0);
+        App.MoteghayerhayeEydi.queryById('txtDarsadMaliyatKarmandi').setValue(0);
+        App.MoteghayerhayeEydi.queryById('txtDarsadMaliyatKargari').setValue(0);
+        App.MoteghayerhayeEydi.queryById('txtDesc').setValue("");
+        App.MoteghayerhayeEydi.queryById('fldId').setValue(0);
+    }
+    var addKeyMapMoteghayerhayeEydi = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+        var keyfield = App.MoteghayerhayeEydi.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        var CboTypeMohasebeMaliyat = App.MoteghayerhayeEydi.queryById('CboTypeMohasebeMaliyat');
+        if (CboTypeMohasebeMaliyat.getValue() == 0) {
+            if (keyfield.itemId == "txtDesc") {
+                nextfld = App.MoteghayerhayeEydi.queryById('btnSave');
+            }
+            else {
+                nextfld = keyfield.nextSibling().nextSibling();
+                nextfld.selectText();
+            }
+        }
+        else {
+            if (keyfield.itemId == "CboTypeMohasebeMaliyat") {
+                nextfld = App.MoteghayerhayeEydi.queryById('txtDesc');
+            }
+            else if (keyfield.itemId == "txtDesc") {
+                nextfld = App.MoteghayerhayeEydi.queryById('btnSave');
+            }
+            else {
+                nextfld = keyfield.nextSibling().nextSibling();
+                nextfld.selectText();
+            }
+        }
+        nextfld.focus();
+                }
+            }]
+        });
+    }
+</script>

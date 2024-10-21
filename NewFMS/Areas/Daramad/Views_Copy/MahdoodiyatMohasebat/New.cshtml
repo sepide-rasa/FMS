@@ -1,0 +1,464 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+<style>
+    .custom-PersonIC {
+        margin-right: 325px !important;
+    }
+
+    .custom-StationIC {
+        margin-right: 125px !important;
+    }
+    .FieldStyle{
+        direction:rtl;
+    }
+</style>
+
+@(Html.X()
+    .Window()
+    .Modal(true)
+    .Listeners(li =>
+    {
+        li.Render.Fn = "addKeyMapNewMahdoodiyatM";
+        li.AfterRender.Handler = "LoadMahdoodiyatM()";
+    })
+    .Width(800)
+    .Title("ثبت محدودیت محاسبات")
+        .ID("NewMahdoodiyatM")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .ButtonAlign(Ext.Net.Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l => l.Click.Handler = "SaveMahdoodiyatM();"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .OnClientClick("App.NewMahdoodiyatM.destroy()"))
+    .Items(
+        X.Panel()
+        //.Padding(5)
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet()
+                    .Border(true)
+                    .Title("اطلاعات محدودیت محاسبات")
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 8 })
+                    .Items(
+                        X.Hidden().ItemID("fldId"),
+                        X.Hidden().ItemID("IdUser"),
+                        X.Hidden().ItemID("IdShomareHesabDaramad"),
+                        X.Hidden().ItemID("IdAshkhas"),
+                        X.Label("از تاریخ:"),
+                        X.PDateField()
+                            .ItemID("txtAzTarikh")
+                            .Listeners(l => l.Change.Handler = "setDateAzTarikh()")
+                            .AllowBlank(false)
+                            .BlankText("لطفا تاریخ شروع مأموریت را وارد کنید.")
+                            .Editable(true)
+                            .MaskRe("/[0-9 /]/")
+                            .MaxLength(10).Width(120)
+                            .EnforceMaxLength(true),
+                        X.Label("تا تاریخ:"),
+                        X.PDateField()
+                            .ItemID("txtTaTarikh")
+                            .Listeners(l => l.Change.Handler = "setDateTaTarikh")
+                            .AllowBlank(false)
+                            .BlankText("لطفا تاریخ پایان مأموریت را وارد کنید.")
+                            .Editable(true)
+                            .MaskRe("/[0-9 /]/")
+                            .MaxLength(10)
+                            .EnforceMaxLength(true).Width(120)
+                        , X.Label("وضعیت:")
+                        , X.ComboBox()
+                            .ItemID("CboStatus")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا وضعیت را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .EmptyText("وضعیت")
+                            .SelectedItems(new { Value = "1" })
+                            .Items(
+                                new ListItem("فعال", "1"),
+                                new ListItem("غیرفعال", "0")
+                                    ).Width(90),
+                        X.Label("عنوان:"),
+                        X.TextField()
+                            .ItemID("txtTitle")
+                            .AllowBlank(false)
+                            .BlankText("لطفا عنوان را وارد کنید.")
+                            .MaxLength(200).Width(170)
+                            .EnforceMaxLength(true)
+                        , X.Label("نوع کاربر:")
+                        , X.ComboBox()
+                            .ItemID("CboNoeKarbar")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع کاربر را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .EmptyText("نوع کاربر").Width(120)
+                            //.SelectedItems(new { Value = "1" })
+                            .Items(
+                                new ListItem("همه کاربران", "1"),
+                                new ListItem("کاربران خاص", "0")
+                                    )
+                            .Listeners(l => l.Change.Handler = "ChangeNoeKarbar()")         
+                        ,X.Button().ItemID("AddUser").Icon(Ext.Net.Icon.Add)
+                        .Listeners(l => l.Click.Handler = "SearchUser()")         
+                        ,X.TextField().ItemID("txtUser").ColSpan(6)
+                        .AllowBlank(false)
+                        .BlankText("لطفا کاربر را انتخاب کنید.")
+                        .Width(468).ReadOnly(true)
+                        , X.Label("نوع کد درآمد:")
+                        , X.ComboBox()
+                            .ItemID("CboNoeCodeDaramad")
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Editable(false)
+                            .TypeAhead(true).Width(120)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع کد درآمد را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .EmptyText("نوع کد درآمد")
+                            //.SelectedItems(new { Value = "1" })
+                            .Items(
+                                new ListItem("همه کدهای درآمد", "1"),
+                                new ListItem("کدهای درآمد خاص", "0")
+                                    )
+                            .Listeners(l => l.Change.Handler = "ChangeNoeCodeDaramad()")
+                        , X.Button().ItemID("AddCodeDaramad").Icon(Ext.Net.Icon.Add)
+                        .Listeners(l => l.Click.Handler = "SearchShomareHesabDaramad()")
+                        , X.TextField().ItemID("txtCodeDaramad").ColSpan(6)
+                        .AllowBlank(false)
+                        .BlankText("لطفا کد درآمد را انتخاب کنید.")
+                        .Width(468).ReadOnly(true)
+                        , X.Label("نوع اشخاص:")
+                        , X.ComboBox()
+                            .ItemID("CboNoeAshkhas") 
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .Editable(false)
+                            .TypeAhead(true).Width(120)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نوع اشخاص را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .EmptyText("نوع اشخاص")
+                            //.SelectedItems(new { Value = "1" })
+                            .Items(
+                                new ListItem("همه اشخاص", "1"),
+                                new ListItem("اشخاص خاص", "0")
+                                    )
+                                .Listeners(l => l.Change.Handler = "ChangeNoeAshkhas()")
+                         , X.Button().ItemID("AddAshkhas").Icon(Ext.Net.Icon.Add)
+                         .Listeners(l=>l.Click.Handler="SearchAshkhas()")
+                         , X.TextField().ItemID("txtAshkhas").ColSpan(6)
+                         .AllowBlank(false)
+                          .BlankText("لطفا اشخاص را انتخاب کنید.")
+                         .Width(468).ReadOnly(true)                  
+                    )
+                )
+
+            )
+)
+<script type="text/javascript">
+
+    function SearchUser(){
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/SearchUser/Index',
+            params: {
+                State: 2,
+                Organ:0
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SearchShomareHesabDaramad() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/SearchCodeDaramad_Checked/Index',
+            params: {
+                State: 2
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function SearchAshkhas() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/SearchAshkhas_Checked/Index',
+            params: {
+                State: 1
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function setDateAzTarikh() {
+        var txtAzTarikh = App.NewMahdoodiyatM.queryById('txtAzTarikh');
+        var txtTaTarikh = App.NewMahdoodiyatM.queryById('txtTaTarikh');
+        txtTaTarikh.setMinValue(txtAzTarikh.getValue());
+        txtTaTarikh.minText = "تاریخ پایان نباید قبل از تاریخ شروع باشد.";
+    }
+
+    function setDateTaTarikh() {
+        var txtAzTarikh = App.NewMahdoodiyatM.queryById('txtAzTarikh');
+        var txtTaTarikh = App.NewMahdoodiyatM.queryById('txtTaTarikh');
+        txtAzTarikh.setMaxValue(txtTaTarikh.getValue());
+        txtAzTarikh.maxText = "تاریخ شروع نباید بعد از تاریخ پایان باشد.";
+    }
+    function ChangeNoeKarbar() {
+        var CboNoeKarbar = App.NewMahdoodiyatM.queryById('CboNoeKarbar');
+        if (CboNoeKarbar.getValue() == "1")
+            App.NewMahdoodiyatM.queryById('AddUser').disable(true);
+        else if (CboNoeKarbar.getValue() == "0")
+            App.NewMahdoodiyatM.queryById('AddUser').enable(true);
+    }
+    function ChangeNoeCodeDaramad() {
+        var CboNoeCodeDaramad = App.NewMahdoodiyatM.queryById('CboNoeCodeDaramad');
+        if (CboNoeCodeDaramad.getValue() == "1")
+            App.NewMahdoodiyatM.queryById('AddCodeDaramad').disable(true);
+        else if (CboNoeCodeDaramad.getValue() == "0")
+            App.NewMahdoodiyatM.queryById('AddCodeDaramad').enable(true);
+    }
+    function ChangeNoeAshkhas() {
+        var CboNoeAshkhas = App.NewMahdoodiyatM.queryById('CboNoeAshkhas');
+        if (CboNoeAshkhas.getValue() == "1")
+            App.NewMahdoodiyatM.queryById('AddAshkhas').disable(true);
+        else if (CboNoeAshkhas.getValue() == "0")
+            App.NewMahdoodiyatM.queryById('AddAshkhas').enable(true);
+    }
+    function LoadMahdoodiyatM() {
+        /*App.NewMission.setWidth(App.OperationWin.getWidth()-881);*/
+        if ('@ViewBag.Id' != '0') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/MahdoodiyatMohasebat/Details',
+                params: {
+                    Id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    
+                    var txtAzTarikh = App.NewMahdoodiyatM.queryById('txtAzTarikh');
+                    txtAzTarikh.setValue(data.fldAzTarikh);
+
+                    var txtTaTarikh = App.NewMahdoodiyatM.queryById('txtTaTarikh');
+                    txtTaTarikh.setValue(data.fldTatarikh);
+
+                    var txtTitle = App.NewMahdoodiyatM.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+
+                    var CboNoeKarbar = App.NewMahdoodiyatM.queryById('CboNoeKarbar');
+                    CboNoeKarbar.setValue(data.NoKarbar);
+
+                    var txtUser = App.NewMahdoodiyatM.queryById('txtUser');
+                    txtUser.setValue(data.NameUser);
+
+                    var IdUser = App.NewMahdoodiyatM.queryById('IdUser');
+                    IdUser.setValue(data.IdUsers);
+
+                    var CboNoeCodeDaramad = App.NewMahdoodiyatM.queryById('CboNoeCodeDaramad');
+                    CboNoeCodeDaramad.setValue(data.NoeCodeDaramad);
+
+                    var IdShomareHesabDaramad = App.NewMahdoodiyatM.queryById('IdShomareHesabDaramad');
+                    IdShomareHesabDaramad.setValue(data.IdShomareHesabDaramad);
+
+                    var txtCodeDaramad = App.NewMahdoodiyatM.queryById('txtCodeDaramad');
+                    txtCodeDaramad.setValue(data.CodeDaramad);
+
+                    var IdAshkhas = App.NewMahdoodiyatM.queryById('IdAshkhas');
+                    IdAshkhas.setValue(data.IdAshkhas);
+
+                    var txtAshkhas = App.NewMahdoodiyatM.queryById('txtAshkhas');
+                    txtAshkhas.setValue(data.NameAshkhas);
+
+                    var CboNoeAshkhas = App.NewMahdoodiyatM.queryById('CboNoeAshkhas');
+                    CboNoeAshkhas.setValue(data.NoAshkhas); 
+
+                    var CboStatus = App.NewMahdoodiyatM.queryById('CboStatus');
+                    CboStatus.setValue(data.Status);
+
+                    var Id = App.NewMahdoodiyatM.queryById('fldId');
+                    Id.setValue(data.fldId);
+
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {  
+            App.NewMahdoodiyatM.queryById('txtAzTarikh').validate();
+            App.NewMahdoodiyatM.queryById('txtTaTarikh').validate();
+            App.NewMahdoodiyatM.queryById('txtTitle').validate();
+            App.NewMahdoodiyatM.queryById('CboNoeKarbar').setValue("1");
+            App.NewMahdoodiyatM.queryById('CboNoeCodeDaramad').setValue("1");
+            App.NewMahdoodiyatM.queryById('CboNoeAshkhas').setValue("1");
+            App.NewMahdoodiyatM.queryById('AddUser').disable(true);
+            App.NewMahdoodiyatM.queryById('AddCodeDaramad').disable(true);
+            App.NewMahdoodiyatM.queryById('AddAshkhas').disable(true);
+            Ext.net.Mask.hide();
+        }
+    }
+
+    function SaveMahdoodiyatM() {
+        var txtAzTarikh = App.NewMahdoodiyatM.queryById('txtAzTarikh');
+        var txtTaTarikh = App.NewMahdoodiyatM.queryById('txtTaTarikh');
+        var txtTitle = App.NewMahdoodiyatM.queryById('txtTitle');
+
+        var CboNoeKarbar = App.NewMahdoodiyatM.queryById('CboNoeKarbar');
+        var txtUser = App.NewMahdoodiyatM.queryById('txtUser');
+        var IdUser = App.NewMahdoodiyatM.queryById('IdUser');
+
+        var CboNoeCodeDaramad = App.NewMahdoodiyatM.queryById('CboNoeCodeDaramad');
+        var IdShomareHesabDaramad = App.NewMahdoodiyatM.queryById('IdShomareHesabDaramad');
+        var txtCodeDaramad = App.NewMahdoodiyatM.queryById('txtCodeDaramad');
+
+        var IdAshkhas = App.NewMahdoodiyatM.queryById('IdAshkhas');
+        var txtAshkhas = App.NewMahdoodiyatM.queryById('txtAshkhas');
+        var CboNoeAshkhas = App.NewMahdoodiyatM.queryById('CboNoeAshkhas');
+
+        var CboStatus = App.NewMahdoodiyatM.queryById('CboStatus');
+        var Id = App.NewMahdoodiyatM.queryById('fldId');
+
+        var er = false;
+
+        if (CboNoeKarbar.getValue() == "0") {
+            if (IdUser.getValue() == 0 || txtUser.validate() == false) {
+                er = true;
+            }
+        }
+        if (CboNoeCodeDaramad.getValue() == "0") {
+            if (txtCodeDaramad.validate() == false || IdShomareHesabDaramad.getValue() == 0) {
+                er = true;
+            }
+        }
+        if (CboNoeAshkhas.getValue() == "0") {
+            if (txtAshkhas.validate() == false || IdAshkhas.getValue() == 0) {
+                er = true;
+            }
+        }
+        
+        if (txtAzTarikh.validate() == false) {
+            er = true;
+        }
+        if (txtTaTarikh.validate() == false) {
+            er = true;
+        }
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (CboStatus.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+        var NoeAshkhas = false;
+        if (CboNoeAshkhas.getValue() == "1")
+            NoeAshkhas = true;
+
+        var NoeCodeDaramad = false;
+        if (CboNoeCodeDaramad.getValue() == "1")
+            NoeCodeDaramad = true;
+
+        var NoeKarbar = false;
+        if (CboNoeKarbar.getValue() == "1")
+            NoeKarbar = true;
+
+        var Status = false;
+        if (CboStatus.getValue() == "1")
+            Status = true;
+        App.NewMahdoodiyatM.body.mask("در حال ذخیره سازی");
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/MahdoodiyatMohasebat/Save',
+            params: {
+                fldId: Id.getValue(),
+                IdUser: IdUser.getValue(),
+                IdAshkhas: IdAshkhas.getValue(),
+                IdShomareHesabDaramad: IdShomareHesabDaramad.getValue(),
+                fldNoeAshkhas: NoeAshkhas,
+                fldNoeCodeDaramad: NoeCodeDaramad,
+                fldNoeKarbar: NoeKarbar,
+                fldAzTarikh: txtAzTarikh.getRawValue(),
+                fldTatarikh: txtTaTarikh.getRawValue(),
+                fldTitle: txtTitle.getValue(),
+                fldStatus: Status
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                if (data.Er != 1) {
+                    ClearMahdoodiyatM();
+                }
+                App.MahdoodiyatMohasebat.queryById('GridMahdoodiyatMohasebat').getStore().load();
+                App.NewMahdoodiyatM.body.mask().hide();
+            }
+        });
+    }
+
+    function ClearMahdoodiyatM() {
+        App.NewMahdoodiyatM.queryById('txtAzTarikh').setValue("");
+        App.NewMahdoodiyatM.queryById('txtTaTarikh').setValue("");
+        App.NewMahdoodiyatM.queryById('txtTitle').setValue("");
+        App.NewMahdoodiyatM.queryById('txtUser').setValue("");
+        App.NewMahdoodiyatM.queryById('IdUser').setValue(0);
+        App.NewMahdoodiyatM.queryById('IdShomareHesabDaramad').setValue(0);
+        App.NewMahdoodiyatM.queryById('txtCodeDaramad').setValue("");
+        App.NewMahdoodiyatM.queryById('IdAshkhas').setValue(0);
+        App.NewMahdoodiyatM.queryById('txtAshkhas').setValue("");
+        App.NewMahdoodiyatM.queryById('fldId').setValue(0);
+    }
+
+    var addKeyMapNewMahdoodiyatM = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.NewMahdoodiyatM.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

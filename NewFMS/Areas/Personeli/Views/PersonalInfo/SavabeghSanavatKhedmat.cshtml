@@ -1,0 +1,176 @@
+﻿@model IEnumerable<NewFMS.WCF_Personeli.OBJ_SavabegheSanavateKHedmat>
+@using Ext.Net.MVC;
+@{
+
+    var X = Html.X();
+}
+
+
+@(X.Panel().Title("سوابق سنوات خدمت").Border(false)
+                .ID("SavabeghSanavatKhedmat")
+            .Closable(true)
+            .AutoScroll(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Items(
+                X.Panel().Border(false)
+                .Border(false)
+                .AutoScroll(true)
+                .KeyMap(Html.X().KeyMap()
+                    .ID("SavabeghSanavatKhedmatMap")
+                    .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+                    .Binding(b =>
+                    {
+                        b.Add(Html.X().KeyBinding()
+                            .KeysString("N")
+                            .Handler("NewSavabeghSanavatKhedmat(); ")
+                        );
+                        b.Add(Html.X().KeyBinding()
+                            .KeysString("E")
+                            .Handler("EditSavabeghSanavatKhedmat(); ")
+                        );
+                        b.Add(Html.X().KeyBinding()
+                            .KeysString("D")
+                            .Handler("DeleteSavabeghSanavatKhedmat(); ")
+                        );
+
+                    }))
+                .Items(
+                    X.TabPanel().ID("SavabeghSanavatKhedmatTab")
+                    .AutoScroll(true).Height(630).Items(
+                    X.Panel().ItemID("GridPanel")
+                        .Title("سوابق سنوات خدمت")
+                        .Items(
+                    X.GridPanel().AutoScroll(true)
+                        .TopBar(
+                        Html.X().Toolbar()
+                        .Items(
+                            X.Button().Text("جدید").Icon(Ext.Net.Icon.Add).ToolTip("کلید میانبر N")
+                                    .Listeners(li => li.Click.Handler = "NewSavabeghSanavatKhedmat();"),
+                            X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).ToolTip("کلید میانبر E")
+                                    .Listeners(Li => Li.Click.Handler = "EditSavabeghSanavatKhedmat();"),
+                            X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).ToolTip("کلید میانبر D")
+                                .Listeners(de =>
+                                {
+                                    de.Click.Handler = "if (App.SavabeghSanavatKhedmat.queryById('GridSanavat').selModel.getLastSelected() == null) {Ext.MessageBox.show({ title: 'خطا', msg: 'لطفا یک سطر را انتخاب کنید',icon: Ext.MessageBox.ERROR,buttons: Ext.MessageBox.OK});return false;}else DeleteSavabeghSanavatKhedmat();";
+                                })
+                        )
+                    )
+                    .ItemID("GridSanavat").Flex(2)
+                    .BottomBar(X.PagingToolbar())
+                    .Height(300)
+                    .ColumnWidth(0.6)
+                    .Layout(Ext.Net.LayoutType.Column)
+                    .Store(
+                        X.StoreForModel()
+                        .Proxy(Html.X().AjaxProxy()
+                            .Url(Url.Action("ReadSanvatKhedmat"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+
+                        )
+                        .PageSize(20)
+                        .RemoteFilter(true)
+                        .RemotePaging(true)
+
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1),
+                            Html.X().Column().DataIndex(Model, m => m.fldNoeSabegheName).Text("نوع سابقه").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldAzTarikh).Text("از تاریخ").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldTaTarikh).Text("تا تاریخ").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(15)
+                        )
+                ))
+            )
+        )
+)
+
+<script type="text/javascript">
+
+    function EditSavabeghSanavatKhedmat() {
+        var SelectedRow = App.SavabeghSanavatKhedmat.queryById('GridSanavat').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/newSavabeghSanavatKhedmat',
+                params: {
+                    id: SelectedRow.data.fldId,
+                    PersonId: '@ViewBag.PersonId',
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function NewSavabeghSanavatKhedmat() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/PersonalInfo/newSavabeghSanavatKhedmat',
+            params: {
+                id: 0,
+                PersonId: '@ViewBag.PersonId',
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+
+    function DeleteSavabeghSanavatKhedmat() {
+        var SelectedHeaderRow = App.SavabeghSanavatKhedmat.queryById('GridSanavat').selModel.getLastSelected();
+        if (SelectedHeaderRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Personeli/PersonalInfo/DeleteSavabeghSanavatKhedmat',
+                            params: {
+                                id: SelectedHeaderRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SavabeghSanavatKhedmat.queryById('GridSanavat').store.load()
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+
+</script>

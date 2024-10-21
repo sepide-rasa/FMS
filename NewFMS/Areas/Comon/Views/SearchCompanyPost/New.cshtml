@@ -1,0 +1,142 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window()
+    .Modal(true)
+    .Width(330)
+        //   .Height(300)
+    .Resizable(false)
+    .Title("ثبت پست خارجی جدید")
+        .ID("AddNewCompanyPost")
+                .Listeners(li => { li.AfterRender.Fn = "addKeyMapNewCompanyPost"; })
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel()
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Border(false)
+            .KeyMap(Html.X().KeyMap()
+                .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+                .Binding(b =>
+                {
+                    b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                    .Handler("SaveNewCompanyPost(); ")
+                    );
+
+                }))
+            .DefaultButton("btn")
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+        //.ToolTip("کلید میانبر F8")
+                    .Listeners(l => l.Click.Handler = "SaveNewCompanyPost();")
+                        .ItemID("btnSaveNewCompanyPost"),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .ToolTip("کلید میانبر Esc")
+                    .OnClientClick("App.AddNewCompanyPost.destroy();")
+                    )
+                .Items(
+                        X.FieldSet().Border(true).Title("اطلاعات پست")//.Height(80)
+                         .Defaults(new { Margin = 2 })
+                        .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                    .Items(
+                        X.Hidden().ItemID("fldId"),
+
+                          
+                        X.Label("عنوان پست"),
+                        X.TextField()//.ColSpan(3)
+                        .ItemID("txtTitle")
+       
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .MaxLength(27)
+                        .EnforceMaxLength(true)//.Width(379)
+
+                       
+                    )
+                )
+                )
+)
+
+<script type="text/javascript">
+  
+    function SaveNewCompanyPost() {
+        var txtTitle = App.AddNewCompanyPost.queryById('txtTitle');
+        var fldId = App.AddNewCompanyPost.queryById('fldId');
+        var er = false;
+
+        
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/CompanyPost/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldTitle: txtTitle.getValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == "ok" && data.Err == 0) {
+                            App.AddNewCompanyPost.destroy();
+                        }
+                    }
+                });
+                App.SearchCompanyPost.queryById('GridSearchCompanyPost').store.load();
+            }
+
+        });
+    }
+
+
+    var addKeyMapNewCompanyPost = function (cmp) {
+       
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.AddNewCompanyPost.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtTitle") {
+                        nextfld = App.AddNewCompanyPost.queryById('btnSaveNewCompanyPost');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                }
+            }]
+        });
+    }
+
+
+</script>

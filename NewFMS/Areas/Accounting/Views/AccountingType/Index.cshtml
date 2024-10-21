@@ -1,0 +1,260 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_AccountingType>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("SabtAccountingType")
+        .Title("تعریف انواع حسابداری")
+        .Listeners(li => { li.AfterRender.Handler = "AccountingTypeSetSize();"; li.Render.Fn = "addKeyMapAccountingType"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                    X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveAccountingType")
+                .Listeners(l => { l.Click.Handler = "SaveAccountingType();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadAccountingType();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteAccountingType();"; })
+               , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpAccountingType();"; }),
+             X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.SabtAccountingType.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                 X.FieldSet().Border(false).Items(
+                    X.FieldSet().Border(true).Title("شهر").Height(80)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.Label("عنوان:"),
+                    X.TextField()
+                    .ItemID("txtName")
+        //.FieldLabel("نام شهرستان")
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .MaxLength(150)
+                    .EnforceMaxLength(true)
+                    .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                    , X.Label("توضیحات:"),
+                    X.TextField()
+                    .ItemID("txtDesc")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(345).ColSpan(3)
+                )
+            )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("AccountingTypeGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                                X.StoreForModel()
+                                                    .Listeners(l => l.DataChanged.Handler = "App.SabtAccountingType.queryById('AccountingTypeGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtAccountingType.queryById('AccountingTypeGrid');grid.setHeight(App.AccountingWin.getHeight() - 305); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.AccountingWin.addListener('resize', function () {
+        App.SabtAccountingType.setWidth(App.AccountingWin.getWidth());
+    });
+    App.AccountingWin.addListener('resize', function () {
+        var grid = App.SabtAccountingType.queryById('AccountingTypeGrid');
+        grid.setHeight(App.AccountingWin.getHeight()-240);
+    });*/
+    function HelpAccountingType() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/AccountingType/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function AccountingTypeSetSize() {
+        App.SabtAccountingType.setWidth(App.AccountingWin.getWidth());
+        var grid = App.SabtAccountingType.queryById('AccountingTypeGrid');
+        grid.setHeight(App.AccountingWin.getHeight() - 305);
+    }
+
+    function LoadAccountingType() {
+        var SelectedRow = App.SabtAccountingType.queryById('AccountingTypeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/AccountingType/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtName = App.SabtAccountingType.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var txtDesc = App.SabtAccountingType.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtAccountingType.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveAccountingType() {
+        var txtName = App.SabtAccountingType.queryById('txtName');
+        var txtDesc = App.SabtAccountingType.queryById('txtDesc');
+        var fldId = App.SabtAccountingType.queryById('fldId');
+            var er = false;
+
+            if (txtName.validate() == false) {
+                er = true;
+            }
+
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/AccountingType/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldName: txtName.getValue(),
+                    fldDesc: txtDesc.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtAccountingType.queryById('AccountingTypeGrid').store.load();
+                    if (data.Err != 1)
+                        ClearAccountingType();
+                }
+
+            });
+    }
+    function DeleteAccountingType() {
+        var SelectedRow = App.SabtAccountingType.queryById('AccountingTypeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Accounting/AccountingType/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtAccountingType.queryById('AccountingTypeGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearAccountingType() {
+        App.SabtAccountingType.queryById('fldId').setValue(0);
+        App.SabtAccountingType.queryById('txtName').setValue("");
+        App.SabtAccountingType.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapAccountingType = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtAccountingType.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtAccountingType.queryById('btnSaveAccountingType');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

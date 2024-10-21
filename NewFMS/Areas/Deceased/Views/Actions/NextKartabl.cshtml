@@ -1,0 +1,120 @@
+﻿@model IEnumerable<NewFMS.WCF_Common_Pay.OBJ_Items_Estekhdam>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net.Utilities
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+
+
+
+@(X.Window().Title("کارتابل بعد از این اقدام").Modal(true).Border(false)
+        .ID("NextKartabl")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+          .Width(300)
+          .Layout(LayoutType.VBox)
+              .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.Height(130)
+             .ButtonAlign(Alignment.Center)
+
+        .DefaultButton("btn")
+
+             .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                .Listeners(l =>
+                {
+                    l.Click.Handler = "SaveNextKartabl();";
+
+                })
+                    , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                            .OnClientClick("App.NextKartabl.destroy()")
+                )
+    .Items(
+                X.Panel().ItemID("Panel")
+            .Border(false)
+                .Layout(LayoutType.Table)
+                .Padding(10)
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                .Defaults(new { Margin = 2 })
+            .Items(
+                        X.Label("کارتابل:"),
+                            X.ComboBox()
+                            .ItemID("CboKartabl")
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .QueryMode(DataLoadMode.Local)
+                            .BlankText("لطفا کارتابل مورد نظر را انتخاب کنید.")
+                                .ForceSelection(true).AllowBlank(false)
+                            .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldTitle")
+                            .ValueField("fldId")
+                            .EmptyText(" ...")
+        //.SelectedItems(new { Value = "1" })
+                            .Store(X.Store().Listeners(l=>l.Load.Handler="SetVal()")
+                            .Model(X.Model()
+                            .IDProperty("fldId")
+                            .Fields(
+                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                            new ModelField("fldTitle", ModelFieldType.String) { Mapping = "fldTitle" }
+                                    )
+                                        )
+                            .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetKartabl"))
+                            .Reader(X.JsonReader().Root("data"))
+                                    )
+                                   // .Parameters(ps => ps.Add(new StoreParameter("TypeSand", @ViewBag.TypeSanad, ParameterMode.Raw)))
+                                    )
+
+        )
+    )
+)
+<script type="text/javascript">
+    function SetVal() {
+        var CboKartabl = App.NextKartabl.queryById('CboKartabl');
+        if ('@ViewBag.kartablId' != "0")
+            CboKartabl.setValue('@ViewBag.kartablId');
+    }
+    function SaveNextKartabl() {
+        var CboKartabl = App.NextKartabl.queryById('CboKartabl');
+        var er = false;
+
+        if (CboKartabl.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+                    Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                    Ext.net.DirectMethod.request({
+                        url: '/Deceased/Actions/SaveNextKartabl',
+                        params: {
+                            fldKartablNextId: CboKartabl.getValue(),
+                            fldActionId: '@ViewBag.ActionId',
+                            fldId: '@ViewBag.id'
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+
+        });
+        Ext.net.Mask.hide();
+
+    }
+</script>

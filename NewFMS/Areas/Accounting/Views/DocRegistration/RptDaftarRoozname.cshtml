@@ -1,0 +1,215 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<style>
+    .x-mcombo-item-unchecked {
+        background-position: right;
+        padding-right: 20px;
+    }
+
+    .x-mcombo-item-checked {
+        background-position: right;
+        padding-right: 20px;
+    }
+</style>
+@(Html.X().Panel()
+    .Closable(true)
+    .AutoScroll(true)
+    .Border(false)
+    .Title("گزارش دفتر روزنامه")
+    .CloseAction(CloseAction.Destroy)
+    .Listeners(li => { li.AfterRender.Handler = "setSizePnlDaftarRooznameh()"; li.Render.Fn = "addKeyMapDaftarRooznameh"; })
+    .Layout(LayoutType.Fit)
+    .ID("DaftarRooznameh")
+    .Items(
+        X.Panel()
+            .AutoScroll(true)
+            .Border(false)
+            //.Layout(LayoutType.VBox)
+            //.LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.Panel()
+                    .AutoScroll(true)
+                    .Border(false)
+                    .ButtonAlign(Alignment.Center)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Buttons(
+                        Html.X().Button()
+                            .Text("چاپ")
+                            .Icon(Ext.Net.Icon.Printer)
+                            .Listeners(l => l.Click.Handler = "PrintDaftarRooznameh()"),
+                        Html.X().Button()
+                            .Text("خروج")
+                            .Icon(Ext.Net.Icon.DoorOut)
+                            .Listeners(l => l.Click.Handler = "App.DaftarRooznameh.destroy()")
+                    )
+                    .Items(
+                        X.FieldSet()
+                            .Border(false)
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 8 })
+                            .Defaults(new { Margin = 2 })
+                            .Items(
+                                X.Label("سطح:"),
+                                X.ComboBox()
+                                    .ItemID("CboLevel")
+                                    .AutoFocus(true)
+                                    .TypeAhead(true)
+                                    .Width(100)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .AllowBlank(true)
+                                    .BlankText("لطفا سطح را انتخاب کنید.")
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                    .EmptyText("سطح ...")                                    
+                                    .Store(X.Store()
+                                        .Listeners(l => l.Load.Handler = "setDefaultLevelRoozname()")
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetAccountingLevel"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                            .ExtraParams(l => l.Add(new { Year = ViewBag.Year }))
+                                        )
+                                    ),
+                                X.Label("از تاریخ:"),
+                                X.PDateField()
+                                    .ItemID("txtAzTarikh")
+                                    .Listeners(l => l.Change.Handler = "setDateAzTarikhDaftarRooznameh()")
+                                    .Listeners(l => l.AfterRender.Handler = "App.DaftarRooznameh.queryById('txtAzTarikh').validate();")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا تاریخ را وارد کنید.")
+                                    .Editable(true)
+                                    .MaskRe("/[0-9/]/")
+                                    .Width(100)
+                                    .MaxLength(10)
+                                    .MinLength(10)
+                                    .EnforceMaxLength(true),
+                                X.Label("تا تاریخ:"),
+                                X.PDateField()
+                                    .ItemID("txtTaTarikh")
+                                    .Listeners(l => l.Change.Handler = "setDateTaTarikhDaftarRooznameh()")
+                                    .Listeners(l => l.AfterRender.Handler = "App.DaftarRooznameh.queryById('txtTaTarikh').validate();")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا تاریخ را وارد کنید.")
+                                    .Editable(true)
+                                    .Width(100)
+                                    .MaskRe("/[0-9/]/")
+                                    .MaxLength(10)
+                                    .MinLength(10)
+                                    .EnforceMaxLength(true),
+                                X.Label("نوع سند:"),
+                                X.MultiCombo()
+                                    .ItemID("CboTypeSanad")
+                                    .TypeAhead(true)
+                                    .AllowBlank(false)
+                                    .Width(100)
+                                    .BlankText("لطفا نوع سند انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .EmptyText("آئین نامه ...")
+                                    .Listeners(l => l.AfterRender.Handler = "setAllType2()")
+                                    .Items(
+                                        new ListItem("موقت", "0"),
+                                        new ListItem("قطعی", "1")
+                                    )
+                            )
+                    ),
+                Html.X().Panel()
+                    .Border(true)
+                    .Listeners(L => L.AfterRender.Handler = "setSizePnlDaftarRooznameh2()")
+                    .AutoScroll(true)
+                    .ItemID("RptPanel2")
+            )
+    )
+)
+
+<script type="text/javascript">
+
+    function setDateAzTarikhDaftarRooznameh() {
+        var txtAzTarikh = App.DaftarRooznameh.queryById('txtAzTarikh');
+        var txtTaTarikh = App.DaftarRooznameh.queryById('txtTaTarikh');
+        txtTaTarikh.setMinValue(txtAzTarikh.getValue());
+        txtTaTarikh.minText = "فیلد تا تاریخ نباید قبل از فیلد از تاریخ باشد.";
+    }
+
+    function setDateTaTarikhDaftarRooznameh() {
+        var txtAzTarikh = App.DaftarRooznameh.queryById('txtAzTarikh');
+        var txtTaTarikh = App.DaftarRooznameh.queryById('txtTaTarikh');
+        txtAzTarikh.setMaxValue(txtTaTarikh.getValue());
+        txtAzTarikh.maxText = "فیلد از تاریخ نباید بعد از فیلد تا تاریخ باشد.";
+    }
+
+    function setDefaultLevelRoozname() {
+        App.DaftarRooznameh.queryById("CboLevel").select(App.DaftarRooznameh.queryById("CboLevel").store.getAt(0));
+    }
+
+    function setAllType2() {
+        const AllType = ["0", "1"];
+        App.DaftarRooznameh.queryById('CboTypeSanad').setValue(AllType);
+    }
+
+    function setSizePnlDaftarRooznameh2() {
+        App.DaftarRooznameh.queryById('RptPanel2').setSize(App.AccountingWin.getWidth() - 20, App.AccountingWin.getHeight() - 240);
+    }
+
+    function setSizePnlDaftarRooznameh() {
+        App.DaftarRooznameh.setSize(App.AccountingWin.getWidth() - 20, App.AccountingWin.getHeight() - 170);
+    }
+
+    function PrintDaftarRooznameh() {
+        var txtAzTarikh = App.DaftarRooznameh.queryById('txtAzTarikh');
+        var txtTaTarikh = App.DaftarRooznameh.queryById('txtTaTarikh');
+        var CboTypeSanad = App.DaftarRooznameh.queryById('CboTypeSanad');
+        var CboLevel = App.DaftarRooznameh.queryById('CboLevel');
+
+        var height = App.AccountingWin.getHeight() - 245;
+
+        if (txtAzTarikh.validate() == true && txtTaTarikh.validate() == true && CboTypeSanad.validate() == true) {
+            var Type = 2;
+            if (CboTypeSanad.getValue().length == 1)
+                Type = CboTypeSanad.getValue()[0];
+            App.DaftarRooznameh.queryById('RptPanel2').update("<center><object class='se-pre-con' style='width:100%;height:" + height +
+                "px;border: 1px solid #ccc;' type='application/pdf' data='/Accounting/DocRegistration/GeneratePdfRptDaftarRoozname?AzTarikh="
+                + txtAzTarikh.getRawValue() + "&TaTarikh=" + txtTaTarikh.getRawValue() + "&TypeSanad=" + Type + "&Year=" + '@ViewBag.Year'
+                + "&Level=" + CboLevel.getValue() + "'></object></center>");
+        }
+    }
+
+    var addKeyMapDaftarRooznameh = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.DaftarRooznameh.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        var nextfld;
+
+                        if (keyfield.itemId == "CboTypeSanad") {
+                            PrintDaftarRooznameh();
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                            nextfld.focus();
+
+                        }
+                }
+            }]
+        });
+    };
+</script>

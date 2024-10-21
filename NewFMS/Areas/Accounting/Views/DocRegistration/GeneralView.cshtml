@@ -1,0 +1,328 @@
+﻿@model NewFMS.Models.Document
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net
+
+@{
+    var X = Html.X();
+}
+<script>
+    if (Ext.isChrome) {
+        $('<link href="/Content/StyleSheet2.css" rel="stylesheet" />').appendTo("head");
+    }
+    var MergeRows = function (data, metadata, record, orig) {        
+        metadata.tdAttr = 'rowspan="20"';
+    };
+    
+    var setColor = function (value, metaData, record, rowIndex, colIndex, store, view) {
+        if(rowIndex% 2==0){
+            metaData.style = 'background-color:#B4C6E7 !important;margin: 2px;border-radius: 2px;';
+        }
+        else{
+            metaData.style = 'background-color:#D9E2F3 !important;margin: 2px;border-radius: 2px;';
+        }
+        return value;
+    };
+    var setColor3 = function (value, metaData, record, rowIndex, colIndex, store, view) {
+        metaData.style = 'background-color:#4472C4 !important;font-size:13px; font-weight:bold;color:white;margin: 2px;border-radius: 2px;';
+        return rowIndex+1;
+    };
+    var setColor2 = function (value, metaData, record, rowIndex, colIndex, store, view) {
+        if (rowIndex % 2 == 0) {
+            metaData.style = 'background-color:#B4C6E7 !important;margin: 2px;border-radius: 2px;';
+        }
+        else {
+            metaData.style = 'background-color:#D9E2F3 !important;margin: 2px;border-radius: 2px;';
+        }
+        return value.toLocaleString();
+    };
+    /*var test3 = function (data, idx, record, orig) {        
+        if (idx == 0) {
+            return {
+                rowBody: "<table style='display:block;' dir='ltr'><tr><th>Company</th><th>Contact</th><th>Country</th></tr><tr><td>Alfreds Futterkiste</td><td>Maria Anders</td><td>Germany</td></tr><tr><td>Centro comercial Moctezuma</td><td>Francisco Chang</td>"+
+                    "<td>Mexico</td></tr></table>",
+                rowBodyCls: ""
+            };
+        }
+        else {
+            return {
+                rowBody: "",
+                rowBodyCls: "x-grid-row-body-hidden"
+            };
+        }
+    };*/
+</script>
+<style>
+    .topbarLable{
+        color:#673c06;
+        border:1px solid #673c06;
+        padding:5px;
+        border-radius:3px;
+    }
+    .topbarLable2{
+        color:#673c06;
+        padding:5px;
+    }
+    .blue{
+        background-color:#dfe8f6 !important;
+        vertical-align:top !important;
+    }
+    .blue .x-grid-row-summary .x-grid-cell{
+        color: #673c06 !important;
+        font-weight:bold !important ;
+        font-size:13px !important ;
+        /*background-color:#B4C6E7 !important;*/
+        border:2px solid #4472C4;
+    }
+    .blue .x-grid-header-ct{
+        background-color:#dfe8f6 !important;
+        background-image:none !important;
+        border:none;
+    }
+    .blue .x-column-header-inner{
+        background-color:#4472C4 !important;
+        background-image:none !important;
+        color:white !important;
+        font-size:13px;
+        font-weight:bold;
+        margin: 2px;border-radius: 2px;
+    }
+    .blue .x-column-header-over{
+        background-color:#4472C4 !important;
+        background-image:none !important;
+        color:white !important;
+    }
+    .tbarclass{
+        background-color:#dfe8f6 !important;
+        font-weight:bold;
+        font-size:14px;
+    }
+    .gridinner .x-grid-cell-inner
+    {
+        overflow: hidden;
+        padding: 3px 6px !important;
+        white-space:normal !important;
+        word-wrap:break-word;
+        background-color:#dfe8f6 !important;
+        display:block;
+        line-height:110%;
+        vertical-align: top !important;
+    }
+     .x-grid-cell-inner-row-numberer{
+        text-align:right !important;
+    }
+     .HCls{
+         height:55px;
+         margin-top:5px;
+     }
+     .HCls td{
+         text-align:right;
+     }
+     /*.gridinner .x-grid-componentcolumn .x-grid-cell{
+        vertical-align: top !important;
+    }*/
+</style>
+@(Html.X().Window()
+    .ID("GeneralView")
+    .Title("نمای کلی")
+    .Closable(true)
+    .Modal(true)
+    .Listeners(li => li.AfterRender.Handler = "GeneralViewSetSize();")
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Layout(LayoutType.Fit)
+    .Items(
+        X.GridPanel()
+            .ItemID("GeneralViewGrid")
+            .BottomBar(X.PagingToolbar())
+            .Listeners(l => l.Select.Handler = "loadDocumentGrid()")
+            .Store(
+                X.StoreFor(Model.Header)
+                    .Listeners(l => l.Load.Handler = "addEmptyRows()")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("ReadAllDocs"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                        .ExtraParams(l => l.Add(new { Year=@ViewBag.Year }))
+                        .ExtraParams(l => l.Add(new {ModuleId= @ViewBag.ModuleId }))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+            )
+            .ForceFit(true)
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+            )
+            //.Features(Html.X().RowBody().GetAdditionalData(l=>l.Fn="test3"))
+            .ColumnModel(
+                Html.X().Column().DataIndex(Model.Header, m => m.fldDocumentNum).Text("شماره سند").Flex(1).Renderer("if(value==0){return ''}return value;"),
+                Html.X().Column().DataIndex(Model.Header, m => m.fldTarikhDocument).Text("تاریخ سند").Flex(2),
+                Html.X().ComponentColumn().ID("ColGridDetails").Text("جزئیات سند").Renderer("MergeRows").Flex(15).TdCls("blue")
+                .Component(
+                    X.GridPanel()
+                        .ID("DocumentGrid")
+                        .Cls("gridinner")
+                        .Frame(false)
+                        .Border(false)
+                        .MarginSpec("0 0 0 10px")
+                        .Features(Html.X().Summary().ID("summaryDocuments").Dock(SummaryDock.Bottom))
+                        .TopBar(
+                            Html.X().Toolbar()
+                                .BaseCls("tbarclass")
+                                .Layout(LayoutType.VBox)
+                                .LayoutConfig(new VBoxLayoutConfig { Align=VBoxAlign.Stretch})
+                                .Border(false)
+                                .Items(
+                                    X.Panel()
+                                        .Layout(LayoutType.Table)
+                                        .LayoutConfig(new TableLayoutConfig { Columns = 7, TableAttrs = {Cls="HCls"} })
+                                        .Height(75)
+                                        .Border(false)
+                                        .Frame(false)
+                                        .BodyCls("blue")
+                                        .Items(
+                                            X.Label("شماره عطف:").Cls("topbarLable").Margin(5).ItemID("fldAtfNum"),
+                                            X.Label("شماره روزانه:").Cls("topbarLable").ItemID("fldDailyNum").MarginSpec("5px 5px 5px 10px"),
+                                            X.Label("شماره بایگانی:").Cls("topbarLable").ItemID("fldArchiveNum").MarginSpec("5px 5px 5px 10px"),
+                                            X.Label("شماره فرعی:").Cls("topbarLable").MarginSpec("5px 5px 5px 10px").ItemID("fldFareiNum"),
+                                            X.Label("نوع سند:").Cls("topbarLable").MarginSpec("5px 5px 5px 10px").ItemID("fldTypeSanadName"),
+                                            X.Label("وضعیت سند:").Cls("topbarLable").MarginSpec("5px 5px 5px 10px").ItemID("fldTypeName"),                                            
+                                            X.Label("ماژول مرجع:").Cls("topbarLable").MarginSpec("5px 5px 5px 10px").ItemID("fldNameModule"),
+                                            X.Label("شرح سند:").Cls("topbarLable2").MarginSpec("5px 10px 5px 5px").Width(700).ItemID("fldDescriptionDocu").ColSpan(5)
+                                        )
+                             )
+                        )
+                        .Store(
+                            X.StoreFor(Model.Detail)
+                                .AutoLoad(false)
+                                .Proxy(Html.X().AjaxProxy()
+                                    .Url(Url.Action("ReadDocRegister_Details"))
+                                    .Reader(Html.X().JsonReader().Root("data"))
+                                )
+                                .PageSize(1000)
+                                .RemoteFilter(false)
+                                .RemotePaging(false)
+                        )
+        //.BodyCls("blue")
+                        .AutoScroll(true)
+                        .View(
+                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                        )
+                        .Listeners(l => l.ViewReady.Handler = "setHeightGridd()")
+                        .ColumnModel(
+                            Html.X().RowNumbererColumn().Text("ردیف").Align(Alignment.Left).Flex(1).Renderer("setColor3"),
+                            Html.X().Column().DataIndex(Model.Detail, m => m.fldCode).Flex(3).Sortable(false).Renderer("setColor").Text("کد حساب").Wrap(true).Hideable(false),
+                            Html.X().Column().DataIndex(Model.Detail, m => m.fldNameCoding).Flex(5).Sortable(false).Renderer("setColor").Text("عنوان حساب").Wrap(true).Hideable(false),
+                            Html.X().Column().DataIndex(Model.Detail, m => m.fldDescription).Flex(5).Sortable(false).Renderer("setColor").Text("شرح").Wrap(true).Hideable(false),
+                            Html.X().Column().DataIndex(Model.Detail, m => m.fldBedehkar).Flex(3).Sortable(false).Renderer("setColor2").Text("بدهکار").Hideable(false)
+                                .SummaryType(SummaryType.Sum),
+                            Html.X().Column().DataIndex(Model.Detail, m => m.fldBestankar).Flex(3).Sortable(false).Renderer("setColor2").Text("بستانکار").Hideable(false)
+                                .SummaryType(SummaryType.Sum),
+                            Html.X().Column().DataIndex(Model.Detail, m => m.fldNameCenter).Flex(3).Sortable(false).Renderer("setColor").Text("مرکز هزینه").Wrap(true).Hideable(false),
+                            Html.X().Column().DataIndex(Model.Detail, m => m.fldName).Flex(3).Sortable(false).Renderer("setColor").Text("پرونده").Hideable(false)
+                        )
+                        .SelectionModel(
+                            Html.X().RowSelectionModel()
+                                .Mode(Ext.Net.SelectionMode.Single)
+                        )
+                )
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+        )
+)
+<script type="text/javascript">
+    
+    function addEmptyRows() {
+        var store = App.GeneralView.queryById('GeneralViewGrid').store;
+        for (var i = store.count() ; i < 20; i++) {
+            store.insert(i, {});
+        }        
+    }
+
+    function loadDocumentGrid() {
+        var selectedRow = App.GeneralView.queryById('GeneralViewGrid').getSelectionModel().getLastSelected();
+        if (selectedRow.data.fldId != 0) {
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/DocRegistration/GetDocDetails',
+                params: {
+                    HeaderId: selectedRow.data.fldId,
+                    Year: '@ViewBag.Year',
+                    ModuleId: '@ViewBag.ModuleId'
+                },
+                success: function (data) {
+                    if (data.fldShomareFaree == "") {
+                        data.fldShomareFaree = "ندارد";
+                    }
+                    if (data.fldArchiveNum == "") {
+                        data.fldArchiveNum = "ندارد";
+                    }
+                    App.ColGridDetails.getComponent(0).store.loadData(data.data);
+                    App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[0].setText("شماره عطف: " + data.fldAtfNum);                    
+                    App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[1].setText("شماره روزانه: " + data.ShomareRoozane);
+                    App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[2].setText("شماره بایگانی: " + data.fldArchiveNum);
+                    App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[3].setText("شماره فرعی: " + data.fldShomareFaree);
+                    App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[4].setText("نوع سند: " + data.fldTypeSanadName);
+                    App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[5].setText("وضعیت سند: " + data.fldTypeName);                     
+                    App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[6].setText("ماژول مرجع: " + data.fldNameModule);
+                    App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[7].setText("شرح سند: " + data.fldDescriptionDocu);
+                }
+            });
+        }
+        else {
+            App.ColGridDetails.getComponent(0).store.loadData("");
+            App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[0].setText("شماره عطف: ");
+            App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[1].setText("شماره روزانه: ");
+            App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[3].setText("شماره فرعی: ");
+            App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[2].setText("شماره بایگانی: ");
+            App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[4].setText("نوع سند: ");
+            App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[5].setText("وضعیت سند: ");
+            App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[6].setText("ماژول مرجع: ");
+            App.ColGridDetails.getComponent(0).dockedItems.items[1].items.items[0].items.items[7].setText("شرح سند: ");
+        }
+    }
+
+    function setHeightGridd() {       
+        App.GeneralView.queryById('GeneralViewGrid').getSelectionModel().select(App.GeneralView.queryById('GeneralViewGrid').store.getAt(0));
+        if ('@ViewBag.ModuleId' == 4) {            
+            App.ColGridDetails.getComponent(0).setHeight(App.AccountingWin.getHeight() - 142);
+        }
+        else if ('@ViewBag.ModuleId' == 10) {
+            App.ColGridDetails.getComponent(0).setHeight(App.KhazanedariWin.getHeight() - 142);
+        }        
+    }
+
+    function GeneralViewSetSize() {
+        if ('@ViewBag.ModuleId' == 4) {
+            App.GeneralView.setWidth(App.AccountingWin.getWidth() - 90);
+            App.GeneralView.queryById('GeneralViewGrid').setHeight(App.AccountingWin.getHeight() - 70);
+        }
+        else if ('@ViewBag.ModuleId' == 10) {
+            App.GeneralView.setWidth(App.KhazanedariWin.getWidth() - 90);
+            App.GeneralView.queryById('GeneralViewGrid').setHeight(App.KhazanedariWin.getHeight() - 70);
+        }
+        App.GeneralView.queryById('GeneralViewGrid').view.addElListener('keydown', function (btn) {
+            if (btn.getKey() == 38 || btn.getKey() == 40) {
+                var selectedRow = App.GeneralView.queryById('GeneralViewGrid').getSelectionModel().getLastSelected();
+                if (selectedRow.data.fldId != 0) {
+                    Ext.net.DirectMethod.request({
+                        url: '/Accounting/DocRegistration/GetDocDetails',
+                        params: {
+                            HeaderId: selectedRow.data.fldId,
+                            Year: '@ViewBag.Year',
+                            ModuleId: '@ViewBag.ModuleId'
+                        },
+                        success: function (data) {
+                            App.ColGridDetails.getComponent(0).store.loadData(data.data);
+                        }
+                    });
+                }
+                else {
+                    App.ColGridDetails.getComponent(0).store.loadData("");
+                }
+            }
+        });
+    }
+</script>

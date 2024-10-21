@@ -1,0 +1,496 @@
+﻿@model IEnumerable<NewFMS.WCF_Budget.OBJ_Pishbini_Daramad>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X()
+    .Window()
+    .Modal(true)
+    .Width(1000)
+    .Title("ثبت/ویرایش کد حساب")
+    .ID("ProjeHa")
+    .Closable(false)
+        .Listeners(l =>{
+            l.AfterRender.Fn = "addKeyMapProjeHa";
+            
+        })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Resizable(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            //.Layout(LayoutType.VBox)
+            //.LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Padding(5)
+                .Items(
+                X.Panel()
+                .Border(false)
+                .Layout(LayoutType.VBox)
+                .Listeners(l=>l.AfterRender.Handler= "SetColspanProjeHa()")
+                .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                //.Padding(5)
+                        .ButtonAlign(Ext.Net.Alignment.Center)
+                    .Buttons(
+                        X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).Listeners(l => l.Click.Handler = "SaveProjeHa()"),
+                                X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil).Listeners(l => { l.Click.Handler = "EditProjeHa();"; }),
+                                        X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete).Listeners(l => { l.Click.Handler = "DeleteProjeHa();"; }),
+                    X.Button()
+                        .Text("خروج")
+                        .Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.ProjeHa.destroy()"))
+                        .Items(
+                X.FieldSet()
+                    .Border(false)
+                    .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                        .ID("FieldSetMablagh")
+                    .Items(
+                        X.Hidden().ItemID("fldId"),
+                    X.Hidden().ItemID("CodingIdAcc"),
+                             X.Label("کد حساب:"),
+                               X.TextField().Width(635).AutoFocus(true)
+                            .ItemID("txtTitleAcc")
+                            .ColSpan(5)
+                                      .Icon(Icon.Add)
+                                .DirectEvents(li =>
+                                    {
+                                        li.SpecialKey.Url = "/Budget/SearchCodingAcc/Index?FieldName=" + ViewBag.FieldName + "&Year=" + ViewBag.Year;
+                                        li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                                        li.IconClick.Url = "/Budget/SearchCodingAcc/Index?FieldName=" + ViewBag.FieldName + "&Year=" + ViewBag.Year;
+                                    })
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                        .AllowBlank(false)
+                        .BlankText("لطفا کد حسابداری را انتخاب کنید."),
+                                X.Label("افزایش:").Hidden(@ViewBag.MotamamId == 0),
+                                       X.TextField()
+                                        .ItemID("Afzayesh")
+                                        .MaxLength(25)
+                                        .EnforceMaxLength(true)
+                                                .Listeners(l => l.Change.Handler = "App.ProjeHa.queryById('Afzayesh').setValue(accounting.formatNumber(App.ProjeHa.queryById('Afzayesh').getValue()));")
+                                        .Width(160)
+                                        .MaskRe("[0-9]")
+                                        .Value(0)
+                                        .AllowBlank(false)
+                                        .Hidden(@ViewBag.MotamamId == 0)
+                                        .BlankText("لطفا مبلغ را وارد کنید."),
+                                        X.Label("کاهش:").Hidden(@ViewBag.MotamamId == 0),
+                                       X.TextField()
+                                        .ItemID("Kahesh")
+                                        .MaxLength(25)
+                                        .EnforceMaxLength(true)
+                                                .Listeners(l => l.Change.Handler = "App.ProjeHa.queryById('Kahesh').setValue(accounting.formatNumber(App.ProjeHa.queryById('Kahesh').getValue()));")
+                                        .Width(160)
+                                        .MaskRe("[0-9]")
+                                        .Value(0)
+                                        .AllowBlank(false)
+                                             .Hidden(@ViewBag.MotamamId == 0)
+                                        .BlankText("لطفا مبلغ را وارد کنید."),
+                                X.Label("عملکرد دو سال قبل:").Hidden(@ViewBag.MotamamId != 0),
+                                   X.TextField()
+                                .ItemID("Amalkard1")
+                                    .MaxLength(25)
+                                    .EnforceMaxLength(true)
+                                    .Listeners(l => l.Change.Handler = "App.ProjeHa.queryById('Amalkard1').setValue(accounting.formatNumber(App.ProjeHa.queryById('Amalkard1').getValue()));")
+                                    .Width(160)
+                                    .MaskRe("[0-9]")
+                                    .Value(0)
+                                    .AllowBlank(false)
+                                         .Hidden(@ViewBag.MotamamId != 0)
+                                    .BlankText("لطفا مبلغ را وارد کنید."),
+                                            X.Label("مصوب سال قبل:").Hidden(@ViewBag.MotamamId != 0),
+                                       X.TextField()
+                                    .ItemID("Mosavab1")
+                                        .MaxLength(25)
+                                        .EnforceMaxLength(true)
+                                                    .Listeners(l => l.Change.Handler = "App.ProjeHa.queryById('Mosavab1').setValue(accounting.formatNumber(App.ProjeHa.queryById('Mosavab1').getValue()));")
+                                                .Hidden(@ViewBag.MotamamId != 0)
+                                                    
+                                        .MaskRe("[0-9]")
+                                            .Width(160)
+                                        .Value(0)
+                                        .AllowBlank(false)
+                                            .BlankText("لطفا مبلغ را وارد کنید."),
+                                                    X.Label("پیشنهادی:").Hidden(@ViewBag.MotamamId != 0),
+                                           X.TextField()
+                                        .ItemID("Pishnahadi")
+                                                    .Listeners(l => l.Change.Handler = "App.ProjeHa.queryById('Pishnahadi').setValue(accounting.formatNumber(App.ProjeHa.queryById('Pishnahadi').getValue()));")
+                                            .Width(160)
+                                            .MaxLength(25)
+                                                .Hidden(@ViewBag.MotamamId != 0)
+                                            .EnforceMaxLength(true)
+                                            .MaskRe("[0-9]")
+                                            .Value(0)
+                                            .AllowBlank(false)
+                                                .BlankText("لطفا مبلغ را وارد کنید.")
+        //                , X.Label("درصد:"),
+        //                    X.NumberField().Width(100)
+        //                        .MaxLength(5)
+        //                        .MaxValue(100).AllowDecimals(true)
+        //                        .EnforceMaxLength(true)
+        //                        .MaskRe("[0-9 .]")
+        //                .ItemID("txtDarsad")
+        ////.MsgTarget(Ext.Net.MessageTarget.Side)
+        //                .AllowBlank(false)
+        //                .BlankText("لطفا درصد را وارد کنید.")
+                        )
+                    ),
+        X.GridPanel()
+            .AutoScroll(true)
+                    .Listeners(l => l.AfterRender.Handler = "SetGridHeader()")
+                .ItemID("GridProjeHa")
+            .Width(976)
+            .Height(330)
+        //.Listeners(l => l.AfterRender.Handler = "App.ProjeHa.queryById('GridParvandeInfo').setHeight(App.AccountingWin.getHeight() - 310)")
+
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                            .Listeners(l => l.DataChanged.Handler = "App.ProjeHa.queryById('GridProjeHa').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                            .Url(Url.Action("ReadProjeHa"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+                            .ExtraParams(l => l.Add(new { ProjectId = ViewBag.CodingBudge }))
+                            
+                        )
+                    .PageSize(20)
+                    .RemoteFilter(false)
+                        .RemotePaging(false)
+
+            )
+        //.View(
+        //    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+        //)
+                .ViewConfig(X.GridView().LoadingText("در حال بارگذاری...").RTL(true))
+
+            .Plugins(X.FilterHeader().Remote(false))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                                    Html.X().Column().DataIndex(Model, m => m.fldCode).Text("کد حساب").Flex(1).Wrap(true),
+                                                Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان حساب").Flex(4).Wrap(true),
+                                                            Html.X().Column().DataIndex(Model, m => m.fldCol9).Text("افزایش").Flex(3).Renderer("return value.toLocaleString();").Hidden(@ViewBag.MotamamId == 0),
+                                                            Html.X().Column().DataIndex(Model, m => m.fldCol10).Text("کاهش").Flex(3).Renderer("return value.toLocaleString();").Hidden(@ViewBag.MotamamId == 0),
+
+                                                        Html.X().Column().DataIndex(Model, m => m.fldCol4).Text("عملکرد دو سال قبل").Flex(3).Renderer("return value.toLocaleString();").Hidden(@ViewBag.MotamamId != 0),
+                                                        Html.X().Column().DataIndex(Model, m => m.fldCol2).Text("عملکرد دو سال قبل").Flex(3).Renderer("return value.toLocaleString();").Hidden(@ViewBag.MotamamId != 0),
+                                                            Html.X().Column().DataIndex(Model, m => m.fldCol1).Text("پیشنهادی").Flex(3).Renderer("return value.toLocaleString();").Hidden(@ViewBag.MotamamId != 0)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+        )
+    )
+)
+<script type="text/javascript">
+    function SetGridHeader() {
+        if ('@ViewBag.MotamamId' == 0) {
+            var k = App.ProjeHa.queryById("GridProjeHa");
+            var kk = k.getView().getHeaderCt().getGridColumns();
+            var sal = parseInt('@ViewBag.Year');
+            var salGhabl = sal - 1;
+            var salGhabl2 = sal - 2;
+            kk[5].setText("عملکرد سال " + salGhabl2);
+            kk[6].setText("مصوب سال " + salGhabl);
+        }
+    }
+
+    function SetColspanProjeHa() {
+        if ('@ViewBag.MotamamId' != 0) {
+            App.ProjeHa.queryById('txtTitleAcc').setWidth(365);
+            App.ProjeHa.queryById('FieldSetMablagh').layout.columns = 4;
+            App.ProjeHa.queryById('FieldSetMablagh').doLayout();
+        }
+    }
+
+    function EditProjeHa() {
+        var SelectedRow = App.ProjeHa.queryById('GridProjeHa').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });            
+            Ext.net.DirectMethod.request({
+                url: ' /Budget/Pishbini/DetailsProjeHa',
+                params: {
+                    AccCodingId: SelectedRow.data.fldCodingId,
+                    BudgetCodingId: '@ViewBag.CodingBudge'
+                },
+                success: function (data) {
+                    var CodingIdAcc = App.ProjeHa.queryById('CodingIdAcc');
+                    CodingIdAcc.setValue(data.AccCodingId);
+                    var txtTitleAcc = App.ProjeHa.queryById('txtTitleAcc');
+                    txtTitleAcc.setValue(data.AccCodingTitle);
+                    txtTitleAcc.icon.hide();
+                    txtTitleAcc.disable();
+                    if ('@ViewBag.MotamamId' != 0) {
+                        App.ProjeHa.queryById('Afzayesh').focus();
+                    }
+                    else {
+                        App.ProjeHa.queryById('Amalkard1').focus();
+                    }
+
+                    for (var i = 0; i < data.Mablagh.length; i++) {
+                        var fieldd = App.FieldSetMablagh.items.items.filter(function (rec) { return rec.itemId === data.Mablagh[i].Name });
+                        if (fieldd.length != 0) {
+                            fieldd[0].setValue(data.Mablagh[i].Mablagh);
+                        }
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveProjeHa() {
+        var MablaghArray = new Array();
+        var MotamamId = null;
+        if ('@ViewBag.MotamamId' != 0)
+            MotamamId = '@ViewBag.MotamamId';
+        var txtTitleAcc = App.ProjeHa.queryById('txtTitleAcc');
+        var Amalkard1 = App.ProjeHa.queryById('Amalkard1');
+        var Mosavab1 = App.ProjeHa.queryById('Mosavab1');
+        var Pishnahadi = App.ProjeHa.queryById('Pishnahadi');
+        var Afzayesh = App.ProjeHa.queryById('Afzayesh');
+        var Kahesh = App.ProjeHa.queryById('Kahesh');
+        var CodingIdAcc = App.ProjeHa.queryById('CodingIdAcc');
+        var TextFields = App.FieldSetMablagh.items.items.filter(function (rec) { return rec.xtype === "textfield" });
+        var er = false;
+
+        if (txtTitleAcc.validate() == false) {
+            er = true;
+        }
+        if ('@ViewBag.MotamamId'==0 && Amalkard1.validate() == false) {
+            er = true;
+        }
+        if ('@ViewBag.MotamamId' == 0 && Mosavab1.validate() == false) {
+            er = true;
+        }
+        if ('@ViewBag.MotamamId' == 0 && Pishnahadi.validate() == false) {
+            er = true;
+        }
+        if ('@ViewBag.MotamamId' != 0 && Afzayesh.validate() == false) {
+            er = true;
+        }
+        if ('@ViewBag.MotamamId' != 0 && Kahesh.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        for (var i = 1; i < TextFields.length; i++) {
+            if (TextFields[i].isHidden() == false) {
+                MablaghArray.push({
+                    Mablagh: TextFields[i].getValue().replaceAll(",", ""),
+                    Name: TextFields[i].itemId,
+                    MotammamId: MotamamId
+                });
+            }
+        }
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Budget/Pishbini/SaveProjeHa',
+            datatype: "json",
+            data: JSON.stringify({
+                fldCodingAcc_DetailsId: CodingIdAcc.getValue(),
+                fldCodingBudje_DetailsId: '@ViewBag.CodingBudge',
+                MablaghArray: MablaghArray
+            }),
+            contentType: 'application/json',
+            success: function (result) {
+                var ic = Ext.MessageBox.INFO;
+                if (result.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            App.ProjeHa.queryById('txtTitleAcc').focus();
+                        }
+                    }
+                });
+                Ext.net.Mask.hide();
+                if (result.Er != 1) {
+                    App.ProjeHa.queryById('GridProjeHa').store.load();
+                    LoadGridbudgeProject();
+                    ClearProjeHa();
+                }
+            },
+            failure: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+        @*Ext.net.DirectMethod.request({
+            url: ' /Budget/Pishbini/SaveProjeHa',
+            params: {
+                fldCodingAcc_DetailsId: CodingIdAcc.getValue(),
+                fldCodingBudje_DetailsId: '@ViewBag.CodingBudge',
+                MablaghArray: MablaghArray
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.ProjeHa.queryById('GridProjeHa').store.load();
+                if (data.Err != 1) {
+                    ClearShobe();
+                    var grid = App.budgeProject.queryById("budgeProjectGrid");
+                    var cc = grid.store.currentPage;
+                    grid.store.load();
+                    grid.store.loadPage(cc);
+                }
+
+            }
+
+        });*@
+    }
+    function DeleteProjeHa() {
+        var SelectedRow = App.ProjeHa.queryById('GridProjeHa').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            if (SelectedRow.data.fldEditable == 1) {
+                Ext.MessageBox.show({
+                    title: "هشدار",
+                    msg: "آیا برای حذف مطمئن هستید؟",
+                    icon: Ext.MessageBox.WARNING,
+                    buttons: Ext.MessageBox.YESNO,
+                    fn: function (btn) {
+                        if (btn == 'yes') {
+                            Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Budget/Pishbini/DeleteProjeHa',
+                                params: {
+                                    AccCodingId: SelectedRow.data.fldCodingId,
+                                    BudgetCodingId: '@ViewBag.CodingBudge'
+                                },
+                                success: function (data) {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Er == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK,
+                                        fn: function (btn) {
+                                            if (btn == "ok") {
+                                                App.ProjeHa.queryById('txtTitleAcc').focus();
+                                            }
+                                        }
+                                    });
+                                    if (data.Er != 1) {
+                                        App.ProjeHa.queryById('GridProjeHa').store.load();
+                                        LoadGridbudgeProject();
+                                        ClearProjeHa();
+                                    }
+                                }
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "به علت ثبت سند برای کد حساب، امکان حذف وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearProjeHa() {
+        /*App.ProjeHa.queryById('fldId').setValue(0);*/
+        App.ProjeHa.queryById('CodingIdAcc').setValue(0);
+        App.ProjeHa.queryById('Amalkard1').setValue("0");
+        App.ProjeHa.queryById('Mosavab1').setValue("0");
+        App.ProjeHa.queryById('Pishnahadi').setValue("0");
+        App.ProjeHa.queryById('Afzayesh').setValue("0");
+        App.ProjeHa.queryById('Kahesh').setValue("0");
+        App.ProjeHa.queryById('txtTitleAcc').setValue("");
+        App.ProjeHa.queryById('txtTitleAcc').icon.show();
+        App.ProjeHa.queryById('txtTitleAcc').enable();
+        /*App.ProjeHa.queryById('txtDarsad').setValue("");*/
+    }
+    var addKeyMapProjeHa = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.ProjeHa.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (('@ViewBag.MotamamId' == 0 && keyfield.itemId == "Pishnahadi")
+                        || ('@ViewBag.MotamamId' != 0 && keyfield.itemId == "Kahesh")) {
+                        SaveProjeHa();
+                    }
+                    else if (keyfield.itemId == "txtTitleAcc") {
+                        if ('@ViewBag.MotamamId' == 0) {
+                            nextfld = App.ProjeHa.queryById("Amalkard1");
+                            nextfld.focus();
+                            nextfld.selectText();
+                        }
+                        else {
+                            nextfld = App.ProjeHa.queryById("Afzayesh");
+                            nextfld.focus();
+                            nextfld.selectText();
+                        }
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }   
+                }
+            }]
+        });
+    };
+</script>

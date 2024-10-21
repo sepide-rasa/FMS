@@ -1,0 +1,471 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Panel()
+    .Closable(true)
+    .Border(false)
+    .CloseAction(CloseAction.Destroy)
+    .Listeners(li => { li.AfterRender.Handler = "setTitlePnlRpt()"; li.Render.Fn = "addKeyMapRptVam"; })
+  //  .Listeners(l => l.AfterRender.Handler = "setTitlePnlRpt()")
+    .Layout(LayoutType.Fit)
+    .ID("RptVam" + @ViewBag.State)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.PaddingSpec("4px 12px 4px 12px")
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .ButtonAlign(Alignment.Center)
+                    .Buttons(
+                        Html.X().Button()
+                            .Text("چاپ")
+                            .ItemID("btnPrint")
+                            .Icon(Ext.Net.Icon.Printer)
+                            .Listeners(l => l.Click.Handler = "Print()"),
+                        Html.X().Button()
+                            .Text("خروج")
+                            .ItemID("btnOut")                            
+                            .Icon(Ext.Net.Icon.DoorOut)
+                            .Listeners(l => l.Click.Handler = "destroyWin2()")
+                    )
+                    .Items(
+                        X.FieldSet()
+                            .Border(false)
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                            .Items(
+                                X.Label().Text("از تاریخ:").ItemID("lblAzTarikh"),
+                                X.PDateField()
+                                    .ItemID("txtAzTarikh")
+                                    .AllowBlank(false)
+                                    .MaskRe("[0-9,/]")
+                                    .BlankText("لطفا از تاریخ را وارد کنید.")
+                                        .PaddingSpec("0 0 0 10px").Listeners(l => l.Focus.Handler = "ChangeAzTarikh()")
+                                    .Editable(false),
+                                X.Label().Text("تا تاریخ:").ItemID("lblTaTarikh"),
+                                X.PDateField()
+                                    
+                                    .ItemID("txtTaTarikh")
+                                        .MaskRe("[0-9,/]")
+                                    .PaddingSpec("0 0 0 10px")
+                                    .AllowBlank(false)
+                                        .BlankText("لطفا تا تاریخ را وارد کنید.").Listeners(l => l.Focus.Handler = "ChangeTaTarikh()")
+                                    .Editable(false),
+                                X.Label().Text("وضعیت:").ItemID("lblStatus"),
+                                X.ComboBox()
+                                    .ItemID("CboStatus")
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا وضعیت پرسنل را انتخاب نمایید.")
+                                    .TriggerAction(TriggerAction.All)
+                                    .SelectedItems(new  { value="1"})
+                                    .EmptyText("وضعیت")
+                                    .Items(
+                                        new ListItem("فعال", "1"),
+                                        new ListItem("غیرفعال", "2"),
+                                        new ListItem("بازنشسته", "3")
+                                    ),
+                                /*X.Label("نوع:").ItemID("lblType"),
+                                X.ComboBox()
+                                    .ItemID("CboType")
+                                    .Editable(false)
+                                    .AllowBlank(false)
+                                    .TypeAhead(true)
+                                    .BlankText("لطفا نوع (کسورات/مطالبات) را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .Listeners(l=>l.Select.Handler="loadParameters()")
+                                    .TriggerAction(TriggerAction.All)
+                                    .Items(
+                                            new ListItem("کسورات", "1"),
+                                            new ListItem("مطالبات", "0")
+                                    )
+                                 .SelectedItems(new { Value = "1" }),*/
+                                X.Label("نوع پارامتر:").ItemID("lblTypeParametrha"),
+                                X.ComboBox()
+                                    .ItemID("CboTypeParametrha")
+                                    .TypeAhead(true)
+                                    .Editable(true)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا نوع پارامترها را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .DisplayField("fldParametrName")
+                                    .ValueField("fldId")
+                                    .Store(X.Store()
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldParametrName", ModelFieldType.String) { Mapping = "fldParametrName" }
+                                                    )
+                                                )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetK_MParametri"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                            )
+                                        .Parameters(ps => ps.Add(new StoreParameter("type", ViewBag.State, ParameterMode.Raw)))
+                                        )
+                        )),
+                Html.X().Panel()
+                    .Border(true)
+                    .Listeners(L => L.AfterRender.Handler = "setSizeRptPanel2()")
+                    .AutoScroll(true)
+                    .ItemID("RptPanel2")
+            )
+
+    )
+)
+
+<script type="text/javascript">
+    function ChangeTaTarikh() {
+        if ('@ViewBag.State' == "1") {
+            var txtAzTarikh = App.RptVam1.queryById('txtAzTarikh');
+            var txtTaTarikh = App.RptVam1.queryById('txtTaTarikh');
+            txtTaTarikh.setMinValue(txtAzTarikh.getValue());
+            txtTaTarikh.minText = "تا تاریخ باید بعد از تاریخ " + txtAzTarikh.rawValue + "باشد";
+        }
+        if ('@ViewBag.State' == "4") {
+            var txtAzTarikh = App.RptVam4.queryById('txtAzTarikh');
+            var txtTaTarikh = App.RptVam4.queryById('txtTaTarikh');
+            txtTaTarikh.setMinValue(txtAzTarikh.getValue());
+            txtTaTarikh.minText = "تا تاریخ باید بعد از تاریخ " + txtAzTarikh.rawValue + "باشد";
+        }
+        if ('@ViewBag.State' == "5") {
+            var txtAzTarikh = App.RptVam5.queryById('txtAzTarikh');
+            var txtTaTarikh = App.RptVam5.queryById('txtTaTarikh');
+            txtTaTarikh.setMinValue(txtAzTarikh.getValue());
+            txtTaTarikh.minText = "تا تاریخ باید بعد از تاریخ " + txtAzTarikh.rawValue + "باشد";
+        }
+
+    }
+    function ChangeAzTarikh() {
+        if ('@ViewBag.State' == "1") {
+            var txtAzTarikh = App.RptVam1.queryById('txtAzTarikh');
+            var txtTaTarikh = App.RptVam1.queryById('txtTaTarikh');
+            /*var fldTarikh = new Date('ViewBag.fldTarikh');*/
+            txtAzTarikh.setMaxValue(txtTaTarikh.getValue());
+            txtAzTarikh.maxText = "از تاریخ باید قبل از تا تاریخ " + txtTaTarikh.rawValue + "باشد";
+        }
+        if ('@ViewBag.State' == "4") {
+            var txtAzTarikh = App.RptVam4.queryById('txtAzTarikh');
+            var txtTaTarikh = App.RptVam4.queryById('txtTaTarikh');
+            /*var fldTarikh = new Date('ViewBag.fldTarikh');*/
+            txtAzTarikh.setMaxValue(txtTaTarikh.getValue());
+            txtAzTarikh.maxText = "از تاریخ باید قبل از تا تاریخ " + txtTaTarikh.rawValue + "باشد";
+        }
+        if ('@ViewBag.State' == "5") {
+            var txtAzTarikh = App.RptVam5.queryById('txtAzTarikh');
+            var txtTaTarikh = App.RptVam5.queryById('txtTaTarikh');
+            /*var fldTarikh = new Date('ViewBag.fldTarikh');*/
+            txtAzTarikh.setMaxValue(txtTaTarikh.getValue());
+            txtAzTarikh.maxText = "از تاریخ باید قبل از تا تاریخ " + txtTaTarikh.rawValue + "باشد";
+        }
+    }
+    function setSizeRptPanel2() {
+        if ('@ViewBag.State' == "3") {
+            Ext.getCmp('RptVam' + '@ViewBag.State').queryById('RptPanel2').setSize(App.PayWin.getWidth() - 20, App.PayWin.getHeight() - 190);
+        }
+        else {
+            Ext.getCmp('RptVam' + '@ViewBag.State').queryById('RptPanel2').setSize(App.PayWin.getWidth() - 20, App.PayWin.getHeight() - 240);
+        }
+    }
+
+    function destroyWin2() {
+        var tabId = App.FirstTabPay.activeTab.id;
+        Ext.getCmp(tabId).destroy();
+    }
+
+    function loadParameters() {
+        var tabId = App.FirstTabPay.activeTab.id;
+        Ext.getCmp(tabId).queryById('CboTypeParametrha').store.load();
+    }
+
+    function setTitlePnlRpt() {
+        if ('@ViewBag.State' == "1") {
+            App.RptVam1.setTitle("گزارش وام");
+            App.RptVam1.queryById('txtAzTarikh').show();
+            /*App.RptVam1.queryById('CboType').hide();
+            App.RptVam1.queryById('lblType').hide();*/
+            App.RptVam1.queryById('CboTypeParametrha').hide();
+            App.RptVam1.queryById('lblTypeParametrha').hide();
+            App.RptVam1.queryById('txtTaTarikh').show();
+            App.RptVam1.queryById('CboStatus').hide();
+            App.RptVam1.queryById('lblAzTarikh').show();
+            App.RptVam1.queryById('lblTaTarikh').show();
+            App.RptVam1.queryById('lblStatus').hide();
+            App.RptVam1.queryById('btnPrint').show();
+            App.RptVam1.queryById('btnOut').show();
+        }
+        else if ('@ViewBag.State' == "2") {
+            App.RptVam2.setTitle("گزارش وضعیت پرسنل");
+            /*App.RptVam2.queryById('CboType').hide();
+            App.RptVam2.queryById('lblType').hide();*/
+            App.RptVam2.queryById('CboTypeParametrha').hide();
+            App.RptVam2.queryById('lblTypeParametrha').hide();
+            App.RptVam2.queryById('txtAzTarikh').hide();
+            App.RptVam2.queryById('txtTaTarikh').hide();
+            App.RptVam2.queryById('CboStatus').show();
+            App.RptVam2.queryById('lblAzTarikh').hide();
+            App.RptVam2.queryById('lblTaTarikh').hide();
+            App.RptVam2.queryById('lblStatus').show();
+            App.RptVam2.queryById('btnPrint').show();
+            App.RptVam2.queryById('btnOut').show();
+        }
+        else if ('@ViewBag.State' == "3") {
+            App.RptVam3.setTitle("گزارش کاربران نرم افزار");
+            /*App.RptVam3.queryById('CboType').hide();
+            App.RptVam3.queryById('lblType').hide();*/
+            App.RptVam3.queryById('CboTypeParametrha').hide();
+            App.RptVam3.queryById('lblTypeParametrha').hide();
+            App.RptVam3.queryById('txtAzTarikh').hide();
+            App.RptVam3.queryById('txtTaTarikh').hide();
+            App.RptVam3.queryById('CboStatus').hide();
+            App.RptVam3.queryById('lblAzTarikh').hide();
+            App.RptVam3.queryById('lblTaTarikh').hide();
+            App.RptVam3.queryById('lblStatus').hide();
+            App.RptVam3.queryById('btnPrint').hide();
+            App.RptVam3.queryById('btnOut').hide();
+            var height2 = App.PayWin.getHeight() - 195;
+            App.RptVam3.queryById('RptPanel2').update("<center><object class='se-pre-con' style='width: 100%;height:" + height2 + "px;border: 1px solid #ccc;' type='application/pdf' data='/PayRoll/Reports/GeneratePDFUser'></object></center>");
+        }
+        else if ('@ViewBag.State' == "4") {
+            App.RptVam4.setTitle("گزارش کسورات ثبت شده پرسنل");
+            App.RptVam4.queryById('txtAzTarikh').show();
+            App.RptVam4.queryById('txtTaTarikh').show();
+            App.RptVam4.queryById('CboStatus').hide();
+            App.RptVam4.queryById('lblAzTarikh').show();
+            App.RptVam4.queryById('lblTaTarikh').show();
+            App.RptVam4.queryById('lblStatus').hide();
+            App.RptVam4.queryById('btnPrint').show();
+            App.RptVam4.queryById('btnOut').show();
+            /*App.RptVam4.queryById('CboType').show();
+            App.RptVam4.queryById('lblType').show();*/
+            App.RptVam4.queryById('CboTypeParametrha').show();
+            App.RptVam4.queryById('lblTypeParametrha').show();
+        }
+        else if ('@ViewBag.State' == "5") {
+            App.RptVam5.setTitle("گزارش مطالبات ثبت شده پرسنل");
+            App.RptVam5.queryById('txtAzTarikh').show();
+            App.RptVam5.queryById('txtTaTarikh').show();
+            App.RptVam5.queryById('CboStatus').hide();
+            App.RptVam5.queryById('lblAzTarikh').show();
+            App.RptVam5.queryById('lblTaTarikh').show();
+            App.RptVam5.queryById('lblStatus').hide();
+            App.RptVam5.queryById('btnPrint').show();
+            App.RptVam5.queryById('btnOut').show();
+            /*App.RptVam5.queryById('CboType').show();
+            App.RptVam5.queryById('lblType').show();*/
+            App.RptVam5.queryById('CboTypeParametrha').show();
+            App.RptVam5.queryById('lblTypeParametrha').show();
+        }
+    }
+
+    function Print() {
+        var tabId = App.FirstTabPay.activeTab.id;
+        var txtAzTarikh = Ext.getCmp(tabId).queryById('txtAzTarikh');
+        var txtTaTarikh = Ext.getCmp(tabId).queryById('txtTaTarikh');
+        var CboStatus = Ext.getCmp(tabId).queryById('CboStatus');
+        var CboType = Ext.getCmp(tabId).queryById('CboType');
+        var CboTypeParametrha = Ext.getCmp(tabId).queryById('CboTypeParametrha');
+        var height = App.PayWin.getHeight() - 245;
+
+        if (tabId.substring(6) == "1") {
+            if (txtAzTarikh.validate() == true && txtTaTarikh.validate() == true) {
+
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/PayRoll/Reports/CheckRptVam',
+                    params: {
+                        StartDate: txtAzTarikh.getRawValue(),
+                        EndDate: txtTaTarikh.getRawValue()
+                    },
+                    success: function (data) {
+                        if (data.AllowPrint) {
+                            Ext.getCmp(tabId).queryById('RptPanel2').update("<center><object class='se-pre-con' style='width:100%;height:" + height + "px;border: 1px solid #ccc;' type='application/pdf' data='/PayRoll/Reports/GeneratePDFVam?StartDate=" + txtAzTarikh.getRawValue() + "&EndDate=" + txtTaTarikh.getRawValue() + "'></object></center>");
+                        }
+                        else {
+                            Ext.MessageBox.show({
+                                msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+
+            }
+            else {
+                return;
+            }
+        }
+        else if (tabId.substring(6) == "2") {
+            if (CboStatus.validate() == true) {
+
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/PayRoll/Reports/CheckStatusPersonal',
+                    params: {
+                        type: CboStatus.getValue(),
+                    },
+                    success: function (data) {
+                        if (data.AllowPrint) {
+                            Ext.getCmp(tabId).queryById('RptPanel2').update("<center><object class='se-pre-con' style='width: 100%;height:" + height + "px;border: 1px solid #ccc;' type='application/pdf' data='/PayRoll/Reports/GeneratePDFStatusPersonal?type=" + CboStatus.getValue() + "'></object></center>");
+                        }
+                        else {
+                            Ext.MessageBox.show({
+                                msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+
+            }
+            else {
+                return;
+            }
+        }
+        else if (tabId.substring(6) == "4") {
+            if (txtAzTarikh.validate() == true && txtTaTarikh.validate() == true && CboTypeParametrha.validate() == true) {
+                var FieldName = "Kosorat";
+
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/PayRoll/Reports/CheckKosorat_MotalebatParametri',
+                    params: {
+                        StartDate: txtAzTarikh.getRawValue(),
+                        EndDate: txtTaTarikh.getRawValue(),
+                        ParamId: CboTypeParametrha.getValue(),
+                        ParamName: CboTypeParametrha.getDisplayValue(),
+                        FieldName: FieldName
+                    },
+                    success: function (data) {
+                        if (data.AllowPrint) {
+                            Ext.getCmp(tabId).queryById('RptPanel2').update("<center><object class='se-pre-con' style='width: 100%;height:" + height + "px;border: 1px solid #ccc;' type='application/pdf' data='/PayRoll/Reports/GeneratePDFKosorat_MotalebatParametri?StartDate=" + txtAzTarikh.getRawValue() + "&EndDate=" + txtTaTarikh.getRawValue() + "&ParamId=" + CboTypeParametrha.getValue() + "&ParamName=" + CboTypeParametrha.getDisplayValue() + "&FieldName=" + FieldName + "'></object></center>");
+                        }
+                        else {
+                            Ext.MessageBox.show({
+                                msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+
+                
+            }
+            else {
+                return;
+            }
+        }
+        else if (tabId.substring(6) == "5") {
+            if (txtAzTarikh.validate() == true && txtTaTarikh.validate() == true && CboTypeParametrha.validate() == true) {
+                var FieldName = "Motalebat";
+
+                Ext.net.DirectMethod.request({
+                    url: '/PayRoll/Reports/CheckKosorat_MotalebatParametri',
+                    params: {
+                        StartDate: txtAzTarikh.getRawValue(),
+                        EndDate: txtTaTarikh.getRawValue(),
+                        ParamId: CboTypeParametrha.getValue(),
+                        ParamName: CboTypeParametrha.getDisplayValue(),
+                        FieldName: FieldName
+                    },
+                    success: function (data) {
+                        if (data.AllowPrint) {
+                            Ext.getCmp(tabId).queryById('RptPanel2').update("<center><object class='se-pre-con' style='width: 100%;height:" + height + "px;border: 1px solid #ccc;' type='application/pdf' data='/PayRoll/Reports/GeneratePDFKosorat_MotalebatParametri?StartDate=" + txtAzTarikh.getRawValue() + "&EndDate=" + txtTaTarikh.getRawValue() + "&ParamId=" + CboTypeParametrha.getValue() + "&ParamName=" + CboTypeParametrha.getDisplayValue() + "&FieldName=" + FieldName + "'></object></center>");
+                        }
+                        else {
+                            Ext.MessageBox.show({
+                                msg: "اطلاعاتی جهت نمایش یافت نشد.",
+                                icon: Ext.MessageBox.WARNING,
+                                buttons: Ext.MessageBox.OK
+                            });
+                        }
+                        Ext.net.Mask.hide();
+                    }
+                });
+                
+            }
+            else {
+                return;
+            }
+        }
+    }
+    var addKeyMapRptVam = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    if ('@ViewBag.State' == "1") {
+                        var keyfield = App.RptVam1.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        var nextfld;
+
+                        if (keyfield.itemId == "txtAzTarikh") {
+                            nextfld = App.RptVam1.queryById('txtTaTarikh');
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                    if ('@ViewBag.State' == "4") {
+                        var keyfield = App.RptVam4.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        var nextfld;
+
+                        if (keyfield.itemId == "txtAzTarikh") {
+                            nextfld = App.RptVam4.queryById('txtTaTarikh');
+                        }
+                        else if (keyfield.itemId == "txtTaTarikh") {
+                            nextfld = App.RptVam4.queryById('CboTypeParametrha');
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                    if ('@ViewBag.State' == "5") {
+                        var keyfield = App.RptVam5.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        var nextfld;
+
+                        if (keyfield.itemId == "txtAzTarikh") {
+                            nextfld = App.RptVam5.queryById('txtTaTarikh');
+                        }
+                        else if (keyfield.itemId == "txtTaTarikh") {
+                            nextfld = App.RptVam5.queryById('CboTypeParametrha');
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }
+            }]
+        });
+    };
+</script>

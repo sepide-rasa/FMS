@@ -1,0 +1,104 @@
+﻿@model IEnumerable<NewFMS.WCF_Budget.OBJ_CodingBudje_Detail>
+@using Ext.Net.MVC;
+@{
+
+    var X = Html.X();
+}
+@(Html.X().Window().Modal(true).Listeners(l=>{
+    l.AfterRender.Handler = "SetTitle()";
+    l.Destroy.Handler = "App.KhedmatHa.queryById('txtKhedmat').focus()";
+})
+            .Width(800).Height(400)
+            .Title("جستجو خدمت")
+                    .ID("SearchCodingBudje")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Layout(Ext.Net.LayoutType.Fit)
+            .Items(
+                X.Panel().Border(false)
+                .Border(false)
+                    .AutoScroll(true).Layout(Ext.Net.LayoutType.Fit)
+                .Items(
+
+                        X.GridPanel().AutoScroll(true).Border(false)
+                        .TopBar(
+                            Html.X().Toolbar()
+                            .Items(
+                                    X.Button().Text("انتخاب").Icon(Ext.Net.Icon.ArrowRedo)
+                                                    .Listeners(li => li.Click.Handler = "NextSearchCodingBudje();")
+
+                            )
+                        )
+                                .ItemID("GridSearchCodingBudje")//.Flex(2)
+                //    .BottomBar(X.PagingToolbar())
+                    //.Height(330)
+                    //.ColumnWidth(0.6)
+                    //.Layout(Ext.Net.LayoutType.Column)
+                    .Store(
+                        X.StoreForModel()
+                        .Proxy(Html.X().AjaxProxy()
+                            .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                                 .ExtraParams(x => x.Add(new { State = @ViewBag.State, Year = @ViewBag.Year }))
+                        )
+                        .PageSize(1000)
+                        .RemoteFilter(false)
+                        .RemotePaging(false)
+
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(false))
+                    .ColumnModel(
+                    Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldCodeMamooriyat).Text("کد مأموریت").Flex(2),
+                                        Html.X().Column().DataIndex(Model, m => m.fldTitleMamooriyat).Text("عنوان مأموریت").Flex(5).Wrap(true),
+                                        Html.X().Column().DataIndex(Model, m => m.fldCodeBarname).Text("کد برنامه").Flex(2),
+                                        Html.X().Column().DataIndex(Model, m => m.fldTitleBarname).Text("عنوان برنامه").Flex(5).Wrap(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldBudCode).Text("کد خدمت").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان خدمت").Flex(5).Wrap(true)
+                    )
+                            .Listeners(a => a.CellDblClick.Handler = "NextSearchCodingBudje();")
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+
+            )
+        )
+)
+
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+    function SetTitle() {
+        if ('@ViewBag.State' == 2)
+            App.SearchCodingBudje.setTitle("جستجوی پروژه");
+    }
+    function NextSearchCodingBudje() {
+        var SelectedRow = App.SearchCodingBudje.queryById('GridSearchCodingBudje').selModel.getLastSelected();
+
+        if (SelectedRow != null) {
+            if (State == 1) {
+                App.KhedmatHa.queryById('txtKhedmat').setValue(SelectedRow.data.fldTitle);
+                App.KhedmatHa.queryById('khedmatId').setValue(SelectedRow.data.fldId);
+            }
+            else if (State == 2) {
+                App.SabtCompany.queryById('txtUserName').setValue(SelectedRow.data.fldUserName);
+                App.SabtCompany.queryById('fldKarbarId').setValue(SelectedRow.data.fldId);
+            }
+            App.SearchCodingBudje.destroy();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+
+</script>

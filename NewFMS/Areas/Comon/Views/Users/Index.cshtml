@@ -1,0 +1,169 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_User>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(X.Panel()
+    .Title("کاربران")
+    .Border(false)
+    .ID("Users")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l => l.AfterRender.Handler = "App.Users.setHeight(App.Win.getHeight() - 170);")
+    .Layout(LayoutType.Fit)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.Fit)
+            .Height(270)
+            .AutoScroll(true)
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.GridPanel()
+                    .TopBar(
+                        Html.X().Toolbar()
+                        .Items(
+                            X.Button()
+                                .Text("جدید")
+                                .Icon(Ext.Net.Icon.Add)
+        //.ToolTip("کلید میانبر F8")
+                                .Listeners(li => li.Click.Handler = "NewUser();"),
+                            X.Button()
+                                .Text("ویرایش")
+                                .Icon(Ext.Net.Icon.Pencil)
+        //.ToolTip("کلید میانبر F2")
+                                .Listeners(Li => Li.Click.Handler = "EditUser();"),
+
+                            X.Button()
+                            .Text("راهنما")
+                            .Icon(Ext.Net.Icon.Help)
+                                .Listeners(l => { l.Click.Handler = "HelpUser();"; }),
+                            X.Button()
+                                .Text("ریست پسورد")
+                                .Icon(Ext.Net.Icon.Pencil)
+                                .Listeners(Li => Li.Click.Handler = "ResetPass();")
+                        )
+                    )
+                    .ItemID("GridUsers")
+                    .BottomBar(X.PagingToolbar())
+        //.Height(600)
+                    .Store(
+                        X.StoreForModel()
+                            .Listeners(l => l.DataChanged.Handler = "App.Users.queryById('GridUsers').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                        )
+                        .PageSize(20)
+                        .RemoteFilter(true)
+                        .RemotePaging(true)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldNameEmployee).Text("نام و نام خانوادگی").Flex(5).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldCodemeli).Text("کد ملی").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldActive_DeactiveName).Text("وضعیت").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldUserName).Text("نام کاربری").Flex(3)
+                        //Html.X().Column().DataIndex(Model, m => m.fldNameOrgan).Text("نام ارگان").Flex(4).Wrap(true).Filterable(false)                        
+                    )
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+                    )
+        )
+)
+
+<script type="text/javascript">
+
+    function NewUser() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Users/New',
+            params: {
+                id: 0
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    
+    function HelpUser() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Users/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function EditUser() {
+        var SelectedRow = App.Users.queryById('GridUsers').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/Users/New',
+                params: {
+                    id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    /*Ext.net.Mask.hide();*/
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ResetPass() {
+        var SelectedRow = App.Users.queryById('GridUsers').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/Users/SaveResetPass',
+                params: {
+                    fldId: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Er == 1) {
+                        ic = Ext.MessageBox.ERROR;
+                    }
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

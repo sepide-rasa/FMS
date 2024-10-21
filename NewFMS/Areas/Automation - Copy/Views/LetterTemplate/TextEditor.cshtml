@@ -1,0 +1,173 @@
+﻿@using TXTextControl.Web
+@using TXTextControl.Web.MVC
+@using Ext.Net
+@using Ext.Net.MVC
+@Html.X().ResourceManager()
+@{
+    Layout = null;
+}
+<script src="@Url.Content("~/Scripts/jquery-1.11.3.min.js")"></script>
+
+@(Html.X().Panel()
+    .Title("طراحی الگو")
+    .TitleAlign(TitleAlign.Right)
+    .Layout(LayoutType.Fit)
+    .ID("PnlEditor")    
+    .TopBar(
+        Html.X().Toolbar()
+            .RTL(true)
+            .LayoutConfig(new VBoxLayoutConfig { Align=VBoxAlign.Right})
+            .Items(
+                Html.X().Button()
+                    .Text("ذخیره")
+                    .Icon(Icon.Disk)
+                    .IconAlign(IconAlign.Right)
+                    .Listeners(l=>l.Click.Handler="SaveDocument()")
+            ) 
+    )
+    .Items(
+        Html.X().Container().Listeners(l=>l.Render.Handler="setSizeEditor()")
+            .Content(
+                @<div id="EditorDiv" class="container">
+                    <div class="row" style="height:100%;">
+                        <div class="col-md-12" style="height:100%;">
+                            @Html.TXTextControl().TextControl(setting => 
+                            {
+                                setting.Dock = DockStyle.Fill;
+                                setting.Culture = System.Globalization.CultureInfo.GetCultureInfo("fa-IR");
+                                setting.UICulture = System.Globalization.CultureInfo.GetCultureInfo("fa-IR");
+                            }).Render()
+    @*.LoadXMLDatabase((System.Xml.XmlDocument)ViewBag.xmlDataSource)*@
+                        </div>
+                    </div>
+                </div>
+            )
+    )
+)
+
+<script>
+    var txSettings;
+    var aaa;
+    function checkSettings() {
+        /*store Text Control settings*/
+        var settings = document.querySelector("#__txSettings");
+        txSettings = JSON.parse(settings.textContent);
+    }
+
+    checkSettings();
+
+    function setSizeEditor() {
+        App.PnlEditor.setHeight(Ext.getBody().getViewSize().height);
+    }
+
+    TXTextControl.addEventListener("textControlLoaded", function (e) {
+        document.getElementById("EditorDiv").style.height = Ext.getBody().getViewSize().height - 55 + "px";
+        TXTextControl.refreshLayout();
+        TXTextControl.addEventListener("inputPositionChanged", function (e) {
+            /*TXTextControl.getText(function (a) { TXTextControl.selection.setFontName("B Homa"); })*/
+            
+        });
+        $("#tabFile").on("click", function () {
+            /*aaa = TXTextControl.selection;
+            TXTextControl.selection.setLength(5);
+            TXTextControl.selection.setStart(2);*/
+            TXTextControl.selectAll();
+
+            /*aaa.getStart(function (a) { alert(a); });*/
+        });
+    });
+    
+    
+    TXTextControl.addEventListener("ribbonTabsLoaded", function (e) {
+        var data = {
+            ConnectionID: txSettings.ConnectionID,
+            LetterTemplateId: '@ViewBag.LetterTemplateId'
+        };
+        $.ajax({
+            type: "POST",
+            url: '/Automation/LetterTemplate/LoadDoc',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (result) {
+                if (result.data == "") {
+                    /*TXTextControl.selection.setFontSize(20);
+                    TXTextControl.selection.setFontName("B Homa");
+                    TXTextControl.selection.paragraphFormat.setAlignment(TXTextControl.HorizontalAlignment.Right);
+                    TXTextControl.selection.paragraphFormat.setDirection(TXTextControl.Direction.RightToLeft);*/
+                    
+                    /*TXTextControl.loadDocument(result.data,
+            TXTextControl.DocumentServer.FileFormat.InternalUnicodeFormat);*/
+                }
+                TXTextControl.clipboardMode = TXTextControl.ClipboardMode.Client;
+                TXTextControl.load(TXTextControl.StreamType.InternalUnicodeFormat, result.data);
+                /*TXTextControl.paragraphFormat.setTabTypes(TXTextControl.TabType.RightTab);*/
+                /*TXTextControl.selection.paragraphFormat.setFrameLineColor("Blue");
+                TXTextControl.selection.paragraphFormat.setFrameLineWidth(10);
+                TXTextControl.selection.paragraphFormat.setFrameStyle(TXTextControl.FrameStyle.Double);*/
+            }
+        });
+    });
+
+    function SaveDocument() {
+        var data = {
+            ConnectionID: txSettings.ConnectionID,
+            LetterTemplateId: '@ViewBag.LetterTemplateId'
+        };
+        $.ajax({
+            type: "POST",
+            url: '/Automation/LetterTemplate/SaveDoc',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (result) {
+                alert(result.Msg);
+            }
+        });
+    }
+    @*.LoadXMLDatabase((System.Xml.XmlDocument)ViewBag.xmlDataSource)
+    var bDocument;
+    var c;
+    function LoadDocument() {
+        c = TXTextControl;
+        $.ajax({
+            type: "GET",
+            url: "/Automation/LetterTemplate/LoadDoc",
+            data: {
+                LetterTemplateId: '@ViewBag.LetterTemplateId'
+            },
+            success: successFunc1,
+            error: errorFunc1
+        });
+        function successFunc1(data) {
+            TXTextControl.loadDocument(TXTextControl.StreamType.InternalUnicodeFormat, data.data);
+        }
+        function errorFunc1() {
+            alert("Error");
+        }
+    }
+
+    function saveDocument() {
+        TXTextControl.saveDocument(TXTextControl.StreamType.InternalUnicodeFormat, function (e) {
+            bDocument = e.data;
+            $.ajax({
+                type: "POST",
+                url: "/Automation/LetterTemplate/SaveDoc",
+                data: {
+                    document: e.data,
+                    LetterTemplateId:'@ViewBag.LetterTemplateId'
+                },
+                success: successFunc,
+                error: errorFunc
+            });
+
+        });
+    }
+
+    function successFunc() {
+
+    }
+    function errorFunc() {
+
+    }*@
+</script>

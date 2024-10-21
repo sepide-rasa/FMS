@@ -1,0 +1,110 @@
+﻿@model IEnumerable<NewFMS.WCF_Deceased.OBJ_RequestAmanat>
+@using Ext.Net.MVC;
+@{
+    var X = Html.X();
+}
+
+@(X.Panel()
+    .Title("درخواست های رزرو قبر")
+    .Border(false)
+    .ID("ReceivedRequests")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Listeners(l => l.AfterRender.Handler = "setHeightReceivedRequests()")
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(
+                X.GridPanel()
+                
+                    .ItemID("GridReceivedRequests")
+                    .BottomBar(X.PagingToolbar())
+                    .Store(
+                      X.StoreForModel()
+                            .AutoLoad(true)
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(10)
+                            .RemoteFilter(false)
+                            .RemotePaging(true)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .Plugins(X.FilterHeader().Remote(false))
+                    .ColumnModel(
+                            Html.X().RowNumbererColumn(), Html.X().ImageCommandColumn().Align(Ext.Net.Alignment.Center).Width(30).Align(Ext.Net.Alignment.Right).Listeners(l => l.Command.Fn = "GotoTimeline")
+                                                .Commands(
+                                                        Html.X().ImageCommand().CommandName("ShowTimeLineCmd").Icon(Ext.Net.Icon.TimelineMarker).ToolTip(tt => tt.Text = "مشاهده TimeLine")
+                                                ),
+                               Html.X().Column().DataIndex(Model, m => m.fldId).Hidden(true).Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldFamily).Text("نام خانوادگی").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldFatherName).Text("نام پدر").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldSh_Shenasname).Text("شماره شناسنامه").Flex(2),
+                           Html.X().Column().DataIndex(Model, m => m.fldNameVadiSalam).Text("آرامستان").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldNameGhete).Text("قطعه").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldNameRadif).Text("ردیف").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldShomare).Text("شماره").Flex(2),
+                                Html.X().Column().DataIndex(Model, m => m.fldMeli_Moshakhase).Text("کدملی/مشخصه").Flex(2),
+                                    Html.X().Column().DataIndex(Model, m => m.fldTitleKartabl).Text("کارتابل جاری").Flex(2)
+                    )
+                        .Listeners(a => a.CellDblClick.Handler = "GotoNextStep();")
+            )//,
+       
+        )
+)
+
+<script type="text/javascript">
+
+    function setHeightReceivedRequests() {
+        App.ReceivedRequests.queryById('GridReceivedRequests').setHeight(App.MotevafiatWin.getHeight() - 174);
+        /*App.ReceivedRequests.queryById('GridPieces').setHeight((App.MotevafiatWin.getHeight() - 174) / 2);*/
+    }
+
+   
+
+    function GotoNextStep() {
+        var SelectedRow = App.ReceivedRequests.queryById('GridReceivedRequests').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/ReceivedRequests/NewStep',
+                params: {
+                    RequestId: SelectedRow.data.fldId,
+                    kartablId: SelectedRow.data.fldKartablId,
+                    KartablTitle: SelectedRow.data.fldTitleKartabl
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    var s;
+    function GotoTimeline(grid, command, record, row) {
+        s = record;
+        if (command == 'ShowTimeLineCmd') {
+            App.ReceivedRequests.body.mask("در حال بارگذاری...");
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/ReceivedRequests/TimeLine',
+                params: {
+                    RequestId: record.data.fldId
+                },
+                success: function () {
+                    App.ReceivedRequests.body.mask().hide();
+                }
+            });
+        }
+    }
+</script>

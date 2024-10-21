@@ -1,0 +1,316 @@
+﻿@model IEnumerable<NewFMS.WCF_AnbarAmval.OBJ_KalaGroup>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ 
+    var X = Html.X();
+    NewFMS.WCF_Common.CommonService servic = new NewFMS.WCF_Common.CommonService();
+    NewFMS.WCF_Common.ClsError Err = new NewFMS.WCF_Common.ClsError();
+}
+
+@(Html.X().Panel()
+    .ID("GoodsGroup")
+    .Title("تعریف گروه کالا")
+    .Closable(true)
+    .Listeners(li => { li.AfterRender.Handler = "GoodsGroupSetSize();"; li.Render.Fn = "addKeyMapGoodsGroup"; })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                    .Listeners(l => l.Click.Handler = "SaveGoodsGroup();").ItemID("btnSave"),
+                X.Button()
+                    .Text("ویرایش")
+                    .Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => l.Click.Handler = "LoadGoodsGroup();"),
+                X.Button()
+                    .Text("حذف")
+                    .Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => l.Click.Handler = "DeleteGoodsGroup();"),
+                X.Button()
+                    .Text("تعریف ساختار درختی")
+                    .Icon(Ext.Net.Icon.ApplicationSideTree)
+                    .Hidden(!servic.Permission(865, Convert.ToInt32(Session["OrganId"]), Session["Username"].ToString(), Session["Password"].ToString(), out Err))
+                    .Listeners(l => l.Click.Handler = "TreeGoodsGroup();"),
+                //X.Button()
+                //.Text("راهنما")
+                //.Icon(Ext.Net.Icon.Help)
+                //.Listeners(l => { l.Click.Handler = "HelpGoodsGroup();"; }),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.GoodsGroup.destroy()")
+                )
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Title("مشخصات گروه")
+                            .Height(50)
+                            .Border(true)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                        .Items(
+                            X.Hidden()
+                                .ItemID("fldId"),
+                            X.Label("عنوان گروه:"),
+                            X.TextField()
+                                .ItemID("txtTitle")
+                                .AllowBlank(false)
+                                .BlankText("لطفا عنوان گروه را وارد کنید.")
+                                .MaxLength(100)
+                                .EnforceMaxLength(true)
+                                .AutoFocus(true),
+                            X.Label("توضیحات:"),
+                            X.TextField()
+                                .ItemID("txtDesc")
+                                .Width(380)
+                        )
+                    )
+        ),
+        X.GridPanel()
+            .ItemID("GoodsGroupGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.GoodsGroup.queryById('GoodsGroupGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(true)
+                    .RemotePaging(true)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+            .Plugins(X.FilterHeader().Remote(true))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان گروه").Flex(2),
+                Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10),
+                Html.X().ComponentColumn().Flex(2).ItemID("ButtonsTree_Kala").Component(Html.X().Button().ItemID("btnTree_Kala").IconCls("Tree").Text("اختصاص ساختار درختی گروه کالا")
+                   .Listeners(l => l.Click.Handler = "GoToTree_Kala();")).Filterable(false)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+    )
+)
+<script type="text/javascript">
+    function GoToTree_Kala() {
+        var SelectedRow = App.GoodsGroup.queryById("ButtonsTree_Kala").activeRecord.record;
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/AnbarAmval/GoodsGroup/Kala_TreeWin',
+            params: {
+                GroupId: SelectedRow.data.fldId,
+                GroupName: SelectedRow.data.fldName
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function GoodsGroupSetSize() {
+        App.GoodsGroup.setWidth(App.AnbarAmvalWin.getWidth());
+        App.GoodsGroup.queryById('GoodsGroupGrid').setHeight(App.AnbarAmvalWin.getHeight() - 260);
+    }
+
+    function LoadGoodsGroup() {
+        var SelectedRow = App.GoodsGroup.queryById('GoodsGroupGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/AnbarAmval/GoodsGroup/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtTitle = App.GoodsGroup.queryById('txtTitle');
+                    txtTitle.setValue(data.fldName);
+                    var txtDesc = App.GoodsGroup.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.GoodsGroup.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveGoodsGroup() {
+        var txtTitle = App.GoodsGroup.queryById('txtTitle');
+        var txtDesc = App.GoodsGroup.queryById('txtDesc');
+        var fldId = App.GoodsGroup.queryById('fldId');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/AnbarAmval/GoodsGroup/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldName: txtTitle.getValue(),
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                if (data.Er != 1) {
+                    App.GoodsGroup.queryById('GoodsGroupGrid').store.load();
+                    ClearGoodsGroup();
+                }
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function TreeGoodsGroup() {
+        var SelectedRow = App.GoodsGroup.queryById('GoodsGroupGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/AnbarAmval/GoodsGroup/TreeGoods',
+                params: {
+                    GroupId: SelectedRow.data.fldId,
+                    GroupName: SelectedRow.data.fldName
+                },
+                success: function () {
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DeleteGoodsGroup() {
+        var SelectedRow = App.GoodsGroup.queryById('GoodsGroupGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/AnbarAmval/GoodsGroup/Delete',
+                            params: {
+                                Id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.GoodsGroup.queryById('GoodsGroupGrid').store.load();
+                                ClearGoodsGroup();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearGoodsGroup() {
+        App.GoodsGroup.queryById('fldId').setValue(0);
+        App.GoodsGroup.queryById('txtTitle').setValue("");
+        App.GoodsGroup.queryById('txtDesc').setValue("");
+    }
+
+    /*function HelpGoodsGroup() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/AnbarAmval/GoodsGroup/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }*/
+
+    var addKeyMapGoodsGroup = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.GoodsGroup.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        SaveGoodsGroup();
+                        return;
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    };
+</script>

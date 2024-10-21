@@ -1,0 +1,360 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+
+@(Html.X().Panel()
+    .ID("Archive_Tree")
+    .Title("ساختار درختی بایگانی دیجیتال")
+    .Closable(true)
+    .Listeners(l => {
+        l.AfterRender.Handler = "setHeightArchiveTree()";
+        l.Render.Fn = "addKeyMapArchive_Tree";
+    })
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Buttons(
+                X.Button()
+                    .Text("ذخیره")
+                    .Icon(Ext.Net.Icon.Disk)
+                    .ItemID("btnSave")
+                    .Listeners(l =>l.Click.Handler = "SaveArchive_Tree();"),
+                X.Button()
+                    .Text("ویرایش")
+                    .Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => l.Click.Handler = "LoadArchive_Tree();"),
+                X.Button()
+                    .Text("حذف")
+                    .Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l =>l.Click.Handler = "DeleteArchive_Tree();"),
+                X.Button()
+                    .Text("راهنما")
+                    .Icon(Ext.Net.Icon.Help)
+                    .Listeners(l =>l.Click.Handler = "HelpArchive_Tree();"),
+                X.Button()
+                    .Text("خروج")
+                    .Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.Archive_Tree.destroy()")
+                )
+            .ButtonAlign(Ext.Net.Alignment.Center)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Border(true)
+                            .Title("اطلاعات ساختار درختی بایگانی")
+                            .Height(80)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 5 })
+                            .Items(
+                                X.Hidden().ItemID("fldId"),
+                                X.Hidden().ItemID("fldPId"),
+                                X.Label("عنوان:"),
+                                X.TextField()
+                                    .ItemID("txtTitle")
+                                    .Listeners(l => l.AfterRender.Handler = "App.Archive_Tree.queryById('txtTitle').validate()")
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا عنوان را وارد کنید.")
+                                    .MaxLength(300)
+                                    //.Width(300)
+                                    .EnforceMaxLength(true)
+                                    .AutoFocus(true),
+                                X.Label("ماژول:"),
+                                X.ComboBox()
+                                    .ItemID("CboModule")
+                                    .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                    .TypeAhead(true)
+                                    .Editable(false)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا ماژول را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                    .Store(X.Store()
+                                        .Listeners(l=>l.Load.Handler="loadTree()")
+                                        .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" },
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" }
+                                            )
+                                        )
+                                        .Proxy(X.AjaxProxy()
+                                            .Url(Url.Action("GetModule_Organ"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                        )
+                                    ),
+                                X.FieldSet()
+                                    .Border(false)
+                                    .Defaults(new { Margin = 4 })
+                                    .Layout(LayoutType.Table)
+                                    .Items(
+                                        Html.X().Checkbox().ItemID("AllowUploadFile"),
+                                        Html.X().Label("امکان آپلود فایل")
+                                    ),
+                                X.Label("توضیحات:"),
+                                X.TextField()
+                                    .ColSpan(4)
+                                    .ItemID("txtDesc")
+                                    .Width(445)
+                        )
+                    )
+                ),
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(           
+                        X.TreePanel()
+                            .ID("TreeArchive")
+                            .AutoScroll(true)
+                            .Width(300)
+                            .UseArrows(true)
+                            .Border(false)
+                            .Store(
+                                X.TreeStore()
+                                    .AutoLoad(false)
+                                    .Proxy(
+                                        X.AjaxProxy().Url(Url.Action("NodeLoadArchive"))
+                                    )
+                                    .Listeners(l =>l.BeforeLoad.Fn = "GetParamTreeArchive")
+                            )
+                            .Listeners(a =>
+                            {
+                                //a.AfterRender.Handler = "App.TreeArchive.expandAll();";
+                            })
+                            .Root(Html.X().Node().NodeID("0").Text("ساختار درختی بایگانی"))
+                )
+        )
+)
+<script type="text/javascript">
+    function loadTree() {
+        App.Archive_Tree.queryById("CboModule").setValue("4");
+        App.TreeArchive.expandAll();
+    }
+    var GetParamTreeArchive = function (store, operation, eOpts) {
+        var nodeId = operation.node.getId();
+        operation.params.nod = nodeId;
+        operation.params.ModuleId = App.Archive_Tree.queryById("CboModule").getValue();
+    };
+
+    function HelpArchive_Tree() {
+        /*Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Archive/Archive/Help',
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });*/
+    }
+
+    function setHeightArchiveTree() {
+        App.TreeArchive.setHeight(App.ArchiveWin.getHeight() - 300);
+    }
+
+    function ReloadArchive_Tree() {
+        App.TreeArchive.store.load();
+    };
+
+    function LoadArchive_Tree() {
+        if (App.TreeArchive.getSelectionModel().getLastSelected() != undefined && App.TreeArchive.getSelectionModel().getLastSelected().data.id!=0) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Archive/Archive/Details',
+                params: {
+                    id: App.TreeArchive.getSelectionModel().getLastSelected().data.id
+                },
+                success: function (data) {
+                    var Id = App.Archive_Tree.queryById('fldId');
+                    Id.setValue(data.fldId);
+
+                    var fldPId = App.Archive_Tree.queryById('fldPId');
+                    fldPId.setValue(data.fldPID);
+
+                    var txtTitle = App.Archive_Tree.queryById("txtTitle");
+                    txtTitle.setValue(data.fldTitle);
+
+                    var CboModule = App.Archive_Tree.queryById("CboModule");
+                    CboModule.setValue(data.fldModuleId);
+
+                    var AllowUploadFile = App.Archive_Tree.queryById("AllowUploadFile");
+                    AllowUploadFile.setValue(data.fldFileUpload);
+
+                    var txtDesc = App.Archive_Tree.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveArchive_Tree() {
+        var Id = App.Archive_Tree.queryById('fldId');
+        var fldPId = App.Archive_Tree.queryById('fldPId');
+        var txtTitle = App.Archive_Tree.queryById("txtTitle");
+        var AllowUploadFile = App.Archive_Tree.queryById("AllowUploadFile");
+        var txtDesc = App.Archive_Tree.queryById('txtDesc');
+        var CboModule = App.Archive_Tree.queryById('CboModule');
+
+        
+        var SelectedRow = App.TreeArchive.getSelectionModel().getLastSelected();
+        var er = false;
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (CboModule.validate() == false) {
+            er = true;
+        }
+
+        if (Id.getValue() == "" || Id.getValue() == 0) {/*insert*/
+            if (SelectedRow == undefined) {
+                fldFatherId = 0;
+            }
+            else {
+                fldFatherId = App.TreeArchive.getSelectionModel().getLastSelected().data.id;
+            }
+        }
+        else {
+            fldFatherId = fldPId.getValue();
+        }
+
+        if (fldFatherId == 0)
+            fldFatherId = null;
+
+        if (er == true)
+            return;
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Archive/Archive/Save',
+            params: {
+                fldId: Id.getValue(),
+                fldPID: fldFatherId,
+                fldTitle: txtTitle.getValue(),
+                fldFileUpload: AllowUploadFile.getValue(),
+                fldDesc: txtDesc.getValue(),
+                fldModuleId: CboModule.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                ReloadArchive_Tree();
+                ClearArchive_Tree();
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function DeleteArchive_Tree() {
+        if (App.TreeArchive.getSelectionModel().getLastSelected() != undefined && App.TreeArchive.getSelectionModel().getLastSelected().data.id != 0) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Archive/Archive/Delete',
+                            params: {
+                                id: App.TreeArchive.getSelectionModel().getLastSelected().data.id
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                ReloadArchive_Tree();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function ClearArchive_Tree() {
+        App.Archive_Tree.queryById('fldId').setValue(0);
+        App.Archive_Tree.queryById("fldPId").setValue(0);
+        App.Archive_Tree.queryById('txtTitle').setValue("");
+        App.Archive_Tree.queryById('AllowUploadFile').setValue(false);
+        App.Archive_Tree.queryById('txtDesc').setValue("");
+        App.TreeArchive.getSelectionModel().deselectAll();
+        App.TreeArchive.getSelectionModel().clearSelections();
+    }
+
+    var addKeyMapArchive_Tree = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var nextfld;
+                    var keyfield;
+                    if (Ext.Element.getActiveElement().name == "") {
+                        nextfld = App.Archive_Tree.queryById("txtDesc");
+                        nextfld.focus();
+                        nextfld.selectText();
+                        return;
+                    }
+                    else {
+                        keyfield = App.Archive_Tree.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    }
+                    if (keyfield.itemId == "txtTitle") {
+                        nextfld = App.Archive_Tree.queryById("CboModule");
+                        nextfld.focus();
+                        return;
+                    }
+                    if (keyfield.itemId == "CboModule") {
+                        nextfld = App.Archive_Tree.queryById("AllowUploadFile"); 
+                        nextfld.focus();
+                        return;
+                    }
+                    else if (keyfield.itemId == "txtDesc") {
+                        SaveArchive_Tree();
+                        return;
+                    }
+                }
+            }]
+        });
+    }
+</script>

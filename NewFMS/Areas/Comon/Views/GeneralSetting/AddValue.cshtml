@@ -1,0 +1,267 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_GeneralSetting_ComboBox>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using Ext.Net.Utilities;
+@{
+    var X = Html.X();
+}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X().Window()
+    .Listeners(li => li.Render.Fn = "addKeyMapComboboxValues")
+    .Closable(true)
+    .Title("تعریف مقادیر")    
+    .ID("ComboboxValues")
+    .Width(540)
+    .Height(400)
+    .AutoScroll(true)
+    .Modal(true)
+    .Resizable(false)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.VBox)
+    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+    .ButtonAlign(Alignment.Center)
+    .Buttons(
+        X.Button()
+            .Text("تأیید")
+            .Icon(Ext.Net.Icon.DoorOut)
+            .Listeners(l => l.Click.Handler = "FillcomboboxArray()")
+    )
+    .Items(
+        X.FieldSet()
+            .Border(true)
+            .Title("مشخصات مقدار")
+            .Layout(LayoutType.Table)
+            .Defaults(new { Margin = 2 })
+            .LayoutConfig(new TableLayoutConfig { Columns = 5 })
+            .Items(
+                X.Hidden().ItemID("fldId"),
+                X.Label("عنوان:"),
+                X.TextField()
+                    .AutoFocus(true)
+                    .MaxLength(200)
+                    .EnforceMaxLength(true)
+                    .ItemID("txtTitle")
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان را وارد کنید.")
+                    .MaskRe("[آ-ی, ,_,-,0-9]"),
+                X.Label("مقدار:"),
+                X.TextField()
+                    .ItemID("txtValue")
+                    .MaxLength(200)
+                    .EnforceMaxLength(true)
+                    .AllowBlank(false)
+                    .BlankText("لطفا مقدار را وارد کنید."),
+                X.Button()
+                    .Text("افزودن")
+                    .Icon(Ext.Net.Icon.Add)
+                    .Listeners(l => l.Click.Handler = "SaveComboboxValues()")
+            ),
+        X.Panel()
+            .Title("لیست مقادیر تعریف شده")
+            .Layout(LayoutType.Fit)
+            .Border(false)
+            .Frame(true)
+            .Items(
+                X.GridPanel()
+                    .AutoScroll(true)
+                    .TopBar(
+                        X.Toolbar()
+                            .Items(
+                                X.Button()
+                                    .Text("ویرایش")
+                                    .Icon(Ext.Net.Icon.Pencil)
+                                    .Listeners(l => l.Click.Handler = "EditComboboxValues()"),
+                                X.Button()
+                                    .Text("حذف")
+                                    .Icon(Ext.Net.Icon.Delete)
+                                    .Listeners(l => l.Click.Handler = "DeleteComboboxValues()")
+                            )
+                    )
+                    .Border(false)
+                    .ItemID("GridComboboxValues")
+                    .Plugins(X.FilterHeader().Remote(false))
+                    .Width(500)
+                    .Height(240)
+                    .Store(
+                        X.StoreForModel()
+                            .Listeners(l => {
+                                l.DataChanged.Handler = "App.ComboboxValues.queryById('GridComboboxValues').selModel.refresh();";
+                                l.Load.Handler = "AddNotSavedValues()";
+                            })
+                            .Proxy(Html.X().AjaxProxy()
+                                .ActionMethods(l => l.Read = Ext.Net.HttpMethod.POST)
+                                .Url(Url.Action("ReadComboboxValues"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                .ExtraParams(pa => pa.Add(new { SettingId = ViewBag.SettingId }))
+                            )
+                            .PageSize(100)
+                            .RemoteFilter(false)
+                            .RemotePaging(false)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldTtile).Text("عنوان").Wrap(true).Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldValue).Text("مقدار").Flex(2)
+                    )
+             )
+        )
+)
+
+<script type="text/javascript">
+    function FillcomboboxArray() {
+        comboboxArray = App.ComboboxValues.queryById("GridComboboxValues").store.getRecordsValues().slice();
+        if (App.ComboboxValues.queryById("GridComboboxValues").store.count() > 0) {
+            App.SabtGeneralSetting.queryById("txtValue").getStore().loadData(comboboxArray);
+            App.SabtGeneralSetting.queryById("txtValue").setHideTrigger(false);
+            App.SabtGeneralSetting.queryById('txtValue').icon.dom.classList.remove('addicon');
+            App.SabtGeneralSetting.queryById('txtValue').icon.dom.classList.add('addicon2');
+            App.SabtGeneralSetting.queryById("txtValue").clearValue();
+            App.SabtGeneralSetting.queryById("txtValue").validate();  
+            App.SabtGeneralSetting.queryById("txtValue").forceSelection=true;
+            App.ComboboxValues.destroy();
+            App.SabtGeneralSetting.queryById("txtValue").focus();
+        }
+        else {
+            App.SabtGeneralSetting.queryById("txtValue").clearValue();
+            App.SabtGeneralSetting.queryById("txtValue").getStore().loadData("");
+            App.SabtGeneralSetting.queryById("txtValue").setHideTrigger(true);
+            App.SabtGeneralSetting.queryById('txtValue').icon.dom.classList.add('addicon');
+            App.SabtGeneralSetting.queryById('txtValue').icon.dom.classList.remove('addicon2');
+            App.SabtGeneralSetting.queryById("txtValue").forceSelection=false;
+            App.ComboboxValues.destroy();
+            App.SabtGeneralSetting.queryById("txtValue").focus();
+        }
+    }
+
+    function AddNotSavedValues() {
+        var NewValues=comboboxArray.filter(l=>l.fldId==0);
+        App.ComboboxValues.queryById("GridComboboxValues").store.loadData("");
+        for(var i=0;i<comboboxArray.length;i++){
+            App.ComboboxValues.queryById("GridComboboxValues").store.insert(App.ComboboxValues.queryById("GridComboboxValues").store.count(), {
+                fldId: comboboxArray[i].fldId, fldTtile: comboboxArray[i].fldTtile, fldValue: comboboxArray[i].fldValue
+            });
+        }
+    }
+
+    function SaveComboboxValues() {
+        var Id = App.ComboboxValues.queryById('fldId');
+        var txtTitle = App.ComboboxValues.queryById('txtTitle');
+        var txtValue = App.ComboboxValues.queryById('txtValue');
+        var er = false;
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (txtValue.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+        else {
+            if(selectedRec==null){
+                App.ComboboxValues.queryById("GridComboboxValues").store.insert(App.ComboboxValues.queryById("GridComboboxValues").store.count(), {
+                    fldId: Id.getValue(), fldTtile: txtTitle.getValue(), fldValue: txtValue.getValue()
+                });                
+            }
+            else{
+                selectedRec.set("fldTtile",txtTitle.getValue());
+                selectedRec.set("fldValue",txtValue.getValue());
+                selectedRec=null;
+            }
+            txtTitle.setValue("").focus();
+            Id.setValue("0");
+            txtValue.setValue("");
+        }        
+    }
+    var selectedRec=null;
+    function EditComboboxValues() {
+        var SelectedRow = App.ComboboxValues.queryById('GridComboboxValues').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            selectedRec=SelectedRow;
+            var fldId = App.ComboboxValues.queryById("fldId");
+            fldId.setValue(SelectedRow.data.fldId);
+            var txtTitle = App.ComboboxValues.queryById('txtTitle');
+            txtTitle.setValue(SelectedRow.data.fldTtile);
+            var txtValue = App.ComboboxValues.queryById('txtValue');
+            txtValue.setValue(SelectedRow.data.fldValue);
+            txtTitle.focus();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function DeleteComboboxValues() {
+        var SelectedRow = App.ComboboxValues.queryById('GridComboboxValues').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        App.ComboboxValues.queryById('GridComboboxValues').store.remove(SelectedRow);
+                    }
+                }
+            });
+        }    
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    var addKeyMapComboboxValues = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.ComboboxValues.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtValue") {
+                        SaveComboboxValues();
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }
+            }]
+        });
+    };    
+</script>

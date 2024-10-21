@@ -1,0 +1,365 @@
+﻿@model IEnumerable<NewFMS.WCF_Chek.OBJ_DasteCheck>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+            .ID("SabtDasteCheck")
+            .Title("ثبت دسته چک")
+                .Listeners(li => { li.AfterRender.Handler = "DasteCheckSetSize()"; li.Render.Fn = "addKeyMapSabtDasteCheck"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveDasteChek")
+                .Listeners(l => { l.Click.Handler = "SaveDasteCheck();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadDasteCheck();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteDasteCheck();"; })
+            , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                .Listeners(l => { l.Click.Handler = "HelpDasteCheck();"; })   
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.SabtDasteCheck.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+                X.FormPanel().Border(false)
+                              .Layout(LayoutType.VBox)
+                                 .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                    X.FieldSet().Title("اطلاعات دسته چک")
+                                .Height(75)
+                                .Border(true)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                        X.Hidden().ItemID("fldId"),
+                        X.Hidden().ItemID("fldShomareHesabId"),
+
+                        X.Label("الگو چک:"),
+                        X.ComboBox()
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .ItemID("CboOlgu")
+                    .TypeAhead(true)
+                    .Editable(true)
+                    .QueryMode(DataLoadMode.Local)
+                    .BlankText("لطفا الگو چک را انتخاب کنید.")
+                    .ForceSelection(true)
+                    .TriggerAction(TriggerAction.All)
+                        .DisplayField("fldName")
+                    .ValueField("fldId")
+                    .EmptyText("الگو ...")
+                        .Store(X.Store()
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                )
+                                    )
+                        .Proxy(X.AjaxProxy()
+                                .Url(Url.Action("GetOlgu"))
+                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                                .Listeners(l => l.Load.Handler = "setdefaultValueOlgu()")
+                                )
+                                .Listeners(l=>l.Select.Handler="changeOlgu()")
+                        .AllowBlank(false)//.Width(164)
+                        ,
+                    X.Label("شماره حساب:"),
+                X.TextField()
+                    .ItemID("txtShHesab")
+                    .AutoFocus(true)   
+                    .MaxLength(20)
+                  //  .PaddingSpec("0 0 0 120px")
+                    .EnforceMaxLength(true)
+                    .AllowBlank(false)
+                   // .FieldStyle("padding-right:6px;")
+                    .BlankText("لطفا شماره حساب را انتخاب کنید.")
+                    .ReadOnly(true)
+                    .IconCls("ShomareHesab")
+                    .Listeners(l => l.AfterRender.Handler = l.AfterRender.Handler = "App.SabtDasteCheck.queryById('txtShHesab').icon.dom.classList.add('custom-SettingFormicon');")
+                    .DirectEvents(li =>
+                    {
+                        li.SpecialKey.Url = "/Comon/SearchShomareHesab/Index?State=11&AshkhasId=";
+                        li.SpecialKey.Before = "return e.getKey() == Ext.EventObject.INSERT;";
+                        li.IconClick.Url = "/Comon/SearchShomareHesab/Index?State=11&AshkhasId=";
+                    }).Width(146),
+                                       
+                          X.Label("مشخصه دسته چک:"),
+                        X.TextField()
+                        .ItemID("txtMoshakhase")
+                        .AllowBlank(false)
+                        .BlankText("لطفا مشخصه دسته چک را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        ,
+                        X.Label("تعداد برگ:"),
+                        X.TextField()
+                        .MaskRe("[0-9]")
+                        .ItemID("txtTedadBarg")
+                        .AllowBlank(false)
+                        .BlankText("لطفا تعداد برگ را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        ,
+                        X.Label("شروع سریال:"),
+                            X.TextField().MaskRe("[0-9]")
+                        .ItemID("txtShoroeSeriyal")
+                        .AllowBlank(false)
+                        .BlankText("لطفا شروع سریال را وارد کنید.")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        ,
+                        X.Label("توضیحات:"),
+                        X.TextField()
+                        .ItemID("txtDesc")
+                        .AllowBlank(true)
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("DasteCheckGrid")
+            .BottomBar(X.PagingToolbar())
+               
+            .Store(
+                            X.StoreForModel()
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtDasteCheck.queryById('DasteCheckGrid');grid.setHeight(App.ChekWin.getHeight() - 285); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                            Html.X().Column().DataIndex(Model, m => m.fldOlgu).Text("الگو").Flex(5),
+                            Html.X().Column().DataIndex(Model, m => m.fldBankName).Text("نام بانک").Hidden(true).Flex(5),
+                            Html.X().Column().DataIndex(Model, m => m.fldShomareHesab).Text("شماره حساب").Flex(5),
+                            Html.X().Column().DataIndex(Model, m => m.fldMoshakhaseDasteCheck).Text("مشخصه").Flex(5),
+                            Html.X().Column().DataIndex(Model, m => m.fldTedadBarg).Text("تعداد برگ").Flex(5),
+                            Html.X().Column().DataIndex(Model, m => m.fldShoroeSeriyal).Text("شروع سریال").Flex(5),
+                            Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(5)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    function changeOlgu() {
+        App.SabtDasteCheck.queryById('txtShHesab').setValue("");
+        App.SabtDasteCheck.queryById('fldShomareHesabId').setValue(0);
+    }
+    function HelpDasteCheck() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Chek/DasteCheck/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function setdefaultValueOlgu() {
+        var CboOlgu = App.SabtDasteCheck.queryById('CboOlgu');
+        CboOlgu.select(CboOlgu.store.getAt(0));
+    }
+
+    function DasteCheckSetSize() {
+        App.SabtDasteCheck.setWidth(App.ChekWin.getWidth());
+        var grid = App.SabtDasteCheck.queryById('DasteCheckGrid');
+        grid.setHeight(App.ChekWin.getHeight() - 285);
+    }
+
+    function LoadDasteCheck() {
+        var SelectedRow = App.SabtDasteCheck.queryById('DasteCheckGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Chek/DasteCheck/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var fldId = App.SabtDasteCheck.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    var txtShHesab = App.SabtDasteCheck.queryById('txtShHesab');
+                    txtShHesab.setValue(data.fldShomareHesab);
+                    var fldShomareHesabId = App.SabtDasteCheck.queryById('fldShomareHesabId');
+                    fldShomareHesabId.setValue(data.fldIdShomareHesab);
+                    var CboOlgu = App.SabtDasteCheck.queryById('CboOlgu');
+                    CboOlgu.setValue(data.fldIdOlgoCheck);
+                    
+                    var txtDesc = App.SabtDasteCheck.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var txtMoshakhase = App.SabtDasteCheck.queryById('txtMoshakhase');
+                    txtMoshakhase.setValue(data.fldMoshakhaseDasteCheck);
+                    var txtTedadBarg = App.SabtDasteCheck.queryById('txtTedadBarg');
+                    txtTedadBarg.setValue(data.fldTedadBarg);
+                    var txtShoroeSeriyal = App.SabtDasteCheck.queryById('txtShoroeSeriyal');
+                    txtShoroeSeriyal.setValue(data.fldShoroeSeriyal);                   
+
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveDasteCheck() {
+        var CboOlgu = App.SabtDasteCheck.queryById('CboOlgu');
+        var txtDesc = App.SabtDasteCheck.queryById('txtDesc');
+        var fldId = App.SabtDasteCheck.queryById('fldId');
+        var txtShHesab = App.SabtDasteCheck.queryById('txtShHesab');
+        var fldShomareHesabId = App.SabtDasteCheck.queryById('fldShomareHesabId');
+        var txtMoshakhase = App.SabtDasteCheck.queryById('txtMoshakhase');
+        var txtTedadBarg = App.SabtDasteCheck.queryById('txtTedadBarg');
+        var txtShoroeSeriyal = App.SabtDasteCheck.queryById('txtShoroeSeriyal');
+
+            var er = false;
+
+            if (txtShHesab.validate() == false) {
+                er = true;
+            }
+            if (CboOlgu.validate() == false) {
+                er = true;
+            }
+            if (txtMoshakhase.validate() == false) {
+                er = true;
+            }
+            if (txtTedadBarg.validate() == false) {
+                er = true;
+            }
+            if (txtShoroeSeriyal.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Chek/DasteCheck/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldIdShomareHesab: fldShomareHesabId.getValue(),
+                    fldIdOlgoCheck: CboOlgu.getValue(),
+                    fldMoshakhaseDasteCheck: txtMoshakhase.getValue(),
+                    fldShoroeSeriyal: txtShoroeSeriyal.getValue(),
+                    fldTedadBarg: txtTedadBarg.getValue(),
+                    fldDesc: txtDesc.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtDasteCheck.queryById('DasteCheckGrid').store.load();
+                    if (data.Err != 1)
+                        ClearDasteCheck();
+                }
+
+            });
+    }
+    function DeleteDasteCheck() {
+        var SelectedRow = App.SabtDasteCheck.queryById('DasteCheckGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Chek/DasteCheck/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.INFO,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtDasteCheck.queryById('DasteCheckGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearDasteCheck() {
+        App.SabtDasteCheck.queryById('fldId').setValue(0);
+        App.SabtDasteCheck.queryById('CboOlgu').setValue("");
+        App.SabtDasteCheck.queryById('txtShHesab').setValue("");
+        App.SabtDasteCheck.queryById('fldShomareHesabId').setValue(0);
+        App.SabtDasteCheck.queryById('txtMoshakhase').setValue("");
+        App.SabtDasteCheck.queryById('txtTedadBarg').setValue("");
+        App.SabtDasteCheck.queryById('txtShoroeSeriyal').setValue("");
+        App.SabtDasteCheck.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapSabtDasteCheck = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtDasteCheck.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtDasteCheck.queryById('btnSaveDasteChek');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

@@ -1,0 +1,182 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+
+@(Html.X().Window().Modal(true).Listeners(li => li.AfterRender.Handler = "LoadSavabeghSanavatKhedmat();")
+.Width(390).Height(290)
+    .Title("سوابق سنوات خدمت")
+    .ID("NewSavabeghSanavatKhedmat")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.FormPanel().Border(false)
+        .KeyMap(Html.X().KeyMap()
+            .ID("SavabeghSanavatKhedmatMap")
+            .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                .Handler("SaveSavabeghSanavatKhedmat(); ")
+                );
+
+            }))
+        .DefaultButton("btn")
+        .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ToolTip("کلید میانبر F8")
+               .Listeners(l =>
+               {
+                   l.Click.Handler = "SaveSavabeghSanavatKhedmat();";
+
+               })
+                   .ItemID("btnSave")
+
+            ,
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).ToolTip("کلید میانبر Esc")
+            .OnClientClick("App.NewSavabeghSanavatKhedmat.destroy()")
+        ).Border(false).ButtonAlign(Ext.Net.Alignment.Center)
+        .TitleAlign(Ext.Net.TitleAlign.Center)
+        .Items(
+                X.Panel().Border(false)
+
+            .Items(
+                X.FieldSet().Border(false)
+                .Center()
+                    .Defaults(new { Margin = 10 })
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.ComboBox()
+                    .ItemID("CboNoeSabeghe")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Editable(false)
+                    .TypeAhead(true)
+                    .BlankText("لطفا نوع سابقه را انتخاب کنید.")
+                    .QueryMode(DataLoadMode.Local)
+                    .TriggerAction(TriggerAction.All)
+                    .EmptyText("نوع سابقه")
+                    .FieldLabel("نوع سابقه")
+                    .SelectedItems(new { Value = "1" })
+                    .Items(
+                        new ListItem("انتقال از سازمان دیگر", "1"),
+                        new ListItem("خدمت سربازی", "0")
+                        )
+                    , X.PDateField()
+                    .ItemID("txtAzTarikh")
+                    .FieldLabel("از تاریخ")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا از تاریخ را وارد کنید.")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    , X.PDateField()
+                    .ItemID("txtTaTarikh")
+                    .FieldLabel("تا تاریخ")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .AllowBlank(false)
+                    .BlankText("لطفا تا تاریخ را وارد کنید.")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    , X.TextArea()
+                    .ItemID("txtDesc")
+                    .FieldLabel("توضیحات")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .Width(160)
+
+                    )
+
+            )
+                    .Layout(Ext.Net.LayoutType.VBox)
+                    .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            )
+        )
+)
+
+<script type="text/javascript">
+    function LoadSavabeghSanavatKhedmat() {
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/Personeli/PersonalInfo/SavabeghSanavatKhedmatDetail',
+                params: {
+                    id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    var CboNoeSabeghe = App.NewSavabeghSanavatKhedmat.queryById('CboNoeSabeghe');
+                    CboNoeSabeghe.setValue(data.fldNoeSabeghe);
+                    var txtAzTarikh = App.NewSavabeghSanavatKhedmat.queryById('txtAzTarikh');
+                    txtAzTarikh.setValue(data.fldAzTarikh);
+                    var txtTaTarikh = App.NewSavabeghSanavatKhedmat.queryById('txtTaTarikh');
+                    txtTaTarikh.setValue(data.fldTaTarikh);
+                    var txtDesc = App.NewSavabeghSanavatKhedmat.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var Id = App.NewSavabeghSanavatKhedmat.queryById('fldId');
+                    Id.setValue(data.fldId);
+                }
+            });
+        }
+    }
+    function SaveSavabeghSanavatKhedmat() {
+        if (!App.NewSavabeghSanavatKhedmat.active) return false;
+
+        var Id = App.NewSavabeghSanavatKhedmat.queryById('fldId');
+        var CboNoeSabeghe = App.NewSavabeghSanavatKhedmat.queryById('CboNoeSabeghe');
+        var txtAzTarikh = App.NewSavabeghSanavatKhedmat.queryById('txtAzTarikh');
+        var txtTaTarikh = App.NewSavabeghSanavatKhedmat.queryById('txtTaTarikh');
+        var txtDesc = App.NewSavabeghSanavatKhedmat.queryById('txtDesc');
+
+        if (CboNoeSabeghe.validate() == false) {
+            er = true;
+        }
+        if (txtAzTarikh.validate() == false) {
+            er = true;
+        }
+        if (txtTaTarikh.validate() == false) {
+            er = true;
+        }
+        var NoeSabeghe = false;
+        if (CboNoeSabeghe.getValue() == "1")
+            NoeSabeghe = true;
+        Ext.net.DirectMethod.request({
+            url: '/Personeli/PersonalInfo/SaveSavabeghSanavatKhedmat',
+            params: {
+                fldId: Id.getValue(),
+                fldAzTarikh: txtAzTarikh.rawValue,
+                fldTaTarikh: txtTaTarikh.rawValue,
+                fldNoeSabeghe: NoeSabeghe,
+                fldPersonalId: '@ViewBag.PersonId',
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.SavabeghSanavatKhedmat.queryById('GridSanavat').store.load(),
+                ClearSavabeghSanavatKhedmat()
+            }
+
+        });
+    }
+    function ClearSavabeghSanavatKhedmat() {
+        App.NewSavabeghSanavatKhedmat.queryById('CboNoeSabeghe').setValue("");
+        App.NewSavabeghSanavatKhedmat.queryById('txtAzTarikh').setValue("");
+        App.NewSavabeghSanavatKhedmat.queryById('txtTaTarikh').setValue("");
+        App.NewSavabeghSanavatKhedmat.queryById('txtDesc').setValue("");
+        App.NewSavabeghSanavatKhedmat.queryById('fldId').setValue(0);
+
+    }
+
+    function EnterNext() {
+        var keyfield = App.NewSavabeghSanavatKhedmat.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld = keyfield.nextSibling();
+        nextfld.focus();
+        nextfld.selectText();
+    }
+</script>

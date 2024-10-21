@@ -1,0 +1,329 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_TypeKhodro>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .color {
+        color: red;
+    }
+</style>
+<br />
+@(Html.X().Panel()
+        .ID("SabtTypeKhodro")
+        .Title("تعریف انواع خودرو")
+            .Listeners(li => { li.AfterRender.Handler = "TypeKhodroSetSize();"; li.Render.Fn = "addKeyMapTypeKhodro"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+            X.Button().Text("اعمال ترتیب").Icon(Ext.Net.Icon.Disk)
+                                        .Listeners(Li => Li.Click.Handler = "SaveOrderSabtTypeKhodro();"),
+                   X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveTypeKhodro")
+                    .Listeners(l => { l.Click.Handler = "SaveTypeKhodro();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadTypeKhodro();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteTypeKhodro();"; })
+                    , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpTypeKhodro();"; }),
+            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.SabtTypeKhodro.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                 X.FieldSet().Border(false).Items(
+                    X.FieldSet().Border(true).Title("انواع خودرو").Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.Label("نوع خودرو:"),
+                    X.TextField()
+                    .ItemID("txtName")
+                    .AllowBlank(false)
+                    .BlankText("لطفا نوع خودرو را وارد کنید.")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                    .MaxLength(150)
+                    .EnforceMaxLength(true)
+                    .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                    , X.Label("توضیحات:"),
+                        X.TextField()
+                    .AllowBlank(false)
+                    .ItemID("txtDesc")
+                    .Width(345)//.ColSpan(3)
+                )
+             )
+            )
+        ),
+        X.GridPanel()
+                .ItemID("TypeKhodroGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                        X.StoreForModel()
+                    .Listeners(l => l.DataChanged.Handler = "App.SabtTypeKhodro.queryById('TypeKhodroGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtTypeKhodro.queryById('TypeKhodroGrid');grid.setHeight(App.Win.getHeight() - 275); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().ImageCommandColumn().Align(Ext.Net.Alignment.Center).Sortable(false).Listeners(l => l.Command.Fn = "SetOrderSabtTypeKhodro").PrepareCommand("showhideorderSabtTypeKhodro").Flex(1).Commands(
+                                            Html.X().ImageCommand().CommandName("RowDownSabtTypeKhodro").Icon(Ext.Net.Icon.ArrowDown),
+                                            Html.X().ImageCommand().CommandName("RowUpSabtTypeKhodro").Icon(Ext.Net.Icon.ArrowUp)),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("نوع خودرو").Flex(4).Wrap(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10).Wrap(true)
+               )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+          )
+    )
+)
+<script type="text/javascript">
+    var showhideorderSabtTypeKhodro = function (grid, command, record, rowIndex) {
+        if (command.command == 'RowDownSabtTypeKhodro') {
+            if (rowIndex == App.SabtTypeKhodro.queryById("TypeKhodroGrid").store.count() - 1) {
+                command.disabled = true;
+            }
+            else {
+                command.disabled = false;
+            }
+        }
+        else {
+            if (rowIndex == 0) {
+                command.disabled = true;
+            }
+            else {
+                command.disabled = false;
+            }
+        }
+    };
+    var SetOrderSabtTypeKhodro = function (grid, command, record, rowIndex) {
+        var grid = App.SabtTypeKhodro.queryById("TypeKhodroGrid");
+        if (command == 'RowDownSabtTypeKhodro') {
+            grid.getStore().remove(record);
+            grid.getStore().insert(rowIndex + 1, record);
+            grid.getView().refresh();
+        }
+        else {
+            grid.getStore().remove(record);
+            grid.getStore().insert(rowIndex - 1, record);
+            grid.getView().refresh();
+        }
+    };
+    function SaveOrderSabtTypeKhodro() {
+        var Grid = App.SabtTypeKhodro.queryById('TypeKhodroGrid');
+        var Order = new Array();
+        for (var i = 0; i < Grid.store.count() ; i++) {
+            var item = Grid.store.data.items[i];
+            Order.push({
+                "fldId": item.data.fldId,
+                "OrderId": Grid.store.indexOf(item) + 1,
+                "fldDesc": ""
+            });
+        }
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Comon/TypeKhodro/SaveOrder',
+            datatype: "json",
+            data: {
+                Order: JSON.stringify(Order),
+
+            },
+            /*contentType: 'application/json',*/
+            success: function (result) {
+                var ic = Ext.MessageBox.INFO;
+                if (result.Err == 1) {
+                    ic = Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                if (result.Err != 1) {
+                    App.SabtTypeKhodro.queryById('TypeKhodroGrid').store.load();
+                }
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function HelpTypeKhodro() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/TypeKhodro/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function TypeKhodroSetSize() {
+        App.SabtTypeKhodro.setWidth(App.Win.getWidth());
+        var grid = App.SabtTypeKhodro.queryById('TypeKhodroGrid');
+        grid.setHeight(App.Win.getHeight() - 275);
+    }
+
+    function LoadTypeKhodro() {
+        var SelectedRow = App.SabtTypeKhodro.queryById('TypeKhodroGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/TypeKhodro/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtName = App.SabtTypeKhodro.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    var txtDesc = App.SabtTypeKhodro.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtTypeKhodro.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveTypeKhodro() {
+        var txtName = App.SabtTypeKhodro.queryById('txtName');
+        var txtDesc = App.SabtTypeKhodro.queryById('txtDesc');
+        var fldId = App.SabtTypeKhodro.queryById('fldId');
+            var er = false;
+            if (txtName.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/TypeKhodro/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldName: txtName.getValue(),
+                    fldDesc: txtDesc.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtTypeKhodro.queryById('TypeKhodroGrid').store.load();
+                    if (data.Err != 1)
+                        ClearTypeKhodro();
+                }
+
+            });
+    }
+    function DeleteTypeKhodro() {
+        var SelectedRow = App.SabtTypeKhodro.queryById('TypeKhodroGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/TypeKhodro/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtTypeKhodro.queryById('TypeKhodroGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearTypeKhodro() {
+        App.SabtTypeKhodro.queryById('fldId').setValue(0);
+        App.SabtTypeKhodro.queryById('txtName').setValue("");
+        App.SabtTypeKhodro.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapTypeKhodro = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtTypeKhodro.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtTypeKhodro.queryById('btnSaveTypeKhodro');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

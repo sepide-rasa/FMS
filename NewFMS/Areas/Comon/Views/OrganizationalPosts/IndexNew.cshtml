@@ -1,0 +1,402 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_OrganizationalPosts>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<style>
+    .x-grid-cell {
+        background-color: transparent;
+    }
+    .margincommand{
+        margin: 0 0 0 5px !important;
+    }
+</style>
+@(Html.X().Panel()
+        .ID("OrganizationalPosts")
+            .Title("تعریف پست سازمانی مصوب")
+            .Listeners(li => li.AfterRender.Handler = "OrganizationalPostsSetSize();")
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                .Listeners(l => { l.Click.Handler = "SaveOrganizationalPosts();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadOrganizationalPosts();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteOrganizationalPosts();"; })
+            ,X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                .Listeners(l => { l.Click.Handler = "HelpOrganizationalPosts();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                .OnClientClick("App.OrganizationalPosts.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                    X.FieldSet().Border(true).Width(600).Title("اطلاعات پست سازمانی مصوب")//.Height(220)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 3 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                    X.FieldSet().Border(false).Width(260)
+                     //.Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                .Items(
+                    X.Label("عنوان پست:"),
+                    X.TextField()
+                    .ItemID("txtTitle")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا عنوان پست را وارد کنید.")
+                    .AutoFocus(true),
+                    X.Label("کد پست:"),
+                    X.TextField()
+                        .ItemID("txtOrgPostCode")
+                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا کد پست را وارد کنید.")
+                        , X.Label("توضیحات:"),
+                            X.TextArea()
+                        .ItemID("txtDesc")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Width(150)
+                    )
+                    ,
+                       X.TreePanel()
+                                .ID("TreeOrganizationalPosts")
+                                    .AutoScroll(true)
+                                    .Width(300)
+                                    .ColSpan(2)
+                                    .Height(120)
+                                    .UseArrows(true)
+                                    .Border(false)
+                                        .Store(
+                    Html.X().TreeStore()
+                        .Proxy(
+                                    Html.X().AjaxProxy().Url(Url.Action("Node"))
+                        )
+                )
+
+                                    .Listeners(a =>
+                                    {
+                                        a.ItemClick.Handler = "GetIdChartOrgan(record)";
+                                        a.AfterRender.Handler = "this.getRootNode().expand();";
+                                    })
+                       .Root(Html.X().Node().NodeID("0").Text("چارت سازمانی"))
+                      .Listeners(l =>
+                      {
+                          l.BeforeLoad.Fn = "nodeLoad";
+                      })
+                     ,
+                         X.FieldSet()
+                         .Border(false)
+        // .Width(400)
+                         .Layout(LayoutType.VBox)
+                             .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                             .Items(
+                         X.Label().ItemID("LbLname"))
+                         .ColSpan(3)
+                       
+                )
+            )
+        )
+
+                ,X.GridPanel()
+        .ItemID("OrganizationalPostsGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                                X.StoreForModel()
+                                                    .Listeners(l => l.DataChanged.Handler = "App.OrganizationalPosts.queryById('OrganizationalPostsGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.OrganizationalPosts.queryById('OrganizationalPostsGrid');grid.setHeight(App.Win.getHeight() - 405); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().ImageCommandColumn()
+                                .Listeners(l => l.Command.Fn = "ActionsShowPersonal")
+                                .Flex(1).Commands(
+                                          Html.X().ImageCommand().CommandName("GoToShowPersonal").Cls("margincommand").Icon(Ext.Net.Icon.User).ToolTip(tt => tt.Text = "نمایش پرسنل")
+                                ),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("نام").Flex(6),
+                        Html.X().Column().DataIndex(Model, m => m.fldOrgPostCode).Text("کد پست").Flex(5),
+                        Html.X().Column().DataIndex(Model, m => m.fldNameChart).Text("سازمان").Flex(7),
+                        Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(20)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+    var NodeId_O = 0;
+    var NodeId_Post = 0;
+    function ActionsShowPersonal(grid, command, record, row) {
+        if (command == 'GoToShowPersonal') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/OrganizationalPosts/ShowPersonal',
+                params: {
+                    OrgPostId: record.data.fldId,
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                }
+
+            });
+        }
+    }
+    /*App.Win.addListener('resize', function () {
+        App.OrganizationalPosts.setWidth(App.Win.getWidth());
+    });*/
+
+    function OrganizationalPostsSetSize() {
+       /* App.OrganizationalPosts.setWidth(App.Win.getWidth());*/
+
+        App.OrganizationalPosts.setWidth(App.Win.getWidth());
+        var grid = App.OrganizationalPosts.queryById('OrganizationalPostsGrid');
+        grid.setHeight(App.Win.getHeight() - 405);
+        
+    }
+    var nodeLoad = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/OrganizationalPosts/NodeLoad',
+            params: {
+                nod: node.getId()
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+    function HelpOrganizationalPosts() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/comon/OrganizationalPosts/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function GetIdChartOrgan(record) {
+        NodeId_O = record.getId();
+        App.OrganizationalPosts.queryById('LbLname').setText("چارت سازمانی: "+record.data.text);
+       /* ReloadPostOrgan();*/
+    };
+    var nodeLoadPost = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/OrganizationalPosts/NodeLoadPost',
+            params: {
+                nod: node.getId(),
+                OrganId:NodeId_O
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+    function GetIdPost(record) {
+        NodeId_Post = record.getId();
+    };
+    function LoadOrganizationalPosts() {
+        var SelectedRow = App.OrganizationalPosts.queryById('OrganizationalPostsGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/OrganizationalPosts/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+
+                    var txtTitle = App.OrganizationalPosts.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var txtOrgPostCode = App.OrganizationalPosts.queryById('txtOrgPostCode');
+                    txtOrgPostCode.setValue(data.fldOrgPostCode);
+                    var txtDesc = App.OrganizationalPosts.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var LbLname = App.OrganizationalPosts.queryById('LbLname');
+                    LbLname.setText("چارت سازمانی: " + data.fldNameChart);
+                    NodeId_Post = data.fldPID;
+                    NodeId_O = data.fldChartOrganId;
+                    var fldId = App.OrganizationalPosts.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveOrganizationalPosts() {
+
+       /* var SelectedRow = App.OrganizationalPosts.queryById('OrganizationalPostsGrid').selModel.getLastSelected();
+        if (SelectedRow != null)
+            NodeId_Post = SelectedRow.data.fldId;*/
+
+        var txtTitle = App.OrganizationalPosts.queryById('txtTitle');
+        var txtOrgPostCode = App.OrganizationalPosts.queryById('txtOrgPostCode');
+        var txtDesc = App.OrganizationalPosts.queryById('txtDesc');
+        var fldId = App.OrganizationalPosts.queryById('fldId');
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        if (txtOrgPostCode.validate() == false) {
+            er = true;
+        }
+        if (NodeId_O == 0) {
+            er = true;
+            alert("چارت سازمانی را انتخاب کنید.");
+        }
+        if (er == true)
+            return;
+
+        if (NodeId_Post == 0)
+            NodeId_Post = null;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/OrganizationalPosts/Save',
+            params: {
+                fldId: fldId.getValue(),
+                fldTitle: txtTitle.getValue(),
+                fldOrgPostCode: txtOrgPostCode.getValue(),
+                fldDesc: txtDesc.getValue(),
+                fldChartOrganId: NodeId_O,
+                fldPID: NodeId_Post
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+
+                App.OrganizationalPosts.queryById('OrganizationalPostsGrid').store.load();
+                if (data.Err != 1)
+                    ClearOrganizationalPosts();
+            }
+
+        });
+    }
+    function DeleteOrganizationalPosts() {
+        var SelectedRow = App.OrganizationalPosts.queryById('OrganizationalPostsGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/OrganizationalPosts/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.INFO,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.OrganizationalPosts.queryById('OrganizationalPostsGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ReloadPostOrgan() {
+        App.TreePost.store.load();
+    };
+    function ClearOrganizationalPosts() {
+        App.OrganizationalPosts.queryById('fldId').setValue(0);
+        App.OrganizationalPosts.queryById('txtTitle').setValue("");
+        App.OrganizationalPosts.queryById('txtOrgPostCode').setValue("");
+        App.OrganizationalPosts.queryById('txtDesc').setValue(""); 
+        App.OrganizationalPosts.queryById('LbLname').setText("");
+        NodeId_O = 0;
+        NodeId_Post = 0;
+    }
+    function EnterNext() {
+        var keyfield = App.OrganizationalPosts.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtDesc") {
+            nextfld = App.OrganizationalPosts.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+    }
+</script>

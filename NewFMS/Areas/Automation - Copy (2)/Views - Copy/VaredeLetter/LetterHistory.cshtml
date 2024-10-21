@@ -1,0 +1,271 @@
+﻿@model NewFMS.Models.LetterHistory
+<script src="~/Scripts/jquery-ajax-native.js"></script>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+           .ID("PnlHistory_V")
+            .Title("سوابق نامه")
+
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                    X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveHistory_V")
+                    .Listeners(l => { l.Click.Handler = "SaveHistory_V();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteHistory_V();"; })
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("سوابق نامه")
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                    X.Hidden().ItemID("fldID"),
+                           X.Label("نوع سابقه:"),
+                             X.ComboBox()
+                            .ItemID("CboHistoryType")
+                                        .EmptyText("...")
+                                    .AllowBlank(false)
+                                        .BlankText("لطفا نوع سابقه را انتخاب نمایید.")
+                                    .TypeAhead(true)
+                                    .Editable(false)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                        .DisplayField("fldName")
+                                    .ValueField("fldId")
+                                    .Store(
+                                     X.Store()
+
+                                    //.Listeners(l => l.Load.Handler = "setDefaultCboZaribGrouping();")
+                                            .Model(X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" })
+                                            )
+                                            .Proxy(X.AjaxProxy()
+                                                            .Url(Url.Action("GetHistoryType"))
+                                                .Reader(X.JsonReader().Root("data"))
+                                            )
+                                    )
+
+                      , X.Label("توضیحات:"),
+                        X.TextField()
+                            .ItemID("txtDesc")
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Width(260)
+                        , X.GridPanel()
+                                    .Center()
+                                    .AutoScroll(true)
+                                    .ColSpan(4)
+                                    .Width(640)
+                                    .Height(150)
+                                    .BottomBar(X.PagingToolbar())
+                                    .ItemID("GridLetter")
+                                    .Store(
+                                                    X.StoreFor(Model.Letter)
+        // .Listeners(l => l.Load.Handler = "LoadTypeEstekhdam_UserGroup()")
+                                            .Proxy(Html.X().AjaxProxy()
+                                                .Url(Url.Action("Readletter"))
+                                            .Reader(Html.X().JsonReader().Root("data"))
+                                            )
+                                            .PageSize(20)
+                                            .RemoteFilter(false)
+                                            .RemotePaging(false)
+                                    )
+                                    .View(
+                                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                                    )
+                                    .Plugins(X.FilterHeader().Remote(false))
+                                    .ColumnModel(
+                                        Html.X().RowNumbererColumn(),
+                                                Html.X().Column().DataIndex(Model.Letter, m => m.fldID).Text("کد").Flex(1).Hidden(true),
+                                                     Html.X().Column().DataIndex(Model.Letter, m => m.fldOrderId).Text("ش ثبت در رایانه").Flex(3).Wrap(true),
+                                                          Html.X().Column().DataIndex(Model.Letter, m => m.fldSubject).Text("موضوع").Flex(2).Wrap(true),
+                                                Html.X().Column().DataIndex(Model.Letter, m => m.fldLetterNumber).Text("شماره نامه").Flex(2).Wrap(true),
+                                                    Html.X().Column().DataIndex(Model.Letter, m => m.fldCreatedDate).Text("تاریخ ایجاد نامه").Flex(3).Wrap(true),
+                                                    Html.X().Column().DataIndex(Model.Letter, m => m.fldLetterDate).Text("تاریخ نامه").Flex(2).Wrap(true),
+                                                         Html.X().Column().DataIndex(Model.Letter, m => m.fldSenderName).Text("فرستنده").Flex(3).Wrap(true),
+                                                        Html.X().Column().DataIndex(Model.Letter, m => m.fldRecieverName).Text("گیرنده").Flex(3).Wrap(true),
+                                                    Html.X().Column().DataIndex(Model.Letter, m => m.fldDesc).Text("توضیحات").Flex(2).Wrap(true)
+                                    )
+                                        .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+               )
+                )
+            )
+        ),
+        X.GridPanel().Height(170)//.Width(200)
+                    .ItemID("History_VGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                                   X.StoreFor(Model.HistoryLetter)
+                                                .Listeners(l => l.DataChanged.Handler = "App.PnlHistory_V.queryById('History_VGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                    .Url(Url.Action("ReadHistory"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                        .ExtraParams(x => x.Add(new { LetterId = @ViewBag.LetterId }))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+
+                  .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model.HistoryLetter, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                            Html.X().Column().DataIndex(Model.HistoryLetter, m => m.fldSubject).Text("موضوع نامه").Flex(2),
+                            Html.X().Column().DataIndex(Model.HistoryLetter, m => m.fldLetterNumber).Text("شماره نامه").Flex(2),
+                            Html.X().Column().DataIndex(Model.HistoryLetter, m => m.fldLetterDate).Text("تاریخ نامه").Flex(2),
+                            Html.X().Column().DataIndex(Model.HistoryLetter, m => m.fldHistoryTypeName).Text("نوع سابقه").Flex(2)
+                       )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+           )
+      )
+)
+<script type="text/javascript">
+
+    function SaveHistory_V() {
+        var CboHistoryType = App.PnlHistory_V.queryById('CboHistoryType');
+        var txtDesc = App.PnlHistory_V.queryById('txtDesc');
+        var fldID = App.PnlHistory_V.queryById('fldID');
+        var SelectedRow = App.PnlHistory_V.queryById('GridLetter').selModel.getLastSelected();
+        var HistoryLetter_Id = 0;
+        if (SelectedRow != null) {
+            HistoryLetter_Id=SelectedRow.data.fldID
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر از لیست نامه ها را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+        var er = false;
+
+        if (CboHistoryType.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/SadereLetter/SaveHistoryLetter',
+            params: {
+                fldId: fldID.getValue(),
+                fldHistoryType_Id: CboHistoryType.getValue(),
+                fldHistoryLetter_Id: HistoryLetter_Id,
+                fldDesc: txtDesc.getValue(),
+                fldCurrentLetter_Id: '@ViewBag.LetterId'
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                App.PnlHistory_V.queryById('History_VGrid').store.load();
+                if (data.Err != 1)
+                    ClearHistory_V();
+            }
+
+        });
+    }
+    function DeleteHistory_V() {
+        var SelectedRow = App.PnlHistory_V.queryById('History_VGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/SadereLetter/DeleteLetterHistory',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.PnlHistory_V.queryById('History_VGrid').store.load();
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearHistory_V() {
+        App.PnlHistory_V.queryById('fldID').setValue(0);
+        App.PnlHistory_V.queryById('txtLetterText').setValue("");
+        App.PnlHistory_V.queryById('txtDesc').setValue("");
+    }
+    var addKeyMapHistory_V = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.PnlHistory_V.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtLetterText") {
+                        nextfld = App.PnlHistory_V.queryById('btnSaveHistory_V');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

@@ -1,0 +1,140 @@
+﻿@model IEnumerable<NewFMS.WCF_Daramad.OBJ_ShomareHesabCodeDaramad>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+@(Html.X().Window()
+    .Modal(true)
+    .Width(700)
+    .Height(370)
+    .Title("کد درآمد")
+    .ID("SearchCodeDaramadforSetting")
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .AutoScroll(true)
+            .Items(
+                X.GridPanel()
+                    .AutoScroll(true)
+                    .Border(false)
+                    .Height(330)
+                    .Listeners(l => l.AfterRender.Handler = "ReloadforSetting()")
+                    .ID("TreeDaramadSearchforSetting")
+                    .Store(
+                        X.StoreForModel()
+                            .AutoLoad(false)
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("ReadTreeDaramadSearchforSetting"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                                )
+                            .PageSize(200000000)
+                            .RemoteFilter(false)
+                                .RemotePaging(false)
+                            )
+                            .View(
+                                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                            )
+                                .Plugins(X.FilterHeader().Remote(false))
+                                .Listeners(a => a.CellDblClick.Handler = "NextSearchCodeDaramadforSetting();")
+                            .TopBar(
+                                X.Toolbar()
+                                    .Items(
+                                        X.Button()
+                                            .Text("انتخاب")
+                                            .Icon(Icon.ArrowRedo)
+                                            .Listeners(l => l.Click.Handler = "NextSearchCodeDaramadforSetting()")
+                                        ))
+                            .ColumnModel(
+                                X.RowNumbererColumn(),
+                                    X.Column().Text("کد").DataIndex(Model, m => m.fldId).Wrap(true).Hidden(true).Hideable(true).Flex(10),
+                                
+                                X.Column().Text("کد حساب").DataIndex(Model, m => m.fldDaramadCode).Wrap(true).Flex(3),
+                                    X.Column().Text("عنوان").DataIndex(Model, m => m.fldDaramadTitle).Wrap(true).Flex(10),
+                                    X.Column().Text("واحد").DataIndex(Model, m => m.fldNameVahed).Wrap(true).Hidden(@ViewBag.State!=4).Flex(2),
+                                    X.CheckColumn().Text("ارزش افزوده").Filterable(false).DataIndex(Model, m => m.fldMashmooleArzesheAfzoode).Editable(false).StopSelection(false).Flex(2).Hidden(@ViewBag.State != 4),
+                                    X.CheckColumn().Text("کارمزد").Filterable(false).DataIndex(Model, m => m.fldMashmooleKarmozd).Editable(false).StopSelection(false).Flex(2).Hidden(@ViewBag.State != 4)
+                                        )
+                            
+            )
+        )
+)
+
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+
+    function ReloadforSetting() {
+        var Organ = 0;
+        var SazmanId = App.IncomeSettingg.queryById('SazmanId');
+        Organ = SazmanId.getValue();
+        App.TreeDaramadSearchforSetting.getStore().getProxy().setExtraParam("OrganId", Organ);
+        App.TreeDaramadSearchforSetting.getStore().getProxy().setExtraParam("State", '@ViewBag.State');
+        App.TreeDaramadSearchforSetting.getStore().getProxy().setExtraParam("FiscalYearId", '@ViewBag.FiscalYearId');
+        App.TreeDaramadSearchforSetting.store.load();
+    }
+
+    function NextSearchCodeDaramadforSetting() {
+        var SelectedNode = App.TreeDaramadSearchforSetting.getSelectionModel().getLastSelected();
+        if (SelectedNode != null) {
+            if (SelectedNode.data.fldId != 1) {
+                if (State == 2) {
+                    App.IncomeSettingg.queryById('MaliyatCodeId').setValue(SelectedNode.data.fldId);
+                    App.IncomeSettingg.queryById('MaliyatCode').setValue(SelectedNode.data.fldDaramadTitle + "(" + SelectedNode.data.fldDaramadCode + ")");
+
+                    App.SearchCodeDaramadforSetting.destroy();
+                }
+                else if (State == 3) {
+                    App.IncomeSettingg.queryById('AvarezCodeId').setValue(SelectedNode.data.fldId);
+                    App.IncomeSettingg.queryById('AvarezCode').setValue(SelectedNode.data.fldDaramadTitle + "(" + SelectedNode.data.fldDaramadCode + ")");
+
+                    App.SearchCodeDaramadforSetting.destroy();
+                }
+                else if (State == 4) {
+                    App.IncomeSettingg.queryById('TakhirCodeId').setValue(SelectedNode.data.fldId);
+                    App.IncomeSettingg.queryById('TakhirCode').setValue(SelectedNode.data.fldDaramadTitle + "(" + SelectedNode.data.fldDaramadCode + ")");
+
+                    App.SearchCodeDaramadforSetting.destroy();
+                }
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "کاربر گرامی؛ امکان انتخاب سطر مورد نظر وجود ندارد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر (شاخه) را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+
+    }
+
+
+</script>

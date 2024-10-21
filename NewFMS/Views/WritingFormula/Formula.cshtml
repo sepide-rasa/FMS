@@ -1,0 +1,392 @@
+﻿
+<script src="~/Content/CsharpEditor/codemirror.js"></script>
+<link href="~/Content/CsharpEditor/codemirror.css" rel="stylesheet" />
+<script src="~/Content/CsharpEditor/clike.js"></script>
+<script src="~/Content/CsharpEditor/matchbrackets.js"></script>
+<script src="~/Content/CsharpEditor/show-hint.js"></script>
+<link href="~/Content/CsharpEditor/show-hint.css" rel="stylesheet" />
+<script src="~/Content/CsharpEditor/Format.js"></script>
+<script src="~/Content/CsharpEditor/closebrackets.js"></script>
+<script src="~/Content/CsharpEditor/active-line.js"></script>
+<script src="~/Content/CsharpEditor/comment.js"></script>
+<script src="~/Content/CsharpEditor/search.js"></script>
+<script src="~/Content/CsharpEditor/searchcursor.js"></script>
+<link href="~/Content/CsharpEditor/ambiance.css" rel="stylesheet" />
+<link href="~/Content/CsharpEditor/blackboard.css" rel="stylesheet" />
+<link href="~/Content/CsharpEditor/cobalt.css" rel="stylesheet" />
+<link href="~/Content/CsharpEditor/erlang-dark.css" rel="stylesheet" />
+<link href="~/Content/CsharpEditor/midnight.css" rel="stylesheet" />
+<link href="~/Content/CsharpEditor/monokai.css" rel="stylesheet" />
+<link href="~/Content/CsharpEditor/night.css" rel="stylesheet" />
+<link href="~/Content/CsharpEditor/rubyblue.css" rel="stylesheet" />
+<link href="~/Content/CsharpEditor/solarized.css" rel="stylesheet" />
+<script src="~/Scripts/jquery-1.11.3.min.js"></script>
+@using Ext.Net;
+@using Ext.Net.MVC;
+@using Ext.Net.Utilities;
+
+@{
+    var X = Html.X();
+}
+
+<style>
+    .Commentt {
+        background-image: url("/Content/icons/mini/Untitled-3.png");
+        background-size: cover !important;
+    }
+
+    .Removee {
+        background-image: url("/Content/icons/mini/ضربدر.png");
+        background-size: cover !important;
+    }
+
+    .Theme {
+        background-image: url("/Content/icons/mini/انتخاب تم.png");
+        background-size: cover !important;
+    }
+
+    .AddReference {
+        background-image: url("/Content/icons/mini/folder1.png");
+        background-size: cover !important;
+    }
+</style>
+
+@(
+ Html.X().Panel()
+    .ID("WritingFormula")
+    .TitleAlign(TitleAlign.Right)
+    .Listeners(l => l.AfterRender.Handler = "setSizece()")
+        //.Title("فرمول نویس پیشرفته رسا")
+    .Items(
+        Html.X().Hidden()
+            .ItemID("ComputationFormulaId"),
+        Html.X().Panel()
+            .Border(false)
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            .Items(
+                X.FieldSet()
+                    .Title("Code Editor")
+                    .ID("Fieldsetce")
+                    .RTL(false)
+                    .Items(
+                        X.FormPanel()
+                            .Layout(LayoutType.HBox)
+                            .Border(false)
+                            .Items(
+                                X.FileUploadField()
+                                    .ID("UploadDLL")
+                                    .ButtonOnly(true)
+                                    .ButtonText("Add Reference")
+                                    .Listeners(l => l.Change.Fn = "showFile")
+                                    .DirectEvents(l =>
+                                    {
+                                        l.Change.Action = "Upload";
+                                    })
+                                    .IconCls("AddReference")
+                                    .Margin(5),
+                                X.Button()
+                                    .Text("Remove Reference")
+                                    .Listeners(l => l.Click.Handler = "RemoveRef()")
+                                    .IconCls("Removee")
+                                    .Margin(5),
+                                X.Button()
+                                    .Text("Compile")
+                                    .Listeners(l => l.Click.Handler = "CompileCode()")
+                                    .Icon(Icon.PlayGreen)
+                                    .Margin(5),
+                                X.Button()
+                                    .Text("Save")
+                                    .Icon(Icon.Disk)
+                                    .Listeners(l => l.Click.Handler = "SaveFormula()")
+                                    .Margin(5),
+                                X.Button()
+                                    .Text("Comment/Uncomment")
+                                    .IconCls("Commentt")
+                                    .Listeners(l => l.Click.Handler = "CreateComment()")
+                                    .Margin(5),
+                                X.CycleButton()
+                                    .ShowText(true)
+                                    .ID("CycleButton")
+                                    .Listeners(l => l.Change.Handler = "ChangeTheme()")
+                                    .ToolTip("انتخاب نمایه")
+                                    .Margin(5)
+                                    .Menu(X.Menu()
+                                        .Items(
+                                            X.CheckMenuItem()
+                                                .Text("ambiance")
+                                                .IconCls("Theme"),
+                                            X.CheckMenuItem()
+                                                .Text("blackboard")
+                                                .IconCls("Theme"),
+                                            X.CheckMenuItem()
+                                                .Text("cobalt")
+                                                .IconCls("Theme"),
+                                            X.CheckMenuItem()
+                                                .Text("default")
+                                                .IconCls("Theme")
+                                                .Checked(true),
+                                            X.CheckMenuItem()
+                                                .Text("erlang-dark")
+                                                .IconCls("Theme"),
+                                            X.CheckMenuItem()
+                                                .Text("midnight")
+                                                .IconCls("Theme"),
+                                            X.CheckMenuItem()
+                                                .Text("monokai")
+                                                .IconCls("Theme"),
+                                            X.CheckMenuItem()
+                                                .Text("night")
+                                                .IconCls("Theme"),
+                                            X.CheckMenuItem()
+                                                .Text("rubyblue")
+                                                .IconCls("Theme"),
+                                            X.CheckMenuItem()
+                                                .Text("solarized")
+                                                .IconCls("Theme")
+                                        )
+                                    )
+                    ),
+                    X.Panel()
+                        .Border(false)
+                        .MarginSpec("5px 0 5px 0")
+                        .Items(
+                            X.FieldSet()
+                                .Title("Added Reference")
+                                .Width(630)
+                                .Items(
+                                    X.MultiSelect()
+                                        .ID("ListRef")
+                                        .Border(false)
+                                        .Height(70)
+                                        .AutoScroll(true)
+                                        .Width(610)
+                                        .SingleSelect(true)
+                                        )
+                        ),
+                    X.Panel()
+                        .Layout(LayoutType.Fit)
+                        .ItemID("PneEditor")
+                        .Items(
+                            Html.X().TextArea()
+                                .Listeners(l => l.AfterRender.Handler = "cSharpEditor()")
+                                .RTL(false)
+                                .ID("cSharped")
+                                )
+            )
+        )
+)
+)
+
+<script type="text/javascript">
+    var Ceditor;
+   
+    function cSharpEditor() {
+        var h = $("textarea");
+        for (var i = 0; i < h.length; i++) {
+            if (h[i].id.substring(0, 8) == "cSharped")
+                Ceditor = CodeMirror.fromTextArea(document.getElementById(h[i].id), {
+                    lineNumbers: true,
+                    extraKeys: { "Ctrl-Space": "autocomplete"},
+                    matchBrackets: true,
+                    autoHint: true,
+                    autoCloseBrackets: true,
+                    lineSeperator:"\n",
+                    styleActiveLine: true,
+                    /*gutter:true,
+                    onCursorActivity: updateLineInfo,*/
+                    lineWrapping: true,
+                    theme: "default",
+                    mode: "text/x-csharp"
+                });
+        }
+    }
+
+    function LoadData() {
+      Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/WritingFormula/LoadData',
+            params: {
+                FormulId: '@ViewBag.FormulId',
+                FieldName: '@ViewBag.FieldName',
+                OrganId: '@ViewBag.OrganId'
+            },
+            success: function (data) {
+                if (data.Er == 0) {
+                    App.WritingFormula.queryById("ComputationFormulaId").setValue('@ViewBag.FormulId');
+                    if (data.Code == "") {
+                        Ceditor.setOption("value", "using System;\n using System.Data;\n using System.Collections.Generic;\n using System.Linq;\n using System.IO;\n using System.Xml;\n using System.Web.Services; \n namespace MyNamespace {\n public class MyClass {\n public object DynamicCode(params object[] Parameters)\n{" + data.Defult + "\n}\n}\n}");
+                        App.ListRef.store.add({ "field1": "System.dll", "field2": "System.dll" });
+                        App.ListRef.store.add({ "field1": "System.Data.dll", "field2": "System.Data.dll" });
+                        App.ListRef.store.add({ "field1": "System.Xml.dll", "field2": "System.Xml.dll" });
+                        App.ListRef.store.add({ "field1": "System.Core.dll", "field2": "System.Core.dll" });
+                        App.ListRef.store.add({ "field1": "System.Web.Services.dll", "field2": "System.Web.Services.dll" });
+                        App.ListRef.store.add({ "field1": "System.Data.DataSetExtensions.dll", "field2": "System.Data.DataSetExtensions.dll" });
+                        App.ListRef.store.add({ "field1": "NewFMS.dll", "field2": "NewFMS.dll" });
+                    }
+                    else {
+                        Ceditor.setValue(data.Code);
+                        var ReferenceArray = data.Reference.split(";");
+                        for (var i = 0; i < ReferenceArray.length - 1; i++) {
+                            App.ListRef.store.add({ "field1": ReferenceArray[i], "field2": ReferenceArray[i] });
+                        }
+                    }
+                    var totalLines = Ceditor.lineCount();
+                    Ceditor.autoFormatRange({ line: 0, ch: 0 }, { line: totalLines });
+                    Ceditor.setCursor(totalLines-4);
+                }
+                else {
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                }
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function CreateComment() {
+        CodeMirror.commands.toggleComment(Ceditor);
+    }
+
+    function setSizece() {
+        App.WritingFormula.setTitle("فرمول نویس پیشرفته رسا" +":"+ '@ViewBag.OrganName');
+        App.Fieldsetce.setSize(Ext.getBody().getViewSize().width - 30, Ext.getBody().getViewSize().height - 38);
+        Ceditor.setSize(Ext.getBody().getViewSize().width - 50, Ext.getBody().getViewSize().height - 215);
+        LoadData();
+    }
+
+    function ChangeTheme() {
+        var CycleButton = App.CycleButton;
+        var theme = CycleButton.activeItem.text;
+        Ceditor.setOption("theme", theme);
+    }
+
+    function CompileCode() {
+        var Ref = "";
+        var count = App.ListRef.store.count();
+        for (var i = 0; i < count ; i++) {
+            Ref = Ref + App.ListRef.store.data.items[i].data.field1 + ";";
+        }
+        Ext.net.Mask.show({ msg: 'Waiting...' });
+        var str = Ceditor.getValue();
+        str = str.replace(/</g, '&lt;');
+        str = str.replace(/>/g, '&gt;');
+        Ext.net.DirectMethod.request({
+            url: '/WritingFormula/Compile',
+            params: {
+                Code: str,
+                Ref: Ref
+            },
+            success: function (data) {
+                var ic=Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic= Ext.MessageBox.ERROR;
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function SaveFormula() {
+        var Ref = "";
+        for (var i = 0; i < App.ListRef.store.count() ; i++) {
+            Ref = Ref + App.ListRef.store.data.items[i].data.field1 + ";";
+        }
+        var IDD = '@ViewBag.ID';
+        if ('@ViewBag.FieldName' == "formulMohasebat") {
+            IDD = '@ViewBag.TableId';
+        }
+        Ext.net.Mask.show({ msg: 'Saving...' });
+        var str = Ceditor.getValue();
+        str = str.replace(/</g, '&lt;');
+        str = str.replace(/>/g, '&gt;');
+        Ext.net.DirectMethod.request({
+            url: '/WritingFormula/Save',
+            params: {
+                IDD: IDD,
+                FieldName: '@ViewBag.FieldName',
+                Id:App.WritingFormula.queryById("ComputationFormulaId").getValue(),
+                Code: str,
+                Ref: Ref,
+                OrganId: '@ViewBag.OrganId',
+                RankingTpe: '@ViewBag.RankingType',
+                AzTarikh: '@ViewBag.AzTarikh'
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1) {
+                    ic=Ext.MessageBox.ERROR;
+                }
+                else {
+                    App.WritingFormula.queryById("ComputationFormulaId").setValue(data.Idd);
+                }
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                    /*fn: function (btn) {
+                        if (data.Er != 1 && btn == 'ok') {
+                            window.close();
+                        }
+                    }*/
+                });
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function RemoveRef() {
+        if (App.ListRef.getSelected().length > 0) {
+            App.ListRef.store.remove(App.ListRef.getSelected()[0]);
+            /*Ext.net.DirectMethod.request({
+                url: '/WritingFormula/DelDllFile',
+                params: {
+                    FileName: App.ListRef.getSelected()[0].data.field1
+                },
+                success: function (data) {
+                    if (data.Er == 1) {
+                        Ext.MessageBox.show({
+                            title: "Error",
+                            msg: data.Msg,
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                    else {
+                        App.ListRef.store.remove(App.ListRef.getSelected()[0]);
+                    }
+                }
+            });*/
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "Error",
+                msg: "مورد نظر خود را از لیست انتخاب نمایید Reference لطفا",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    var showFile = function (fb, v) {
+        if (v) {
+            if (v.split('.').pop().toLowerCase() == "dll") {
+                if (App.ListRef.store.findExact("field1", v) == -1) {
+                    App.ListRef.store.add({ "field1": v, "field2": v });
+                }
+            }
+        }
+    };
+
+</script>

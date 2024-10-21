@@ -1,0 +1,191 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_RptCodingTurnover>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+<script>
+    var templateDoc = '<a href="#" onclick={0} {2}>{1}</a>';
+
+    var ShowDoc = function (value, record) {
+        if (value == 0)
+            return "";
+        var fldId = String(record.record.data.fldDocument_HedearId);
+        var s = "GotoDocument(" + fldId + ");";
+        return Ext.String.format(templateDetail, s, value);
+    };
+</script>
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+
+@(Html.X().Window().Modal(true).Listeners(l => l.AfterRender.Handler = "App.WinCodingTurnover.queryById('GridWinCodingTurnover').setHeight(Ext.getBody().getViewSize().height-100);")
+            .Width(1100)//.Height(460)
+            .Title("نمایش گردش حساب")
+            .ID("WinCodingTurnover")
+            .Closable(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Layout(LayoutType.Fit)
+            .Items(
+                X.Panel().Border(false)
+                    .Border(false).Layout(LayoutType.Fit)
+                .AutoScroll(true)
+                .Items(
+
+                        X.GridPanel().AutoScroll(true).Border(false)
+                            .ItemID("GridWinCodingTurnover").Flex(2)
+                                .TopBar(X.Toolbar().Items(
+                                        X.Label("از تاریخ:"),
+                                X.PDateField()
+                                    .ItemID("txtAzTarikh")
+                                    .Listeners(l => l.Change.Handler = "setDateAzTarikhCodingTurnover()")
+                                    .AllowBlank(true)
+                                    .AutoFocus(true)
+                                    .Editable(true)
+                                    .MaskRe("/[0-9/]/")
+                                    .MaxLength(10)
+                                    .MinLength(10)
+                                    .EnforceMaxLength(true),
+                                X.Label("تا تاریخ:"),
+                                X.PDateField()
+                                    .ItemID("txtTaTarikh")
+                                    .Listeners(l => l.Change.Handler = "setDateTaTarikhCodingTurnover()")
+                                    .AllowBlank(true)
+                                    .Editable(true)
+                                    .MaskRe("/[0-9/]/")
+                                    .MaxLength(10)
+                                    .MinLength(10)
+                                    .EnforceMaxLength(true),
+                                X.Button().Text("جستجو").Icon(Icon.Magnifier).Listeners(l => l.Click.Handler = "Search_Tarikh()"),
+                                X.Button().Text("خروجی Pdf").Icon(Icon.PageWhiteAcrobat).Listeners(l => l.Click.Handler = "CreatePdfRptCoding()"),
+                                X.Button().Text("خروجی Excel").Icon(Icon.PageExcel).Listeners(l=>l.Click.Handler="CreateExcelRptCoding()")                               
+                                )
+                                )
+                    .BottomBar(X.PagingToolbar())
+                    .Store(
+                        X.StoreForModel()
+                        .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("ReadCodingTurnover"))
+                            .Reader(Html.X().JsonReader().Root("data"))
+                                   .ExtraParams(x => x.Add(new { CodingDetail = ViewBag.CodingDetail, Year = ViewBag.Year, CaseTypeId = ViewBag.CaseTypeId, SourceId = ViewBag.SourceId, Type = ViewBag.Type }))
+                        )
+                        .PageSize(100000)
+                        .RemoteFilter(false)
+                            .RemotePaging(false)
+
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+         .Plugins(X.FilterHeader().Remote(false))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                               Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+        //Html.X().Column().DataIndex(Model, m => m.fldTitle).Text("عنوان کدینگ").Flex(3).Wrap(true),
+        //    Html.X().Column().DataIndex(Model, m => m.fldParentTitle).Text("عنوان کدینگ پدر").Flex(5).Wrap(true),
+                                            Html.X().Column().DataIndex(Model, m => m.fldDocumentNum).Text("شماره سند").Flex(2).Wrap(true).Renderer("ShowDoc"),
+                                                Html.X().Column().DataIndex(Model, m => m.fldTarikhDocument).Text("تاریخ").Flex(3).Wrap(true),
+                                            
+                                            
+                                        Html.X().Column().DataIndex(Model, m => m.fldDescriptionDocu).Text("شرح آرتیکل").Flex(6).Wrap(true),
+                                                Html.X().Column().DataIndex(Model, m => m.fldParvande).Text("پرونده").Flex(4).Wrap(true),
+
+                                    //Html.X().Column().DataIndex(Model, m => m.fldTypeName_t).Text("ماهیت").Flex(2).Wrap(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldBedehkar).Text("بدهکار").Flex(3).Renderer("Rial").Wrap(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldBestankar).Text("بستانکار").Flex(3).Renderer("Rial").Wrap(true),
+                                    Html.X().Column().DataIndex(Model, m => m.fldMande_t).Text("مانده حساب").Flex(3).Renderer("Rial").TdCls("minus").Wrap(true)
+
+                    )
+        //.Listeners(a => a.CellDblClick.Handler = "NextWinCodingTurnover();")
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+
+            )
+        )
+)
+
+<script type="text/javascript">
+    var _State = '@ViewBag.State';
+
+    function CreateExcelRptCoding() {
+        window.location.href = '@Url.Content("~/Accounting/RptCodingStatus/CreateExcelRptCoding/")' + '?CodingDetail=' + '@ViewBag.CodingDetail' +
+            '&CaseTypeId=' + '@ViewBag.CaseTypeId' + '&SourceId=' + '@ViewBag.SourceId' + '&Year=' + '@ViewBag.Year' + '&AzTarikh=' +
+            App.WinCodingTurnover.queryById('txtAzTarikh').getRawValue() + '&TaTArikh=' + App.WinCodingTurnover.queryById('txtTaTarikh').getRawValue();
+    }
+
+    function setDateAzTarikhCodingTurnover() {
+        var txtAzTarikh = App.WinCodingTurnover.queryById('txtAzTarikh');
+        var txtTaTarikh = App.WinCodingTurnover.queryById('txtTaTarikh');
+        txtTaTarikh.setMinValue(txtAzTarikh.getValue());
+        txtTaTarikh.minText = "فیلد تا تاریخ نباید قبل از فیلد از تاریخ باشد.";
+    }
+
+    function CreatePdfRptCoding() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/RptCodingStatus/PrintRptCoding',
+            params: {
+                CodingDetail: '@ViewBag.CodingDetail',
+                CaseTypeId: '@ViewBag.CaseTypeId',
+                SourceId: '@ViewBag.SourceId',
+                Year: '@ViewBag.Year',
+                AzTarikh: App.WinCodingTurnover.queryById('txtAzTarikh').getRawValue(),
+                TaTArikh: App.WinCodingTurnover.queryById('txtTaTarikh').getRawValue()
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    function setDateTaTarikhCodingTurnover() {
+        var txtAzTarikh = App.WinCodingTurnover.queryById('txtAzTarikh');
+        var txtTaTarikh = App.WinCodingTurnover.queryById('txtTaTarikh');
+        txtAzTarikh.setMaxValue(txtTaTarikh.getValue());
+        txtAzTarikh.maxText = "فیلد از تاریخ نباید بعد از فیلد تا تاریخ باشد.";
+    }
+
+    function Search_Tarikh() {
+        App.WinCodingTurnover.queryById('GridWinCodingTurnover').getStore().getProxy().setExtraParam("AzTarikh", App.WinCodingTurnover.queryById('txtAzTarikh').getRawValue());
+        App.WinCodingTurnover.queryById('GridWinCodingTurnover').getStore().getProxy().setExtraParam("TaTarikh", App.WinCodingTurnover.queryById('txtTaTarikh').getRawValue());
+        App.WinCodingTurnover.queryById('GridWinCodingTurnover').getStore().getProxy().setExtraParam("CodingDetail", '@ViewBag.CodingDetail');
+        App.WinCodingTurnover.queryById('GridWinCodingTurnover').getStore().getProxy().setExtraParam("Year", '@ViewBag.Year');
+        App.WinCodingTurnover.queryById('GridWinCodingTurnover').getStore().getProxy().setExtraParam("CaseTypeId", '@ViewBag.CaseTypeId');
+        App.WinCodingTurnover.queryById('GridWinCodingTurnover').getStore().getProxy().setExtraParam("SourceId", '@ViewBag.SourceId');
+        App.WinCodingTurnover.queryById('GridWinCodingTurnover').store.load();
+    }
+
+    function GotoDocument(fldId) {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DocRegistration/Document',
+            params: {
+                DocHeaderId: fldId,
+                Year: '@ViewBag.Year',
+                ModuleId:4
+            },
+            success: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+</script>

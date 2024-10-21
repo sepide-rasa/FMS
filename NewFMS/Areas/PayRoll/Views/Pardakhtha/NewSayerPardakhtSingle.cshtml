@@ -1,0 +1,510 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using Ext.Net.Utilities;
+@{
+    var X = Html.X();
+}
+<script src="~/Scripts/accounting.js"></script>
+
+@(Html.X().Window()
+    .Listeners(li => { li.AfterRender.Handler = "LoadSayerPardakhthaSingle();"; li.Render.Fn = "addKeyMapNewSayerPardakhthaSingle"; })
+    .Width(530)
+    //.Height(290)
+    .Modal(true)
+    .Title("ثبت سایر پرداخت ها")
+    .ID("NewSayerPardakhthaSingle")
+    .ButtonAlign(Ext.Net.Alignment.Center)
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+        //.ToolTip("کلید میانبر F8")
+            .Listeners(l =>
+            {
+                l.Click.Handler = "checkSaveSayerPardakhtSingle();";
+            }),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.DoorOut)
+        //.ToolTip("کلید میانبر Esc")
+            .OnClientClick("App.NewSayerPardakhthaSingle.destroy()"))
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Layout(LayoutType.VBox)
+            .LayoutConfig(new VBoxLayoutConfig { Align=VBoxAlign.Center})
+            .Items(
+                X.FieldSet()
+                    .Title("مشخصات پرداخت")
+                    .Border(true)
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                    .Defaults(new { Margin = 2 })
+                    .Items(
+                        X.Hidden().ItemID("fldId"),
+                        X.Hidden().ItemID("fldGhati"),
+                        X.Label("نام و نام خانوادگی:"),
+                        X.TextField()
+                            .ItemID("txtName")
+                            .AllowBlank(false),
+                        X.Label("کد ملی:"),
+                        X.TextField()
+                            .ItemID("txtNationalCode")
+                            .AllowBlank(false),
+                        X.Label("شماره پرسنلی:"),
+                        X.TextField()
+                            .ItemID("txtShomarePersoneli")
+                            .AllowBlank(false),
+                        X.Label("عنوان:"),       
+                        X.TextField()
+                            .ItemID("txtTitle")
+                            .AllowBlank(false)
+                            .AutoFocus(true)
+                            .BlankText("لطفا عنوان را وارد کنید."),
+                            //.MsgTarget(Ext.Net.MessageTarget.Side)
+                        X.Label("مبلغ:"),   
+                        X.TextField()
+                            .ItemID("txtAmount")
+                            .MaskRe("/[0-9]/")
+                            .Listeners(l => { l.Change.Handler = "App.NewSayerPardakhthaSingle.queryById('txtAmount').setValue(accounting.formatNumber(App.NewSayerPardakhthaSingle.queryById('txtAmount').getValue()));setKhales();CheckInt(App.NewSayerPardakhthaSingle.queryById('txtAmount'));"; })
+                            .AllowBlank(false)
+                            .BlankText("لطفا مبلغ را وارد کنید."),
+                            //.MsgTarget(Ext.Net.MessageTarget.Side)
+                        X.Label("مالیات:").ItemID("lblHasMaliyat"),   
+                        X.ComboBox()
+                            .ItemID("CboHasMaliyat")
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .AllowBlank(false)
+                            .BlankText("لطفا وضعیت مالیات را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .Listeners(l => l.Select.Handler = "checkHasMaliat()")
+                            .TriggerAction(TriggerAction.All)
+                            .Items(
+                                new ListItem("دارد", "1"),
+                                new ListItem("ندارد", "0")
+                                )
+                            .SelectedItems(new{value="0"}),
+                        X.Label("مبلغ مالیات:").ItemID("lblMaliat"),
+                        X.TextField()
+                            .ItemID("txtMaliat")
+                            .ReadOnly(true)
+                            .MaskRe("/[0-9]/")
+                            .Listeners(l => { l.Change.Handler = "App.NewSayerPardakhthaSingle.queryById('txtMaliat').setValue(accounting.formatNumber(App.NewSayerPardakhthaSingle.queryById('txtMaliat').getValue()));"; })
+                            .AllowBlank(false)
+                            .BlankText("لطفا مبلغ مالیات را وارد کنید."),
+                        X.Label("خالص پرداختی:"),
+                        X.TextField()
+                            .ItemID("txtkhalesePardakhti")
+                            .MaskRe("/[0-9]/")
+                            .ReadOnly(true)
+                            .Listeners(l => { l.Change.Handler = "App.NewSayerPardakhthaSingle.queryById('txtkhalesePardakhti').setValue(accounting.formatNumber(App.NewSayerPardakhthaSingle.queryById('txtkhalesePardakhti').getValue()))"; })
+                            .AllowBlank(false)
+                            .BlankText("لطفا خالص پرداختی را وارد کنید."),
+                        X.Label("نوبت پرداخت:"),   
+                        X.ComboBox()
+                            .ItemID("CboNobatePardakht")
+                            .Editable(false)
+                            .AllowBlank(false)
+                            .EmptyText("نوبت پرداخت")
+                            .TypeAhead(true)
+                            .BlankText("لطفا نوبت پرداخت را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Items(
+                                new ListItem("یک", "1"),
+                                new ListItem("دو", "2"),
+                                new ListItem("سه", "3"),
+                                new ListItem("چهار", "4"),
+                                new ListItem("پنج", "5")
+                                )
+                            .SelectedItems(new { Value = "1" }),
+                        X.Label("مرحله پرداخت:"),
+                        X.ComboBox()
+                            .ItemID("CboMarhalePardakht")
+                            .AllowBlank(false)
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .EmptyText("مرحله پرداخت")
+                            .BlankText("لطفا مرحله پرداخت را انتخاب کنید.")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .Items(
+                                new ListItem("یک", "1"),
+                                new ListItem("دو", "2"),
+                                new ListItem("سه", "3"),
+                                new ListItem("چهار", "4"),
+                                new ListItem("پنج", "5")
+                                ),
+                            X.Label("نوع حساب:"),
+                        //X.ComboBox()
+                        //    .ItemID("CboTypeHesab")
+                        //    .Editable(false)
+                        //    .AllowBlank(false)
+                        //    .TypeAhead(true)
+                        //    .QueryMode(DataLoadMode.Local)
+                        //    .TriggerAction(TriggerAction.All)
+                        //    .EmptyText("نوع حساب")
+                        //    .Items(
+                        //        new ListItem("حقوق", "0"),
+                        //        new ListItem("بن کارت", "1")
+                        //        )
+                        //    .SelectedItems(new { Value = "1" }),
+                         X.ComboBox()
+                                .AutoFocus(true)
+                            .ItemID("CboTypeHesab")
+                             .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .TypeAhead(true)
+                            .QueryMode(DataLoadMode.Local)
+                            .ForceSelection(true)
+                            .Editable(true)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("Name")
+                            .ValueField("ID")
+                            .EmptyText("نوع حساب")
+                           .Store(X.Store()
+                                .Model(X.Model()
+                                    .IDProperty("ID")
+                                    .Fields(
+                                    new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                    new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                    )
+                                )
+                                .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetTypeHesab"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                )
+                                )
+                                       .SelectedItems(new { Value = "2" })
+                                
+                                ,X.Label("نوع مستمر:").ItemID("lblNoeMostamer"),
+                        X.ComboBox()
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .ItemID("CboNoeMostamer")
+                        .Editable(false)
+                        .TypeAhead(true)
+                            .BlankText("لطفا نوع مستمر را انتخاب کنید.")
+                        .QueryMode(DataLoadMode.Local)
+                        .TriggerAction(TriggerAction.All)
+                        .Items(
+                                new ListItem("مستمر", "1"),
+                                new ListItem("غیر مستمر", "2")
+                        )
+                            .SelectedItems(new { Value = "2" })
+                               
+                          )      ,
+                        X.Label("توضیحات:"),
+                        X.TextArea()
+                            //.ColSpan(3)
+                            .ItemID("txtDesc")
+                            //.Width(367)
+                    )
+
+                )
+        )
+)
+
+<script type="text/javascript">
+
+    function checkHasMaliat() {
+        var Amount = App.NewSayerPardakhthaSingle.queryById('txtAmount').getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', '');
+        if (App.NewSayerPardakhthaSingle.queryById('CboHasMaliyat').getValue() == '0') {
+            App.NewSayerPardakhthaSingle.queryById('txtkhalesePardakhti').setValue(Amount);
+            App.NewSayerPardakhthaSingle.queryById('txtMaliat').setValue(0);
+            App.NewSayerPardakhthaSingle.queryById('txtMaliat').hide();
+            App.NewSayerPardakhthaSingle.queryById('lblMaliat').hide();
+        }
+        else {
+            App.NewSayerPardakhthaSingle.queryById('txtMaliat').show();
+            App.NewSayerPardakhthaSingle.queryById('lblMaliat').show();
+            /* App.NewSayerPardakhthaSingle.queryById('txtMaliat').setValue(Amount * 10 / 100);*/
+            App.NewSayerPardakhthaSingle.queryById('txtMaliat').setValue(0);
+            var Maliyat = App.NewSayerPardakhthaSingle.queryById('txtMaliat').getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', '');
+            App.NewSayerPardakhthaSingle.queryById('txtkhalesePardakhti').setValue(Amount - Maliyat);
+        }
+    }
+
+    function setKhales() {
+        var Amount = App.NewSayerPardakhthaSingle.queryById('txtAmount').getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', '');
+        if (App.NewSayerPardakhthaSingle.queryById('CboHasMaliyat').getValue() == '0') {
+            App.NewSayerPardakhthaSingle.queryById('txtkhalesePardakhti').setValue(Amount);
+        }
+        else {
+            /*App.NewSayerPardakhthaSingle.queryById('txtMaliat').setValue(Amount * 10 / 100);*/
+            App.NewSayerPardakhthaSingle.queryById('txtMaliat').setValue(0);
+            var Maliyat=App.NewSayerPardakhthaSingle.queryById('txtMaliat').getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', '');
+            App.NewSayerPardakhthaSingle.queryById('txtkhalesePardakhti').setValue(Amount - Maliyat);
+        }
+    }
+
+    function LoadSayerPardakhthaSingle() {
+        if ('@ViewBag.Id' != '0') {
+            /*Edit*/
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/Pardakhtha/SingleDetails',
+                params: {
+                    Id: '@ViewBag.Id',
+                    OrganId: '@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    var txtName = App.NewSayerPardakhthaSingle.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    txtName.setReadOnly(true);
+                    txtName.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                    var txtNationalCode = App.NewSayerPardakhthaSingle.queryById('txtNationalCode');
+                    txtNationalCode.setValue(data.fldNationalCode);
+                    txtNationalCode.setReadOnly(true);
+                    txtNationalCode.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                    var txtShomarePersoneli = App.NewSayerPardakhthaSingle.queryById('txtShomarePersoneli');
+                    txtShomarePersoneli.setValue(data.fldShomarePersoneli);
+                    txtShomarePersoneli.setReadOnly(true);
+                    txtShomarePersoneli.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                    var txtTitle = App.NewSayerPardakhthaSingle.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+
+                    var txtAmount = App.NewSayerPardakhthaSingle.queryById('txtAmount');
+                    txtAmount.setValue(data.fldAmount);
+
+                    var txtkhalesePardakhti = App.NewSayerPardakhthaSingle.queryById('txtkhalesePardakhti');
+                    txtkhalesePardakhti.setValue(data.fldKhalesPardakhti);
+
+                    if (data.fldMoafAzMaliyat == true) {
+                        App.NewSayerPardakhthaSingle.queryById('txtMaliat').hide();
+                        App.NewSayerPardakhthaSingle.queryById('lblMaliat').hide();
+                        App.NewSayerPardakhthaSingle.queryById('CboHasMaliyat').hide(); 
+                        App.NewSayerPardakhthaSingle.queryById('lblHasMaliyat').hide();
+                    }
+                    else {
+                        var CboHasMaliyat = App.NewSayerPardakhthaSingle.queryById('CboHasMaliyat');
+                        var maliyat = "0";
+                        if (data.fldHasMaliyat == true) {
+                            maliyat = "1";
+                        }
+                        CboHasMaliyat.setValue(maliyat);
+
+                        var txtMaliat = App.NewSayerPardakhthaSingle.queryById('txtMaliat');
+                        if (data.fldHasMaliyat == false) {
+                            txtMaliat.hide();
+                            App.NewSayerPardakhthaSingle.queryById('lblMaliat').hide();
+                        }
+                        else {
+                            txtMaliat.show();
+                            txtMaliat.setValue(data.fldMaliyat);
+                            App.NewSayerPardakhthaSingle.queryById('lblMaliat').show();
+                        }
+                    }
+
+                    var CboNobatePardakht = App.NewSayerPardakhthaSingle.queryById('CboNobatePardakht');
+                    CboNobatePardakht.setValue(data.fldNobatePardakt);
+
+                    var CboMarhalePardakht = App.NewSayerPardakhthaSingle.queryById('CboMarhalePardakht');
+                    CboMarhalePardakht.setValue(data.fldMarhalePardakht);
+
+                    var CboTypeHesab = App.NewSayerPardakhthaSingle.queryById('CboTypeHesab');
+                    CboTypeHesab.setValue(data.fldtypehesab);
+
+                    var txtDesc = App.NewSayerPardakhthaSingle.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+
+                    var Id = App.NewSayerPardakhthaSingle.queryById('fldId');
+                    Id.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            if ('@ViewBag.fldMoafAsMaliyat' == 'True') {
+                App.NewSayerPardakhthaSingle.queryById('txtMaliat').hide();
+                App.NewSayerPardakhthaSingle.queryById('lblMaliat').hide();
+                App.NewSayerPardakhthaSingle.queryById('CboHasMaliyat').hide();
+                App.NewSayerPardakhthaSingle.queryById('lblHasMaliyat').hide();
+            }
+            else {
+                App.NewSayerPardakhthaSingle.queryById('txtMaliat').hide();
+                App.NewSayerPardakhthaSingle.queryById('lblMaliat').hide();
+                App.NewSayerPardakhthaSingle.queryById('CboHasMaliyat').show();
+                App.NewSayerPardakhthaSingle.queryById('lblHasMaliyat').show();
+            }
+            Ext.net.DirectMethod.request({
+                url: '/PayRoll/Pardakhtha/DetailsHeader',
+                params: {
+                    Id: '@ViewBag.PersonalId',
+                    OrganId: '@ViewBag.OrganId'
+                },
+                success: function (data) {
+                    var txtName = App.NewSayerPardakhthaSingle.queryById('txtName');
+                    txtName.setValue(data.fldName);
+                    txtName.setReadOnly(true);
+                    txtName.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+                    var txtNationalCode = App.NewSayerPardakhthaSingle.queryById('txtNationalCode');
+                    txtNationalCode.setValue(data.fldNationalCode);
+                    txtNationalCode.setReadOnly(true);
+                    txtNationalCode.setFieldStyle("background-image:none;background-color:#dfe8f6");
+
+
+                    var txtShomarePersoneli = App.NewSayerPardakhthaSingle.queryById('txtShomarePersoneli');
+                    txtShomarePersoneli.setValue(data.fldShomarePersoneli);
+                    txtShomarePersoneli.setReadOnly(true);
+                    txtShomarePersoneli.setFieldStyle("background-image:none;background-color:#dfe8f6");
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+    function checkSaveSayerPardakhtSingle() {
+        var SelectedRow = App.SayerPardakhthaSingle.queryById('GridHeader').selModel.getLastSelected();
+        if (SelectedRow.data.fldStatusId == 1) {
+            SaveSayerPardakhtSingle();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "وضعیت فرد مورد نظر " + SelectedRow.data.fldStatusTitle + " است.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SaveSayerPardakhtSingle() {
+        var txtTitle = App.NewSayerPardakhthaSingle.queryById('txtTitle');
+        var txtAmount = App.NewSayerPardakhthaSingle.queryById('txtAmount');
+        var CboNobatePardakht = App.NewSayerPardakhthaSingle.queryById('CboNobatePardakht');
+        var CboMarhalePardakht = App.NewSayerPardakhthaSingle.queryById('CboMarhalePardakht');
+        var CboTypeHesab = App.NewSayerPardakhthaSingle.queryById('CboTypeHesab');
+        var txtDesc = App.NewSayerPardakhthaSingle.queryById('txtDesc');
+        var Id = App.NewSayerPardakhthaSingle.queryById('fldId');
+        var txtMaliat = App.NewSayerPardakhthaSingle.queryById('txtMaliat');
+        var txtkhalesePardakhti = App.NewSayerPardakhthaSingle.queryById('txtkhalesePardakhti');
+        var CboHasMaliyat = App.NewSayerPardakhthaSingle.queryById('CboHasMaliyat');
+        var CboNoeMostamer = App.NewSayerPardakhthaSingle.queryById('CboNoeMostamer');
+
+        var er = false;
+
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+
+        if (txtAmount.validate() == false) {
+            er = true;
+        }
+
+        if (CboHasMaliyat.validate() == false) {
+            er = true;
+        }
+
+        if (CboHasMaliyat.getValue() == "1") {
+            if (txtMaliat.validate() == false) {
+                er = true;
+            }
+        }
+        if (txtkhalesePardakhti.validate() == false) {
+            er = true;
+        }
+        if (CboNoeMostamer.validate() == false) {
+            er = true;
+        }
+
+        if (CboNobatePardakht.validate() == false) {
+            er = true;
+        }
+
+        if (CboMarhalePardakht.validate() == false) {
+            er = true;
+        }
+        if (CboTypeHesab.validate() == false) {
+            er = true;
+        }
+
+        if (er == true)
+            return;
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        /*var TypeHesab = false;
+        if (CboTypeHesab.getValue() == "1")
+            TypeHesab = true;*/
+
+        var Maliyat = false;
+        if (CboHasMaliyat.getValue() == "1")
+            Maliyat = true;
+        Ext.net.DirectMethod.request({
+            url: '/PayRoll/Pardakhtha/SaveSingle',
+            params: {
+                fldId: Id.getValue(),
+                fldPersonalId: '@ViewBag.PersonalId',
+                fldYear: '@ViewBag.Year',
+                fldMonth: '@ViewBag.Month',
+                fldTitle: txtTitle.getValue(),
+                fldAmount: txtAmount.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                fldNobatePardakt: CboNobatePardakht.getValue(),
+                fldMarhalePardakht: CboMarhalePardakht.getValue(),
+                fldDesc: txtDesc.getValue(),
+                fldHasMaliyat: Maliyat,
+                fldMaliyat: txtMaliat.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                fldKhalesPardakhti: txtkhalesePardakhti.getValue().replace(',', '').replace(',', '').replace(',', '').replace(',', '').replace(',', ''),
+                fldTypeHesab: CboTypeHesab.getValue(),
+                OrganId: '@ViewBag.OrganId',
+                fldMostamar: CboNoeMostamer.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == "ok" && data.Er == 0) {
+                            App.NewSayerPardakhthaSingle.destroy();
+                        }
+                    }
+                });
+                ReloadSayerPardakhthaSingle();
+                for (var i = 0; i < App.FirstTabPay.items.length; i++) {
+                    if (App.FirstTabPay.items.items[i].id == "NewSayerPardakhthaGroup") {
+                        ReloadPardakht();
+                    }
+                }
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    var addKeyMapNewSayerPardakhthaSingle = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var nextfld;
+                    var keyfield = App.NewSayerPardakhthaSingle.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    if (keyfield.itemId == "txtAmount") {
+                        if (App.NewSayerPardakhthaSingle.queryById('CboHasMaliyat').hidden == true) {
+                            nextfld = App.NewSayerPardakhthaSingle.queryById('CboNobatePardakht');
+                        }
+                        else {
+                            nextfld = App.NewSayerPardakhthaSingle.queryById('CboHasMaliyat');
+                        }
+                    }
+                    else if (keyfield.itemId == "CboHasMaliyat") {
+                        nextfld = App.NewSayerPardakhthaSingle.queryById('CboNobatePardakht');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

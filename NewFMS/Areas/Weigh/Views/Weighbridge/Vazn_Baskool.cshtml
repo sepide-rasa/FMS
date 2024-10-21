@@ -1,0 +1,2208 @@
+﻿@model IEnumerable<NewFMS.WCF_Weigh.OBJ_Vazn_Baskool>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();
+ NewFMS.WCF_Common.CommonService servic = new NewFMS.WCF_Common.CommonService();
+ string IP = System.Web.HttpContext.Current.Request.ServerVariables["REMOTE_HOST"];
+ NewFMS.WCF_Common.ClsError Err = new NewFMS.WCF_Common.ClsError();
+}
+
+
+<style>
+    .x-fieldset-header {
+        text-align: right !important;
+    }
+
+    mark {
+        background-color: #696969;
+        color: yellow;
+        font-size: 70px;
+        font-weight: bold;
+        padding: 3px 10px;
+        border-radius: 15px;
+        font-family: Tahoma;
+    }
+
+    .back {
+        background-color: #696969;
+        border-width: 5px !important;
+    }
+
+    .titlebold {
+        font-weight: bold;
+        font-size: 60px;
+        color: yellow;
+        word-wrap: break-word;
+        font-family: Nazanin;
+    }
+    .clsTxt {
+        color: yellow;
+        font-weight: bold;
+        font-size: 60px;
+        color: yellow;
+        word-wrap: break-word;
+        font-family: Nazanin;
+    }
+</style>
+
+<script>
+    var a = new Date();
+    var k;
+    function starttimer() {
+        if (App.Vazn_Baskool) {
+
+            a = Date.now();
+
+            if (document.getElementById("pnlPic").style.borderColor == "yellow") {
+                document.getElementById("pnlPic").style.borderColor = "";
+            }
+            else {
+                document.getElementById("pnlPic").style.borderColor = "yellow";
+            }
+            k = setInterval(DC, 100);
+        }
+    }
+    function DC() {
+        if (App.Vazn_Baskool) {
+            var h = new Date();
+            h = Date.now();
+            var h2 = h - a;
+            if (App.Vazn_Baskool.queryById('fldId').getValue() == 0) {
+                if (h2 > 3000) {
+                    App.Vazn_Baskool.queryById('MaxVazn').setText("قــطع");
+                    document.getElementById("pnlPic").style.borderColor = "";
+                    clearInterval(k);
+
+                    App.Vazn_Baskool.queryById('MaxVazn').hide();
+                    App.Vazn_Baskool.queryById('MaxVazn2').show();
+                }
+                else {
+                    $.connection.hub.start();
+                }
+            }
+        }
+    }
+    var hub2 = $.connection.S_hub;
+    hub2.client.LoadVazn_Baskool = function (w) {
+        if (App.Vazn_Baskool) {
+            if (IsDasti == 0) {
+                starttimer();
+                App.Vazn_Baskool.queryById('MaxVazn').setText(w);
+                LoadRanande(6);
+                @*document.getElementById("MaxVazn").innerHTML = w;*@
+                App.Vazn_Baskool.queryById('MaxVazn2').setValue("");
+                App.Vazn_Baskool.queryById('MaxVazn2').hide();
+                App.Vazn_Baskool.queryById('MaxVazn').show();
+            }
+        }
+    };
+    $.connection.hub.start();
+</script>
+
+
+@(Html.X().Panel()
+    .Listeners(k =>
+    {
+        k.AddScript("$.connection.hub.url = '../signalr/hubs'");
+    })
+         .Closable(true)
+            .AutoScroll(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+        .ID("Vazn_Baskool")
+    .Title("توزین آنلاین")
+        // .Width(1100)
+       .Layout(LayoutType.VBox)
+        .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Border(false)
+    .Listeners(l =>
+    {
+        l.Render.Fn = "addKeyMapVazn_Baskool";
+        l.AfterRender.Handler = "LoadFormVazn_Baskool()";
+    })
+        //.ButtonAlign(Alignment.Center)
+        //.Buttons(
+        //    X.Button()
+        //        .Text("ثبت")
+        //        .Icon(Ext.Net.Icon.Disk)
+        //            .Listeners(l => l.Click.Handler = "SaveVazn_Baskool();"),
+        //    X.Button()
+        //        .Text("خروج")
+        //        .Icon(Ext.Net.Icon.DoorOut)
+        //            .OnClientClick("App.Vazn_Baskool.destroy()")
+        //)
+    .Items(
+        //X.Panel()
+        //    .Border(false)
+        //    .Layout(LayoutType.VBox)
+        //    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //    .Items(
+                X.FieldSet().Border(false)
+                .Layout(LayoutType.HBox)
+                .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Stretch })
+            .Items(
+                X.Hidden().ItemID("fldId"),
+                                X.Hidden().ItemID("RananadeId"),
+                                     X.Hidden().ItemID("AshkhasId"),
+                                         X.Hidden().ItemID("HavaleId"),
+                                         X.Hidden().ItemID("HavaleFileId"),
+                                                 X.Hidden().ItemID("PluqeId"),
+                        X.FieldSet()
+        //.Height(160)
+                    .Border(false)//.Width(250)
+        //  .Defaults(new { Margin = 2 })
+                       .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items
+                    (
+                              X.FieldSet()
+                              .Border(false)
+                                  .Layout(LayoutType.HBox)
+                            .LayoutConfig(new HBoxLayoutConfig { Align = HBoxAlign.Middle })
+                            .Items
+                            (
+                            X.Radio().ItemID("CheckMec").FieldLabel("ثبت مکانیزه")//.Width(110)
+                     .Listeners(l => l.Change.Handler = "DastiMec()")
+                                        .LabelAlign(Ext.Net.LabelAlign.Right).RTL(false)
+                                        .LabelSeparator("")
+                                        .Checked(true)
+                                        .Name("dasti")
+                                        .MsgTarget(Ext.Net.MessageTarget.Side)
+                                            , X.Radio().ItemID("CheckDasti").FieldLabel("ثبت دستی")
+                                        .LabelAlign(Ext.Net.LabelAlign.Right).RTL(false)
+                                        .LabelSeparator("")
+                                            .Name("dasti")
+                                        .MsgTarget(Ext.Net.MessageTarget.Side)
+          .Listeners(l => l.Change.Handler = "DastiMec()")
+                                      )
+                                        ,
+             X.FieldSet().ID("pnlPic").Cls("back")
+                        .Layout(LayoutType.VBox)
+                .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                            .Border(true).Width(220).Height(90).Frame(true).MarginSpec("0px 10px 0 0")
+                            .Items(
+                                X.Label().ItemID("MaxVazn")
+                                    .Text("قــطع")
+                                .Cls("titlebold"),
+                                     X.TextField().ItemID("MaxVazn2").Width(200).Height(60)
+                                         .Listeners(l => l.Change.Handler = "LoadRanande(9)")
+                                   // .Cls("clsTxt")
+                                                .FieldStyle("font-size: 50px;margin-top: 10px;direction: ltr;")
+                            )
+                            @*.Html(@<p id="SetVazn" style="text-align:center;"><mark id="MaxVazn" style="width:600px;text-align:center;">0</mark></p>
+                                )*@
+),
+                                             X.Panel()
+
+                        .Border(false).Width(750)
+        //  .Defaults(new { Margin = 2 })
+                        .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 1 })
+                                    .ButtonAlign(Alignment.Center)
+                    .Buttons(
+                           X.Button().Text("ذخیره").ItemID("btnSaveVazn_Baskool").Icon(Ext.Net.Icon.Disk)
+                                                        .Listeners(l => l.Click.Handler = "SaveVazn_Baskool()"),
+                                            X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.Vazn_Baskool.destroy()")
+                    )
+                        .Items
+                        (
+                    
+                                X.FieldSet()
+                        .Title("مشخصات راننده")
+                        .Border(true).Width(740)
+                        .Defaults(new { Margin = 2 })
+                        .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 8 })
+                        .Items
+                        (
+                            X.FieldSet().ColSpan(2)
+                                    .Border(false)
+        // .Defaults(new { Margin = 2 })
+                                .Layout(LayoutType.Table)
+                                .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                                .Items(
+
+                                              X.Radio().ItemID("CheckKhali").FieldLabel("وسیله خالی")//.Width(110)
+                                                  .Listeners(l => l.Change.Handler = "HideFielsetBar()")
+                                    .LabelAlign(Ext.Net.LabelAlign.Right).RTL(false)
+                                    .LabelSeparator("")
+                                    .Checked(true)
+                                    .Name("Vasile")
+                                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                                        , X.Radio().ItemID("CheckPor").FieldLabel("وسیله پر")
+                                    .LabelAlign(Ext.Net.LabelAlign.Right).RTL(false)
+                                    .LabelSeparator("")
+                                        .Name("Vasile")
+                                    .MsgTarget(Ext.Net.MessageTarget.Side)
+                                    .Listeners(l => l.Change.Handler = "HideFielsetBar()")
+        //X.Label("وسیله خالی")
+        //, X.Checkbox().ItemID("CheckKhali"),
+        //X.Label("وسیله پر")
+        //, X.Checkbox().ItemID("CheckPor")
+                                )
+                                ,
+                                  X.Label("محاسبه:"),
+                        X.ComboBox()
+                            .ItemID("CboTypeMohasebe")
+                            .Disabled(true)
+                            .Editable(false)
+                            .TypeAhead(true)
+                            .Width(122)
+                            .AllowBlank(false)
+                            .BlankText("لطفا نحوه محاسبه را انتخاب کنید.")
+                                .Listeners(l => l.Select.Handler = "ChangeTypeMohasebe()")
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .SelectedItems(new { value = "0" })
+                            .Items(
+                                new ListItem("از آخرین توزین خالی", "0"),
+                                new ListItem("از آخرین توزین پر", "1")
+                            )
+                                    , X.Label("سازمان:"),
+                                    X.ComboBox().ColSpan(3)
+                                        .LabelAlign(Ext.Net.LabelAlign.Top)
+                                        .ItemID("CboOrgan")
+                                             .Width(220)  //  .Width(380)
+                                        .TypeAhead(true)
+                                        .Editable(false)
+                                        .ForceSelection(true)
+                                        .QueryMode(DataLoadMode.Local)
+                                        .TriggerAction(TriggerAction.All)
+                                        .BlankText("لطفا سازمان را وارد کنید.")
+                                      .AllowBlank(false)
+                                        .DisplayField("Name")
+                                        .ValueField("ID")
+                                            .Listeners(ls =>
+                                        ls.Change.Handler = " App.Vazn_Baskool.queryById('CboMasaleh').getStore().load();")
+                                        .Store(
+                                            X.Store()
+
+                                            .Model(
+                                                X.Model()
+                                                        .IDProperty("ID")
+                                                    .Fields(
+                                                        new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                                        new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                                            )
+                                                )
+                                            .Proxy(X.AjaxProxy()
+                                                    .Url(Url.Action("GetOrganization"))
+                                            .Reader(X.JsonReader().Root("data"))
+                                                )
+            .Listeners(l => l.Load.Handler = "setdefaultValueOrgan()")
+
+                                         )
+                                  .Listeners(l => { l.Change.Handler = "LoadGridTozinOnline();LoadRanande(0);ChangeNoeMasraf();LoadTypeReport()"; })
+                                , X.FieldSet().ColSpan(2)
+                                .Border(false).MarginSpec("0 30px 0 0")
+                                .Defaults(new { Margin = 2 })
+                                .Layout(LayoutType.Table)
+                                .LayoutConfig(new TableLayoutConfig { Columns = 5 })
+                                .Items(
+                                X.Label("پلاک:"),
+                                    X.TextField().Width(30)
+                                .BlankText("لطفا سریال پلاک را وارد کنید.")
+                                .AllowBlank(false)
+                                .ItemID("txtSerialPelak")
+                                .MaskRe("[0-9]").MaxLength(2)
+                                    .EnforceMaxLength(true)
+                                            .Listeners(l => l.Change.Handler = "LoadRanande(1)")
+                                   ,
+                                X.TextField()
+                                .BlankText("لطفا پلاک را وارد کنید.")
+                                .AllowBlank(false).Width(50)
+                                    .ItemID("txtpelak_3").MaxLength(3)
+                                        .EnforceMaxLength(true)
+                                        .MaskRe("[0-9]").Listeners(l => l.Change.Handler = "LoadRanande(2)")
+                                    ,
+
+                                    X.ComboBox()
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                        .ItemID("CboCharacterPelak").Width(40)
+                                    .TypeAhead(true)
+                                   .MaxLength(1)
+                                       .EnforceMaxLength(true)
+                                    .Editable(true)
+                                    .QueryMode(DataLoadMode.Local)
+                                    .BlankText("لطفا حروف پلاک را انتخاب کنید.")
+                                    .ForceSelection(true)
+                                    .TriggerAction(TriggerAction.All)
+                                        .DisplayField("fldName")
+                                        .ValueField("fldName")
+                                            .MaskRe("[ا-ی-آ-ئ-ء]")
+        //  .EmptyText("حروف پلاک ...")
+                                    .Store(X.Store()
+
+                                    .Model(X.Model()
+                                    .IDProperty("fldId")
+                                    .Fields(
+                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                            )
+                                                )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetCharacterPelak"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                            )
+                                            )
+                                                    .Listeners(l => l.Change.Handler = "LoadRanande(3)")
+                                        .AllowBlank(false),
+                                X.TextField()
+                                .AutoFocus(true)
+                                .ItemID("txtpelak_2")
+
+                                .AllowBlank(false)
+                                .Width(30)
+                                .BlankText("لطفا پلاک را وارد کنید.")
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .MaxLength(2)
+                                    .MaskRe("[0-9]")
+                                        .EnforceMaxLength(true).Listeners(l => l.Change.Handler = "LoadRanande(4)")
+                                )
+                                        , X.Label("خودرو:"),
+                                                    X.ComboBox().Width(122)//.Width(80)
+                                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                                    .ItemID("CboTypeKhodro")
+                                                    .TypeAhead(true)
+                                                    .Editable(false)
+                                                    .ForceSelection(true)
+                                                    .QueryMode(DataLoadMode.Local)
+                                                    .TriggerAction(TriggerAction.All)
+                                                        .AllowBlank(false)
+                                                    .BlankText("لطفا نوع خودرو را انتخاب کنید.")
+                                                        .DisplayField("fldName")
+                                                            .ValueField("fldId")
+                                                    .Store(
+                                                        X.Store()
+                                                        .Model(
+                                                            X.Model()
+                                                                .IDProperty("fldId")
+                                                                .Fields(
+                                                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                                        )
+                                                            )
+                                                        .Proxy(X.AjaxProxy()
+                                                                        .Url(Url.Action("GetTypeKhodro"))
+                                                        .Reader(X.JsonReader().Root("data"))
+                                                            )
+                                                                    .Listeners(l => l.Load.Handler = "setdefaultValueTypeKhodro()")
+                                                     )
+                                , X.Label("راننده (INS):")
+                                            , X.TextField().Width(220)
+                                                .Icon(Ext.Net.Icon.Add)
+                                                .ItemID("txtRananade")
+                                        .AllowBlank(false)
+                                        .BlankText("لطفا راننده را وارد کنید.")
+                                            .ReadOnly(true)
+                                               .Icon(Icon.Add)
+                                        .Listeners(l =>
+                                        {
+                                            l.SpecialKey.Handler = "SelectAshkhasHaghighi(e.getKey());";
+                                            l.IconClick.Handler = "Ext.net.DirectMethod.request({ url: '/Weigh/SearchAshkhas_Baskool/Index?State=1'});";
+                                            l.Change.Handler = "ChangeSahebBar()";
+                                            // l.AfterRender.Handler = "App.SabtWeighbridge.queryById('txtAshkhasHoghoghi').icon.dom.classList.add('custom-icon');";
+                                        })
+                        )
+                            ,
+
+                        X.FieldSet().ItemID("filedsetBar")
+                                .Title("مشخصات بار")//.Width(900)
+                            .Border(true)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 8 })
+                            .Items(
+
+
+                                     X.Label("نوع مصالح:"),
+                                        X.ComboBox()
+                                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                                                .ItemID("CboMasaleh").Width(100)
+                                            .TypeAhead(true)
+                                            .Editable(true)
+                                            .ForceSelection(true)
+                                                .AllowBlank(false)
+                                                        .BlankText("لطفا نوع مصالح را وارد کنید.")
+                                            .QueryMode(DataLoadMode.Local)
+                                            .TriggerAction(TriggerAction.All)
+                                                .DisplayField("fldName")
+                                                .ValueField("fldId")
+
+                                            .Store(
+                                                X.Store().AutoLoad(false)
+                                                .Model(
+                                                    X.Model()
+                                                        .IDProperty("fldId")
+                                                        .Fields(
+                                                                    new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" },
+                                                                        new ModelField("fldStatusForoosh", ModelFieldType.String) { Mapping = "fldStatusForoosh" },
+                                                                                new ModelField("fldVaznVahed", ModelFieldType.String) { Mapping = "fldVaznVahed" }
+                                                                )
+                                                    )
+                                                .Proxy(X.AjaxProxy()
+                                                        .Url(Url.Action("GetMasaleh"))
+                                                .Reader(X.JsonReader().Root("data"))
+                                                    )
+                                                .Parameters(ps => ps.Add(new StoreParameter("OrganId", "App.Vazn_Baskool.queryById('CboOrgan').getValue()", ParameterMode.Raw)))
+                                                     .Parameters(ps => ps.Add(new StoreParameter("BaskoolId", @ViewBag.BaskoolId, ParameterMode.Raw)))
+                                                 .Listeners(l => l.Load.Handler = "setdefaultValueKala()")
+                                                     )
+                                                         .Listeners(l => l.Change.Handler = "ShowHidetxtCount();LoadRanande(5)")
+                                                     
+                                                  , X.Label("محل بارگیری:"),
+                                                X.ComboBox().Width(130)
+                                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                                    .ItemID("CboLoadingPlace")
+                                                .TypeAhead(true)
+                                                .Editable(false)
+                                                .ForceSelection(true)
+                                                .QueryMode(DataLoadMode.Local)
+                                                .TriggerAction(TriggerAction.All)
+                                                    .DisplayField("fldName")
+                                                        .ValueField("fldId")
+                                                .Store(
+                                                    X.Store()
+                                                    .Model(
+                                                        X.Model()
+                                                            .IDProperty("fldId")
+                                                            .Fields(
+                                                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                                    )
+                                                        )
+                                                    .Proxy(X.AjaxProxy()
+                                                     .Url(Url.Action("GetLoadingPlace"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                                        )
+                    .Listeners(l => l.Load.Handler = "setdefaultValueLoadingPlace()")
+                                                 )
+                                                      , X.Label("نوع مصرف:"),
+                                                X.ComboBox().Width(90)
+                                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                                    .ItemID("CboNoeMasraf")
+                                                .TypeAhead(true)
+                                                    .AllowBlank(false)
+                                                    .BlankText("لطفا نوع مصرف را وارد کنید.")
+                                                .Editable(false)
+                                                .ForceSelection(true)
+                                                .QueryMode(DataLoadMode.Local)
+                                                .TriggerAction(TriggerAction.All)
+                                                    .DisplayField("fldName")
+                                                        .ValueField("fldId")
+                                                        .Listeners(l => l.Change.Handler = "ShowHidetxtCount();ChangeNoeMasraf()")
+                                                .Store(
+                                                    X.Store()
+                                                    .Model(
+                                                        X.Model()
+                                                            .IDProperty("fldId")
+                                                            .Fields(
+                                                                        new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                                        new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                                    )
+                                                        )
+                                                    .Proxy(X.AjaxProxy()
+                                                                .Url(Url.Action("GetNoeMasraf"))
+                                                    .Reader(X.JsonReader().Root("data"))
+                                                        )
+                    .Listeners(l => l.Load.Handler = "setdefaultValueNoeMasraf()")
+                                                 )
+                                            , X.Label("صاحب بار (INS):").ItemID("lblAshkhas")
+                                                    , X.TextField().Width(200)
+                                                .Icon(Ext.Net.Icon.Add)
+                                                .ItemID("txtAshkhas")
+                                                .AllowBlank(false)
+                                                .BlankText("لطفا صاحب بار را وارد کنید.")
+                                                    .ReadOnly(true)
+                                                       .Icon(Icon.Add)
+                                                .Listeners(l =>
+                                                {
+                                                    l.SpecialKey.Handler = "SelectAshkhas(e.getKey());";
+                                                    l.IconClick.Handler = "Ext.net.DirectMethod.request({ url: '/Weigh/SearchAshkhas_Baskool/Index?State=2'});";
+
+                                                    // l.AfterRender.Handler = "App.SabtWeighbridge.queryById('txtAshkhasHoghoghi').icon.dom.classList.add('custom-icon');";
+                                                })
+                                                , X.Label("واحد:").ItemID("lblChart"),
+                                                X.ComboBox()
+                                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                                            .ItemID("CboChart")
+                                                    .TypeAhead(true)
+                                                            .Editable(true)
+                                                    .ForceSelection(true)
+                                                    .QueryMode(DataLoadMode.Local)
+                                                    .TriggerAction(TriggerAction.All)
+                                                        .AllowBlank(false)
+                                                    .BlankText("لطفا واحد را انتخاب کنید.")
+                                                        .DisplayField("fldName")
+                                                            .ValueField("fldId")
+                                                    .Store(
+                                                        X.Store()
+                                                        .Model(
+                                                            X.Model()
+                                                                .IDProperty("fldId")
+                                                                .Fields(
+                                                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                                                        )
+                                                            )
+                                                        .Proxy(X.AjaxProxy()
+                                                                    .Url(Url.Action("GetChart"))
+                                                        .Reader(X.JsonReader().Root("data"))
+                                                            )
+                                                     )
+        //    , X.TextField().Width(200)
+        //.Icon(Ext.Net.Icon.Add)
+        //.ItemID("txtChart")
+        //.AllowBlank(false)
+        //.BlankText("لطفا واحد را وارد کنید.")
+        //    .ReadOnly(true)
+        //        .Icon(Icon.Add)
+        //.Listeners(l =>
+        //{
+        //    l.SpecialKey.Handler = "SelectChart(e.getKey());";
+        //    l.IconClick.Handler = "Ext.net.DirectMethod.request({ url: '/Weigh/SearchChartOrganEjraii/Index?State=1'});";
+        //    // l.AfterRender.Handler = "App.SabtWeighbridge.queryById('txtAshkhasHoghoghi').icon.dom.classList.add('custom-icon');";
+        //})
+                                                             , X.Label("حواله (INS):").ItemID("lblHavale")
+                                                        , X.TextField().Width(200)
+                                                    .Icon(Ext.Net.Icon.Add)
+                                                    .ItemID("txtHavale")
+                                                    .AllowBlank(false)
+                                                    .BlankText("لطفا واحد را وارد کنید.")
+                                                        .ReadOnly(true)
+                                                            .Icon(Icon.Add)
+                                                    .Listeners(l =>
+                                                    {
+                                                        l.SpecialKey.Handler = "SelectHavale(e.getKey());";
+                                                        l.IconClick.Handler = "Ext.net.DirectMethod.request({ url: '/Weigh/SearchRemittance/Index?State=1'});";
+                                                        l.Change.Handler = "LoadRanande(5)";
+                                                        l.Focus.Fn="createTooltipRemittance";
+                                                            
+                                                        // l.AfterRender.Handler = "App.SabtWeighbridge.queryById('txtAshkhasHoghoghi').icon.dom.classList.add('custom-icon');";
+                                                    })
+                                                    , X.Label("وزن خالی:")
+                                                         , X.TextField().Width(100)
+                                                    .ItemID("txtVaznKhali").ReadOnly(true)
+                                                    , X.Label("آخرین وزن خالی:")
+                                                            , X.TextField().Width(130)//.ColSpan(3)
+                                                    .ItemID("txtTarikhKhali").ReadOnly(true)
+                                                        , X.Label("وزن خالص:")
+                                                                 , X.TextField().Width(90)
+                                                        .ItemID("txtVaznKhales").ReadOnly(true)
+                                                            , X.Label("مانده حواله:").ItemID("lblMandeHavale")
+                                                                         , X.TextField().Width(200)
+                                                            .ItemID("txtMandeHavale").ReadOnly(true)
+                                                             , X.Label("دفعات حواله:").ItemID("lblRepeadHavale")
+                                                                 , X.TextField().Width(100)
+                                                            .ItemID("txtRepeadHavale").ReadOnly(true)
+                                                                    ,
+                                                                 X.Label("تعداد:").ItemID("lblCount"),
+                                                                      X.TextField().Width(100)
+                                        .BlankText("لطفا تعداد را وارد کنید.")
+                                        .AllowBlank(false)
+                                        .ItemID("txtCount")
+                                        .MaskRe("[0-9]"),
+                                       
+                                        X.Button()
+                                        .ItemID("btnDlHavale")
+                                        .ColSpan(2)
+                                        .Text("دانلود فایل حواله")
+                                            .Icon(Ext.Net.Icon.DiskDownload)
+                                                .Listeners(l => l.Click.Handler = "DlFileHavale()")
+
+
+                            )
+
+                        )
+                        )
+        //,X.FieldSet()
+        //            .Defaults(new { Margin = 5 })
+        //            .Border(false)
+        //            .Items(
+
+                        //                        X.Button().Text("ذخیره").ItemID("btnSaveVazn_Baskool").Icon(Ext.Net.Icon.Disk)
+        //                            .Listeners(l => l.Click.Handler = "SaveVazn_Baskool()"),
+        //                X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut).OnClientClick("App.Vazn_Baskool.destroy()")
+        //            )
+                        , X.GridPanel().AutoScroll(true)
+        //  .Padding(5)
+                                        .TopBar(X.Toolbar().Items(
+                                                          X.Label("نوع گزارش:"),
+                                                             X.ComboBox().Width(90)
+                                    .ItemID("CboTypePrint")
+                                    .Editable(false)
+                                    .TypeAhead(true)
+                                    .BlankText("لطفا نوع گزارش را انتخاب کنید.")
+                                    .QueryMode(DataLoadMode.Local)
+                                    .TriggerAction(TriggerAction.All)
+                                    .AllowBlank(false)
+                                    .EmptyText("نوع گزارش...")
+                                    .Items(
+                                        new ListItem("گزارش A4", "1"),
+                                        new ListItem("گزارش A5", "2")
+                                        )
+                                        .Listeners(l => l.Select.Handler = "SaveTypeReport()")
+        // .SelectedItems(new { Value = "1" })
+                                             , X.Button().Text("ابطال").IconCls("CancelFish").MarginSpec("0 0 0 5px")
+                                                                   .Listeners(l => { l.Click.Handler = "EbtalTozin();"; })
+                                                ))
+                                                .ItemID("GridTozinOnline").Flex(2)
+                                    .Width(1050)
+                                        .Height(150)
+                                    .Store(
+                                        X.StoreForModel().AutoLoad(false)
+                                        .Listeners(l => l.BeforeLoad.Handler = "AddParams()")
+                                        .Proxy(Html.X().AjaxProxy()
+                                        .Url(Url.Action("ReadTozinOnline"))
+                                        .Reader(Html.X().JsonReader().Root("data"))
+        // .ExtraParams(l => l.Add(new { BaskoolId = @ViewBag.BaskoolId }))
+                                        )
+                                        .PageSize(2000)
+                                        .RemoteFilter(true)
+                                        .RemotePaging(true)
+
+                                    )
+                                    .View(
+                                            Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true).GetRowClass(l => l.Fn = "getRowClassTozin")
+                                    )
+                                             .Plugins(X.FilterHeader().Remote(true))
+
+                                    .ColumnModel(
+                                            Html.X().RowNumbererColumn(),
+                                                Html.X().Column().DataIndex(Model, m => m.fldIsPor).Text("IsPor").Flex(1).Hidden(true),
+                                                Html.X().Column().DataIndex(Model, m => m.fldEbtal).Text("Ebtal").Flex(1).Hidden(true),
+                                                Html.X().Column().DataIndex(Model, m => m.fldIsprint).Text("Isprint").Flex(1).Hidden(true),
+                                                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1),
+                                                Html.X().Column().DataIndex(Model, m => m.fldIsporName).Text("وسیله").Flex(1),
+                                                        Html.X().Column().DataIndex(Model, m => m.fldNameKhodro).Text("خودرو").Flex(1),
+                                                Html.X().Column().DataIndex(Model, m => m.fldPlaque).Text("پلاک").Flex(2),
+                                                Html.X().Column().DataIndex(Model, m => m.fldNameRanande).Text("راننده").Flex(2).Wrap(true),
+                                                Html.X().Column().DataIndex(Model, m => m.fldNameKala).Text("نوع مصالح").Flex(2).Wrap(true),
+        // Html.X().Column().DataIndex(Model, m => m.fldNamePlace).Text("محل بارگیری").Wrap(true).Flex(2),
+                                                Html.X().Column().DataIndex(Model, m => m.fldNameMasraf).Text("نوع مصرف").Flex(2).Wrap(true),
+                                                Html.X().Column().DataIndex(Model, m => m.fldTarfHesab).Text("گیرنده").Flex(2).Wrap(true),
+                                                Html.X().Column().DataIndex(Model, m => m.fldTarikh_TimeTozin).Text("تاریخ و زمان توزین").Wrap(true).Flex(3),
+                                                Html.X().Column().DataIndex(Model, m => m.fldVaznKhals).Text("وزن خالص").Wrap(true).Flex(1),
+                                                Html.X().Column().DataIndex(Model, m => m.fldVaznKol).Text("وزن کل").Flex(1).Wrap(true),
+                                                Html.X().ImageCommandColumn().PrepareCommand("hidePrintFishTozin")
+                                    .Listeners(l => l.Command.Fn = "ActionsInGridTozinOnline")
+                                    .Flex(1).Commands(
+        // Html.X().ImageCommand().CommandName("FishDaramad").Icon(Ext.Net.Icon.Coins).ToolTip(tt => tt.Text = "فیش درآمد"),
+                                               Html.X().ImageCommand().CommandName("PrintFishTozin").Icon(Ext.Net.Icon.Printer).ToolTip(tt => tt.Text = "چاپ"),
+                                                Html.X().ImageCommand().CommandName("EditFishTozin").Icon(Ext.Net.Icon.Pencil).ToolTip(tt => tt.Text = "ویرایش")
+        //, Html.X().ImageCommand().CommandName("EbtalFishTozin").IconCls("CancelFish").ToolTip(tt => tt.Text = "ابطال").Hidden(!servic.Permission(1183, Convert.ToInt32(Session["OrganId"]), Session["Username"].ToString(), Session["Password"].ToString(), out Err))
+                                    )
+                                        )
+                                             .Listeners(a => a.CellDblClick.Handler = "LoadSelected();")
+        // )
+            )
+)
+<script type="text/javascript">
+    var IsDasti = 0;
+    function DastiMec() {
+        var CheckMec = App.Vazn_Baskool.queryById('CheckMec');
+        if (CheckMec.getValue() == true)
+            IsDasti = 0;
+        else
+            IsDasti = 1;
+
+    }
+    function LoadSelected() {
+        var SelectedRow = App.Vazn_Baskool.queryById('GridTozinOnline').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            var txtSerialPelak = App.Vazn_Baskool.queryById('txtSerialPelak');
+            txtSerialPelak.setValue("");
+            var txtpelak_3 = App.Vazn_Baskool.queryById('txtpelak_3');
+            txtpelak_3.setValue("");
+            var CboCharacterPelak = App.Vazn_Baskool.queryById('CboCharacterPelak');
+            CboCharacterPelak.setValue("");
+            var txtpelak_2 = App.Vazn_Baskool.queryById('txtpelak_2');
+            txtpelak_2.setValue("");
+            /*var RananadeId = App.Vazn_Baskool.queryById('RananadeId');
+            RananadeId.setValue(SelectedRow.data.fldRananadeId);
+            var txtRananade = App.Vazn_Baskool.queryById('txtRananade');
+            txtRananade.setValue(SelectedRow.data.fldNameRanande);
+            var CboTypeKhodro = App.Vazn_Baskool.queryById('CboTypeKhodro');
+            CboTypeKhodro.setValue(String(SelectedRow.data.fldTypeKhodroId));*/
+            var pelakS = SelectedRow.data.fldPlaque.split('-');
+            var q3 = pelakS[1].substring(0, 3);
+            var Harf = pelakS[1].substring(3, 4);
+            var q2 = pelakS[1].substring(4, 6);
+            var serial = pelakS[0].trim();
+            txtSerialPelak.setValue(serial);
+            txtpelak_3.setValue(q3);
+            CboCharacterPelak.setValue(Harf);
+            txtpelak_2.setValue(q2);
+        }
+    }
+    function ShowHidetxtCount() {
+        var CboMasaleh = App.Vazn_Baskool.queryById('CboMasaleh');
+        var CboNoeMasraf = App.Vazn_Baskool.queryById('CboNoeMasraf');
+       
+        if (CboMasaleh.getValue() != "" && CboMasaleh.getValue() != null) {
+            if ((CboNoeMasraf.getValue() == 2 || CboNoeMasraf.getValue() == 3) && CboMasaleh.findRecordByValue(CboMasaleh.getValue()).data.fldStatusForoosh == 1) {
+
+                App.Vazn_Baskool.queryById('txtCount').show();
+                App.Vazn_Baskool.queryById('lblCount').show();
+
+                if (App.Vazn_Baskool.queryById('MaxVazn').getText() != "قــطع" && App.Vazn_Baskool.queryById('fldId').getValue() == 0) {
+                    var Tedad = (parseInt(App.Vazn_Baskool.queryById('MaxVazn').getText()) - parseInt(App.Vazn_Baskool.queryById('txtVaznKhali').getValue())) / parseInt(CboMasaleh.findRecordByValue(CboMasaleh.getValue()).data.fldVaznVahed);
+                    App.Vazn_Baskool.queryById('txtCount').setValue(Math.round(Tedad));
+                }
+                else if (App.Vazn_Baskool.queryById('MaxVazn2').getValue() != "" && App.Vazn_Baskool.queryById('fldId').getValue() == 0) {
+                    var Tedad = (parseInt(App.Vazn_Baskool.queryById('MaxVazn2').getValue()) - parseInt(App.Vazn_Baskool.queryById('txtVaznKhali').getValue())) / parseInt(CboMasaleh.findRecordByValue(CboMasaleh.getValue()).data.fldVaznVahed);
+                    App.Vazn_Baskool.queryById('txtCount').setValue(Math.round(Tedad));
+                }
+            }
+            else {
+                App.Vazn_Baskool.queryById('txtCount').hide();
+                App.Vazn_Baskool.queryById('lblCount').hide();
+            }
+        }
+    }
+
+    var createTooltipRemittance = function (view) {
+        view.tip = Ext.create('Ext.tip.ToolTip', {
+            target: view.el,
+            delegate: view.itemSelector,
+            trackMouse: true,
+            renderTo: Ext.getBody(),
+            /*anchorToTarget: true,*/
+            anchorOffset: 25,
+            anchorSize: {
+                width: 58,
+                height: 20
+            },
+            dismissDelay: 1000000,
+            autohide: false,
+            /*baseCls:"test",*/
+            anchor: 'top',
+            shadow: true,
+            listeners: {
+                beforeshow: function (tip) {
+                    Ext.net.DirectMethod.request({
+                        url: '/Weigh/Remittance/Details',
+                        params: {
+                            HeaderId: App.Vazn_Baskool.queryById('HavaleId').getValue()
+                        },
+                        success: function (data) {
+                            if (data.fldNameTahvilGirande == null) {
+                                data.fldNameTahvilGirande = "";
+                            }
+                            if (data.fldAshkhasiId == null) {
+                                tip.update("<div style='display: inline-block;width:230px;';><p><strong>نوع حواله: امانی</strong></p><p><strong>واحد سازمانی: " +
+                                    data.fldNameChart + "</strong></p><p><strong>عنوان پروژه: " + data.fldTitle + "</strong></p><p><strong>کالا: " + data.fldKalaName +
+                                    "</strong></p><p><strong>تحویل گیرنده: " + data.fldNameTahvilGirande + "</strong></p><p><strong>تاریخ شروع: " + data.fldStartDate +
+                                    "</strong></p><p><strong>تاریخ پایان: " + data.fldEndDate + "</strong></p></div>");
+                            }
+                            else {
+                                tip.update("<div style='display: inline-block;width:230px;';><p><strong>نوع حواله: پیمانکاری</strong></p><p><strong>شخص: " +
+                                    data.fldFamilyName + "</strong></p><p><strong>عنوان پروژه: " + data.fldTitle + "</strong></p><p><strong>کالا: " + data.fldKalaName +
+                                    "</strong></p><p><strong>تحویل گیرنده: " + data.fldNameTahvilGirande + "</strong></p><p><strong>تاریخ شروع: " + data.fldStartDate +
+                                    "</strong></p><p><strong>تاریخ پایان: " + data.fldEndDate + "</strong></p></div>");
+                            }
+                        }
+                    });
+                }
+            }
+        });
+        Ext.QuickTips.init();
+    };
+
+    var getRowClassTozin = function (record, rowIndex, rowParams, store) {
+        var color = 'white';
+        if (record.data.fldEbtal == true)
+            color = '#f55f37';
+        var clsName = "row" + record.data.fldEbtal,
+            clsStyle = Ext.String.format(".{0} .x-grid-cell, .{0} .x-grid-rowwrap-div { background-color: {1} !important; })", clsName, color);
+        Ext.net.ResourceMgr.registerCssClass(clsName, clsStyle);
+        return clsName;
+    };
+    function AddParams() {
+        var CboOrgan = App.Vazn_Baskool.queryById('CboOrgan');
+
+        App.Vazn_Baskool.queryById('GridTozinOnline').getStore().getProxy().setExtraParam("OrganId", CboOrgan.getValue());
+        App.Vazn_Baskool.queryById('GridTozinOnline').getStore().getProxy().setExtraParam("BaskoolId", '@ViewBag.BaskoolId');
+    }
+    var hidePrintFishTozin = function (grid, command, record, row) {
+        if (command.command == 'EditFishTozin') {
+            if (record.data.fldFishId != 0 || record.data.fldEbtal == true/*record.data.fldIsprint == true || record.data.fldEbtal == true*/) {
+                command.disabled = true;
+                command.hideMode = 'visibility';
+            }
+            else /*if (record.data.fldIsprint == false || record.data.fldEbtal == false)*/ {
+                command.disabled = false;
+                command.hideMode = 'visibility';
+            }
+        }
+
+        if (command.command == 'PrintFishTozin') {
+            if (record.data.fldEbtal == true) {
+                command.disabled = true;
+                command.hideMode = 'visibility';
+            }
+            else {
+                command.disabled = false;
+                command.hideMode = 'visibility';
+            }
+        }
+
+        /*if (command.command == 'FishDaramad') {
+            if (record.data.fldAshkhasId == 0 || record.data.fldEbtal == true) {
+                command.disabled = true;
+                command.hideMode = 'visibility';
+            }
+            else {
+                command.disabled = false;
+                command.hideMode = 'visibility';
+            }
+        }*/
+    };
+    function EbtalTozin() {
+        var SelectedRow = App.Vazn_Baskool.queryById('GridTozinOnline').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "کاربر گرامی؛ آیا برای ابطال رکورد مورد نطر مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+
+                        Ext.net.DirectMethod.request({
+                            url: '/Weigh/Weighbridge/EbtalTozinOnline',
+                            params: {
+                                TozinOnlineId: SelectedRow.data.fldId,
+                                OrganId: SelectedRow.data.fldOrganId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Err == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    Name: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                LoadGridTozinOnline();
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function LoadFormVazn_Baskool() {
+        App.Vazn_Baskool.queryById('MaxVazn').hide();
+        App.Vazn_Baskool.queryById('MaxVazn2').show();
+
+        App.Vazn_Baskool.queryById('fldId').setValue(0);
+        App.Vazn_Baskool.setWidth(App.TasisatWin.getWidth());
+        App.Vazn_Baskool.setHeight(App.TasisatWin.getHeight() - 180);
+
+        var filedsetBar = App.Vazn_Baskool.queryById('filedsetBar');
+        filedsetBar.hide();
+        var btnDlHavale = App.Vazn_Baskool.queryById('btnDlHavale');
+        btnDlHavale.hide();
+    }
+    function HideFielsetBar() {
+        var CboTypeMohasebe = App.Vazn_Baskool.queryById('CboTypeMohasebe');
+        var CheckPor = App.Vazn_Baskool.queryById('CheckPor');
+        var filedsetBar = App.Vazn_Baskool.queryById('filedsetBar');
+        if (CheckPor.getValue() == true) {
+            App.Vazn_Baskool.queryById('txtpelak_2').focus();
+            /* document.getElementById("pnlPic").style.borderColor = "";*/
+            filedsetBar.show();
+            LoadRanande(7);
+            CboTypeMohasebe.setDisabled(false);
+        }
+        else if (App.Vazn_Baskool.queryById('CheckKhali').getValue() == true) {
+            App.Vazn_Baskool.queryById('txtpelak_2').focus();
+            /*document.getElementById("pnlPic").style.borderColor = "";*/
+            filedsetBar.hide();
+            CboTypeMohasebe.setDisabled(true);
+        }
+    }
+    function ActionsInGridTozinOnline(grid, command, record, row) {
+        if (command == 'PrintFishTozin') {
+            if (record.data.fldIsPor == true) {
+                Ext.net.DirectMethod.request({
+                    url: '/Weigh/Weighbridge/CheckVaznKhales',
+                    params: {
+                        TozinOnlineId: record.data.fldId,
+                    },
+                    success: function (data) {
+                        if (data.Msg != "") {
+                            Ext.MessageBox.show({
+                                title: "خطا",
+                                msg: data.Msg,
+                                icon: Ext.MessageBox.ERROR,
+                                buttons: Ext.MessageBox.OK
+                            });
+                            return;
+                        }
+                        else {
+
+                            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Weigh/Weighbridge/Print',
+                                params: {
+                                    TozinOnlineId: record.data.fldId,
+                                    TypePrint: App.Vazn_Baskool.queryById('CboTypePrint').getValue(),
+                                    ElameAvarezId: record.data.fldElamAvarezId,
+                                    FishId: record.data.fldFishId,
+                                    fldNoeMasrafId: record.data.fldNoeMasrafId
+                                },
+                                success: function () {
+                                    Ext.net.Mask.hide();
+                                    LoadGridTozinOnline();
+
+                                }
+                            });
+
+                        }
+                    }
+
+                });
+            }
+            else {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Weigh/Weighbridge/Print',
+                    params: {
+                        TozinOnlineId: record.data.fldId,
+                        TypePrint: App.Vazn_Baskool.queryById('CboTypePrint').getValue(),
+                        ElameAvarezId: record.data.fldElamAvarezId,
+                        FishId: record.data.fldFishId,
+                        fldNoeMasrafId: record.data.fldNoeMasrafId
+                    },
+                    success: function () {
+                        Ext.net.Mask.hide();
+                        LoadGridTozinOnline();
+
+                    }
+                });
+            }
+
+        }
+        if (command == 'EditFishTozin') {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Weighbridge/DetialTozinOnline',
+                params: {
+                    TozinOnlineId: record.data.fldId,
+                    OrganId: record.data.fldOrganId,
+                },
+                success: function (data) {
+                    var fldId = App.Vazn_Baskool.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    var RananadeId = App.Vazn_Baskool.queryById('RananadeId');
+                    RananadeId.setValue(data.fldRananadeId);
+                    var txtRananade = App.Vazn_Baskool.queryById('txtRananade');
+                    txtRananade.setValue(data.fldNameRanande);
+                    txtRananade.icon.hide();
+                    var CboTypeKhodro = App.Vazn_Baskool.queryById('CboTypeKhodro');
+                    CboTypeKhodro.setValue(data.fldTypeKhodroId);
+                    CboTypeKhodro.focus();
+                    var AshkhasId = App.Vazn_Baskool.queryById('AshkhasId');
+                    AshkhasId.setValue(data.fldAshkhasId);
+                    var HavaleId = App.Vazn_Baskool.queryById('HavaleId');
+                    HavaleId.setValue(data.fldRemittanceId);
+                    var HavaleFileId = App.Vazn_Baskool.queryById('HavaleFileId');
+
+                    if (data.fldHavaleFileId == 0|| data.fldHavaleFileId == null)
+                        App.Vazn_Baskool.queryById('btnDlHavale').hide();
+                    else {
+                        App.Vazn_Baskool.queryById('btnDlHavale').show();
+                        HavaleFileId.setValue(data.fldHavaleFileId);
+                    }
+
+                    var PluqeId = App.Vazn_Baskool.queryById('PluqeId');
+                    PluqeId.setValue(data.fldPluqeId);
+
+                    var CheckKhali = App.Vazn_Baskool.queryById('CheckKhali');
+                    var CheckPor = App.Vazn_Baskool.queryById('CheckPor');
+                    if (data.fldIsPor == false) {
+
+                        CheckKhali.setValue(true);
+
+                    }
+                    else if (data.fldIsPor == true) {
+
+                        CheckPor.setValue(true);
+
+                    }
+                    CheckKhali.setReadOnly(true);
+                    CheckPor.setReadOnly(true);
+                    var CboOrgan = App.Vazn_Baskool.queryById('CboOrgan');
+                    CboOrgan.setValue(data.fldOrganId);
+                    var txtSerialPelak = App.Vazn_Baskool.queryById('txtSerialPelak');
+                    txtSerialPelak.setValue(data.serial);
+                    txtSerialPelak.setReadOnly(true);
+                    var txtpelak_3 = App.Vazn_Baskool.queryById('txtpelak_3');
+                    txtpelak_3.setValue(data.fldPlaque3);
+                    txtpelak_3.setReadOnly(true);
+                    var CboCharacterPelak = App.Vazn_Baskool.queryById('CboCharacterPelak');
+                    CboCharacterPelak.setValue(data.charcterPelak);
+                    CboCharacterPelak.setReadOnly(true);
+                    var txtpelak_2 = App.Vazn_Baskool.queryById('txtpelak_2');
+                    txtpelak_2.setValue(data.Pelak_2);
+                    txtpelak_2.setReadOnly(true);
+                    var CboMasaleh = App.Vazn_Baskool.queryById('CboMasaleh');
+                    CboMasaleh.setValue(data.fldKalaId);
+                    var CboLoadingPlace = App.Vazn_Baskool.queryById('CboLoadingPlace');
+                    CboLoadingPlace.setValue(data.fldLoadingPlaceId);
+                    var CboNoeMasraf = App.Vazn_Baskool.queryById('CboNoeMasraf');
+                    CboNoeMasraf.setValue(data.fldNoeMasrafId);
+                    var txtAshkhas = App.Vazn_Baskool.queryById('txtAshkhas');
+                    txtAshkhas.setValue(data.fldNameAshkhas);
+                    var txtCount = App.Vazn_Baskool.queryById('txtCount');
+                    txtCount.setValue(data.fldTedad);
+                    
+                    var CboChart = App.Vazn_Baskool.queryById('CboChart');
+                    CboChart.setValue(data.fldChartOrganEjraeeId);
+                    var txtHavale = App.Vazn_Baskool.queryById('txtHavale');
+                    txtHavale.setValue(data.fldNameHavale);
+                    App.Vazn_Baskool.queryById('MaxVazn').setText(data.fldVaznKol);
+                    var txtVaznKhali = App.Vazn_Baskool.queryById('txtVaznKhali');
+                    txtVaznKhali.setValue(data.fldVaznKhali);
+                    var txtVaznKhales = App.Vazn_Baskool.queryById('txtVaznKhales');
+                    txtVaznKhales.setValue(data.fldVaznKhals);
+                    var txtTarikhKhali = App.Vazn_Baskool.queryById('txtTarikhKhali');
+                    txtTarikhKhali.setValue(data.fldTarikhVaznKhali);
+                    var txtMandeHavale = App.Vazn_Baskool.queryById('txtMandeHavale');
+                    txtMandeHavale.setValue(data.fldBaghimande);
+                    var txtRepeadHavale = App.Vazn_Baskool.queryById('txtRepeadHavale');
+                    txtRepeadHavale.setValue(data.fldCountHavale);
+                    var CboTypeMohasebe = App.Vazn_Baskool.queryById('CboTypeMohasebe');
+                    CboTypeMohasebe.setValue(data.fldTypeMohasebe);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        if (command == "EbtalFishTozin") {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "کاربر گرامی؛ آیا برای ابطال رکورد مورد نطر مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+
+                        Ext.net.DirectMethod.request({
+                            url: '/Weigh/Weighbridge/EbtalTozinOnline',
+                            params: {
+                                TozinOnlineId: record.data.fldId,
+                                OrganId: SelectedRow.data.fldOrganId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Err == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    Name: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                LoadGridTozinOnline();
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            });
+
+        }
+
+        if (command == "FishDaramad") {
+            Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Weighbridge/SaveElamAvarez',
+                params: {
+                    KalaId: record.data.fldKalaId,
+                    AshkhasId: record.data.fldAshkhasId,
+                    BaskoolId: '@ViewBag.BaskoolId',
+                    OrganId: record.data.fldOrganId,
+                },
+                success: function (result) {
+                    if (result.Er == 1) {
+                        Ext.net.Mask.hide();
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: result.Msg,
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                    }
+                    else {
+                        if (result.HaveFormulId == 1 || result.HaveFormulId == 0) {/*قرمول نویس یا بدون فرمول*/
+                            Ext.net.DirectMethod.request({
+                                url: '/Daramad/AnnouncementComplications/Mohasebe',
+                                params: {
+                                    HaveFormulId: result.HaveFormulId,
+                                    Mablagh: result.MablaghAsli,
+                                    fldTedad: result.Tedad,
+                                    ShomareHesabCodeDaramadId: result.ShomareHesabCodeDaramadId,
+                                    ElamAvarezId: result.ElamAvarezId,
+                                    sharheCodeDaramad: result.GenerateMatnSharhCode,
+                                    CodeDaramadElamAvarezID: result.CodeDaramadElamAvarezId
+                                },
+                                success: function (data4) {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data4.Er == 1) {
+                                        ic = Ext.MessageBox.ERROR;
+                                    }
+                                    Ext.MessageBox.show({
+                                        title: data4.MsgTitle,
+                                        msg: data4.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+
+                                    Ext.net.Mask.hide();
+
+                                }
+                            });
+                            /*  $.ajax({
+                                  type: "POST",
+                                  url: '/Daramad/AnnouncementComplications/Mohasebe',
+                                  contentType: "application/json; charset=utf-8",
+                                  data: JSON.stringify(data1),
+                                  datatype: "json",
+                                  success: function (d) {
+                                      var data4 = JSON.parse(d);
+                                      var AvarezGrid = App.AnnouncementComplication.queryById("AvarezGrid");
+                                      AvarezGrid.store.insert(AvarezGrid.getStore().count(), {
+                                          fldID: data4.fldID,
+                                          fldSharheCodeDaramad:txtCodeDaramad.getValue(),
+                                          fldCodhayeDaramdId: data4.fldCodhayeDaramdId,
+                                          fldAsliValue: data4.fldAsliValue,
+                                          fldAvarezValue: data4.fldAvarezValue,
+                                          fldMaliyatValue: data4.fldMaliyatValue
+                                      });
+                                      App.AnnouncementComplication.queryById("btnAddToGrid").setDisabled(false);
+                                      Ext.net.Mask.hide();
+                                  }
+                              });*/
+                        }
+                    }
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+    function LoadRanande(st) {
+  
+        var txtSerialPelak = App.Vazn_Baskool.queryById('txtSerialPelak');
+        var CboCharacterPelak = App.Vazn_Baskool.queryById('CboCharacterPelak');
+        var txtpelak_3 = App.Vazn_Baskool.queryById('txtpelak_3');
+        var txtpelak_2 = App.Vazn_Baskool.queryById('txtpelak_2');
+        var CheckPor = App.Vazn_Baskool.queryById('CheckPor');
+        var CboMasaleh = App.Vazn_Baskool.queryById('CboMasaleh');
+        var HavaleId = App.Vazn_Baskool.queryById('HavaleId');
+        var txtHavale = App.Vazn_Baskool.queryById('txtHavale');
+        var CboOrgan = App.Vazn_Baskool.queryById('CboOrgan');
+        var CboTypeMohasebe = App.Vazn_Baskool.queryById('CboTypeMohasebe');
+        var CboNoeMasraf = App.Vazn_Baskool.queryById('CboNoeMasraf');
+
+        var er = false;
+        if (CboOrgan.validate() == false)
+            er = true;
+        if (txtSerialPelak.validate() == false || txtSerialPelak.getValue().length < 2)
+            er = true;
+        if (CboCharacterPelak.validate() == false)
+            er = true;
+        if (txtpelak_3.validate() == false || txtpelak_3.getValue().length < 3)
+            er = true;
+        if (txtpelak_2.validate() == false || txtpelak_2.getValue().length < 2)
+            er = true;
+        if (st == 5) {
+            if (CboMasaleh.validate() == false)
+                er = true;
+            if (txtHavale.validate() == false)
+                er = true;
+        }
+
+        if (st == 4) {
+            if (txtpelak_2.validate())
+                if (txtpelak_2.getValue().length == 2)
+                    App.Vazn_Baskool.queryById('CboCharacterPelak').focus();
+        }
+
+        if (st == 3) {
+            if (CboCharacterPelak.validate())
+                CboCharacterPelak.collapse();
+            App.Vazn_Baskool.queryById('txtpelak_3').focus();
+
+        }
+
+        if (st == 2) {
+            if (txtpelak_3.validate())
+                if (txtpelak_3.getValue().length == 3)
+                    App.Vazn_Baskool.queryById('txtSerialPelak').focus();
+        }
+
+        if (st == 1) {
+            if (txtSerialPelak.validate())
+                if (txtSerialPelak.getValue().length == 2)
+                    App.Vazn_Baskool.queryById('CboTypeKhodro').focus();
+        }
+        var VaznKol = 0;
+        if (st == 6) {
+            VaznKol = App.Vazn_Baskool.queryById('MaxVazn').getText();
+            ShowHidetxtCount();
+        }
+        if (st == 9) {
+            VaznKol = App.Vazn_Baskool.queryById('MaxVazn2').getValue();
+            ShowHidetxtCount();
+        }
+        var TypeMohasebe=false;
+        if(CboTypeMohasebe.getValue()=="1")
+            TypeMohasebe=true;
+
+        if (er == true) {
+            return;
+        }
+
+        var data1 = {
+            Serial: txtSerialPelak.getValue(),
+            fldPlaque3: txtpelak_3.getValue(),
+            harf: CboCharacterPelak.getValue(),
+            fldPlaque2: txtpelak_2.getValue(),
+            BaskoolId: '@ViewBag.BaskoolId',
+            CheckPor: CheckPor.getValue(),
+            HavaleId: HavaleId.getValue(),
+            KalaId: CboMasaleh.getValue(),
+            OrganId: CboOrgan.getValue(),
+            VaznKol: VaznKol,
+            TypeMohasebe: TypeMohasebe
+        };
+
+        $.ajax({
+            type: "POST",
+            url: '/Weigh/Weighbridge/GetInfoTozinOnline',
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify(data1),
+            datatype: "json",
+            /*success: function (d) {
+                var data4 = JSON.parse(d);
+                var AvarezGrid = App.AnnouncementComplication.queryById("AvarezGrid");
+                AvarezGrid.store.insert(AvarezGrid.getStore().count(), {
+                    fldID: data4.fldID,
+                    fldSharheCodeDaramad: txtCodeDaramad.getValue(),
+                    fldCodhayeDaramdId: data4.fldCodhayeDaramdId,
+                    fldAsliValue: data4.fldAsliValue,
+                    fldAvarezValue: data4.fldAvarezValue,
+                    fldMaliyatValue: data4.fldMaliyatValue
+                });
+                App.AnnouncementComplication.queryById("btnAddToGrid").setDisabled(false);
+                Ext.net.Mask.hide();
+            }
+        });
+
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Weigh/Weighbridge/GetInfoTozinOnline',
+            params: {
+                Serial: txtSerialPelak.getValue(),
+                fldPlaque3: txtpelak_3.getValue(),
+                harf: CboCharacterPelak.getValue(),
+                fldPlaque2: txtpelak_2.getValue(),
+                BaskoolId: 'ViewBag.BaskoolId',
+                CheckPor: CheckPor.getValue(),
+                HavaleId: HavaleId.getValue(),
+                KalaId: CboMasaleh.getValue(),
+                OrganId: CboOrgan.getValue(),
+                VaznKol: VaznKol
+            },*/
+            success: function (data) {
+                /* if (data.Msg != "") {
+                     App.Vazn_Baskool.queryById('CheckKhali').setValue(true);
+                     HideFielsetBar();
+                     Ext.MessageBox.show({
+                         Name: "خطا",
+                         msg: data.Msg,
+                         icon: Ext.MessageBox.ERROR,
+                         buttons: Ext.MessageBox.OK
+                     });
+                 }
+                 else {*/
+                if (App.Vazn_Baskool.queryById('fldId').getValue() == 0) {
+                    if (CboNoeMasraf.getValue() == 1) {
+                        App.Vazn_Baskool.queryById('txtVaznKhali').setValue(0);
+                        App.Vazn_Baskool.queryById('txtTarikhKhali').setValue("");
+                        if (App.Vazn_Baskool.queryById('MaxVazn').getText() != "قــطع")
+                            App.Vazn_Baskool.queryById('txtVaznKhales').setValue(App.Vazn_Baskool.queryById('MaxVazn').getText());
+                        else if (App.Vazn_Baskool.queryById('MaxVazn2').getValue() != "")
+                            App.Vazn_Baskool.queryById('txtVaznKhales').setValue(App.Vazn_Baskool.queryById('MaxVazn2').getValue());
+                        else
+                            App.Vazn_Baskool.queryById('txtVaznKhales').setValue(0);
+                    }
+                    else {
+                        App.Vazn_Baskool.queryById('txtVaznKhali').setValue(data.VaznKhali);
+                        App.Vazn_Baskool.queryById('txtVaznKhales').setValue(data.VaznKhales);
+                        App.Vazn_Baskool.queryById('txtTarikhKhali').setValue(data.fldTarikhVaznKhali);
+                        if (data.Lastrooz == 1)
+                            App.Vazn_Baskool.queryById('txtTarikhKhali').setFieldStyle(" border-color: red;");
+                        else App.Vazn_Baskool.queryById('txtTarikhKhali').setFieldStyle("");
+                    }
+                    App.Vazn_Baskool.queryById('txtMandeHavale').setValue(data.fldBaghimande);
+                    App.Vazn_Baskool.queryById('txtRepeadHavale').setValue(data.fldCountHavale);
+                    /*App.Vazn_Baskool.queryById('btnSaveVazn_Baskool').focus();*/
+                }
+                /* }*/
+                if (st != 7 && st != 6 && st != 9)
+                    if (App.Vazn_Baskool.queryById('fldId').getValue() == 0) {
+                        if (data.iskhali == true)
+                            App.Vazn_Baskool.queryById('CheckPor').setValue(true);
+                        if (st != 8 && st != 6)
+                        ChangeNoeMasraf();
+                    }
+
+
+                if (data.RanandeId != 0 && st != 6 && st != 9) {
+                    App.Vazn_Baskool.queryById('RananadeId').setValue(data.RanandeId);
+                    App.Vazn_Baskool.queryById('txtRananade').setValue(data.NameRan);
+                    App.Vazn_Baskool.queryById('CboTypeKhodro').setValue(data.TypeKhodro);
+                    /*if (App.Vazn_Baskool.queryById('CheckKhali').getValue() == true)
+                        App.Vazn_Baskool.queryById('btnSaveVazn_Baskool').focus();
+                    else
+                        App.Vazn_Baskool.queryById('CboMasaleh').focus();*/
+                }
+                else if (data.RanandeId == 0 && st != 6 && st != 9) {
+                    App.Vazn_Baskool.queryById('RananadeId').setValue(0);
+                    App.Vazn_Baskool.queryById('txtRananade').setValue("");
+                    App.Vazn_Baskool.queryById('CboTypeKhodro').setValue("");
+                }
+                /*else {
+                    App.Vazn_Baskool.queryById('CboTypeKhodro').focus();
+                }*/
+
+                Ext.net.Mask.hide();
+
+            }
+        });
+    }
+    function LoadGridTozinOnline() {
+        var CboOrgan = App.Vazn_Baskool.queryById('CboOrgan');
+        var er = false;
+        if (CboOrgan.validate() == false)
+            er = true;
+        if (er == true)
+            return;
+
+        App.Vazn_Baskool.queryById('GridTozinOnline').getStore().getProxy().setExtraParam("OrganId", CboOrgan.getValue());
+        App.Vazn_Baskool.queryById('GridTozinOnline').getStore().getProxy().setExtraParam("BaskoolId", '@ViewBag.BaskoolId');
+        App.Vazn_Baskool.queryById('GridTozinOnline').getStore().load();
+    }
+    function setdefaultValueLoadingPlace() {
+        var CboLoadingPlace = App.Vazn_Baskool.queryById('CboLoadingPlace');
+        CboLoadingPlace.setValue(CboLoadingPlace.store.getAt(0));
+    }
+    function setdefaultValueOrgan() {
+        var CboOrgan = App.Vazn_Baskool.queryById('CboOrgan');
+        CboOrgan.setValue(CboOrgan.store.getAt(0));
+        App.Vazn_Baskool.queryById('CboMasaleh').getStore().load();
+    }
+    function setdefaultValueKala() {
+        var CboMasaleh = App.Vazn_Baskool.queryById('CboMasaleh');
+        /*CboMasaleh.setValue(CboMasaleh.store.getAt(0));*/
+        CboMasaleh.setValue('2');
+    }
+    function setdefaultValueTypeKhodro() {
+        var CboTypeKhodro = App.Vazn_Baskool.queryById('CboTypeKhodro');
+        CboTypeKhodro.setValue(CboTypeKhodro.store.getAt(0));
+    }
+    function SelectAshkhasHaghighi(Code) {
+        if (App.Vazn_Baskool.queryById('fldId').getValue() == 0)
+            if (Code == 45) {
+                Ext.net.DirectMethod.request({
+                    url: '/Weigh/SearchAshkhas_Baskool/Index',
+                    params: {
+                        State: 1
+                    }
+                });
+            }
+    }
+    function SelectAshkhas(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/SearchAshkhas_Baskool/Index',
+                params: {
+                    State: 2
+                }
+            });
+        }
+    }
+    function SelectHavale(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/SearchRemittance/Index',
+                params: {
+                    State: 1
+                }
+            });
+        }
+    }
+    function SelectChart(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/SearchChartOrganEjraii/Index',
+                params: {
+                    State: 1
+                }
+            });
+        }
+    }
+    function setdefaultValueNoeMasraf() {
+        var CboNoeMasraf = App.Vazn_Baskool.queryById('CboNoeMasraf');
+        CboNoeMasraf.setValue('3');/*(CboNoeMasraf.store.getAt(0));*/
+    }
+    function SaveTypeReport() {
+        var CboTypePrint = App.Vazn_Baskool.queryById('CboTypePrint');
+        var CboOrgan = App.Vazn_Baskool.queryById('CboOrgan');
+        var er = false;
+        if (CboOrgan.validate() == false)
+            er = true;
+        if (CboTypePrint.validate() == false)
+            er = true;
+        if (er == true)
+            return;
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Weigh/Weighbridge/SaveTypeReport',
+            params: {
+                BaskoolId: '@ViewBag.BaskoolId',
+                OrganId: CboOrgan.getValue(),
+                CboTypePrint: CboTypePrint.getValue()
+            },
+            success: function (data) {
+
+                Ext.net.Mask.hide();
+
+            }
+        });
+
+
+    }
+    function LoadTypeReport() {
+        var CboTypePrint = App.Vazn_Baskool.queryById('CboTypePrint');
+        var CboOrgan = App.Vazn_Baskool.queryById('CboOrgan');
+        var er = false;
+        if (CboOrgan.validate() == false)
+            er = true;
+        if (er == true)
+            return;
+        else {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Weigh/Weighbridge/GetTypeReport',
+                params: {
+                    BaskoolId: '@ViewBag.BaskoolId',
+                    OrganId: CboOrgan.getValue()
+                },
+                success: function (data) {
+                    if (data.Type != 0)
+                        App.Vazn_Baskool.queryById('CboTypePrint').setValue(data.Type);
+                    else
+                        App.Vazn_Baskool.queryById('CboTypePrint').setValue("1");
+
+
+                    Ext.net.Mask.hide();
+
+                }
+            });
+        }
+    }
+    function ChangeNoeMasraf() {
+
+
+        var CboNoeMasraf = App.Vazn_Baskool.queryById('CboNoeMasraf');
+        var CboChart = App.Vazn_Baskool.queryById('CboChart');
+        var txtHavale = App.Vazn_Baskool.queryById('txtHavale'); 
+        var txtAshkhas = App.Vazn_Baskool.queryById('txtAshkhas');
+        var lblAshkhas = App.Vazn_Baskool.queryById('lblAshkhas');
+        var lblChart = App.Vazn_Baskool.queryById('lblChart');
+        var lblHavale = App.Vazn_Baskool.queryById('lblHavale');
+        
+        var lblMandeHavale = App.Vazn_Baskool.queryById('lblMandeHavale');
+        var txtMandeHavale = App.Vazn_Baskool.queryById('txtMandeHavale');
+        var lblRepeadHavale = App.Vazn_Baskool.queryById('lblRepeadHavale');
+        var txtRepeadHavale = App.Vazn_Baskool.queryById('txtRepeadHavale');
+      
+
+        var CboOrgan = App.Vazn_Baskool.queryById('CboOrgan');
+        if (CboNoeMasraf.getValue() == "1") {
+            CboChart.show();
+            lblChart.show();
+            txtHavale.hide();
+            lblHavale.hide();
+            lblMandeHavale.hide();
+            txtMandeHavale.hide();
+            lblRepeadHavale.hide();
+            txtRepeadHavale.hide();
+            txtAshkhas.hide();
+            lblAshkhas.hide();
+
+            App.Vazn_Baskool.queryById('AshkhasId').setValue(null);
+            App.Vazn_Baskool.queryById('txtAshkhas').setValue("");
+
+
+            var er = false;
+            if (CboOrgan.validate() == false)
+                er = true;
+            if (er == true)
+                return;
+            else {
+                var data1={
+                    BaskoolId: '@ViewBag.BaskoolId',
+                    OrganId: CboOrgan.getValue()
+                };
+                $.ajax({
+                    type: "POST",
+                    url: '/Weigh/Weighbridge/GetAkharinRec',
+                    contentType: "application/json; charset=utf-8",
+                    data: JSON.stringify(data1),
+                    datatype: "json",
+                /*Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Weigh/Weighbridge/GetAkharinRec',
+                    params: {
+                        BaskoolId: 'ViewBag.BaskoolId',
+                        OrganId: CboOrgan.getValue()
+                    },*/
+                    success: function (data) {
+                        if (data.LastChart != 0)
+                            App.Vazn_Baskool.queryById('CboChart').setValue(data.LastChart);
+                        else {
+                            App.Vazn_Baskool.queryById('CboChart').setValue(App.Vazn_Baskool.queryById('CboChart').store.getAt(0));
+                        }
+
+                        Ext.net.Mask.hide();
+
+                    }
+                });
+            }
+
+        }
+        else if (CboNoeMasraf.getValue() == "2") {
+            LoadRanande(8);
+            CboChart.hide();
+            lblChart.hide();
+            txtHavale.hide();
+            lblHavale.hide();
+            lblMandeHavale.hide();
+            txtMandeHavale.hide();
+            lblRepeadHavale.hide();
+            txtRepeadHavale.hide();
+            txtAshkhas.show();
+            lblAshkhas.show();
+
+            var er = false;
+            if (App.Vazn_Baskool.queryById('txtRananade').validate() == false)
+                er = true;
+            if (er == true)
+                return;
+            else {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Weigh/Weighbridge/GetIdSahebBar',
+                    params: {
+                        RananadeId: App.Vazn_Baskool.queryById('RananadeId').getValue(),
+                    },
+                    success: function (data) {
+                        App.Vazn_Baskool.queryById('AshkhasId').setValue(data.AshkhasId);
+                        App.Vazn_Baskool.queryById('txtAshkhas').setValue(App.Vazn_Baskool.queryById('txtRananade').getValue());
+                        Ext.net.Mask.hide();
+
+                    }
+                });
+            }
+
+
+        }
+        else if (CboNoeMasraf.getValue() == "3") {
+            LoadRanande(8);
+            CboChart.hide();
+            lblChart.hide();
+            txtHavale.show();
+            lblHavale.show();
+            lblMandeHavale.show();
+            txtMandeHavale.show();
+            lblRepeadHavale.show();
+            txtRepeadHavale.show();
+            txtAshkhas.hide();
+            lblAshkhas.hide();
+
+            App.Vazn_Baskool.queryById('AshkhasId').setValue(null);
+            App.Vazn_Baskool.queryById('txtAshkhas').setValue("");
+        }
+    }
+    function ChangeSahebBar() {
+        if (App.Vazn_Baskool.queryById('fldId').getValue() == 0) {
+            App.Vazn_Baskool.queryById('AshkhasId').setValue(null);
+            App.Vazn_Baskool.queryById('txtAshkhas').setValue("");
+            if (App.Vazn_Baskool.queryById('CboNoeMasraf').getValue() == "2") {
+
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Weigh/Weighbridge/GetIdSahebBar',
+                    params: {
+                        RananadeId: App.Vazn_Baskool.queryById('RananadeId').getValue(),
+                    },
+                    success: function (data) {
+                        App.Vazn_Baskool.queryById('AshkhasId').setValue(data.AshkhasId);
+                        App.Vazn_Baskool.queryById('txtAshkhas').setValue(App.Vazn_Baskool.queryById('txtRananade').getValue());
+                        Ext.net.Mask.hide();
+
+                    }
+                });
+
+                /*App.Vazn_Baskool.queryById('AshkhasId').setValue(App.Vazn_Baskool.queryById('RananadeId').getValue());
+                App.Vazn_Baskool.queryById('txtAshkhas').setValue(App.Vazn_Baskool.queryById('txtRananade').getValue());*/
+            }
+        }
+
+    }
+    var IdTozin = 0;
+    function SaveVazn_Baskool() {
+
+        var fldId = App.Vazn_Baskool.queryById('fldId');
+        var RananadeId = App.Vazn_Baskool.queryById('RananadeId');
+        var txtRananade = App.Vazn_Baskool.queryById('txtRananade');
+        var PluqeId = App.Vazn_Baskool.queryById('PluqeId');
+        var CboTypeKhodro = App.Vazn_Baskool.queryById('CboTypeKhodro');
+        var AshkhasId = App.Vazn_Baskool.queryById('AshkhasId');
+        var HavaleId = App.Vazn_Baskool.queryById('HavaleId');
+        var CheckKhali = App.Vazn_Baskool.queryById('CheckKhali');
+        var CheckPor = App.Vazn_Baskool.queryById('CheckPor');
+        var CboOrgan = App.Vazn_Baskool.queryById('CboOrgan');
+        var txtSerialPelak = App.Vazn_Baskool.queryById('txtSerialPelak');
+        var txtpelak_3 = App.Vazn_Baskool.queryById('txtpelak_3');
+        var CboCharacterPelak = App.Vazn_Baskool.queryById('CboCharacterPelak');
+        var txtpelak_2 = App.Vazn_Baskool.queryById('txtpelak_2');
+
+        var CboMasaleh = App.Vazn_Baskool.queryById('CboMasaleh');
+        var CboLoadingPlace = App.Vazn_Baskool.queryById('CboLoadingPlace');
+        var CboNoeMasraf = App.Vazn_Baskool.queryById('CboNoeMasraf');
+        var txtAshkhas = App.Vazn_Baskool.queryById('txtAshkhas');
+        var CboChart = App.Vazn_Baskool.queryById('CboChart');
+        var txtHavale = App.Vazn_Baskool.queryById('txtHavale');
+        var txtVaznKhali = App.Vazn_Baskool.queryById('txtVaznKhali');
+        var txtVaznKhales = App.Vazn_Baskool.queryById('txtVaznKhales');
+        var txtTarikhKhali = App.Vazn_Baskool.queryById('txtTarikhKhali');
+        var txtMandeHavale = App.Vazn_Baskool.queryById('txtMandeHavale');
+        var txtRepeadHavale = App.Vazn_Baskool.queryById('txtRepeadHavale');
+        var txtCount = App.Vazn_Baskool.queryById('txtCount');
+        var CboTypeMohasebe = App.Vazn_Baskool.queryById('CboTypeMohasebe');
+
+        var er = false;
+        var isPor = false;
+        var KalaId = null;
+        var NoeMasrafId = null;
+        var LoadingPlaceId = null;
+        var ChartId = null;
+        if (CboOrgan.validate() == false)
+            er = true;
+
+        if (txtSerialPelak.validate() == false)
+            er = true;
+
+        if (txtpelak_3.validate() == false)
+            er = true;
+
+        if (CboCharacterPelak.validate() == false)
+            er = true;
+
+        if (txtpelak_2.validate() == false)
+            er = true;
+
+        if (CboTypeKhodro.validate() == false)
+            er = true;
+
+        if (CheckPor.getValue() == true) {
+
+            if (CboMasaleh.validate() == false)
+                er = true;
+
+            if (CboLoadingPlace.validate() == false)
+                er = true;
+
+            if (CboNoeMasraf.validate() == false)
+                er = true;
+
+            if (CboNoeMasraf.getValue() == "1") {
+                if (CboChart.validate() == false)
+                    er = true;
+                ChartId = CboChart.getValue();
+            }
+            else if (CboNoeMasraf.getValue() == "2") {
+                if (txtAshkhas.validate() == false)
+                    er = true;
+            }
+            else if (CboNoeMasraf.getValue() == "3") {
+                if (txtHavale.validate() == false)
+                    er = true;
+            }
+
+            KalaId = CboMasaleh.getValue();
+            NoeMasrafId = CboNoeMasraf.getValue();
+            LoadingPlaceId = CboLoadingPlace.getValue();
+        }
+        if (CheckKhali.getValue() == true)
+            isPor = false;
+
+        if (CheckPor.getValue() == true)
+            isPor = true;
+        if (App.Vazn_Baskool.queryById('MaxVazn').getText() == 0 && (App.Vazn_Baskool.queryById('MaxVazn2').getValue() == ""||  App.Vazn_Baskool.queryById('MaxVazn2').getValue() == "0")) {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "وزن کل صفر میباشد لذا مجاز به ثبت اطلاعات نمی باشید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+        if (App.Vazn_Baskool.queryById('MaxVazn').getText() == "قــطع" && App.Vazn_Baskool.queryById('MaxVazn2').getValue() == "") {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "وزن کل وارد شده نادرست است لذا مجاز به ثبت اطلاعات نمی باشید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+            return;
+        }
+        if (CheckPor.getValue() == true) {
+            if (App.Vazn_Baskool.queryById('MaxVazn').getText() != "قــطع")
+                if (parseInt(App.Vazn_Baskool.queryById('MaxVazn').getText()) < parseInt(txtVaznKhali.getValue())) {
+                    Ext.MessageBox.show({
+                        title: "خطا",
+                        msg: "وزن پر پلاک مورد نظر کوچکتر از وزن خالی است لذا مجازه به ثبت نمی باشید.",
+                        icon: Ext.MessageBox.ERROR,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    return;
+                }
+                else
+                    if (parseInt(App.Vazn_Baskool.queryById('MaxVazn2').getValue()) < parseInt(txtVaznKhali.getValue())) {
+                        Ext.MessageBox.show({
+                            title: "خطا",
+                            msg: "وزن پر پلاک مورد نظر کوچکتر از وزن خالی است لذا مجازه به ثبت نمی باشید.",
+                            icon: Ext.MessageBox.ERROR,
+                            buttons: Ext.MessageBox.OK
+                        });
+                        return;
+                    }
+        }
+        var TypeMohasebe = false;
+        if (CboTypeMohasebe.getValue() == "1")
+            TypeMohasebe = true;
+
+        var tedadBar = null;
+        if ((CboNoeMasraf.getValue() == 2 || CboNoeMasraf.getValue() == 3) && CboMasaleh.findRecordByValue(CboMasaleh.getValue()).data.fldStatusForoosh == 1)
+            tedadBar = txtCount.getValue();
+
+
+            if (isPor == false)
+                AshkhasId.setValue(null);
+
+            var vazkol = 0;
+            if (App.Vazn_Baskool.queryById('MaxVazn2').getValue() != "")
+                vazkol = App.Vazn_Baskool.queryById('MaxVazn2').getValue();
+            else
+                vazkol = App.Vazn_Baskool.queryById('MaxVazn').getText();
+
+            if (parseInt(vazkol) <= 0) {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "وزن کل نامعتبر میباشد لذا مجاز به ثبت اطلاعات نمی باشید.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                return;
+            }
+
+            if (er == true)
+                return;
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        Ext.net.DirectMethod.request({
+            url: '/Weigh/Weighbridge/SaveTozinOnline',
+            params: {
+                fldId: fldId.getValue(),
+                fldPluqeId: PluqeId.getValue(),
+                fldRananadeId: RananadeId.getValue(),
+                fldAshkhasId: AshkhasId.getValue(),
+                fldRemittanceId: HavaleId.getValue(),
+                fldOrganId: CboOrgan.getValue(),
+                Serial: txtSerialPelak.getValue(),
+                fldPlaque3: txtpelak_3.getValue(),
+                harf: CboCharacterPelak.getValue(),
+                fldPlaque2: txtpelak_2.getValue(),
+                fldKalaId: KalaId,
+                fldLoadingPlaceId: LoadingPlaceId,
+                fldNoeMasrafId: NoeMasrafId,
+                fldChartOrganEjraeeId: ChartId,
+                fldIsPor: isPor,
+                fldBaskoolId: '@ViewBag.BaskoolId',
+                fldTypeKhodroId: CboTypeKhodro.getValue(),
+                fldVaznKol: vazkol,
+                fldTedad: tedadBar,
+                fldTypeMohasebe: TypeMohasebe,
+                FiscalYearId:'@ViewBag.FiscalYearId'
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                IdTozin = data.TozinOnlineId;
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK,
+                    fn: function (btn) {
+                        if (btn == 'ok') {
+                            if (data.Err == 0) {
+                                if (data.IsPor == true) {
+                                    Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                                    Ext.net.DirectMethod.request({
+                                        url: '/Weigh/Weighbridge/CheckVaznKhales',
+                                        params: {
+                                            TozinOnlineId: IdTozin,
+                                        },
+                                        success: function (result) {
+                                            /* if (data.Msg != "") {
+                                                 Ext.MessageBox.show({
+                                                     title: "خطا",
+                                                     msg: data.Msg,
+                                                     icon: Ext.MessageBox.ERROR,
+                                                     buttons: Ext.MessageBox.OK
+                                                 });
+                                                 Ext.net.Mask.hide();
+                                                 return;
+                                             }
+                                             else {*/
+                                            if (result.Msg == "") {
+                                                Ext.MessageBox.show({
+                                                    title: "هشدار",
+                                                    msg: "آیا مایل به مشاهده قبض باسکول هستید؟",
+                                                    icon: Ext.MessageBox.WARNING,
+                                                    buttons: Ext.MessageBox.YESNO,
+                                                    fn: function (btn) {
+                                                        if (btn == 'yes') {
+                                                            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                                                            Ext.net.DirectMethod.request({
+                                                                url: '/Weigh/Weighbridge/Print',
+                                                                params: {
+                                                                    TozinOnlineId: IdTozin,
+                                                                    ElameAvarezId: data.ElameAvarezId,
+                                                                    FishId: data.FishId,
+                                                                    TypePrint: App.Vazn_Baskool.queryById('CboTypePrint').getValue(),
+                                                                    fldNoeMasrafId: NoeMasrafId,
+                                                                },
+                                                                success: function () {
+                                                                    LoadGridTozinOnline();
+                                                                    Ext.net.Mask.hide();
+                                                                }
+                                                            });
+
+                                                            Ext.net.Mask.hide();
+                                                        }
+                                                        App.Vazn_Baskool.queryById('txtpelak_2').focus();
+                                                    }
+                                                });
+                                            }
+                                            Ext.net.Mask.hide();
+                                        }
+                                    });
+                                }
+                                /*else {
+                                    Ext.MessageBox.show({
+                                        title: "هشدار",
+                                        msg: "آیا مایل به مشاهده قبض باسکول هستید؟",
+                                        icon: Ext.MessageBox.WARNING,
+                                        buttons: Ext.MessageBox.YESNO,
+                                        fn: function (btn) {
+                                            if (btn == 'yes') {
+                                                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                                                Ext.net.DirectMethod.request({
+                                                    url: '/Weigh/Weighbridge/Print',
+                                                    params: {
+                                                        TozinOnlineId: IdTozin,
+                                                    },
+                                                    success: function () {
+                                                        LoadGridTozinOnline();
+                                                        Ext.net.Mask.hide();
+                                                    }
+                                                });
+
+                                                Ext.net.Mask.hide();
+                                            }
+                                            App.Vazn_Baskool.queryById('txtpelak_2').focus();
+                                        }
+                                    });
+                                }*/
+
+                            }
+                            App.Vazn_Baskool.queryById('txtpelak_2').focus();
+                        }
+                    }
+                });
+
+                LoadGridTozinOnline();
+                /* App.Vazn_Baskool.queryById('GridTozinOnline').store.load();*/
+                if (data.Err != 1) {
+                    ClearVazn_Baskool();
+                }
+
+            }
+
+        });
+    }
+    function ClearVazn_Baskool() {
+        App.Vazn_Baskool.queryById('fldId').setValue(0);
+        App.Vazn_Baskool.queryById('RananadeId').setValue(0);
+        App.Vazn_Baskool.queryById('txtRananade').setValue("");
+        App.Vazn_Baskool.queryById('txtRananade').icon.show();
+        App.Vazn_Baskool.queryById('PluqeId').setValue(0);
+        App.Vazn_Baskool.queryById('AshkhasId').setValue(null); 
+        App.Vazn_Baskool.queryById('HavaleId').setValue(null);
+        App.Vazn_Baskool.queryById('HavaleFileId').setValue(null);
+        App.Vazn_Baskool.queryById('txtSerialPelak').setValue("");
+        App.Vazn_Baskool.queryById('txtSerialPelak').setReadOnly(false);
+        App.Vazn_Baskool.queryById('txtpelak_3').setValue("");
+        App.Vazn_Baskool.queryById('txtpelak_3').setReadOnly(false);
+        App.Vazn_Baskool.queryById('CboCharacterPelak').setValue("");
+        App.Vazn_Baskool.queryById('CboCharacterPelak').setReadOnly(false);
+        App.Vazn_Baskool.queryById('txtpelak_2').setValue("");
+        App.Vazn_Baskool.queryById('txtpelak_2').setReadOnly(false);
+
+        App.Vazn_Baskool.queryById('txtAshkhas').setValue("");
+        App.Vazn_Baskool.queryById('txtCount').setValue("");
+        App.Vazn_Baskool.queryById('CboChart').setValue("");
+        App.Vazn_Baskool.queryById('txtHavale').setValue("");
+        App.Vazn_Baskool.queryById('txtVaznKhali').setValue("");
+        App.Vazn_Baskool.queryById('txtVaznKhales').setValue("");
+        App.Vazn_Baskool.queryById('txtTarikhKhali').setValue("");
+        App.Vazn_Baskool.queryById('txtMandeHavale').setValue("");
+        App.Vazn_Baskool.queryById('txtRepeadHavale').setValue("");
+        App.Vazn_Baskool.queryById('MaxVazn').setText("قــطع");
+        App.Vazn_Baskool.queryById('MaxVazn2').setValue("");
+        var CheckKhali = App.Vazn_Baskool.queryById('CheckKhali');
+        var CheckPor = App.Vazn_Baskool.queryById('CheckPor');
+        CheckKhali.setReadOnly(false);
+        CheckKhali.setValue(true);
+        CheckPor.setReadOnly(false);
+        App.Vazn_Baskool.queryById('txtpelak_2').focus();
+    }
+    function ChangeTypeMohasebe() {
+        var txtSerialPelak = App.Vazn_Baskool.queryById('txtSerialPelak');
+        var CboCharacterPelak = App.Vazn_Baskool.queryById('CboCharacterPelak');
+        var txtpelak_3 = App.Vazn_Baskool.queryById('txtpelak_3');
+        var txtpelak_2 = App.Vazn_Baskool.queryById('txtpelak_2');
+        var CheckPor = App.Vazn_Baskool.queryById('CheckPor');
+        var CboMasaleh = App.Vazn_Baskool.queryById('CboMasaleh');
+        var HavaleId = App.Vazn_Baskool.queryById('HavaleId');
+        var txtHavale = App.Vazn_Baskool.queryById('txtHavale');
+        var CboOrgan = App.Vazn_Baskool.queryById('CboOrgan');
+        var CboTypeMohasebe = App.Vazn_Baskool.queryById('CboTypeMohasebe');
+        var CboNoeMasraf = App.Vazn_Baskool.queryById('CboNoeMasraf');
+
+        var er = false;
+        if (CboOrgan.validate() == false)
+            er = true;
+        if (txtSerialPelak.validate() == false || txtSerialPelak.getValue().length < 2)
+            er = true;
+        if (CboCharacterPelak.validate() == false)
+            er = true;
+        if (txtpelak_3.validate() == false || txtpelak_3.getValue().length < 3)
+            er = true;
+        if (txtpelak_2.validate() == false || txtpelak_2.getValue().length < 2)
+            er = true;
+        
+        var VaznKol = 0;
+        if (App.Vazn_Baskool.queryById('MaxVazn2').getValue() != "")
+            vazkol = App.Vazn_Baskool.queryById('MaxVazn2').getValue();
+        else
+            vazkol = App.Vazn_Baskool.queryById('MaxVazn').getText();
+
+   
+        var TypeMohasebe = false;
+        if (CboTypeMohasebe.getValue() == "1")
+            TypeMohasebe = true;
+
+        if (er == true) {
+            return;
+        }
+
+        var data1 = {
+            Serial: txtSerialPelak.getValue(),
+            fldPlaque3: txtpelak_3.getValue(),
+            harf: CboCharacterPelak.getValue(),
+            fldPlaque2: txtpelak_2.getValue(),
+            BaskoolId: '@ViewBag.BaskoolId',
+            CheckPor: CheckPor.getValue(),
+            HavaleId: HavaleId.getValue(),
+            KalaId: CboMasaleh.getValue(),
+            OrganId: CboOrgan.getValue(),
+            VaznKol: VaznKol,
+            TypeMohasebe: TypeMohasebe
+        };
+
+        $.ajax({
+            type: "POST",
+            url: '/Weigh/Weighbridge/GetInfoTozinOnline',
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify(data1),
+            datatype: "json",
+     
+            success: function (data) {
+              
+                if (App.Vazn_Baskool.queryById('fldId').getValue() == 0) {
+                    if (CboNoeMasraf.getValue() == 1) {
+                        App.Vazn_Baskool.queryById('txtVaznKhali').setValue(0);
+                        App.Vazn_Baskool.queryById('txtTarikhKhali').setValue("");
+                        if (App.Vazn_Baskool.queryById('MaxVazn').getText() != "قــطع")
+                            App.Vazn_Baskool.queryById('txtVaznKhales').setValue(App.Vazn_Baskool.queryById('MaxVazn').getText());
+                        else if (App.Vazn_Baskool.queryById('MaxVazn2').getValue() != "")
+                            App.Vazn_Baskool.queryById('txtVaznKhales').setValue(App.Vazn_Baskool.queryById('MaxVazn2').getValue());
+                        else
+                            App.Vazn_Baskool.queryById('txtVaznKhales').setValue(0);
+                    }
+                    else {
+                        App.Vazn_Baskool.queryById('txtVaznKhali').setValue(data.VaznKhali);
+                        App.Vazn_Baskool.queryById('txtVaznKhales').setValue(data.VaznKhales);
+                        App.Vazn_Baskool.queryById('txtTarikhKhali').setValue(data.fldTarikhVaznKhali);
+                        if (data.Lastrooz == 1)
+                            App.Vazn_Baskool.queryById('txtTarikhKhali').setFieldStyle(" border-color: red;");
+                        else App.Vazn_Baskool.queryById('txtTarikhKhali').setFieldStyle("");
+                    }
+                    App.Vazn_Baskool.queryById('txtMandeHavale').setValue(data.fldBaghimande);
+                    App.Vazn_Baskool.queryById('txtRepeadHavale').setValue(data.fldCountHavale);
+                }
+
+                Ext.net.Mask.hide();
+
+            }
+        });
+    }
+    function DlFileHavale() {
+        
+        openWindowWithPost("/Weigh/Remittance/DownloadFileHavale", {
+            fldFileId: App.Vazn_Baskool.queryById('HavaleFileId').getValue()
+        });
+    }
+    function openWindowWithPost(url, data) {
+        var form = document.createElement("form");
+        form.target = "_blank";
+        form.method = "POST";
+        form.action = url;
+        form.style.display = "none";
+
+        for (var key in data) {
+            var input = document.createElement("input");
+            input.type = "hidden";
+            input.name = key;
+            input.value = data[key];
+            form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    }
+    var addKeyMapVazn_Baskool = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.Vazn_Baskool.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+
+                    if (keyfield.itemId == "CboOrgan") {
+                        nextfld = App.Vazn_Baskool.queryById('txtpelak_2');
+                    }
+                    else if (keyfield.itemId == "txtpelak_2") {
+
+                        nextfld = App.Vazn_Baskool.queryById('CboCharacterPelak');
+                    }
+                    else if (keyfield.itemId == "CboCharacterPelak") {
+                        nextfld = App.Vazn_Baskool.queryById('txtpelak_3');
+                    }
+                    else if (keyfield.itemId == "txtpelak_3") {
+                        nextfld = App.Vazn_Baskool.queryById('txtSerialPelak');
+                    }
+                    else if (keyfield.itemId == "txtSerialPelak") {
+                        nextfld = App.Vazn_Baskool.queryById('CboTypeKhodro');
+                    }
+                    else if (keyfield.itemId == "CboTypeKhodro") {
+                        nextfld = App.Vazn_Baskool.queryById('txtRananade');
+                    }
+                    else if (keyfield.itemId == "txtRananade" && App.Vazn_Baskool.queryById('CheckKhali').getValue() == true) {
+                        SaveVazn_Baskool();
+                        return;
+                    }
+
+                    if (App.Vazn_Baskool.queryById('CheckPor').getValue() == true) {
+                        if (keyfield.itemId == "txtRananade") {
+                            nextfld = App.Vazn_Baskool.queryById('CboMasaleh');
+                        }
+                        else if (keyfield.itemId == "CboMasaleh") {
+                            nextfld = App.Vazn_Baskool.queryById('CboLoadingPlace');
+                        }
+                        else if (keyfield.itemId == "CboLoadingPlace") {
+                            nextfld = App.Vazn_Baskool.queryById('CboNoeMasraf');
+                        }
+                        if (keyfield.itemId == "CboNoeMasraf" && App.Vazn_Baskool.queryById('CboNoeMasraf').getValue() == "1") {
+                            nextfld = App.Vazn_Baskool.queryById('CboChart');
+                        }
+                        if (keyfield.itemId == "CboNoeMasraf" && App.Vazn_Baskool.queryById('CboNoeMasraf').getValue() == "2") {
+                            nextfld = App.Vazn_Baskool.queryById('txtAshkhas');
+                        }
+                        if (keyfield.itemId == "CboNoeMasraf" && App.Vazn_Baskool.queryById('CboNoeMasraf').getValue() == "3") {
+                            nextfld = App.Vazn_Baskool.queryById('txtHavale');
+                        }
+                        else if (keyfield.itemId == "CboChart") {
+                            SaveVazn_Baskool();
+                            return;
+                        }
+                        else if (keyfield.itemId == "txtAshkhas") {
+                            SaveVazn_Baskool();
+                            return;
+                        }
+                        else if (keyfield.itemId == "txtHavale") {
+                            SaveVazn_Baskool();
+                            return;
+                        }
+                    }
+
+
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

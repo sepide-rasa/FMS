@@ -1,0 +1,191 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_ChartOrganEjraee>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using Ext.Net.Utilities;
+@{
+    var X = Html.X();
+}
+
+
+
+@(Html.X().Window()
+    .Modal(true)
+            .Listeners(li => li.AfterRender.Handler = "LoadSecretariat();")
+    .Width(410)//.Height(300)
+        .Title("تعریف دبیرخانه")
+                .ID("NewSecretariat")
+    .Resizable(false)
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .ButtonAlign(Alignment.Center)
+    .Layout(LayoutType.Fit)
+    .Buttons(
+        X.Button()
+            .Text("ذخیره")
+            .Icon(Ext.Net.Icon.Disk)
+            .Listeners(l =>
+            {
+                l.Click.Handler = "SaveSecretariat();";
+            })
+            .ItemID("btnSave"),
+        X.Button()
+            .Text("خروج")
+            .Icon(Ext.Net.Icon.BulletCross)
+            .ToolTip("کلید میانبر Esc")
+                        .OnClientClick("App.NewSecretariat.destroy()"))
+
+                      .Items(
+        X.FormPanel()
+            .Border(false)
+            .Layout(Ext.Net.LayoutType.VBox)
+            .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+            .Items(
+                X.FieldSet()
+                    .Border(false)
+                    .ItemID("test")
+                    .Center()
+
+                    .Items(
+                        X.Hidden()
+                        //.ItemID("fldId"),
+                        //X.FieldSet()
+                        //.Border(true).Title("اطلاعات")
+                        //    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 1 }).Defaults(new { Margin = 2 })
+                        //.Items(
+                         ,X.Label().ItemID("lblName"),
+                                    X.TreePanel().MarginSpec("10px 0 0 0")
+                                        .ID("TreeChart_Organ")
+                                .AutoScroll(true)
+                                .Width(200)
+                                .Expand(true)
+                                .Height(300)
+        //.Expand(true)
+                                .Listeners(l => l.AfterItemCollapse.Fn = "reloadTreeChart_Organ")
+                                .UseArrows(true)
+                                .Border(false)
+                                .Store(
+                                    X.TreeStore()
+                                        .AutoLoad(false)
+                                        .Proxy(
+                                            Html.X().AjaxProxy()
+                                                    .Url(Url.Action("NodeLoad"))
+                                            )
+                                                .Listeners(l =>
+                                                {
+                                                    l.BeforeLoad.Fn = "GetParamTreeChart_Organ";
+                                                })
+                                    )
+                                .Listeners(a =>
+                                {
+                                    a.ItemClick.Handler = "GetId(record)";
+                                    //a.BeforeLoad.Fn = "nodeLoad";
+                                   // a.CheckChange.Fn = "GetGroupId";
+                                })
+                                .Root(
+                                    Html.X().Node()
+                                        .NodeID("0")
+        //.Expanded(true)                                    
+                                        .Text("چارت سازمانی")
+                                        .Checked(null))
+                //  )
+                )
+
+            )
+        )
+)
+<script type="text/javascript">
+    function LoadSecretariat() {
+        App.NewSecretariat.queryById("lblName").setText("نام دبیرخانه: " + '@ViewBag.Name');
+        /*App.TreeChart_Organ.expandAll();*/
+
+        App.TreeChart_Organ.store.getProxy().extraParams = {
+            "SecretariatID": '@ViewBag.ChartOrganEjraeeId'
+        };
+        if (App.TreeChart_Organ.getRootNode().isExpanded() == true) {
+            App.TreeChart_Organ.store.load();
+            App.TreeChart_Organ.collapseAll();
+        }
+        else {
+            App.TreeChart_Organ.expandAll();
+        }
+    }
+    var reloadTreeChart_Organ = function (record, value, htmlrec) {
+        if (value == 0) {
+            App.TreeChart_Organ.expandAll();
+        }
+    };
+    var GetParamTreeChart_Organ = function (store, operation, eOpts) {
+        var nodeId = operation.node.getId();
+        operation.params.nod = nodeId;
+    };
+    function GetId(record) {
+        NodeId = record.getId();
+    };
+    @*var nodeLoad = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Automation/Secretariat/NodeLoad',
+            params: {
+                nod: node.getId(),
+                SecretariatID: '@ViewBag.ChartOrganEjraeeId'
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand(true);
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };*@
+    function SaveSecretariat() {
+        var Father = App.TreeChart_Organ;
+        var Checked = Father.getChecked();
+        if (Checked == []) { return; }
+        var Secretariat = new Array();
+        var FatherId;
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        for (var i = 0; i < Checked.length ; i++) {
+            FatherId = Checked[i];
+            Secretariat.push({
+                'fldOrganizationUnitID': FatherId.getId()
+            });
+        }
+
+        var data = {
+            Secretariat: Secretariat,
+            'ChartEjraeeId': '@ViewBag.ChartOrganEjraeeId',
+        };
+        $.ajax({
+            type: "POST",
+            url: '/Automation/Secretariat/Save',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (result) {
+                var data = result;/*JSON.parse(result);*/
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+            },
+            failure: function (data) {
+                alert(data.data);
+            }
+        });
+
+    }
+</script>

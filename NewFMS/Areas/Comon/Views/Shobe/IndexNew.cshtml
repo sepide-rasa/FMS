@@ -1,0 +1,475 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_SHobe>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("SabtShobe")
+        .Title("ثبت شعبه بانک")
+                             .Listeners(li => { li.AfterRender.Handler = "ShobeSetSize();"; ; li.Render.Fn = "addKeyMapSabtShobe"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveShobe")
+                .Listeners(l => { l.Click.Handler = "SaveShobe();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                .Listeners(l => { l.Click.Handler = "LoadShobe();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                .Listeners(l => { l.Click.Handler = "DeleteShobe();"; })
+               , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpShobe();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.SabtShobe.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.FormPanel().Border(false)
+            .Layout(LayoutType.VBox)
+                     .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .Items(
+                 X.FieldSet().Border(false).Items(
+                X.FieldSet().Border(true).Title("اطلاعات شعبه")
+                         .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                .Items(
+                        X.FieldSet().Border(false)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                    X.Hidden().ItemID("fldId"),
+                       X.Label("بانک:"),
+                        X.ComboBox()
+                        .LabelAlign(Ext.Net.LabelAlign.Top)
+        //.FieldLabel("استان")
+                        .ItemID("CboBank")
+                        .TypeAhead(true)
+                        .Editable(true)
+                        .QueryMode(DataLoadMode.Local)
+                        .BlankText("لطفا بانک را انتخاب کنید.")
+                        .ForceSelection(true)
+                        .TriggerAction(TriggerAction.All)
+                            .DisplayField("fldName")
+                        .ValueField("fldId")
+                        .EmptyText("بانک ...")
+        //.SelectedItems(new { Value = "1" })
+                        .Store(X.Store()
+                        .Model(X.Model()
+                        .IDProperty("fldId")
+                        .Fields(
+                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" },
+                                    new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" }
+                                )
+                                    )
+                        .Proxy(X.AjaxProxy()
+                            .Url(Url.Action("GetBank"))
+                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                             .Listeners(l => l.Load.Handler = "setdefaultValueBank()")
+        // .Listeners(li => li.BeforeLoad.Handler = "LoadCity();")
+                                )
+                            .AllowBlank(false).Width(100)
+                        .AutoFocus(true),
+                        X.Label("نام شعبه:"),
+                           X.TextField().Width(100)
+                        .ItemID("txtShobeName")
+                            .MaskRe("[0-9,آ-ی,., ,_,-]")
+                            .MaxLength(50)
+                            .EnforceMaxLength(true)
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا نام شعبه را وارد کنید.")
+                    , X.Label("کد شعبه:"),
+                        X.TextField().Width(100)
+                            .MaxLength(9)
+                            .EnforceMaxLength(true)
+                            .MaskRe("[0-9]")
+                    .ItemID("txtCodeSHobe")
+        //.MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                    .BlankText("لطفا کد شعبه را وارد کنید.")
+                    , X.Label("آدرس:"),
+                    X.TextField()
+                        .ItemID("txtAddress")
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                    .AllowBlank(false)
+                        .BlankText("لطفا آدرس را وارد کنید.")
+                            .Width(417).ColSpan(5)
+                    , X.Label("توضیحات:"),
+                            X.TextField()
+                    .ItemID("txtDesc")
+                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                        .Width(417).ColSpan(5)
+                        )
+                        )
+                                 @*, X.FieldSet().Border(true).Title("لگو بانک").Height(115)
+                               .Defaults(new { Margin = 2 })
+                        .Layout(LayoutType.Table)
+                        .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                         .Items(
+                             X.FieldSet().Border(false).ColSpan(3).Height(50).Width(400)
+        // .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                                            .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Right })
+                                .Defaults(new { Margin = 3 })
+                            .Items(
+                             X.FileUploadField()
+                            .ItemID("FileUploadField1")
+                                .ButtonOnly(true).ButtonText("انتخاب عکس(حداکثر 100 کیلوبایت)")
+                            .DirectEvents(l =>
+                                    {
+                                        l.Change.Action = "Upload";
+                                        l.Change.Success = "hideprogressSh();";
+                                    }
+                                )
+                            .Listeners(l => l.Change.Fn = "showFileSh")
+                                    .Icon(Ext.Net.Icon.DiskUpload)
+                                  , X.Container().Content(@<div id="fi-button-msg" style="display:none;width:195px;"></div>)//.ColSpan(3)
+                            //, X.Button()
+                            //.ID("ShowButton")
+                            //.Text("دانلود عکس")
+                            //.Listeners
+                            //(l =>
+                            //    {
+        //        l.Click.Handler = "Download();";
+                            //    }
+                            //)
+
+                            //, X.Label()
+                            //    .Text("حداکثر حجم مجاز برای بارگذاری 100 کیلوبایت می باشد.")
+                            )
+                                 ,
+                                      X.FieldSet().Border(false).ColSpan(3)
+                               // .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 3 })
+                                            .Layout(Ext.Net.LayoutType.VBox)
+                .LayoutConfig(new Ext.Net.VBoxLayoutConfig { Align = Ext.Net.VBoxAlign.Center })
+                                .Defaults(new { Margin = 3 })
+                            .Items(X.Image().ItemID("Image").ImageUrl("~/Content/BlankB.jpg").Width(80).Height(90).Border(true))
+                            )*@
+)
+            )
+        ),
+        X.GridPanel()
+        .ItemID("ShobeGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                            .Listeners(l => l.DataChanged.Handler = "App.SabtShobe.queryById('ShobeGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtShobe.queryById('ShobeGrid');grid.setHeight(App.Win.getHeight() - 325); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldBankName).Text("نام بانک").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("نام شعبه").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldCodeSHobe).Text("کد شعبه").Flex(2),
+                        Html.X().Column().DataIndex(Model, m => m.fldAddress).Text("آدرس").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    var ImageId = 0;
+
+    function setdefaultValueBank() {
+        var CboBank = App.SabtShobe.queryById('CboBank');
+        CboBank.select(CboBank.store.getAt(0));
+    }
+
+   /* App.Win.addListener('resize', function () {
+        App.Shobe.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.Shobe.queryById('ShobeGrid');
+        grid.setHeight(App.Win.getHeight()-455);
+    });*/
+
+    function ShobeSetSize() {
+        App.SabtShobe.setWidth(App.Win.getWidth());
+        var grid = App.SabtShobe.queryById('ShobeGrid');
+        grid.setHeight(App.Win.getHeight() - 325);
+    }
+
+    var MojazSh = 0;
+    var sizeeSh = 0;
+    var EndUploadSh = false;
+
+    var CheckSh = setInterval(CheckEndSh, 500);
+
+    function CheckEndSh() {
+        if (EndUploadSh == true) {
+            Ext.net.DirectMethod.request({
+                url: ' /Comon/Shobe/ShowPicUpload',
+                success: function (data) {
+                    value = "data:image/gif;base64," + data.image;
+                    App.SabtShobe.queryById('Image').setImageUrl(value);
+                }
+            });
+
+            Ext.MessageBox.hide();
+            Ext.Msg.alert('عملیات موفق', 'فایل با موفقیت آپلود شد.');
+            clearInterval(CheckEndSh);
+            EndUploadSh = false;
+        }
+    }
+    var showFileSh = function (fb, v) {
+        var id = fb.fileInputEl.dom.id;
+        var el = Ext.get('fi-button-msg');
+        if (v) {
+            showProgressBarSh();
+            if (v.split('.').pop().toLowerCase() == "jpg" || v.split('.').pop().toLowerCase() == "png") {
+                MojazSh = 1;
+                if (document.getElementById(id).files[0].size <= 102400) {
+                    sizeeSh = 1;
+                }
+                if (sizeeSh == 1) {
+                    el.update('<b>فایل انتخاب شده:</b> ' + v);
+                }
+                else {
+                    el.update('<b>فایل انتخاب شده:</b> ');
+                }
+
+                if (!el.isVisible()) {
+                    el.slideIn('t', {
+                        duration: .2,
+                        easing: 'easeIn',
+                        callback: function () {
+                            el.highlight();
+                        }
+                    });
+                } else {
+                    el.highlight();
+                }
+            }
+            else {
+                el.update('<b>فایل انتخاب شده:</b> ');
+            }
+        }
+    };
+
+    function hideprogressSh() {
+        if (MojazSh == 1 && sizeeSh == 1) {
+            EndUploadSh = true;
+        }
+        MojazSh = 0;
+        sizeeSh = 0;
+    }
+    function HelpShobe() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Shobe/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function showProgressBarSh() {
+        Ext.MessageBox.show({
+            msg: 'لطفاً منتظر باشید',
+            progressText: 'در حال آپلود فایل...',
+            width: 300,
+            wait: true,
+            waitConfig:
+            {
+                interval: 200,
+                text: 'در حال آپلود فایل...',
+                scope: this
+            }
+        });
+    }
+
+    function LoadShobe() {
+        var SelectedRow = App.SabtShobe.queryById('ShobeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: ' /Comon/Shobe/Details',
+                params: {
+                    Id: SelectedRow.data.fldId
+                },
+                success: function (data) {
+                    var txtCodeSHobe = App.SabtShobe.queryById('txtCodeSHobe');
+                    txtCodeSHobe.setValue(data.fldCodeSHobe);
+                    var txtAddress = App.SabtShobe.queryById('txtAddress');
+                    txtAddress.setValue(data.fldAddress);
+                    var CboBank = App.SabtShobe.queryById('CboBank');
+                    CboBank.setValue(data.fldBankId);
+                    var txtShobeName = App.SabtShobe.queryById('txtShobeName');
+                    txtShobeName.setValue(data.fldName);
+                    var txtDesc = App.SabtShobe.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var fldId = App.SabtShobe.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    /*ImageId = data.fldFileId;
+
+                    var fldfile = "data:image/gif;base64," + data.fldImage;
+                    App.Shobe.queryById('Image').setImageUrl(fldfile);*/
+
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function SaveShobe() {
+        var txtShobeName = App.SabtShobe.queryById('txtShobeName');
+        var txtCodeSHobe = App.SabtShobe.queryById('txtCodeSHobe');
+        var txtAddress = App.SabtShobe.queryById('txtAddress');
+        var CboBank = App.SabtShobe.queryById('CboBank');
+        var txtDesc = App.SabtShobe.queryById('txtDesc');
+        var fldId = App.SabtShobe.queryById('fldId');
+            var er = false;
+            
+            if (txtShobeName.validate() == false) {
+                er = true;
+            }
+            if (txtCodeSHobe.validate() == false) {
+                er = true;
+            }
+            if (CboBank.validate() == false) {
+                er = true;
+            }
+            if (txtAddress.validate() == false) {
+                er = true;
+            }
+            if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: ' /Comon/Shobe/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldName: txtShobeName.getValue(),
+                    fldCodeSHobe: txtCodeSHobe.getValue(),
+                    fldAddress: txtAddress.getValue(),
+                    fldBankId: CboBank.getValue(),
+                    /*fldFileId: ImageId,*/
+                    fldDesc: txtDesc.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        Name: data.MsgName,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtShobe.queryById('ShobeGrid').store.load();
+                    if (data.Err != 1)
+                        ClearShobe();
+                }
+
+            });
+    }
+    function DeleteShobe() {
+        var SelectedRow = App.SabtShobe.queryById('ShobeGrid').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                        Ext.net.DirectMethod.request({
+                            url: ' /Comon/Shobe/Delete',
+                            params: {
+                                id: SelectedRow.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Err == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                App.SabtShobe.queryById('ShobeGrid').store.load()
+                            }
+                        });
+                        Ext.net.Mask.hide();
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearShobe() {
+        App.SabtShobe.queryById('fldId').setValue(0);
+        App.SabtShobe.queryById('txtShobeName').setValue("");
+        App.SabtShobe.queryById('txtAddress').setValue("");
+        App.SabtShobe.queryById('txtCodeSHobe').setValue("");
+        App.SabtShobe.queryById('CboBank').setValue("");
+        App.SabtShobe.queryById('txtDesc').setValue("");
+        /*App.Shobe.queryById('Image').setImageUrl("/Content/BlankB.jpg");
+        Ext.get('fi-button-msg').update('<b>فایل انتخاب شده:</b> ');*/
+    }
+    var addKeyMapSabtShobe = function (cmp) {
+        this.keyMap = new Ext.util.KeyMap({
+            target: cmp.getEl(),
+            binding: [{
+                key: [13, 9], /*Ext.EventObject.ENTER,*/
+                fn: function (key, e) {
+                    if (e.getKey() == 9) {
+                        e.stopEvent();
+                    }
+                    var keyfield = App.SabtShobe.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                    var nextfld;
+                    if (keyfield.itemId == "txtDesc") {
+                        nextfld = App.SabtShobe.queryById('btnSaveShobe');
+                    }
+                    else {
+                        nextfld = keyfield.nextSibling().nextSibling();
+                        nextfld.selectText();
+                    }
+                    nextfld.focus();
+                    nextfld.selectText();
+                }
+            }]
+        });
+    }
+</script>

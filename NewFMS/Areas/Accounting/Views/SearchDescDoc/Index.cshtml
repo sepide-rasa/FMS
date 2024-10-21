@@ -1,0 +1,224 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_DocumentDesc>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+
+@(Html.X().Window()
+    .Modal(true)
+    .Width(600)
+    .Height(350)
+    .Title("لیست الگوهای شرح سند")
+    .ID("SearchDescDoc")
+    .Listeners(l => l.Destroy.Handler = "SetFocusComponent()")        
+    .Closable(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Layout(LayoutType.Fit)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .AutoScroll(true)
+            .Layout(LayoutType.Fit)
+            .Items(
+                X.GridPanel()
+                    .AutoScroll(true)
+                    .Border(false)
+                    .ItemID("GridSearchDescDoc")
+                    .Listeners(l =>l.AfterRender.Handler = "HandleFocus()")              
+                    .TopBar(
+                        Html.X().Toolbar().Items(
+                            X.Button()
+                                .Text("انتخاب")
+                                .Listeners(l=>l.Click.Handler="NextSearchDescDoc()")
+                                .Icon(Icon.NextGreen),
+                            X.Button()
+                                .Text("جدید")
+                                .Listeners(l => l.Click.Handler = "GotoNewDescDoc()")
+                                .Icon(Icon.NewBlue)
+                        )
+                    )
+                    .BottomBar(X.PagingToolbar())
+                    .Store(
+                        X.StoreForModel()
+                            .Listeners(l=>l.Load.Handler="SelectFirstRow()")
+                            .Proxy(Html.X().AjaxProxy().ExtraParams(l => l.Add(new { State = ViewBag.State }))
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                        .PageSize(10)
+                        .RemoteFilter(true)
+                        .RemotePaging(true)
+                    )
+                    //.View(
+                    //    Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    //)
+                    .ViewConfig(X.GridView().LoadingText("در حال بارگذاری...").RTL(true).Listeners(l => l.ItemKeyDown.Fn = "NextSearchDescDocwithKey"))
+                    .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                        Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان").Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.fldDocDesc).Wrap(true).Text("شرح سند").Flex(6)
+                    )
+                    .Listeners(a => {
+                        a.ItemDblClick.Handler = "NextSearchDescDoc();";
+                    })
+                    .SelectionModel(
+                        Html.X().RowSelectionModel()
+                            .Mode(Ext.Net.SelectionMode.Single)
+                    )
+            )
+        )
+)
+
+<script type="text/javascript">
+    function SetFocusComponent() {
+        if ('@ViewBag.State' == "2") {
+            App.ColDescription.getComponent(parseInt('@ViewBag.rowIdx')).focus();
+        }
+        else if ('@ViewBag.State' == "1") {
+            App.DocRegister_Details.queryById("txtDescDoc").focus();
+        }
+        else if ('@ViewBag.State' == "3") {
+            App.DocRegister_DetailsKhazane.queryById("txtDescDoc").focus();
+        }
+        else if ('@ViewBag.State' == "4") {
+            App.ColDescription_Khazane.getComponent(parseInt('@ViewBag.rowIdx')).focus();
+        }
+    }
+    var FirstLoaded = false;
+    function SelectFirstRow() {
+        if (FirstLoaded == false) {
+            FirstLoaded = true;
+            App.SearchDescDoc.queryById('GridSearchDescDoc').plugins[0].fields[1].focus();
+        }
+    }
+
+    var NextSearchDescDocwithKey = function (view, record, item, index, e) {
+        if (e.getKey() == 13) {
+            App.SearchDescDoc.body.mask("در حال بارگذاری");
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/SearchDescDoc/GetCountParameters',
+                params: {
+                    DescDoc: record.data.fldDocDesc
+                },
+                success: function (data) {
+                    if (data.Count == 0) {
+                        if ('@ViewBag.State' == "1") {
+                            App.DocRegister_Details.queryById("txtDescDoc").setValue(record.data.fldDocDesc);
+                        }
+                        else if ('@ViewBag.State' == "2") {
+                            App.ColDescription.getComponent(parseInt('@ViewBag.rowIdx')).setValue(record.data.fldDocDesc);
+                        }
+                        else if ('@ViewBag.State' == "3") {
+                            App.DocRegister_DetailsKhazane.queryById("txtDescDoc").setValue(record.data.fldDocDesc);
+                        }
+                        else if ('@ViewBag.State' == "4") {
+                            App.ColDescription_Khazane.getComponent(parseInt('@ViewBag.rowIdx')).setValue(record.data.fldDocDesc);
+                        }
+                        App.SearchDescDoc.body.mask().hide();
+                        App.SearchDescDoc.destroy();
+                    }
+                    else {
+                        Ext.net.DirectMethod.request({
+                            url: '/Accounting/SearchDescDoc/Parameters',
+                            params: {
+                                DescDoc: record.data.fldDocDesc,
+                                State: '@ViewBag.State',
+                                rowIdx: '@ViewBag.rowIdx'
+                            },
+                            success: function () {
+                                App.SearchDescDoc.body.mask().hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+    };
+
+    function GotoNewDescDoc() {
+        App.SearchDescDoc.body.mask("در حال بارگذاری");
+        Ext.net.DirectMethod.request({
+            url: '/Accounting/DescriptionDocument/IndexWin',
+            params: {
+                State: '@ViewBag.State'
+            },
+            success: function () {
+                App.SearchDescDoc.body.mask().hide();
+            }
+        });
+    }
+
+    function NextSearchDescDoc() {
+        var SelectedRow = App.SearchDescDoc.queryById('GridSearchDescDoc').selModel.getLastSelected();
+        if (SelectedRow != null) {
+            App.SearchDescDoc.body.mask("در حال بارگذاری");
+            Ext.net.DirectMethod.request({
+                url: '/Accounting/SearchDescDoc/GetCountParameters',
+                params: {
+                    DescDoc: SelectedRow.data.fldDocDesc
+                },
+                success: function (data) {
+                    if (data.Count == 0) {
+                        if ('@ViewBag.State' == "1") {
+                            App.DocRegister_Details.queryById("txtDescDoc").setValue(SelectedRow.data.fldDocDesc);
+                        }
+                        else if ('@ViewBag.State' == "2") {
+                            App.ColDescription.getComponent(parseInt('@ViewBag.rowIdx')).setValue(SelectedRow.data.fldDocDesc);
+                        }
+                        else if ('@ViewBag.State' == "3") {
+                            App.DocRegister_DetailsKhazane.queryById("txtDescDoc").setValue(SelectedRow.data.fldDocDesc);
+                        }
+                        else if ('@ViewBag.State' == "4") {
+                            App.ColDescription_Khazane.getComponent(parseInt('@ViewBag.rowIdx')).setValue(SelectedRow.data.fldDocDesc);
+                        }
+                        App.SearchDescDoc.body.mask().hide();
+                        App.SearchDescDoc.destroy();
+                    }
+                    else {
+                        Ext.net.DirectMethod.request({
+                            url: '/Accounting/SearchDescDoc/Parameters',
+                            params: {
+                                DescDoc: SelectedRow.data.fldDocDesc,
+                                State: '@ViewBag.State',
+                                rowIdx: '@ViewBag.rowIdx'
+                            },
+                            success: function () {
+                                App.SearchDescDoc.body.mask().hide();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+
+    function HandleFocus() {
+        App.SearchDescDoc.queryById('GridSearchDescDoc').columnManager.headerCt.el.on("keyup", function (e) {
+            if (e.getKey() == 13) {
+                var keyfield = Ext.getCmp(Ext.Element.getActiveElement().name);
+                if (Ext.getCmp(Ext.Element.getActiveElement().name).filterRow != undefined) {
+                    var nextfld = Ext.getCmp((Ext.Element.getActiveElement()).name).nextNode().items;
+                    if (nextfld != undefined) {
+                        Ext.getCmp((Ext.Element.getActiveElement()).name).nextNode().items.items[0].child().focus();
+                    }
+                    else {
+                        App.SearchDescDoc.queryById('GridSearchDescDoc').getSelectionModel().select(0);
+                    }
+                }
+            }
+        });
+    }
+</script>

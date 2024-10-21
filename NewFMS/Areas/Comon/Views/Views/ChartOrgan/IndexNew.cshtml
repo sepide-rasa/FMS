@@ -1,0 +1,341 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_Organization>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+<style>
+    .x-grid-cell {
+        background-color: transparent;
+    }
+</style>
+@(Html.X().FormPanel()
+                .ID("ChartOrgan")
+        .Title("تعریف چارت سازمانی مصوب")
+        .Closable(true)
+        .Listeners(l => l.AfterRender.Handler = "setHeightTree()")
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSave")
+                        .Listeners(l => { l.Click.Handler = "SaveChartOrgan();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                        .Listeners(l => { l.Click.Handler = "LoadChartOrgan();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                        .Listeners(l => { l.Click.Handler = "DeleteChartOrgan();"; })
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                        .OnClientClick("App.ChartOrgan.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("اطلاعات چارت سازمانی مصوب").Height(75)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 6 })
+                .Items(
+                           X.Hidden().ItemID("fldId"),
+                                X.Hidden().ItemID("fldFatherId")
+                                    , X.Label("عنوان:"),
+                              X.TextField()
+                                    .ItemID("txtTitle")
+        //.MsgTarget(Ext.Net.MessageTarget.Side)
+                                    .AllowBlank(false)
+                                    .AutoFocus(true)
+                                    .BlankText("لطفا عنوان را وارد کنید.")
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                            , X.Label("واحد:")
+                           , X.ComboBox()
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .ItemID("CboUnit")
+                                    .AllowBlank(false)
+                                    .Editable(false)
+                                    .BlankText("لطفا واحد را انتخاب کنید.")
+                                    .EmptyText("واحد")
+        //.MsgTarget(Ext.Net.MessageTarget.Side)
+                                    .Items(
+                                        Html.X().ListItem().Text("عادی").Value("1"),
+                                        Html.X().ListItem().Text("دبیرخانه").Value("2")
+                                        )
+                                    .SelectedItems(new { Value = "1" })
+                                        , X.Label("سازمان(INS):")
+                            , X.TextField()
+                                    .ItemID("txtOrgan")
+        // .MsgTarget(Ext.Net.MessageTarget.Side)
+                                    .LabelAlign(Ext.Net.LabelAlign.Top)
+                                    .ReadOnly(true)
+                                    .Listeners(l =>
+                                    {
+                                        l.IconClick.Handler = "SelectOrgan(45);";
+                                        l.SpecialKey.Handler = "SelectOrgan(e.getKey());";
+                                    }
+
+                                        )
+                                         , X.Label("توضیحات:")
+                                        , X.TextField().ColSpan(6)
+                                .ItemID("txtDesc").Width(548)
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+
+                  )
+
+            )
+        )
+                                ,
+                                X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                                X.TreePanel()
+                                .ID("TreeChartOrgan")
+                                    .AutoScroll(true)
+                                    .Width(300)
+                                    .ColSpan(2)
+        //.Height(450)
+                                    .UseArrows(true)
+                                    .Border(false)
+                                        .Store(
+                    Html.X().TreeStore()
+                        .Proxy(
+                                    Html.X().AjaxProxy().Url(Url.Action("Node"))
+                        )
+                )
+
+                                    .Listeners(a =>
+                                    {
+                                        a.ItemClick.Handler = "GetIdChartOrgan(record)";
+                                        a.AfterRender.Handler = "this.getRootNode().expand();";
+                                        a.BeforeLoad.Fn = "nodeLoad";
+                                    })
+                       .Root(Html.X().Node().NodeID("0").Text("چارت سازمانی"))
+
+                                    .View(
+                                    X.TreeView()
+                                    .Plugins(
+                                    X.TreeViewDragDrop().AppendOnly(true).ContainerScroll(true)
+
+                                )
+                        )
+                        )
+    )
+)
+<script type="text/javascript">
+    var NodeId;
+    var id;
+    var newParentid;
+    var fldPId;
+    var fldId;
+    var UserImageId = 0;
+    var UsersId = 0;
+    var OrganId = null;
+
+    function setHeightTree() {
+        App.TreeChartOrgan.setHeight(App.Win.getHeight() - 300);
+    }
+
+    function SelectOrgan(Code) {
+        if (Code == 45) {
+            Ext.net.DirectMethod.request({
+                url: '/comon/SearchOrganization/Index',
+                params: {
+                    State: 1,
+                    FieldName: ""
+                }
+            });
+        }
+    }
+
+    var nodeLoad = function (store, operation, options) {
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/ChartOrgan/NodeLoad',
+            params: {
+                nod: node.getId()
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+
+        return false;
+    };
+
+    function ReloadChartOrgan() {
+        App.TreeChartOrgan.store.load();
+    };
+
+    function GetIdChartOrgan(record) {
+        NodeId = record.getId();
+    };
+
+    function LoadChartOrgan() {
+
+        if (NodeId != null) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Comon/ChartOrgan/Details',
+                params: {
+                    id: NodeId
+                },
+                success: function (data) {
+
+                    var CboUnit = App.ChartOrgan.queryById("CboUnit");
+                    CboUnit.setValue(data.fldNoeVahed);
+                    var txtTitle = App.ChartOrgan.queryById('txtTitle');
+                    txtTitle.setValue(data.fldTitle);
+                    var txtOrgan = App.ChartOrgan.queryById('txtOrgan');
+                    txtOrgan.setValue(data.fldOrganizationName);
+                    var txtDesc = App.ChartOrgan.queryById('txtDesc');
+                    txtDesc.setValue(data.fldDesc);
+                    var FatherId = App.ChartOrgan.queryById('fldFatherId');
+                    FatherId.setValue(data.fldPId);
+                    var Id = App.ChartOrgan.queryById('fldId');
+                    Id.setValue(data.fldId);
+                    OrganId = data.fldOrganId;
+                    Ext.net.Mask.hide();
+                }
+            });
+
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function SaveChartOrgan() {
+
+        var Id = App.ChartOrgan.queryById('fldId');
+        var CboUnit = App.ChartOrgan.queryById("CboUnit");
+        var FatherId = App.ChartOrgan.queryById("fldFatherId");
+        var txtTitle = App.ChartOrgan.queryById('txtTitle');
+        var txtDesc = App.ChartOrgan.queryById('txtDesc');
+        var er = false;
+        if (txtTitle.validate() == false) {
+            er = true;
+        }
+        /* if (txtOrgan.validate() == false) {
+             er = true;
+         }*/
+
+        if (Id.getValue() == "" || Id.getValue() == 0) {
+            fldPId = NodeId;
+            fldId = Id.getValue();
+        }
+        else {
+            fldPId = FatherId.getValue();
+            fldId = Id.getValue();
+        }
+        if (fldPId == 0)
+            fldPId = null;
+
+
+        if (er == true)
+            return;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/ChartOrgan/Save',
+            params: {
+                fldId: fldId,
+                fldPId: fldPId,
+                fldTitle: txtTitle.getValue(),
+                fldNoeVahed: CboUnit.getValue(),
+                fldOrganId: OrganId,
+                fldDesc: txtDesc.getValue()
+            },
+            success: function (data) {
+                var ic = Ext.MessageBox.INFO;
+                if (data.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: data.MsgTitle,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                ReloadChartOrgan();
+                ClearChartOrgan();
+            }
+
+        });
+    }
+
+
+    function DeleteChartOrgan() {
+
+        if (NodeId != null) {
+            Ext.MessageBox.show({
+                title: "هشدار",
+                msg: "آیا برای حذف مطمئن هستید؟",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.YESNO,
+                fn: function (btn) {
+                    if (btn == 'yes') {
+                        Ext.net.DirectMethod.request({
+                            url: '/Comon/ChartOrgan/Delete',
+                            params: {
+                                id: NodeId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                ReloadChartOrgan();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا یک سطر را انتخاب کنید",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+    function ClearChartOrgan() {
+        App.ChartOrgan.queryById('fldId').setValue(0);
+        App.ChartOrgan.queryById("fldFatherId").setValue(0);
+        App.ChartOrgan.queryById('txtTitle').setValue('');
+        App.ChartOrgan.queryById('txtOrgan').setValue('');
+        App.ChartOrgan.queryById('txtDesc').setValue('');
+        OrganId = null;
+    }
+    function EnterNext() {
+        var keyfield = App.ChartOrgan.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+        var nextfld;
+        if (keyfield.itemId == "txtOrgan") {
+            nextfld = App.ChartOrgan.queryById('txtDesc');
+        }
+        else if (keyfield.itemId == "txtDesc") {
+            nextfld = App.ChartOrgan.queryById('btnSave');
+        }
+        else {
+            nextfld = keyfield.nextSibling().nextSibling();
+            nextfld.selectText();
+        }
+        nextfld.focus();
+    }
+</script>

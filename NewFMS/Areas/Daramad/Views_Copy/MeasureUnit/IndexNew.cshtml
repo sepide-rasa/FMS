@@ -1,0 +1,254 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_MeasureUnit>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+
+@{ var X = Html.X();}
+<br />
+@(Html.X().Panel()
+        .ID("SabtMeasure")
+            .Title("ثبت واحد اندازه گیری")
+           .Listeners(li => { li.AfterRender.Handler = "MeasureSetSize();"; li.Render.Fn = "addKeyMapSabtMeasure"; })
+        .Closable(true)
+        .CloseAction(Ext.Net.CloseAction.Destroy)
+        .Border(false)
+       .Items(
+    X.Panel().Border(false).Items(X.Label()),
+        X.Panel().Border(false).Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk).ItemID("btnSaveMeasure")
+                    .Listeners(l => { l.Click.Handler = "SaveMeasure();"; })
+            , X.Button().Text("ویرایش").Icon(Ext.Net.Icon.Pencil)
+                    .Listeners(l => { l.Click.Handler = "LoadMeasure();"; })
+            , X.Button().Text("حذف").Icon(Ext.Net.Icon.Delete)
+                    .Listeners(l => { l.Click.Handler = "DeleteMeasure();"; })
+            , X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help).Listeners(l => { l.Click.Handler = "HelpMeasureUnit();"; })
+
+            , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                    .OnClientClick("App.SabtMeasure.destroy()")
+        ).ButtonAlign(Ext.Net.Alignment.Center)
+        .Items(
+            X.Panel().Border(false)
+             .Layout(LayoutType.VBox)
+                         .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+            .Items(
+                X.FieldSet().Border(true).Title("واحد اندازه گیری").Height(50)
+                     .Defaults(new { Margin = 2 })
+                    .Layout(LayoutType.Table)
+                    .LayoutConfig(new TableLayoutConfig { Columns = 4 })
+                .Items(
+                       X.Hidden().ItemID("fldId"),
+                          X.Label().Text("نام واحد:")
+                                        , X.TextField().MaxLength(100).EnforceMaxLength(true)
+                                    .ItemID("txtTitle")
+                                    .AllowBlank(false).Width(170)
+                                        .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+                                     .BlankText("لطفا نام واحد را وارد کنید.")
+                        , X.Label("توضیحات:"),
+                            X.TextField()
+                        .ItemID("txtDescMeasure")
+
+                        .Width(160)
+                )
+            )
+        ),
+        X.GridPanel()
+        .ItemID("MeasureGrid")
+            .BottomBar(X.PagingToolbar())
+            .Store(
+                            X.StoreForModel()
+                                            .Listeners(l => l.DataChanged.Handler = "App.SabtMeasure.queryById('MeasureGrid').selModel.refresh();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                            )
+                            .PageSize(20)
+                            .RemoteFilter(true)
+                            .RemotePaging(true)
+                        )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+                    .Plugins(X.FilterHeader().Remote(true))
+                     .Listeners(l =>
+                     {
+                         l.AfterRender.Handler = "var grid = App.SabtMeasure.queryById('MeasureGrid');grid.setHeight(App.Win.getHeight() - 260); ";
+
+                     })
+        .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                            Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true),
+                                Html.X().Column().DataIndex(Model, m => m.fldNameVahed).Text("نام واحد").Flex(2),
+                            Html.X().Column().DataIndex(Model, m => m.fldDesc).Text("توضیحات").Flex(10)
+    )
+                .SelectionModel(
+                    Html.X().RowSelectionModel()
+                        .Mode(Ext.Net.SelectionMode.Single)
+    )
+    )
+)
+<script type="text/javascript">
+
+    /*App.Win.addListener('resize', function () {
+        App.Measure.setWidth(App.Win.getWidth());
+    });
+    App.Win.addListener('resize', function () {
+        var grid = App.Measure.queryById('MeasureGrid');
+        grid.setHeight(App.Win.getHeight()-260);
+    });*/
+  
+    function HelpMeasureUnit() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Daramad/MeasureUnit/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+  
+       function MeasureSetSize() {
+           App.SabtMeasure.setWidth(App.Win.getWidth());
+            var grid = App.SabtMeasure.queryById('MeasureGrid');
+            grid.setHeight(App.Win.getHeight() - 260);
+        }
+        function LoadMeasure() {
+            var SelectedRow = App.SabtMeasure.queryById('MeasureGrid').selModel.getLastSelected();
+            if (SelectedRow != null) {
+                Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+                Ext.net.DirectMethod.request({
+                    url: '/Daramad/MeasureUnit/Details',
+                    params: {
+                        Id: SelectedRow.data.fldId
+                    },
+                    success: function (data) {
+                        var txtTitle = App.SabtMeasure.queryById('txtTitle');
+                        txtTitle.setValue(data.fldNameVahed);
+                       var txtDescMeasure = App.SabtMeasure.queryById('txtDescMeasure');
+                        txtDescMeasure.setValue(data.fldDesc);
+                        var fldId = App.SabtMeasure.queryById('fldId');
+                        fldId.setValue(data.fldId);
+                        Ext.net.Mask.hide();
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+
+        function SaveMeasure() {
+            var txtTitle = App.SabtMeasure.queryById('txtTitle');
+            var txtDescMeasure = App.SabtMeasure.queryById('txtDescMeasure');
+            var fldId = App.SabtMeasure.queryById('fldId');
+            var er = false;
+
+            if (txtTitle.validate() == false) {
+                er = true;
+            }
+           if (er == true)
+                return;
+
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            Ext.net.DirectMethod.request({
+                url: '/Daramad/MeasureUnit/Save',
+                params: {
+                    fldId: fldId.getValue(),
+                    fldNameVahed: txtTitle.getRawValue(),
+                    fldDesc: txtDescMeasure.getValue()
+                },
+                success: function (data) {
+                    Ext.net.Mask.hide();
+                    var ic = Ext.MessageBox.INFO;
+                    if (data.Err == 1)
+                        ic = Ext.MessageBox.ERROR;
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: ic,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    App.SabtMeasure.queryById('MeasureGrid').store.load();
+                    if (data.Err != 1)
+                        ClearMeasure();
+                }
+
+            });
+        }
+        function DeleteMeasure() {
+            var SelectedRow = App.SabtMeasure.queryById('MeasureGrid').selModel.getLastSelected();
+            if (SelectedRow != null) {
+                Ext.MessageBox.show({
+                    title: "هشدار",
+                    msg: "آیا برای حذف مطمئن هستید؟",
+                    icon: Ext.MessageBox.WARNING,
+                    buttons: Ext.MessageBox.YESNO,
+                    fn: function (btn) {
+                        if (btn == 'yes') {
+                            Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                            Ext.net.DirectMethod.request({
+                                url: '/Daramad/MeasureUnit/Delete',
+                                params: {
+                                    id: SelectedRow.data.fldId
+                                },
+                                success: function (data) {
+                                    var ic = Ext.MessageBox.INFO;
+                                    if (data.Er == 1)
+                                        ic = Ext.MessageBox.ERROR;
+                                    Ext.MessageBox.show({
+                                        title: data.MsgTitle,
+                                        msg: data.Msg,
+                                        icon: ic,
+                                        buttons: Ext.MessageBox.OK
+                                    });
+                                    App.SabtMeasure.queryById('MeasureGrid').store.load()
+                                }
+                            });
+                            Ext.net.Mask.hide();
+                        }
+                    }
+                });
+            }
+            else {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "لطفا یک سطر را انتخاب کنید",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+            }
+        }
+        function ClearMeasure() {
+            App.SabtMeasure.queryById('fldId').setValue(0);
+            App.SabtMeasure.queryById('txtTitle').setValue("");
+            App.SabtMeasure.queryById('txtDescMeasure').setValue("");
+        }
+        var addKeyMapSabtMeasure = function (cmp) {
+            this.keyMap = new Ext.util.KeyMap({
+                target: cmp.getEl(),
+                binding: [{
+                    key: [13, 9], /*Ext.EventObject.ENTER,*/
+                    fn: function (key, e) {
+                        if (e.getKey() == 9) {
+                            e.stopEvent();
+                        }
+                        var keyfield = App.SabtMeasure.queryById(Ext.getCmp((Ext.Element.getActiveElement()).name).itemId);
+                        var nextfld;
+                        if (keyfield.itemId == "txtDescMeasure") {
+                            nextfld = App.SabtMeasure.queryById('btnSaveMeasure');
+                        }
+                        else {
+                            nextfld = keyfield.nextSibling().nextSibling();
+                            nextfld.selectText();
+                        }
+                        nextfld.focus();
+                        nextfld.selectText();
+                    }
+                }]
+            });
+        }
+</script>

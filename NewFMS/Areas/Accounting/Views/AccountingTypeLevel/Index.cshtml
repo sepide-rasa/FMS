@@ -1,0 +1,337 @@
+﻿@model IEnumerable<NewFMS.WCF_Accounting.OBJ_LevelsAccountingType>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@using NewFMS.WCF_AnbarAmval
+
+@{
+    var X = Html.X();
+}
+
+<script>
+    Ext.net.FilterHeader.behaviour.string[0].match = function (recordValue, matchValue) {
+        return (Ext.net.FilterHeader.behaviour.getStrValue(recordValue) || "").indexOf(matchValue) > -1;
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].getStrValue = function (value) {
+        return value.toString();
+    };
+
+    Ext.net.FilterHeader.behaviour.string[0].serialize = function (value) {
+        return {
+            type: "string",
+            op: "*",
+            value: value
+        };
+    };
+</script>
+
+@(Html.X().Panel()
+    .ID("AccountingTypeLevel")
+    .Title("تعریف سطوح انواع حسابداری")
+    .Closable(true)
+    .Listeners(li => li.AfterRender.Handler = "AccountingTypeLevelSetSize();")
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Border(false)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .Items(X.Label()),
+        X.Panel()
+            .Border(false)
+            .Items(
+                X.Panel()
+                    .Border(false)
+                    .Layout(LayoutType.VBox)
+                    .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+                    .Items(
+                        X.FieldSet()
+                            .Border(false)
+                            .Defaults(new { Margin = 2 })
+                            .Layout(LayoutType.Table)
+                            .LayoutConfig(new TableLayoutConfig { Columns = 2 })
+                        .Items(
+                            X.Hidden()
+                                .ItemID("fldId"),
+                            X.Label("نوع حسابداری:"),
+                            X.ComboBox()
+                                .ItemID("CboAccountingType")
+                                .AutoFocus(true)
+                                .DisplayField("fldName")
+                                .ValueField("fldId")
+                                .TypeAhead(true)
+                                .Editable(true)
+                                .AllowBlank(false)
+                                .BlankText("لطفا نوع حسابداری را انتخاب کنید.")
+                                .QueryMode(DataLoadMode.Local)
+                                .ForceSelection(true)
+                                .TriggerAction(TriggerAction.All)
+                                .Listeners(l => l.Change.Handler = "LoadGridAccountingTypeLevel()")
+                                .Store(X.Store()
+                                    .Listeners(l => l.Load.Handler = "setDefaultCboAccountingType()")
+                                    .Model(X.Model()
+                                        .IDProperty("fldId")
+                                        .Fields(
+                                            new ModelField("fldName", ModelFieldType.String) { Mapping = "fldName" },
+                                            new ModelField("fldId", ModelFieldType.String) { Mapping = "fldId" }
+                                        )
+                                    )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetAccountingType"))
+                                        .Reader(X.JsonReader().Root("data"))
+                                    )
+                                )
+                        )
+                    )
+        ),
+        X.GridPanel()
+            .ItemID("AccountingTypeLevelGrid")
+            .BottomBar(X.PagingToolbar())
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(
+                        Html.X().Button()
+                            .Text("افزودن سطر جدید")
+                            .Icon(Ext.Net.Icon.BulletPlus)
+                            .Listeners(l => l.Click.Handler = "AddAccountingTypeLevel();"),
+                        Html.X().Button()
+                            .Text("ذخیره")
+                            .Icon(Ext.Net.Icon.Disk)
+                            .Listeners(l => l.Click.Handler = "SaveAccountingTypeLevel();")
+                    )
+            )
+            .Store(
+                X.StoreForModel()
+                    .AutoLoad(false)
+                    .Listeners(l => l.DataChanged.Handler = "App.AccountingTypeLevel.queryById('AccountingTypeLevelGrid').selModel.refresh();")
+                    .Proxy(Html.X().AjaxProxy()
+                        .Url(Url.Action("Read"))
+                        .Reader(Html.X().JsonReader().Root("data"))
+                    )
+                    .PageSize(20)
+                    .RemoteFilter(false)
+                    .RemotePaging(false)
+                )
+            .View(
+                Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                )
+            .Plugins(X.FilterHeader().Remote(false))
+            .Plugins(Html.X().CellEditing().ClicksToEdit(1).Listeners(l => l.Edit.Fn = "nextcellRowAccountingTypeLevel"))
+            .ColumnModel(
+                Html.X().RowNumbererColumn(),
+                Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Hidden(true).Flex(1),
+                Html.X().Column().DataIndex(Model, m => m.fldName).Text("عنوان سطح").Flex(9),
+                Html.X().Column().DataIndex(Model, m => m.fldArghumNum).Text("تعداد ارقام").Flex(4).Editor(Html.X().TextField()
+                    .ItemID("txtCount").AutoFocus(true).MaskRe("[0-9]").EnableKeyEvents(true).Listeners(l =>
+                    {
+                        l.SpecialKey.Handler = "checkhintkeyAccountingTypeLevel(e.getKey())";
+                    })),
+                Html.X().ComponentColumn().ID("ColDelLevelAccountingType").Listeners(l => l.Bind.Fn = "CheckDisableAccountingTypeLevel").Flex(1).ItemID("CmpDel").Component(Html.X().Button().Icon(Icon.Delete).Text("حذف")
+                    .Listeners(l => l.Click.Handler = "DeleteLevelAccountingType();")).Filterable(false)
+            )
+            .SelectionModel(
+                Html.X().RowSelectionModel()
+                    .Mode(Ext.Net.SelectionMode.Single)
+            )
+    )
+)
+    <script type="text/javascript">
+        var HintEnterAccountingType = 0;
+    function setDefaultCboAccountingType() {
+        App.AccountingTypeLevel.queryById('CboAccountingType').setValue(App.AccountingTypeLevel.queryById('CboAccountingType').store.getAt(0));
+    }
+
+    function checkhintkeyAccountingTypeLevel(e) {
+        if (e == 13) {
+            HintEnterAccountingType = 1;
+        }
+    };
+
+    var nextcellRowAccountingTypeLevel = function (a, b) {
+        vv = b.rowIdx;
+        if (b.field == "fldArghumNum") {
+            if (parseInt(b.value) > 2147483647 || parseInt(b.value) <= 0) {
+                b.record.set("fldArghumNum", 1);
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "مقدار وارد شده غیرمجاز است.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK,
+                    closable: false,
+                    fn: function (btn) {
+                        if (btn == "ok") {
+                            App.AccountingTypeLevel.queryById("AccountingTypeLevelGrid").editingPlugin.startEdit(b.rowIdx, 2);
+                            a.getEditor(b.row, b.column).field.selectText();
+                        }
+                    }
+                });
+            }
+            else {
+                if (HintEnterAccountingType == 1) {
+                    HintEnterAccountingType = 0;
+                    App.AccountingTypeLevel.queryById("AccountingTypeLevelGrid").editingPlugin.startEdit(b.rowIdx + 1, 2);
+                    a.getEditor(b.row, b.column).field.selectText();
+                }
+            }
+        }
+    };
+
+    var CheckDisableAccountingTypeLevel = function (ComponentColumn, button, record, index) {
+        if (index == 0 || index == 1 || index == 2) {
+            ComponentColumn.getComponent(index).hide();
+        }
+        else if (index == App.AccountingTypeLevel.queryById('AccountingTypeLevelGrid').getStore().count() - 1) {
+            ComponentColumn.getComponent(index).enable();
+        }
+        else {
+            ComponentColumn.getComponent(index).disable();
+        }
+    };
+
+    function DeleteLevelAccountingType() {
+        Ext.MessageBox.show({
+            title: "هشدار",
+            msg: "آیا برای حذف مطمئن هستید؟",
+            icon: Ext.MessageBox.WARNING,
+            buttons: Ext.MessageBox.YESNO,
+            fn: function (btn) {
+                if (btn == 'yes') {
+                    var record = App.ColDelLevelAccountingType.activeRecord.record;
+                    if (record.data.fldId == 0) {
+                        App.AccountingTypeLevel.queryById("AccountingTypeLevelGrid").store.remove(record);
+                    }
+                    else {
+                        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+                        Ext.net.DirectMethod.request({
+                            url: '/Accounting/AccountingTypeLevel/Delete',
+                            params: {
+                                Id: record.data.fldId
+                            },
+                            success: function (data) {
+                                var ic = Ext.MessageBox.INFO;
+                                if (data.Er == 1)
+                                    ic = Ext.MessageBox.ERROR;
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: ic,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                if (data.Er != 1) {
+                                    LoadGridAccountingTypeLevel();
+                                }
+                                Ext.net.Mask.hide();
+                            }
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+    function AccountingTypeLevelSetSize() {
+        App.AccountingTypeLevel.setWidth(App.AccountingWin.getWidth());
+        App.AccountingTypeLevel.queryById('AccountingTypeLevelGrid').setHeight(App.AccountingWin.getHeight() - 209);
+    }
+
+    function LoadGridAccountingTypeLevel() {
+        App.AccountingTypeLevel.queryById('AccountingTypeLevelGrid').getStore().getProxy().setExtraParam("AccountingTypeId", App.AccountingTypeLevel.queryById('CboAccountingType').getValue());
+        App.AccountingTypeLevel.queryById('AccountingTypeLevelGrid').getStore().load();
+    }
+
+    function AddAccountingTypeLevel() {
+        var store = App.AccountingTypeLevel.queryById('AccountingTypeLevelGrid').getStore();
+        var index = store.count();
+        var LastRec = store.data.items[index-1].data.fldName;
+        var No = parseInt(LastRec.substr(LastRec.search(' ') + 1));
+        if (isNaN(No)) {
+            App.AccountingTypeLevel.queryById('AccountingTypeLevelGrid').store.insert(index, {
+                fldId: 0,
+                fldName: "تفصیلی 1",
+                fldArghumNum: 1
+            });
+            App.AccountingTypeLevel.queryById('AccountingTypeLevelGrid').getView().refresh();
+        }
+        else {
+            App.AccountingTypeLevel.queryById('AccountingTypeLevelGrid').store.insert(index, {
+                fldId: 0,
+                fldName: "تفصیلی " + parseInt(No + 1),
+                fldArghumNum: 1
+            });
+            App.AccountingTypeLevel.queryById('AccountingTypeLevelGrid').getView().refresh();
+        }
+    }
+
+    function SaveAccountingTypeLevel() {
+        var Grid = App.AccountingTypeLevel.queryById('AccountingTypeLevelGrid');
+        var CboAccountingType = App.AccountingTypeLevel.queryById('CboAccountingType');
+        var AccountingTypeLevelArray = new Array();
+        var er = false;
+
+        if (CboAccountingType.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        for (var i = 0; i < Grid.getStore().count() ; i++) {
+            if (Grid.store.data.items[i].data.fldArghumNum == 0) {
+                Ext.MessageBox.show({
+                    title: "خطا",
+                    msg: "تعداد ارقام نمی تواند صفر باشد.",
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.MessageBox.OK
+                });
+                return;
+            }
+            else {
+                AccountingTypeLevelArray.push({
+                    fldId: Grid.store.data.items[i].data.fldId,
+                    fldName: Grid.store.data.items[i].data.fldName,
+                    fldArghumNum: Grid.store.data.items[i].data.fldArghumNum
+                });
+            }
+        }
+        var data = {
+            AccountingTypeId: CboAccountingType.getValue(),
+            AccountingTypeLevelArray: AccountingTypeLevelArray
+        };
+
+        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+        $.ajax({
+            type: "POST",
+            url: '/Accounting/AccountingTypeLevel/Save',
+            datatype: "json",
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function (result) {
+                var ic = Ext.MessageBox.INFO;
+                if (result.Er == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    title: result.MsgTitle,
+                    msg: result.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                Ext.net.Mask.hide();
+                if (result.Er != 1) {
+                    Grid.store.load();
+                }
+            },
+            failure: function () {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+
+    /*function HelpStorageGroup() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/AnbarAmval/StorageGroup/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }*/
+</script>

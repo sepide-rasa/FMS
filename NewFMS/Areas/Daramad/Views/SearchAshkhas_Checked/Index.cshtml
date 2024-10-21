@@ -1,0 +1,107 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_Ashkhas>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+    var X = Html.X();
+}
+@(Html.X().Window()
+    .Width(600)
+    .Height(500)
+    .Title("اشخاص")
+    .ID("SearchAshkhas_Checked")
+    .Closable(true)
+    .Modal(true)
+    .Layout(Ext.Net.LayoutType.Fit)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+    .Items(
+        X.Panel()
+            .Border(false)
+            .AutoScroll(true)
+            .Layout(Ext.Net.LayoutType.Fit)
+            .Items(
+                X.GridPanel()
+                    .AutoScroll(true)
+                    .Border(false)
+                    .TopBar(
+                        Html.X().Toolbar()
+                            .Items(
+                                X.Button()
+                                    .Text("انتخاب")
+                                    .Icon(Ext.Net.Icon.ArrowRedo)
+                                    .Listeners(li => li.Click.Handler = "NextSearchAshkhas_Checked();")
+                                )
+                        )
+                        .ItemID("GridSearchAshkhas_Checked")
+                    .Store(
+                        X.StoreForModel()
+                            .Listeners(l => l.Load.Handler = "LoadSavedDataAshkhas();")
+                            .Proxy(Html.X().AjaxProxy()
+                                .Url(Url.Action("Read"))
+                                .Reader(Html.X().JsonReader().Root("data"))
+                        )
+                        .PageSize(20000)
+                        .RemoteFilter(true)
+                        .RemotePaging(true)
+                    )
+                    .View(
+                        Html.X().GridView().LoadingText("در حال بارگذاری...").RTL(true)
+                    )
+        .Plugins(X.FilterHeader().Remote(true))
+                    .ColumnModel(
+                        Html.X().RowNumbererColumn(),
+                        Html.X().Column().DataIndex(Model, m => m.fldId).Text("کد").Flex(1).Hidden(true).Hideable(false),
+                        Html.X().Column().DataIndex(Model, m => m.Name).Text("نام").Flex(5),
+                        Html.X().Column().DataIndex(Model, m => m.fldShenase_CodeMeli).Text("شناسه/کد ملی").Flex(3),
+                        Html.X().Column().DataIndex(Model, m => m.shomareshabt_father).Text("شماره ثبت/نام پدر").Flex(3),//.Hidden(true)
+                        Html.X().Column().DataIndex(Model, m => m.NoeShakhs).Text("نوع شخص").Flex(2)
+                    )
+                        //.Listeners(a => a.CellDblClick.Handler = "NextSearchCodeDaramad_Checked();")
+                        .SelectionModel(
+                                Html.X().CheckboxSelectionModel().ShowHeaderCheckbox(true)
+                                    .Mode(SelectionMode.Multi).PruneRemoved(false).CheckOnly(true))
+
+            )
+        )
+)
+
+<script type="text/javascript">
+    var State = '@ViewBag.State';
+
+    function LoadSavedDataAshkhas() {
+        var AshkhasSelected = "";
+        if (State == "1")
+            AshkhasSelected = App.NewMahdoodiyatM.queryById('IdAshkhas').getValue();
+
+        if (AshkhasSelected != "") {
+            var u = AshkhasSelected.split(";");
+            for (var j = 0; j < u.length - 1; j++) {
+                var index = App.SearchAshkhas_Checked.queryById('GridSearchAshkhas_Checked').getStore().findExact("fldId", parseInt(u[j]));
+                App.SearchAshkhas_Checked.queryById('GridSearchAshkhas_Checked').getSelectionModel().select(index, true);
+            }
+        }
+    }
+    function NextSearchAshkhas_Checked() {
+        var j = 0;
+        var SelectedRow = App.SearchAshkhas_Checked.queryById('GridSearchAshkhas_Checked').getSelectionModel().getSelection();
+        if (SelectedRow != null) {
+            if (State == "1") {
+                App.NewMahdoodiyatM.queryById('IdAshkhas').setValue("");
+                App.NewMahdoodiyatM.queryById('txtAshkhas').setValue("");
+                for (var i = 0; i < SelectedRow.length; i++) {
+                    App.NewMahdoodiyatM.queryById('IdAshkhas').setValue(App.NewMahdoodiyatM.queryById('IdAshkhas').getValue() + SelectedRow[i].data.fldId + ";");
+                    App.NewMahdoodiyatM.queryById('txtAshkhas').setValue(App.NewMahdoodiyatM.queryById('txtAshkhas').getValue() + SelectedRow[i].data.Name + "،");
+                }
+            }
+            App.SearchAshkhas_Checked.destroy();
+        }
+        else {
+            Ext.MessageBox.show({
+                title: "خطا",
+                msg: "لطفا حداقل یک گزینه را انتخاب نمایید.",
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.MessageBox.OK
+            });
+        }
+    }
+</script>

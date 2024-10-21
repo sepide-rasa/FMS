@@ -1,0 +1,534 @@
+﻿@model IEnumerable<NewFMS.WCF_Common.OBJ_Permission>
+@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+
+@(X.Panel().Border(false)
+                .ID("Permission")
+                 .Listeners(li => li.AfterRender.Handler = "setSizePnl();")
+    .Title("تعیین دسترسی")
+            .Closable(true)
+            .AutoScroll(true)
+            .CloseAction(Ext.Net.CloseAction.Destroy)
+            .Items(
+                X.Panel()
+                .Border(false)
+                .AutoScroll(true)
+    .KeyMap(
+        Html.X().KeyMap()
+            .ID("PermissionMap")
+            .Target("={Ext.isGecko ? Ext.getDoc() : Ext.getBody()}")
+            .Binding(b =>
+            {
+                b.Add(Html.X().KeyBinding()
+                    .KeysString(((int)Ext.Net.KeyCode.F8).ToString())
+                    .Handler("SavePermission(); ")
+                );
+
+            }))
+    .Items(
+        X.Panel()
+            .Border(false)
+            .TopBar(
+                Html.X().Toolbar()
+                    .Items(
+
+
+                            X.Button()
+                                .Text("ذخیره")
+                                .Icon(Ext.Net.Icon.Add)
+                                .Listeners(li => li.Click.Handler = "SavePermission();"),
+                              X.Button().Text("راهنما")
+                              .Icon(Ext.Net.Icon.Help)
+                                  .Listeners(l => { l.Click.Handler = "HelpPermission();"; })
+
+                                //, X.Button().Text("راهنما").Icon(Ext.Net.Icon.Help)
+                                //.Listeners(de =>
+                                //    {
+                                //        de.Click.Handler = "HelpPermission();";
+                                //    })
+                            )
+                        )
+            .Items(
+                X.Panel()
+                        .ItemID("Panel")
+                    .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 4 })
+                    .Defaults(new { Margin = 5 })
+                    .Height(50)
+                    .Items(
+                            X.Label("گروه کاربری:"),
+                        X.ComboBox()
+                            .LabelAlign(Ext.Net.LabelAlign.Top)
+                            .ItemID("CboGrohKarbari")
+                            .Width(200)
+                            .TypeAhead(true)
+                            .Editable(false)
+                            .QueryMode(DataLoadMode.Local)
+                            .TriggerAction(TriggerAction.All)
+                            .DisplayField("Name")
+                            .ValueField("ID")
+                            .Icon(Ext.Net.Icon.Zoom)
+                            .Listeners(a =>
+                            {
+                               // a.Select.Handler = "Change()";
+                                a.Change.Handler = "App.Permission.queryById('CboModule').clearValue(); App.Permission.queryById('CboModule').getStore().load()";
+                                a.IconClick.Handler = "SearchUserGroup();";
+                            }
+                            )
+                            .Store(
+                                X.Store()
+                                    .Model(
+                                        X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                                new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                                    )
+                                        )
+                                    .Proxy(X.AjaxProxy()
+                                    .Url(Url.Action("GetUserGroup"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                     )
+                                     .Listeners(li => li.BeforeLoad.Handler = "LoadUserGroup();")
+                             )
+                             ,
+                                 X.Label("سازمان_ماژول:"),
+                            X.ComboBox()
+                                .LabelAlign(Ext.Net.LabelAlign.Top)
+                                .ItemID("CboModule")
+                                .Width(400)
+                                .TypeAhead(true)
+                                .AllowBlank(false)
+                                .BlankText("لطفا سازمان_ماژول را انتخاب کنید")
+                                .Editable(false)
+                                .ForceSelection(true)
+                                .QueryMode(DataLoadMode.Local)
+                                .TriggerAction(TriggerAction.All)
+                                .DisplayField("Name")
+                                .ValueField("ID")
+                                .Listeners(l => { l.AfterRender.Handler = "App.Permission.queryById('CboModule').validate();";l.IconClick.Handler = "SearchModuleOrgan();"; })
+                                .Icon(Ext.Net.Icon.Zoom)
+                                .Listeners(a =>
+                                {
+                                    a.Change.Handler = "Change()";
+                                }
+                                )
+                                .Store(
+                                    X.Store()
+                                    .AutoLoad(false)
+                                    .Model(
+                                        X.Model()
+                                            .IDProperty("fldId")
+                                            .Fields(
+                                                new ModelField("ID", ModelFieldType.String) { Mapping = "ID" },
+                                                new ModelField("Name", ModelFieldType.String) { Mapping = "Name" }
+                                                    )
+                                        )
+                                    .Proxy(X.AjaxProxy()
+                                        .Url(Url.Action("GetModule"))
+                                    .Reader(X.JsonReader().Root("data"))
+                                        )
+                                    .Parameters(ps => ps.Add(new StoreParameter("userGroup", "App.Permission.queryById('CboGrohKarbari').getValue()", ParameterMode.Raw)))
+                                 )
+                    ),
+                X.Panel()
+                    .Border(false).AutoScroll(true).ItemID("pnlTree")
+                    .Items(
+                        X.TreePanel()
+                                .ID("TreePermission")
+                            .AutoScroll(true)
+                            .Width(600)
+                            .ColSpan(2)
+                            //.Expand(true)
+                            .Listeners(l=>l.AfterItemCollapse.Fn="reloadTreePermission")
+                            .UseArrows(true)
+                            .Border(false)
+                            .Store(
+                                X.TreeStore()
+                                    .AutoLoad(false)
+                                    .Proxy(
+                                        Html.X().AjaxProxy()
+                                            .Url(Url.Action("NodeLoad"))                                            
+                                        )
+                                            .Listeners(l =>
+                                            {
+                                                l.BeforeLoad.Fn = "GetParamTreePermission";
+                                            })
+                                )
+                            .Listeners(a =>
+                            {
+                                a.ItemClick.Handler = "GetId(record)";
+                                /*a.BeforeLoad.Fn = "nodeLoad";*/
+                                a.CheckChange.Fn = "GetGroupId";
+                            })
+                            .Root(
+                                Html.X().Node()
+                                    .NodeID("0")
+                                    //.Expanded(true)                                    
+                                    .Text("تعیین دسترسی")
+                                    .Checked(null))
+                            )
+            )
+                        )
+)
+)
+<script type="text/javascript">
+    var NodeId;
+    var id;
+    var node2;
+    function SearchModuleOrgan() {
+        var CboGrohKarbari = App.Permission.queryById('CboGrohKarbari');
+        var er = false;
+        if (CboGrohKarbari.validate() == false)
+            er = true;
+        if (er == true)
+            return;
+        Ext.net.DirectMethod.request({
+            url: '/comon/SearchUserGroup_ModuleOrgan/Index',
+            params: {
+                State: 1,
+                UserGroup:CboGrohKarbari.getValue()
+            }
+        });
+    }
+    function SearchUserGroup() {
+        Ext.net.DirectMethod.request({
+            url: '/comon/SearchUserGroup/Index',
+            params: {
+                State: 1,
+            }
+        });
+    }
+    var reloadTreePermission = function (record, value, htmlrec) {
+        if (value == 0) {
+            App.TreePermission.expandAll();
+        }
+    };
+
+    var GetParamTreePermission = function (store, operation, eOpts) {
+        var nodeId = operation.node.getId();
+        operation.params.nod = nodeId;
+    };
+
+    var UnChecked = "";
+    var GetGroupId = function (node, checked, eOpts) {
+        if (node.childNodes.length > 0) {
+            node.cascadeBy(function (n) {
+                n.set('checked', checked);
+                if (checked == false) {
+                    /*UnChecked = UnChecked.replace(n.getId() + ";", '');*/
+                    UnChecked = UnChecked + n.getId() + ";";
+                }
+            });
+            if (checked == true) {
+                while (node.parentNode.getId() != 0) {
+                    node.parentNode.set('checked', true);
+                    node = node.parentNode;
+                }
+            }
+            else {
+                var StateEqual = true;
+                while (node.parentNode.getId() != 0) {
+                    node.parentNode.cascadeBy(function (n) {
+                        if (n != node.parentNode) {
+                            if (n.get('checked') == true) {
+                                StateEqual = false;
+                            }
+                        }
+                    });
+                    if (StateEqual == true) {
+                        node.parentNode.set('checked', false);
+                        UnChecked = UnChecked + node.getId() + ";";
+                        UnChecked = UnChecked + node.parentNode.getId() + ";";
+
+                    }
+                    node = node.parentNode;
+                }
+            }
+        }
+        else {
+            if (checked == false) {
+                UnChecked = UnChecked + node.getId() + ";";
+            }
+            if (checked == true) {
+                while (node.parentNode.getId() != 0) {
+                    node.parentNode.set('checked', true);
+                    node = node.parentNode;
+                }
+            }
+            else {
+                var StateEqual = true;
+                node.parentNode.cascadeBy(function (n) {
+                    if (n != node.parentNode) {
+                        if (n.get('checked') != checked) {
+                            StateEqual = false;
+                        }
+                    }
+                });
+                if (StateEqual != checked) {
+                    node.parentNode.set('checked', checked);
+                    if (checked == false) {
+                        /*UnChecked = UnChecked.replace(node.getId() + ";", '');*/
+                        UnChecked = UnChecked + node.getId() + ";";
+                        UnChecked = UnChecked + node.parentNode.getId() + ";";
+                    }
+                }
+
+                var StateEqual2 = true;
+                while (node.parentNode.getId() != 0) {
+                    node.parentNode.cascadeBy(function (n) {
+                        if (n != node.parentNode) {
+                            if (n.get('checked') == true) {
+                                StateEqual2 = false;
+                            }
+                        }
+                    });
+                    if (StateEqual2 == true) {
+                        node.parentNode.set('checked', false);
+                        UnChecked = UnChecked + node.getId() + ";";
+                        UnChecked = UnChecked + node.parentNode.getId() + ";";
+                    }
+                    node = node.parentNode;
+                }
+            }
+        }
+        /*if (checked == true) {
+            while (node.parentNode.getId() != 0) {
+                node.parentNode.set('checked', true);
+                node = node.parentNode;
+            }
+        }
+        else {
+            var StateEqual = true;
+            while (node.parentNode.getId() != 0) {
+                if (node.childNodes.length == 0) {
+                    node.parentNode.parentNode.cascadeBy(function (n) {
+                        if (n != node.parentNode.parentNode) {
+                            if (n.get('checked') != checked) {
+                                StateEqual = false;
+                            }
+                        }
+                    });
+                    if (StateEqual != checked) {
+                        node.parentNode.parentNode.set('checked', checked);
+                    }
+                    node = node.parentNode.parentNode;
+                }
+                else {
+                    node.parentNode.cascadeBy(function (n) {
+                        if (n != node.parentNode) {
+                            if (n.get('checked') != checked) {
+                                StateEqual = false;
+                            }
+                        }
+                    });
+                    if (StateEqual != checked) {
+                        node.parentNode.set('checked', checked);
+                    }
+                    node = node.parentNode;
+                }
+    
+            }
+        }*/
+    };
+    function LoadUserGroup() {
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Permission/ReloadDrp',
+            success: function (data) {
+                var CboType = App.Permission.queryById('CboGrohKarbari');
+                CboType.setValue(data.fldUserGroupId);
+                App.Permission.queryById('CboModule').clearValue(); App.Permission.queryById('CboModule').getStore().load();
+                /*var CboModule = App.Permission.queryById('CboModule');
+                CboModule.setValue(CboModule.store.getAt(0));
+                Change();*/
+            }
+        });
+    }
+    function HelpPermission() {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Permission/Help',
+            success: function (data) {
+                Ext.net.Mask.hide();
+            }
+        });
+    }
+    function setSizePnl() {
+        App.Permission.setWidth(App.Win.getWidth());
+        var pnl = App.Permission.queryById('pnlTree');
+        pnl.setHeight(App.Win.getHeight() - 251);
+    }
+
+    function Change() {
+        App.TreePermission.store.getProxy().extraParams = {
+            "GrohKarbari":App.Permission.queryById('CboGrohKarbari').getValue(),
+            "UserGroup_ModuleOrganID": App.Permission.queryById('CboModule').getValue()
+        };
+        if (App.TreePermission.getRootNode().isExpanded() == true) {
+            App.TreePermission.store.load();
+            App.TreePermission.collapseAll();
+        }
+        else {
+            App.TreePermission.expandAll();
+        }
+        
+        /*var GrohKarbari = App.Permission.queryById('CboGrohKarbari');
+        var CboModule = App.Permission.queryById('CboModule');
+        if (GrohKarbari.getValue() != "" && GrohKarbari.getValue() != null && CboModule.getValue() != "" && CboModule.getValue() != null) {
+            Ext.net.DirectMethod.request({
+                url: '/Comon/Permission/NodeLoad',
+                params: {
+                    node: "0",
+                    GrohKarbari: GrohKarbari.getValue(),
+                    UserGroup_ModuleOrganID: CboModule.getValue()
+                },
+                success: function () {
+                    Reload();
+                },
+                failure: function (errorMsg) {
+                    Ext.Msg.alert('Failure', errorMsg);
+                }
+
+            });
+        }
+        return false;*/
+    }
+
+    /*var nodeLoad = function (store, operation, options) {
+        Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+        var GrohKarbari = App.Permission.queryById('CboGrohKarbari');
+        var CboModule = App.Permission.queryById('CboModule');
+        var node = operation.node;
+        Ext.net.DirectMethod.request({
+            url: '/Comon/Permission/NodeLoad',
+            params: {
+                node: node.getId(),
+                GrohKarbari: GrohKarbari.getValue(),
+                UserGroup_ModuleOrganID: CboModule.getValue()
+            },
+            success: function (result) {
+                node.set('loading', false);
+                node.set('loaded', true);
+                node.appendChild(result);
+                node.expand(true);
+                Ext.net.Mask.hide();
+            },
+
+            failure: function (errorMsg) {
+                Ext.Msg.alert('Failure', errorMsg);
+            }
+        });
+        return false;
+    };*/
+
+    /*function Reload() {
+        App.Tree.store.load();
+    };*/
+
+    function GetId(record) {
+        NodeId = record.getId();
+    };
+
+    function SavePermission() {
+        var Father = App.TreePermission;
+        var Checked = Father.getChecked();
+        if (Checked == []) { return; }
+        var Permission = new Array();
+        var CboGrohKarbari = App.Permission.queryById('CboGrohKarbari');
+        var CboModule = App.Permission.queryById('CboModule');
+        var FatherId;
+
+
+        if (UnChecked != "") {
+            Ext.MessageBox.show({
+                title: "اخطار",
+                msg: "با حذف دسترسی موردنظر، این دسترسی از تمامی گروه های کاربری زیرمجموعه نیز حذف می گردد.",
+                icon: Ext.MessageBox.WARNING,
+                buttons: Ext.MessageBox.OK,
+                fn: function (btn) {
+                    if (btn == 'ok') {
+                        Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+                        for (var i = 0; i < Checked.length ; i++) {
+                            FatherId = Checked[i];
+                            Permission.push({
+                                'fldApplicationPartId': FatherId.getId(),
+                                'fldUserGroup_ModuleOrganID': CboModule.getValue()
+                            });
+                        }
+
+                        var data = {
+                            Permission: Permission,
+                            'UserGroup_ModuleOrganID': CboModule.getValue(),
+                            'ModuleID': CboModule.getValue(),
+                            UnChecked: UnChecked
+                        };
+                        $.ajax({
+                            type: "POST",
+                            url: '/Comon/Permission/SavePermission',
+                            datatype: "json",
+                            data: JSON.stringify(data),
+                            contentType: 'application/json',
+                            success: function (result) {
+                                var data = result;/*JSON.parse(result);*/
+                                Ext.MessageBox.show({
+                                    title: data.MsgTitle,
+                                    msg: data.Msg,
+                                    icon: Ext.MessageBox.INFO,
+                                    buttons: Ext.MessageBox.OK
+                                });
+                                Ext.net.Mask.hide();
+                                UnChecked = "";
+                            },
+                            failure: function (data) {
+                                alert(data.data);
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        else {
+            Ext.net.Mask.show({ msg: 'در حال ذخیره سازی...' });
+            for (var i = 0; i < Checked.length ; i++) {
+                FatherId = Checked[i];
+                Permission.push({
+                    'fldApplicationPartId': FatherId.getId(),
+                    'fldUserGroup_ModuleOrganID': CboModule.getValue()
+                });
+            }
+
+            var data = {
+                Permission: Permission,
+                'UserGroup_ModuleOrganID': CboModule.getValue(),
+                'ModuleID': CboModule.getValue(),
+                UnChecked: UnChecked
+            };
+            $.ajax({
+                type: "POST",
+                url: '/Comon/Permission/SavePermission',
+                datatype: "json",
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                success: function (result) {
+                    var data = result;/*JSON.parse(result);*/
+                    Ext.MessageBox.show({
+                        title: data.MsgTitle,
+                        msg: data.Msg,
+                        icon: Ext.MessageBox.INFO,
+                        buttons: Ext.MessageBox.OK
+                    });
+                    Ext.net.Mask.hide();
+                    UnChecked = "";
+                },
+                failure: function (data) {
+                    alert(data.data);
+                }
+            });
+        }
+
+    }
+</script>

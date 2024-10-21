@@ -1,0 +1,136 @@
+﻿@using Ext.Net.MVC
+@using Hogaf.ExtNet.UX
+@using Ext.Net.Utilities
+@using Ext.Net;
+@{
+
+    var X = Html.X();
+}
+<style>
+    td {
+        text-align: left;
+    }
+</style>
+
+
+
+@(X.Window().Title("ثبت ردیف جدید").Modal(true).Border(false)
+    .Listeners(l => l.AfterRender.Handler = "LoadShomare()")
+        .ID("NewShomare")
+    .Closable(true)
+    .AutoScroll(true)
+    .CloseAction(Ext.Net.CloseAction.Destroy)
+          .Width(300)
+          .Layout(LayoutType.VBox)
+              .LayoutConfig(new VBoxLayoutConfig { Align = VBoxAlign.Center })
+        //.Height(130)
+             .ButtonAlign(Alignment.Center)
+
+        .DefaultButton("btn")
+
+             .Buttons(
+                X.Button().Text("ذخیره").Icon(Ext.Net.Icon.Disk)
+                .Listeners(l =>
+                {
+                    l.Click.Handler = "SaveNewShomare();";
+
+                })
+                    , X.Button().Text("خروج").Icon(Ext.Net.Icon.DoorOut)
+                            .OnClientClick("App.NewShomare.destroy()")
+                )
+    .Items(
+                X.Panel().ItemID("Panel")
+            .Border(false)
+                .Layout(LayoutType.Table)
+                .Padding(10)
+                .LayoutConfig(new Ext.Net.TableLayoutConfig { Columns = 2 })
+                .Defaults(new { Margin = 2 })
+                .Items(
+                                X.Hidden()
+                                    .ItemID("fldId"),
+                           X.Label("شماره:"),
+                            X.TextField()
+                                .ItemID("txtShomare")
+        //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                                    .AllowBlank(false)
+                                    .BlankText("لطفا شماره را وارد کنید.")
+                                         .MaxLength(50)
+                                    .AutoFocus(true)
+                                    .EnforceMaxLength(true),
+                                   X.Label("تعداد طبقات:"),
+                            X.NumberField()
+                                    .ItemID("txtTedadTabaghat")
+        //  .MsgTarget(Ext.Net.MessageTarget.Side)
+                                .AllowBlank(false)
+                                     .MaxValue(3)
+                                    .EnforceMaxLength(true)
+                                .BlankText("لطفا تعداد طبقات را وارد کنید.")
+        //    .MaskRe("[a-z,A-Z,آ-ی, ,_,-]")
+
+        )
+    )
+)
+<script type="text/javascript">
+    function LoadShomare() {
+        if ('@ViewBag.Id'!=0) {
+            Ext.net.Mask.show({ msg: 'در حال بارگذاری...' });
+            Ext.net.DirectMethod.request({
+                url: '/Deceased/Radif_Shomare/DetailsShomare',
+                params: {
+                    Id: '@ViewBag.Id'
+                },
+                success: function (data) {
+                    var txtShomare = App.NewShomare.queryById('txtShomare');
+                    txtShomare.setValue(data.fldShomare);
+                    var txtTedadTabaghat = App.NewShomare.queryById('txtTedadTabaghat');
+                    txtTedadTabaghat.setValue(data.fldTedadTabaghat);
+                    var fldId = App.NewShomare.queryById('fldId');
+                    fldId.setValue(data.fldId);
+                    Ext.net.Mask.hide();
+                }
+            });
+        }
+    }
+    function SaveNewShomare() {
+        var txtShomare = App.NewShomare.queryById('txtShomare');
+        var txtTedadTabaghat = App.NewShomare.queryById('txtTedadTabaghat');
+        var fldId = App.NewShomare.queryById('fldId');
+        var er = false;
+
+        if (txtTedadTabaghat.validate() == false) {
+            er = true;
+        }
+        if (txtShomare.validate() == false) {
+            er = true;
+        }
+        if (er == true)
+            return;
+
+        Ext.net.Mask.show({ msg: 'در حال انجام عملیات...' });
+        Ext.net.DirectMethod.request({
+            url: '/Deceased/Radif_Shomare/SaveShomare',
+            params: {
+                fldTedadTabaghat: txtTedadTabaghat.getValue(),
+                fldShomare: txtShomare.getValue(),
+                fldId: fldId.getValue(),
+                fldRadifId: '@ViewBag.RadifId'
+            },
+            success: function (data) {
+                Ext.net.Mask.hide();
+                var ic = Ext.MessageBox.INFO;
+                if (data.Err == 1)
+                    ic = Ext.MessageBox.ERROR;
+                Ext.MessageBox.show({
+                    Name: data.MsgName,
+                    msg: data.Msg,
+                    icon: ic,
+                    buttons: Ext.MessageBox.OK
+                });
+                ReloadGridShomare();
+            }
+
+        });
+        Ext.net.Mask.hide();
+
+    }
+</script>
